@@ -1,0 +1,47 @@
+use parse::Term;
+
+grammar();
+
+pub Term: Term = {
+    AbsTerm,
+    // Annotated terms
+    <x: Term> ":" <t: AbsTerm> => {
+        Term::Ann(Box::new(x), Box::new(t))
+    },
+};
+
+AbsTerm : Term = {
+    AppTerm,
+    // Lambda abstractions
+    r"\\" <x: Ident> <t: (":" <AppTerm>)?> "," <body: AbsTerm> => {
+        Term::Lam(x, t.map(Box::new), Box::new(body))
+    },
+    // Pi types
+    "[" <x: Ident> ":" <t: AppTerm> "]" "," <body: AbsTerm> => {
+        Term::Pi(x, Box::new(t), Box::new(body))
+    },
+    // Degenerate Pi types
+    <param: AppTerm> "->" <ret: AbsTerm> => {
+        // `_` is not constructable via the concrete syntax, so there's no need
+        // to worry about name collisions
+        Term::Pi(String::from("_"), Box::new(param), Box::new(ret))
+    },
+};
+
+AppTerm: Term = {
+    AtomicTerm,
+    // Applications
+    <f: AtomicTerm> <x: AtomicTerm> => {
+        Term::App(Box::new(f), Box::new(x)).into()
+    },
+};
+
+AtomicTerm: Term = {
+    "(" <Term> ")",
+    "*" => Term::Type,
+    Ident => Term::Var(<>).into(),
+};
+
+Ident: String = {
+    r"[a-zA-Z][a-zA-Z0-9]*" => String::from(<>),
+};

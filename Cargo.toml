@@ -1,0 +1,15 @@
+[package]
+name = "lambdapi"
+version = "0.1.0"
+readme = "README.md"
+license = "Apache-2.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+description = "An implementation of the LambdaPi type system in Rust"
+publish = false
+
+[dependencies]
+lalrpop-util = "0.13.1"
+regex = "0.2.0"
+
+[build-dependencies]
+lalrpop = "0.13.1"
