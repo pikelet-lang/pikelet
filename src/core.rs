@@ -3,6 +3,15 @@ use std::rc::Rc;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Name(pub String);
 
+#[derive(Debug, Clone, Eq)]
+pub struct Named<T>(pub Name, pub T);
+
+impl<T: PartialEq> PartialEq for Named<T> {
+    fn eq(&self, other: &Named<T>) -> bool {
+        &self.1 == &other.1
+    }
+}
+
 /// The [debruijn index] of the binder that introduced the variable
 ///
 /// For example:
@@ -41,7 +50,7 @@ pub enum CTerm {
     /// ```
     /// \x, t
     /// ```
-    Lam(Rc<CTerm>),
+    Lam(Named<()>, Rc<CTerm>),
 }
 
 /// Inferrable terms
@@ -66,13 +75,13 @@ pub enum ITerm {
     /// ```
     /// \x : t, t
     /// ```
-    Lam(Rc<CTerm>, Rc<ITerm>),
+    Lam(Named<Rc<CTerm>>, Rc<ITerm>),
     /// Fully annotated pi types
     ///
     /// ```
     /// [x : t], t
     /// ```
-    Pi(Rc<CTerm>, Rc<CTerm>),
+    Pi(Named<Rc<CTerm>>, Rc<CTerm>),
     /// A variable that is bound by an abstraction
     Bound(Debruijn),
     /// A free variable
@@ -90,8 +99,8 @@ pub enum ITerm {
 pub enum Value {
     Type,
     Bound(Debruijn),
-    Lam(Option<Rc<Value>>, Rc<Value>),
-    Pi(Rc<Value>, Rc<Value>),
+    Lam(Named<Option<Rc<Value>>>, Rc<Value>),
+    Pi(Named<Rc<Value>>, Rc<Value>),
     Stuck(Rc<SValue>),
 }
 
@@ -116,7 +125,9 @@ impl CTerm {
     pub fn abstract_at(&self, level: Debruijn, name: &Name) -> CTerm {
         match *self {
             CTerm::Inf(ref i) => CTerm::Inf(Rc::new(i.abstract_at(level, name))),
-            CTerm::Lam(ref body) => CTerm::Lam(Rc::new(body.abstract_at(level.succ(), name))),
+            CTerm::Lam(ref param, ref body) => {
+                CTerm::Lam(param.clone(), Rc::new(body.abstract_at(level.succ(), name)))
+            }
         }
     }
 }
@@ -133,12 +144,12 @@ impl ITerm {
                 Rc::new(ty.abstract_at(level, name)),
             ),
             ITerm::Type => ITerm::Type,
-            ITerm::Lam(ref ty, ref body) => ITerm::Lam(
-                Rc::new(ty.abstract_at(level, name)),
+            ITerm::Lam(Named(ref name, ref ty), ref body) => ITerm::Lam(
+                Named(name.clone(), Rc::new(ty.abstract_at(level, name))),
                 Rc::new(body.abstract_at(level.succ(), name)),
             ),
-            ITerm::Pi(ref ty, ref body) => ITerm::Pi(
-                Rc::new(ty.abstract_at(level, name)),
+            ITerm::Pi(Named(ref name, ref ty), ref body) => ITerm::Pi(
+                Named(name.clone(), Rc::new(ty.abstract_at(level, name))),
                 Rc::new(body.abstract_at(level.succ(), name)),
             ),
             ITerm::Bound(ref b) => ITerm::Bound(*b),
@@ -162,12 +173,12 @@ impl Value {
             Value::Type => Value::Type,
             Value::Bound(b) if b == level => (**x).clone(),
             Value::Bound(b) => Value::Bound(b),
-            Value::Lam(ref ty, ref body) => Value::Lam(
-                ty.as_ref().map(|ty| Rc::new(ty.instantiate_at(level, x))),
+            Value::Lam(Named(ref name, ref ty), ref body) => Value::Lam(
+                Named(name.clone(), ty.as_ref().map(|ty| Rc::new(ty.instantiate_at(level, x)))),
                 Rc::new(body.instantiate_at(level.succ(), x)),
             ),
-            Value::Pi(ref ty, ref body) => Value::Pi(
-                Rc::new(ty.instantiate_at(level, x)),
+            Value::Pi(Named(ref name, ref ty), ref body) => Value::Pi(
+                Named(name.clone(), Rc::new(ty.instantiate_at(level, x))),
                 Rc::new(body.instantiate_at(level.succ(), x)),
             ),
             Value::Stuck(ref stuck) => Value::Stuck(Rc::new(stuck.instantiate_at(level, x))),
@@ -196,17 +207,16 @@ impl SValue {
 #[derive(Debug, Clone)]
 pub enum EvalError {
     /// Attempted to apply an argument to a term that is not a function
-    ArgumentAppliedToNonFunction {
-        arg: Rc<Value>,
-        expr: Rc<Value>,
-    },
+    ArgumentAppliedToNonFunction { arg: Rc<Value>, expr: Rc<Value> },
 }
 
 impl CTerm {
     pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
         match *self {
             CTerm::Inf(ref i) => i.eval(),
-            CTerm::Lam(ref body) => Ok(Rc::new(Value::Lam(None, body.eval()?))),
+            CTerm::Lam(Named(ref name, ()), ref body) => {
+                Ok(Rc::new(Value::Lam(Named(name.clone(), None), body.eval()?)))
+            }
         }
     }
 }
@@ -216,8 +226,14 @@ impl ITerm {
         match *self {
             ITerm::Ann(ref expr, _) => expr.eval(),
             ITerm::Type => Ok(Rc::new(Value::Type)),
-            ITerm::Lam(ref ty, ref body) => Ok(Rc::new(Value::Lam(Some(ty.eval()?), body.eval()?))),
-            ITerm::Pi(ref ty, ref body) => Ok(Rc::new(Value::Pi(ty.eval()?, body.eval()?))),
+            ITerm::Lam(Named(ref name, ref ty), ref body) => Ok(Rc::new(Value::Lam(
+                Named(name.clone(), Some(ty.eval()?)),
+                body.eval()?,
+            ))),
+            ITerm::Pi(Named(ref name, ref ty), ref body) => Ok(Rc::new(Value::Pi(
+                Named(name.clone(), ty.eval()?),
+                body.eval()?,
+            ))),
             ITerm::Bound(ref b) => Ok(Rc::new(Value::Bound(*b))),
             ITerm::Free(ref n) => Ok(Rc::new(Value::Stuck(Rc::new(SValue::Free(n.clone()))))),
             ITerm::App(ref fn_expr, ref arg) => {
@@ -226,10 +242,12 @@ impl ITerm {
                 let result = match *fn_expr {
                     Value::Lam(_, ref body_expr) => body_expr.instantiate0(&arg),
                     Value::Stuck(ref s) => Value::Stuck(Rc::new(SValue::App(s.clone(), arg))),
-                    _ => return Err(EvalError::ArgumentAppliedToNonFunction {
-                        arg,
-                        expr: fn_expr.clone(),
-                    }),
+                    _ => {
+                        return Err(EvalError::ArgumentAppliedToNonFunction {
+                            arg,
+                            expr: fn_expr.clone(),
+                        })
+                    }
                 };
 
                 Ok(Rc::new(result))
@@ -292,8 +310,8 @@ impl CTerm {
                     expected: Rc::new(ty.clone()),
                 }),
             },
-            CTerm::Lam(ref body_expr) => match *ty {
-                Value::Pi(ref param_ty, ref ret_ty) => {
+            CTerm::Lam(_, ref body_expr) => match *ty {
+                Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                     body_expr.check(ret_ty, &context.extend(param_ty.clone()))
                 }
                 _ => Err(TypeError::ExpectedFunction),
@@ -316,7 +334,7 @@ impl ITerm {
                 Ok(simp_ty)
             }
             ITerm::Type => Ok(Rc::new(Value::Type)),
-            ITerm::Lam(ref param_ty, ref body_expr) => {
+            ITerm::Lam(Named(ref param_name, ref param_ty), ref body_expr) => {
                 // Check that the type is actually at the type level
                 param_ty.check(&Value::Type, context)?;
                 // Simplify the param type
@@ -324,9 +342,12 @@ impl ITerm {
                 // Infer the body of the lambda
                 let body_ty = body_expr.infer(&context.extend(simp_param_ty.clone()))?;
 
-                Ok(Rc::new(Value::Pi(simp_param_ty, body_ty)))
+                Ok(Rc::new(Value::Pi(
+                    Named(param_name.clone(), simp_param_ty),
+                    body_ty,
+                )))
             }
-            ITerm::Pi(ref param_ty, ref body_ty) => {
+            ITerm::Pi(Named(_, ref param_ty), ref body_ty) => {
                 // Check that the type is actually at the type level
                 param_ty.check(&Value::Type, context)?;
                 // Simplify the type
@@ -341,7 +362,7 @@ impl ITerm {
             ITerm::Free(ref n) => Err(TypeError::UnboundVariable(n.clone())),
             ITerm::App(ref fn_expr, ref arg_expr) => {
                 match *fn_expr.infer(context)? {
-                    Value::Pi(ref param_ty, ref ret_ty) => {
+                    Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                         // Check that the type of the argument matches the
                         // expected type of the parameter
                         arg_expr.check(param_ty, context)?;

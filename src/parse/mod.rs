@@ -40,7 +40,7 @@ impl Term {
     /// This may fail if the term is not fully inferrable.
     pub fn to_core(&self) -> Result<core::ITerm, ()> {
         use std::rc::Rc;
-        use core::{CTerm, ITerm, Name};
+        use core::{CTerm, ITerm, Name, Named};
 
         fn to_cterm<T>(tm: &Term) -> Result<CTerm, Option<T>> {
             match to_iterm(tm) {
@@ -58,19 +58,25 @@ impl Term {
                     Ok(ITerm::Ann(Rc::new(to_cterm(e)?), Rc::new(to_cterm(t)?)))
                 }
                 Term::Lam(ref n, Some(ref t), ref body) => {
+                    let name = Name(n.clone());
                     let body = match body.to_core() {
-                        Ok(body) => body.abstract0(&Name(n.clone())),
+                        Ok(body) => body.abstract0(&name),
                         Err(()) => return Err(None),
                     };
-                    Ok(ITerm::Lam(Rc::new(to_cterm(t)?), Rc::new(body)))
+                    Ok(ITerm::Lam(
+                        Named(name, Rc::new(to_cterm(t)?)),
+                        Rc::new(body),
+                    ))
                 }
                 Term::Lam(ref n, None, ref body) => {
-                    let body = to_cterm(body)?.abstract0(&Name(n.clone()));
-                    Err(Some(CTerm::Lam(Rc::new(body))))
+                    let name = Name(n.clone());
+                    let body = to_cterm(body)?.abstract0(&name);
+                    Err(Some(CTerm::Lam(Named(name, ()), Rc::new(body))))
                 }
                 Term::Pi(ref n, ref t, ref body) => {
-                    let body = to_cterm(body)?.abstract0(&Name(n.clone()));
-                    Ok(ITerm::Pi(Rc::new(to_cterm(t)?), Rc::new(body)))
+                    let name = Name(n.clone());
+                    let body = to_cterm(body)?.abstract0(&name);
+                    Ok(ITerm::Pi(Named(name, Rc::new(to_cterm(t)?)), Rc::new(body)))
                 }
                 Term::App(ref f, ref x) => match f.to_core() {
                     Ok(f) => Ok(ITerm::App(Rc::new(f), Rc::new(to_cterm(x)?))),
