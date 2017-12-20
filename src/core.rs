@@ -3,6 +3,9 @@ use std::rc::Rc;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Name(pub String);
 
+/// A type annotated with a name for debugging purposes
+///
+/// The name is ignored for equality comparisons
 #[derive(Debug, Clone, Eq)]
 pub struct Named<T>(pub Name, pub T);
 
@@ -41,7 +44,7 @@ impl Debruijn {
 ///
 /// These terms do not contain full type information within them, so in order to
 /// check them we need to supply a type to the checking algorithm
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CTerm {
     /// Inferrable terms
     Inf(Rc<ITerm>),
@@ -53,11 +56,17 @@ pub enum CTerm {
     Lam(Named<()>, Rc<CTerm>),
 }
 
+impl From<ITerm> for CTerm {
+    fn from(src: ITerm) -> CTerm {
+        CTerm::Inf(Rc::new(src))
+    }
+}
+
 /// Inferrable terms
 ///
 /// These terms can be fully inferred without needing to resort to type
 /// inference
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ITerm {
     /// A term annotated with a type
     ///
@@ -83,7 +92,7 @@ pub enum ITerm {
     /// ```
     Pi(Named<Rc<CTerm>>, Rc<CTerm>),
     /// A variable that is bound by an abstraction
-    Bound(Debruijn),
+    Bound(Named<Debruijn>),
     /// A free variable
     Free(Name),
     /// Term application
@@ -98,7 +107,7 @@ pub enum ITerm {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
     Type,
-    Bound(Debruijn),
+    Bound(Named<Debruijn>),
     Lam(Named<Option<Rc<Value>>>, Rc<Value>),
     Pi(Named<Rc<Value>>, Rc<Value>),
     Stuck(Rc<SValue>),
@@ -118,86 +127,92 @@ pub type Type = Value;
 // Abstraction and instantiation
 
 impl CTerm {
-    pub fn abstract0(&self, name: &Name) -> CTerm {
-        self.abstract_at(Debruijn::zero(), name)
+    pub fn abstract0(&mut self, name: &Name) {
+        self.abstract_at(Debruijn::zero(), name);
     }
 
-    pub fn abstract_at(&self, level: Debruijn, name: &Name) -> CTerm {
+    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
         match *self {
-            CTerm::Inf(ref i) => CTerm::Inf(Rc::new(i.abstract_at(level, name))),
-            CTerm::Lam(ref param, ref body) => {
-                CTerm::Lam(param.clone(), Rc::new(body.abstract_at(level.succ(), name)))
-            }
+            CTerm::Inf(ref mut i) => Rc::make_mut(i).abstract_at(level, name),
+            CTerm::Lam(_, ref mut body) => Rc::make_mut(body).abstract_at(level.succ(), name),
         }
     }
 }
 
 impl ITerm {
-    pub fn abstract0(&self, name: &Name) -> ITerm {
-        self.abstract_at(Debruijn::zero(), name)
+    pub fn abstract0(&mut self, name: &Name) {
+        self.abstract_at(Debruijn::zero(), name);
     }
 
-    pub fn abstract_at(&self, level: Debruijn, name: &Name) -> ITerm {
-        match *self {
-            ITerm::Ann(ref expr, ref ty) => ITerm::Ann(
-                Rc::new(expr.abstract_at(level, name)),
-                Rc::new(ty.abstract_at(level, name)),
-            ),
-            ITerm::Type => ITerm::Type,
-            ITerm::Lam(Named(ref name, ref ty), ref body) => ITerm::Lam(
-                Named(name.clone(), Rc::new(ty.abstract_at(level, name))),
-                Rc::new(body.abstract_at(level.succ(), name)),
-            ),
-            ITerm::Pi(Named(ref name, ref ty), ref body) => ITerm::Pi(
-                Named(name.clone(), Rc::new(ty.abstract_at(level, name))),
-                Rc::new(body.abstract_at(level.succ(), name)),
-            ),
-            ITerm::Bound(ref b) => ITerm::Bound(*b),
-            ITerm::Free(ref n) if n == name => ITerm::Bound(level),
-            ITerm::Free(ref n) => ITerm::Free(n.clone()),
-            ITerm::App(ref f, ref x) => ITerm::App(
-                Rc::new(f.abstract_at(level, name)),
-                Rc::new(x.abstract_at(level, name)),
-            ),
+    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
+        *self = match *self {
+            ITerm::Ann(ref mut expr, ref mut ty) => {
+                Rc::make_mut(expr).abstract_at(level, name);
+                Rc::make_mut(ty).abstract_at(level, name);
+                return;
+            }
+            ITerm::Lam(Named(_, ref mut ty), ref mut body) => {
+                Rc::make_mut(ty).abstract_at(level, name);
+                Rc::make_mut(body).abstract_at(level.succ(), name);
+                return;
+            }
+            ITerm::Pi(Named(_, ref mut ty), ref mut body) => {
+                Rc::make_mut(ty).abstract_at(level, name);
+                Rc::make_mut(body).abstract_at(level.succ(), name);
+                return;
+            }
+            ITerm::Free(ref n) if n == name => ITerm::Bound(Named(n.clone(), level)),
+            ITerm::Type | ITerm::Bound(_) | ITerm::Free(_) => return,
+            ITerm::App(ref mut f, ref mut x) => {
+                Rc::make_mut(f).abstract_at(level, name);
+                Rc::make_mut(x).abstract_at(level, name);
+                return;
+            }
         }
     }
 }
 
 impl Value {
-    pub fn instantiate0(&self, x: &Rc<Value>) -> Value {
-        self.instantiate_at(Debruijn::zero(), &x)
+    pub fn instantiate0(&mut self, x: &Rc<Value>) {
+        self.instantiate_at(Debruijn::zero(), &x);
     }
 
-    pub fn instantiate_at(&self, level: Debruijn, x: &Rc<Value>) -> Value {
-        match *self {
-            Value::Type => Value::Type,
-            Value::Bound(b) if b == level => (**x).clone(),
-            Value::Bound(b) => Value::Bound(b),
-            Value::Lam(Named(ref name, ref ty), ref body) => Value::Lam(
-                Named(name.clone(), ty.as_ref().map(|ty| Rc::new(ty.instantiate_at(level, x)))),
-                Rc::new(body.instantiate_at(level.succ(), x)),
-            ),
-            Value::Pi(Named(ref name, ref ty), ref body) => Value::Pi(
-                Named(name.clone(), Rc::new(ty.instantiate_at(level, x))),
-                Rc::new(body.instantiate_at(level.succ(), x)),
-            ),
-            Value::Stuck(ref stuck) => Value::Stuck(Rc::new(stuck.instantiate_at(level, x))),
-        }
+    pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
+        *self = match *self {
+            Value::Bound(Named(_, b)) if b == level => (**x).clone(),
+            Value::Type | Value::Bound(_) => return,
+            Value::Lam(Named(_, ref mut ty), ref mut body) => {
+                if let Some(ref mut ty) = *ty {
+                    Rc::make_mut(ty).instantiate_at(level, x);
+                }
+                Rc::make_mut(body).instantiate_at(level.succ(), x);
+                return;
+            }
+            Value::Pi(Named(_, ref mut ty), ref mut body) => {
+                Rc::make_mut(ty).instantiate_at(level, x);
+                Rc::make_mut(body).instantiate_at(level.succ(), x);
+                return;
+            }
+            Value::Stuck(ref mut stuck) => {
+                Rc::make_mut(stuck).instantiate_at(level, x);
+                return;
+            }
+        };
     }
 }
 
 impl SValue {
-    pub fn instantiate0(&self, x: &Rc<Value>) -> SValue {
-        self.instantiate_at(Debruijn::zero(), &x)
+    pub fn instantiate0(&mut self, x: &Rc<Value>) {
+        self.instantiate_at(Debruijn::zero(), &x);
     }
 
-    pub fn instantiate_at(&self, level: Debruijn, x: &Rc<Value>) -> SValue {
+    pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
         match *self {
-            SValue::Free(ref n) => SValue::Free(n.clone()),
-            SValue::App(ref fn_expr, ref arg_expr) => SValue::App(
-                Rc::new(fn_expr.instantiate_at(level, x)),
-                Rc::new(arg_expr.instantiate_at(level, x)),
-            ),
+            SValue::Free(_) => {}
+            SValue::App(ref mut fn_expr, ref mut arg_expr) => {
+                Rc::make_mut(fn_expr).instantiate_at(level, x);
+                Rc::make_mut(arg_expr).instantiate_at(level, x);
+            }
         }
     }
 }
@@ -234,29 +249,46 @@ impl ITerm {
                 Named(name.clone(), ty.eval()?),
                 body.eval()?,
             ))),
-            ITerm::Bound(ref b) => Ok(Rc::new(Value::Bound(*b))),
+            ITerm::Bound(ref b) => Ok(Rc::new(Value::Bound(b.clone()))),
             ITerm::Free(ref n) => Ok(Rc::new(Value::Stuck(Rc::new(SValue::Free(n.clone()))))),
             ITerm::App(ref fn_expr, ref arg) => {
                 let fn_expr = fn_expr.eval()?;
                 let arg = arg.eval()?;
-                let result = match *fn_expr {
-                    Value::Lam(_, ref body_expr) => body_expr.instantiate0(&arg),
-                    Value::Stuck(ref s) => Value::Stuck(Rc::new(SValue::App(s.clone(), arg))),
-                    _ => {
-                        return Err(EvalError::ArgumentAppliedToNonFunction {
-                            arg,
-                            expr: fn_expr.clone(),
-                        })
+                match *fn_expr {
+                    Value::Lam(_, ref body_expr) => {
+                        let mut body_expr = body_expr.clone();
+                        Rc::make_mut(&mut body_expr).instantiate0(&arg);
+                        Ok(body_expr)
                     }
-                };
-
-                Ok(Rc::new(result))
+                    Value::Stuck(ref s) => {
+                        Ok(Rc::new(Value::Stuck(Rc::new(SValue::App(s.clone(), arg)))))
+                    }
+                    _ => Err(EvalError::ArgumentAppliedToNonFunction {
+                        arg,
+                        expr: fn_expr.clone(),
+                    }),
+                }
             }
         }
     }
 }
 
-// Contexts
+// Contexts and type checking
+
+#[derive(Debug, Clone)]
+pub enum TypeError {
+    Eval(EvalError),
+    IllegalApplication,
+    ExpectedFunction,
+    Mismatch { found: Rc<Type>, expected: Rc<Type> },
+    UnboundVariable(Name),
+}
+
+impl From<EvalError> for TypeError {
+    fn from(src: EvalError) -> TypeError {
+        TypeError::Eval(src)
+    }
+}
 
 pub enum Context<'a> {
     Nil,
@@ -281,66 +313,46 @@ impl<'a> Context<'a> {
             (&Context::Cons(parent, _), Debruijn(x)) => parent.lookup(Debruijn(x - 1)),
         }
     }
-}
 
-// Type checking
-
-#[derive(Debug, Clone)]
-pub enum TypeError {
-    Eval(EvalError),
-    IllegalApplication,
-    ExpectedFunction,
-    Mismatch { found: Rc<Type>, expected: Rc<Type> },
-    UnboundVariable(Name),
-}
-
-impl From<EvalError> for TypeError {
-    fn from(src: EvalError) -> TypeError {
-        TypeError::Eval(src)
-    }
-}
-
-impl CTerm {
-    pub fn check(&self, ty: &Type, context: &Context) -> Result<(), TypeError> {
-        match *self {
-            CTerm::Inf(ref inf_expr) => match inf_expr.infer(context)? {
-                ref inf_ty if &**inf_ty == ty => Ok(()),
+    pub fn check(&self, expr: &CTerm, expected_ty: &Type) -> Result<(), TypeError> {
+        match *expr {
+            CTerm::Inf(ref inf_expr) => match self.infer(inf_expr)? {
+                // Ensure that the inferred type matches the expected type
+                ref inf_ty if &**inf_ty == expected_ty => Ok(()),
                 inf_ty => Err(TypeError::Mismatch {
                     found: inf_ty,
-                    expected: Rc::new(ty.clone()),
+                    expected: Rc::new(expected_ty.clone()),
                 }),
             },
-            CTerm::Lam(_, ref body_expr) => match *ty {
+            CTerm::Lam(_, ref body_expr) => match *expected_ty {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
-                    body_expr.check(ret_ty, &context.extend(param_ty.clone()))
+                    self.extend(param_ty.clone()).check(body_expr, ret_ty)
                 }
                 _ => Err(TypeError::ExpectedFunction),
             },
         }
     }
-}
 
-impl ITerm {
-    pub fn infer(&self, context: &Context) -> Result<Rc<Type>, TypeError> {
-        match *self {
+    pub fn infer(&self, expr: &ITerm) -> Result<Rc<Type>, TypeError> {
+        match *expr {
             ITerm::Ann(ref expr, ref ty) => {
                 // Check that the type is actually at the type level
-                ty.check(&Value::Type, context)?;
+                self.check(ty, &Value::Type)?;
                 // Simplify the type
                 let simp_ty = ty.eval()?;
                 // Ensure that the type of the expression is compatible with the
                 // simplified annotation
-                expr.check(&simp_ty, context)?;
+                self.check(expr, &simp_ty)?;
                 Ok(simp_ty)
             }
             ITerm::Type => Ok(Rc::new(Value::Type)),
             ITerm::Lam(Named(ref param_name, ref param_ty), ref body_expr) => {
                 // Check that the type is actually at the type level
-                param_ty.check(&Value::Type, context)?;
+                self.check(param_ty, &Value::Type)?;
                 // Simplify the param type
                 let simp_param_ty = param_ty.eval()?;
                 // Infer the body of the lambda
-                let body_ty = body_expr.infer(&context.extend(simp_param_ty.clone()))?;
+                let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?;
 
                 Ok(Rc::new(Value::Pi(
                     Named(param_name.clone(), simp_param_ty),
@@ -349,28 +361,31 @@ impl ITerm {
             }
             ITerm::Pi(Named(_, ref param_ty), ref body_ty) => {
                 // Check that the type is actually at the type level
-                param_ty.check(&Value::Type, context)?;
+                self.check(param_ty, &Value::Type)?;
                 // Simplify the type
                 let simp_param_ty = param_ty.eval()?;
                 // Ensure that the body of the pi type is also a type, when the
                 // parameter is added to the context
-                body_ty.check(&Value::Type, &context.extend(simp_param_ty))?;
+                self.extend(simp_param_ty).check(body_ty, &Value::Type)?;
                 // If this is true, the type of the pi type is also a type
                 Ok(Rc::new(Value::Type))
             }
-            ITerm::Bound(b) => Ok(context.lookup(b).expect("ICE: index out of bounds").clone()),
+            ITerm::Bound(Named(_, b)) => {
+                Ok(self.lookup(b).expect("ICE: index out of bounds").clone())
+            }
             ITerm::Free(ref n) => Err(TypeError::UnboundVariable(n.clone())),
             ITerm::App(ref fn_expr, ref arg_expr) => {
-                match *fn_expr.infer(context)? {
+                match *self.infer(fn_expr)? {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                         // Check that the type of the argument matches the
                         // expected type of the parameter
-                        arg_expr.check(param_ty, context)?;
+                        self.check(arg_expr, param_ty)?;
                         // Simplify the argument
                         let simp_arg_expr = arg_expr.eval()?;
                         // Apply the argument to the body of the pi type
-                        let body_ty = ret_ty.instantiate0(&simp_arg_expr);
-                        Ok(Rc::new(body_ty))
+                        let mut body_ty = ret_ty.clone();
+                        Rc::make_mut(&mut body_ty).instantiate0(&simp_arg_expr);
+                        Ok(body_ty)
                     }
                     _ => Err(TypeError::IllegalApplication),
                 }
@@ -388,45 +403,115 @@ mod tests {
         Term::to_core(&src.parse().unwrap()).unwrap()
     }
 
-    #[test]
-    fn alpha_eq_lam() {
-        assert_eq!(
-            parse(r"\x : *, x").eval().unwrap(),
-            parse(r"\a : *, a").eval().unwrap(),
-        );
+    mod alpha_eq {
+        use super::*;
+
+        #[test]
+        fn var() {
+            assert_eq!(parse(r"x").eval().unwrap(), parse(r"x").eval().unwrap(),);
+        }
+
+        #[test]
+        #[should_panic]
+        fn var_diff() {
+            assert_eq!(parse(r"x").eval().unwrap(), parse(r"y").eval().unwrap(),);
+        }
+
+        #[test]
+        fn ty() {
+            assert_eq!(parse(r"*").eval().unwrap(), parse(r"*").eval().unwrap(),);
+        }
+
+        #[test]
+        fn lam() {
+            assert_eq!(
+                parse(r"\x : *, x").eval().unwrap(),
+                parse(r"\a : *, a").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn pi() {
+            assert_eq!(
+                parse(r"[x : *], x").eval().unwrap(),
+                parse(r"[a : *], a").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn lam_app() {
+            assert_eq!(
+                parse(r"\x : (* -> *), x *").eval().unwrap(),
+                parse(r"\a : (* -> *), a *").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn pi_app() {
+            assert_eq!(
+                parse(r"[x : (* -> *)], x *").eval().unwrap(),
+                parse(r"[a : (* -> *)], a *").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn lam_lam_app() {
+            assert_eq!(
+                parse(r"\x : (* -> *), \y : *, x y").eval().unwrap(),
+                parse(r"\a : (* -> *), \b : *, a b").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn pi_pi_app() {
+            assert_eq!(
+                parse(r"[x : (* -> *)], [y : *], x y").eval().unwrap(),
+                parse(r"[a : (* -> *)], [b : *], a b").eval().unwrap(),
+            );
+        }
     }
 
-    #[test]
-    fn alpha_eq_pi() {
-        assert_eq!(
-            parse(r"[x : *], x").eval().unwrap(),
-            parse(r"[a : *], a").eval().unwrap(),
-        );
-    }
+    mod infer {
+        use super::*;
 
-    #[test]
-    fn alpha_eq_lam_app() {
-        assert_eq!(
-            parse(r"\x : (* -> *), \y : *, x y").eval().unwrap(),
-            parse(r"\a : (* -> *), \b : *, a b").eval().unwrap(),
-        );
-    }
+        #[test]
+        fn ty() {
+            let ctx = Context::default();
 
-    #[test]
-    fn alpha_eq_pi_app() {
-        assert_eq!(
-            parse(r"[x : (* -> *)], [y : *], x y").eval().unwrap(),
-            parse(r"[a : (* -> *)], [b : *], a b").eval().unwrap(),
-        );
-    }
+            assert_eq!(
+                ctx.infer(&parse(r"*")).unwrap(),
+                parse(r"*").eval().unwrap(),
+            );
+        }
 
-    #[test]
-    fn id_type_checks() {
-        let ctx = Context::default();
+        #[test]
+        fn lam() {
+            let ctx = Context::default();
 
-        assert_eq!(
-            parse(r"\a : *, \x : a, x").infer(&ctx).unwrap(),
-            parse(r"[a: *], a -> a").eval().unwrap(),
-        );
+            assert_eq!(
+                ctx.infer(&parse(r"\a : *, a")).unwrap(),
+                parse(r"[a : *], a").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn pi() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"[a : *], a")).unwrap(),
+                parse(r"*").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn id() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"\a : *, \x : a, x")).unwrap(),
+                parse(r"[a: *], a -> a").eval().unwrap(),
+            );
+        }
     }
 }
