@@ -13,7 +13,7 @@ pub enum Term {
     Type,
     Ann(Box<Term>, Box<Term>),
     Lam(String, Option<Box<Term>>, Box<Term>),
-    Pi(String, Box<Term>, Box<Term>),
+    Pi(Option<String>, Box<Term>, Box<Term>),
     App(Box<Term>, Box<Term>),
 }
 
@@ -78,7 +78,10 @@ impl Term {
                     Err(Some(CTerm::Lam(Named(name, ()), Rc::new(body))))
                 }
                 Term::Pi(ref n, ref t, ref body) => {
-                    let name = Name(n.clone());
+                    let name = match *n {
+                        Some(ref n) => Name(n.clone()),
+                        None => Name(String::from("_")),
+                    };
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
@@ -185,7 +188,7 @@ mod tests {
         let x = Name(String::from("x"));
 
         assert_eq!(
-            parse(r"[x : *], x"),
+            parse(r"[x : *] -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Bound(Named(x, Debruijn(0))))),
@@ -199,7 +202,7 @@ mod tests {
         let y = Name(String::from("y"));
 
         assert_eq!(
-            parse(r"[x : *], [y : *], x"),
+            parse(r"[x : *] -> [y : *] -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
@@ -216,7 +219,7 @@ mod tests {
         let u = Name(String::from("_"));
 
         assert_eq!(
-            parse(r"[x : *], x -> x"),
+            parse(r"[x : *] -> x -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(

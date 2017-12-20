@@ -475,7 +475,7 @@ mod tests {
 
         #[test]
         fn pi() {
-            assert_eq!(parse(r"[x : *], x"), parse(r"[a : *], a"));
+            assert_eq!(parse(r"[x : *] -> x"), parse(r"[a : *] -> a"));
         }
 
         #[test]
@@ -485,7 +485,10 @@ mod tests {
 
         #[test]
         fn pi_app() {
-            assert_eq!(parse(r"[x : (* -> *)], x *"), parse(r"[a : (* -> *)], a *"));
+            assert_eq!(
+                parse(r"[x : (* -> *)] -> x *"),
+                parse(r"[a : (* -> *)] -> a *")
+            );
         }
 
         #[test]
@@ -499,8 +502,8 @@ mod tests {
         #[test]
         fn pi_pi_app() {
             assert_eq!(
-                parse(r"[x : (* -> *)], [y : *], x y"),
-                parse(r"[a : (* -> *)], [b : *], a b"),
+                parse(r"[x : (* -> *)] -> [y : *] -> x y"),
+                parse(r"[a : (* -> *)] -> [b : *] -> a b"),
             );
         }
     }
@@ -545,7 +548,7 @@ mod tests {
             let ty = Rc::new(Value::Type);
 
             assert_eq!(
-                parse(r"[x : *], x").eval().unwrap(),
+                parse(r"[x : *] -> x").eval().unwrap(),
                 Rc::new(Value::Pi(
                     Named(x.clone(), ty),
                     Rc::new(Value::bound(Named(x, Debruijn(0)))),
@@ -585,7 +588,7 @@ mod tests {
             let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
 
             assert_eq!(
-                parse(r"[x : (* -> *)], \y : *, x y").eval().unwrap(),
+                parse(r"[x : (* -> *)] -> \y : *, x y").eval().unwrap(),
                 Rc::new(Value::Pi(
                     Named(x.clone(), ty_arr),
                     Rc::new(Value::Lam(
@@ -678,7 +681,7 @@ mod tests {
 
             assert_eq!(
                 ctx.infer(&parse(r"\a : *, a")).unwrap(),
-                parse(r"[a : *], *").eval().unwrap(),
+                parse(r"[a : *] -> *").eval().unwrap(),
             );
         }
 
@@ -687,7 +690,7 @@ mod tests {
             let ctx = Context::default();
 
             assert_eq!(
-                ctx.infer(&parse(r"[a : *], a")).unwrap(),
+                ctx.infer(&parse(r"[a : *] -> a")).unwrap(),
                 parse(r"*").eval().unwrap(),
             );
         }
@@ -698,7 +701,7 @@ mod tests {
 
             assert_eq!(
                 ctx.infer(&parse(r"\a : *, \x : a, x")).unwrap(),
-                parse(r"[a : *], a -> a").eval().unwrap(),
+                parse(r"[a : *] -> a -> a").eval().unwrap(),
             );
         }
 
@@ -707,8 +710,9 @@ mod tests {
             let ctx = Context::default();
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a, \x : a, x) : [A : *], A -> A")).unwrap(),
-                parse(r"[a : *], a -> a").eval().unwrap(),
+                ctx.infer(&parse(r"(\a, \x : a, x) : [A : *] -> A -> A"))
+                    .unwrap(),
+                parse(r"[a : *] -> a -> a").eval().unwrap(),
             );
         }
 
@@ -717,7 +721,8 @@ mod tests {
             let ctx = Context::default();
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a : *, \x : a, x) * (* -> *)")).unwrap(),
+                ctx.infer(&parse(r"(\a : *, \x : a, x) * (* -> *)"))
+                    .unwrap(),
                 parse(r"*").eval().unwrap(),
             );
         }
@@ -727,14 +732,19 @@ mod tests {
             let ctx = Context::default();
 
             assert_eq!(
-                ctx.infer(&parse(r"
+                ctx.infer(&parse(
+                    r"
                     \a : *, \b : *,
                         \f : (a -> b), \x : a, f x
-                ")).unwrap(),
-                parse(r"
-                    [a : *], [b : *],
+                "
+                )).unwrap(),
+                parse(
+                    r"
+                    [a : *] -> [b : *] ->
                         (a -> b) -> a -> b
-                ").eval().unwrap(),
+                "
+                ).eval()
+                    .unwrap(),
             );
         }
 
@@ -743,14 +753,19 @@ mod tests {
             let ctx = Context::default();
 
             assert_eq!(
-                ctx.infer(&parse(r"
+                ctx.infer(&parse(
+                    r"
                     \a : *, \b : *,
                         \f : (a -> b), \x : a, \y : b, x
-                ")).unwrap(),
-                parse(r"
-                    [a : *], [b : *],
+                "
+                )).unwrap(),
+                parse(
+                    r"
+                    [a : *] -> [b : *] ->
                         (a -> b) -> a -> b -> a
-                ").eval().unwrap(),
+                "
+                ).eval()
+                    .unwrap(),
             );
         }
 
@@ -759,15 +774,20 @@ mod tests {
             let ctx = Context::default();
 
             assert_eq!(
-                ctx.infer(&parse(r"
+                ctx.infer(&parse(
+                    r"
                     \a : *, \b : *, \c : *,
                         \f : (b -> c), \g : (a -> b), \x : a,
                             f (g x)
-                ")).unwrap(),
-                parse(r"
-                    [a : *], [b : *], [c : *],
+                "
+                )).unwrap(),
+                parse(
+                    r"
+                    [a : *] -> [b : *] -> [c : *] ->
                         (b -> c) -> (a -> b) -> (a -> c)
-                ").eval().unwrap(),
+                "
+                ).eval()
+                    .unwrap(),
             );
         }
     }

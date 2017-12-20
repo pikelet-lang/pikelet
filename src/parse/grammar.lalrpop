@@ -12,20 +12,8 @@ pub Term: Term = {
 
 AbsTerm : Term = {
     AppTerm,
-    // Lambda abstractions
-    r"\\" <x: Ident> <t: (":" <AppTerm>)?> "," <body: AbsTerm> => {
-        Term::Lam(x, t.map(Box::new), Box::new(body))
-    },
-    // Pi types
-    "[" <x: Ident> ":" <t: AppTerm> "]" "," <body: AbsTerm> => {
-        Term::Pi(x, Box::new(t), Box::new(body))
-    },
-    // Degenerate Pi types
-    <param: AppTerm> "->" <ret: AbsTerm> => {
-        // `_` is not constructable via the concrete syntax, so there's no need
-        // to worry about name collisions
-        Term::Pi(String::from("_"), Box::new(param), Box::new(ret))
-    },
+    <b: LamBind> "," <body: AbsTerm> => Term::Lam(b.0, b.1.map(Box::new), Box::new(body)),
+    <b: PiBind> "->" <body: AbsTerm> => Term::Pi(b.0, Box::new(b.1), Box::new(body)),
 };
 
 AppTerm: Term = {
@@ -40,6 +28,16 @@ AtomicTerm: Term = {
     "(" <Term> ")",
     "*" => Term::Type,
     Ident => Term::Var(<>).into(),
+};
+
+LamBind : (String, Option<Term>) = {
+    r"\\" <x: Ident> => (x, None),
+    r"\\" <x: Ident> ":" <t: AppTerm> => (x, Some(t)),
+};
+
+PiBind : (Option<String>, Term) = {
+    <t: AppTerm> => (None, t),
+    "[" <x: Ident> ":" <t: AppTerm> "]" => (Some(x), t),
 };
 
 Ident: String = {
