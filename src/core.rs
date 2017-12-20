@@ -701,5 +701,15 @@ mod tests {
                 parse(r"[a : *], a -> a").eval().unwrap(),
             );
         }
+
+        #[test]
+        fn id_app_arr_ty() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"(\a : *, \x : a, x) * (* -> *)")).unwrap(),
+                parse(r"* -> *").eval().unwrap(),
+            );
+        }
     }
 }

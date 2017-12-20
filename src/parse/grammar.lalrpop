@@ -31,7 +31,7 @@ AbsTerm : Term = {
 AppTerm: Term = {
     AtomicTerm,
     // Applications
-    <f: AtomicTerm> <x: AtomicTerm> => {
+    <f: AppTerm> <x: AtomicTerm> => {
         Term::App(Box::new(f), Box::new(x)).into()
     },
 };
