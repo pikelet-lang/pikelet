@@ -220,7 +220,10 @@ mod tests {
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
-                    Named(u, Rc::new(CTerm::from(ITerm::Bound(Named(x.clone(), Debruijn(0)))))),
+                    Named(
+                        u,
+                        Rc::new(CTerm::from(ITerm::Bound(Named(x.clone(), Debruijn(0)))))
+                    ),
                     Rc::new(CTerm::from(ITerm::Bound(Named(x, Debruijn(1))))),
                 ))),
             ),

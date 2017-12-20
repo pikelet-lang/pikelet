@@ -193,29 +193,13 @@ impl Value {
         Value::from(SValue::Free(name))
     }
 
-    pub fn app(expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        match *expr {
-            Value::Lam(_, ref body_expr) => {
-                let mut body_expr = body_expr.clone();
-                Rc::make_mut(&mut body_expr).instantiate0(&arg);
-                return Ok(body_expr);
-            }
-            Value::Stuck(ref stuck) => {
-                return Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg))));
-            }
-            _ => {}
-        }
-
-        Err(EvalError::ArgAppliedToNonFunction { arg, expr })
-    }
-
     pub fn instantiate0(&mut self, x: &Rc<Value>) {
         self.instantiate_at(Debruijn::zero(), &x);
     }
 
     pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
         match *self {
-            Value::Type => {},
+            Value::Type => {}
             Value::Lam(Named(_, ref mut ty), ref mut body) => {
                 if let Some(ref mut ty) = *ty {
                     Rc::make_mut(ty).instantiate_at(level, x);
@@ -229,8 +213,8 @@ impl Value {
             Value::Stuck(ref mut stuck) => {
                 Rc::make_mut(stuck).instantiate_at(level, x);
             }
+        }
     }
-}
 }
 
 impl SValue {
@@ -262,9 +246,13 @@ pub enum EvalError {
 impl CTerm {
     pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
         match *self {
-            CTerm::Inf(ref i) => i.eval(),
-            CTerm::Lam(Named(ref name, ()), ref body) => {
-                Ok(Rc::new(Value::Lam(Named(name.clone(), None), body.eval()?)))
+            CTerm::Inf(ref inf) => inf.eval(),
+            CTerm::Lam(Named(ref name, ()), ref body_expr) => {
+                // Evalute the body before building the lambda
+                let name = name.clone();
+                let body_expr = body_expr.eval()?;
+
+                Ok(Rc::new(Value::Lam(Named(name, None), body_expr)))
             }
         }
     }
@@ -274,18 +262,45 @@ impl ITerm {
     pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
         match *self {
             ITerm::Ann(ref expr, _) => expr.eval(),
+
             ITerm::Type => Ok(Rc::new(Value::Type)),
-            ITerm::Lam(Named(ref name, ref ty), ref body) => Ok(Rc::new(Value::Lam(
-                Named(name.clone(), Some(ty.eval()?)),
-                body.eval()?,
-            ))),
-            ITerm::Pi(Named(ref name, ref ty), ref body) => Ok(Rc::new(Value::Pi(
-                Named(name.clone(), ty.eval()?),
-                body.eval()?,
-            ))),
             ITerm::Bound(ref b) => Ok(Rc::new(Value::bound(b.clone()))),
             ITerm::Free(ref n) => Ok(Rc::new(Value::free(n.clone()))),
-            ITerm::App(ref lam, ref arg) => Value::app(lam.eval()?, arg.eval()?),
+
+            ITerm::Lam(Named(ref name, ref param_ty), ref body_expr) => {
+                let name = name.clone();
+                let param_ty = param_ty.eval()?;
+                let body_expr = body_expr.eval()?;
+
+                Ok(Rc::new(Value::Lam(Named(name, Some(param_ty)), body_expr)))
+            }
+
+            ITerm::Pi(Named(ref name, ref param_ty), ref body_expr) => {
+                let name = name.clone();
+                let param_ty = param_ty.eval()?;
+                let body_expr = body_expr.eval()?;
+
+                Ok(Rc::new(Value::Pi(Named(name, param_ty), body_expr)))
+            }
+
+            ITerm::App(ref expr, ref arg) => {
+                let expr = expr.eval()?;
+                let arg = arg.eval()?;
+
+                match *expr {
+                    Value::Lam(_, ref body_expr) => {
+                        let mut body_expr = body_expr.clone();
+                        Rc::make_mut(&mut body_expr).instantiate0(&arg);
+                        return Ok(body_expr);
+                    }
+                    Value::Stuck(ref stuck) => {
+                        return Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg))));
+                    }
+                    _ => {}
+                }
+
+                Err(EvalError::ArgAppliedToNonFunction { arg, expr })
+            }
         }
     }
 }
@@ -296,8 +311,15 @@ impl ITerm {
 pub enum TypeError {
     Eval(EvalError),
     IllegalApplication,
-    ExpectedFunction,
-    Mismatch { found: Rc<Type>, expected: Rc<Type> },
+    ExpectedFunction {
+        lam_expr: Rc<CTerm>,
+        expected: Rc<Type>,
+    },
+    Mismatch {
+        expr: Rc<ITerm>,
+        found: Rc<Type>,
+        expected: Rc<Type>,
+    },
     UnboundVariable(Name),
 }
 
@@ -338,6 +360,7 @@ impl<'a> Context<'a> {
                 // Ensure that the inferred type matches the expected type
                 ref inf_ty if &**inf_ty == expected_ty => Ok(()),
                 inf_ty => Err(TypeError::Mismatch {
+                    expr: inf_expr.clone(),
                     found: inf_ty,
                     expected: Rc::new(expected_ty.clone()),
                 }),
@@ -346,7 +369,10 @@ impl<'a> Context<'a> {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                     self.extend(param_ty.clone()).check(body_expr, ret_ty)
                 }
-                _ => Err(TypeError::ExpectedFunction),
+                _ => Err(TypeError::ExpectedFunction {
+                    lam_expr: Rc::new(expr.clone()),
+                    expected: Rc::new(expected_ty.clone()),
+                }),
             },
         }
     }
@@ -393,7 +419,8 @@ impl<'a> Context<'a> {
             }
             ITerm::Free(ref n) => Err(TypeError::UnboundVariable(n.clone())),
             ITerm::App(ref fn_expr, ref arg_expr) => {
-                match *self.infer(fn_expr)? {
+                let fn_type = self.infer(fn_expr)?;
+                match *fn_type {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                         // Check that the type of the argument matches the
                         // expected type of the parameter
@@ -405,6 +432,7 @@ impl<'a> Context<'a> {
                         Rc::make_mut(&mut body_ty).instantiate0(&simp_arg_expr);
                         Ok(body_ty)
                     }
+                    // TODO: More error info
                     _ => Err(TypeError::IllegalApplication),
                 }
             }
@@ -580,10 +608,7 @@ mod tests {
             let ctx = Context::default();
             let x = Name(String::from("x"));
 
-            assert_eq!(
-                ctx.infer(&parse(r"x")),
-                Err(TypeError::UnboundVariable(x)),
-            );
+            assert_eq!(ctx.infer(&parse(r"x")), Err(TypeError::UnboundVariable(x)));
         }
 
         #[test]
@@ -594,6 +619,57 @@ mod tests {
                 ctx.infer(&parse(r"*")).unwrap(),
                 parse(r"*").eval().unwrap(),
             );
+        }
+
+        #[test]
+        fn ann_ty_id() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"(\a, a) : * -> *")).unwrap(),
+                parse(r"* -> *").eval().unwrap(),
+            )
+        }
+
+        #[test]
+        fn ann_arrow_ty_id() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"(\a, a) : (* -> *) -> (* -> *)"))
+                    .unwrap(),
+                parse(r"(* -> *) -> (* -> *)").eval().unwrap(),
+            )
+        }
+
+        #[test]
+        fn ann_id_as_ty() {
+            let ctx = Context::default();
+
+            match ctx.infer(&parse(r"(\a, a) : *")) {
+                Err(TypeError::ExpectedFunction { .. }) => {}
+                other => panic!("unexpected result: {:#?}", other),
+            }
+        }
+
+        #[test]
+        fn app() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"(\a : *, a) *")).unwrap(),
+                parse(r"*").eval().unwrap(),
+            )
+        }
+
+        #[test]
+        fn app_ty() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"* *")),
+                Err(TypeError::IllegalApplication),
+            )
         }
 
         #[test]
