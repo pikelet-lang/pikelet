@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+/// The name of a free variable
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Name(pub String);
 
@@ -106,9 +107,13 @@ pub enum ITerm {
 /// Fully evaluated or stuck values
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
+    /// The type of types
     Type,
+    /// A partially evaluated lambda
     Lam(Named<Option<Rc<Value>>>, Rc<Value>),
+    /// A pi type
     Pi(Named<Rc<Value>>, Rc<Value>),
+    /// Stuck values
     Stuck(Rc<SValue>),
 }
 
@@ -128,6 +133,7 @@ pub enum SValue {
     App(Rc<SValue>, Rc<Value>),
 }
 
+/// Types are at the term level, so this is just an alias
 pub type Type = Value;
 
 // Abstraction and instantiation
