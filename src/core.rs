@@ -113,6 +113,12 @@ pub enum Value {
     Stuck(Rc<SValue>),
 }
 
+impl From<SValue> for Value {
+    fn from(src: SValue) -> Value {
+        Value::Stuck(Rc::new(src))
+    }
+}
+
 /// 'Stuck' values that cannot be reduced further
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SValue {
@@ -173,6 +179,26 @@ impl ITerm {
 }
 
 impl Value {
+    pub fn free(name: Name) -> Value {
+        Value::from(SValue::Free(name))
+    }
+
+    pub fn app(expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
+        match *expr {
+            Value::Lam(_, ref body_expr) => {
+                let mut body_expr = body_expr.clone();
+                Rc::make_mut(&mut body_expr).instantiate0(&arg);
+                return Ok(body_expr);
+            }
+            Value::Stuck(ref stuck) => {
+                return Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg))));
+            }
+            _ => {}
+        }
+
+        Err(EvalError::ArgAppliedToNonFunction { arg, expr })
+    }
+
     pub fn instantiate0(&mut self, x: &Rc<Value>) {
         self.instantiate_at(Debruijn::zero(), &x);
     }
@@ -222,7 +248,7 @@ impl SValue {
 #[derive(Debug, Clone)]
 pub enum EvalError {
     /// Attempted to apply an argument to a term that is not a function
-    ArgumentAppliedToNonFunction { arg: Rc<Value>, expr: Rc<Value> },
+    ArgAppliedToNonFunction { arg: Rc<Value>, expr: Rc<Value> },
 }
 
 impl CTerm {
@@ -250,25 +276,8 @@ impl ITerm {
                 body.eval()?,
             ))),
             ITerm::Bound(ref b) => Ok(Rc::new(Value::Bound(b.clone()))),
-            ITerm::Free(ref n) => Ok(Rc::new(Value::Stuck(Rc::new(SValue::Free(n.clone()))))),
-            ITerm::App(ref fn_expr, ref arg) => {
-                let fn_expr = fn_expr.eval()?;
-                let arg = arg.eval()?;
-                match *fn_expr {
-                    Value::Lam(_, ref body_expr) => {
-                        let mut body_expr = body_expr.clone();
-                        Rc::make_mut(&mut body_expr).instantiate0(&arg);
-                        Ok(body_expr)
-                    }
-                    Value::Stuck(ref s) => {
-                        Ok(Rc::new(Value::Stuck(Rc::new(SValue::App(s.clone(), arg)))))
-                    }
-                    _ => Err(EvalError::ArgumentAppliedToNonFunction {
-                        arg,
-                        expr: fn_expr.clone(),
-                    }),
-                }
-            }
+            ITerm::Free(ref n) => Ok(Rc::new(Value::free(n.clone()))),
+            ITerm::App(ref lam, ref arg) => Value::app(lam.eval()?, arg.eval()?),
         }
     }
 }
