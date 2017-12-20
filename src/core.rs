@@ -107,7 +107,6 @@ pub enum ITerm {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
     Type,
-    Bound(Named<Debruijn>),
     Lam(Named<Option<Rc<Value>>>, Rc<Value>),
     Pi(Named<Rc<Value>>, Rc<Value>),
     Stuck(Rc<SValue>),
@@ -122,6 +121,7 @@ impl From<SValue> for Value {
 /// 'Stuck' values that cannot be reduced further
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SValue {
+    Bound(Named<Debruijn>),
     /// Attempted to evaluate a free variable
     Free(Name),
     /// Tried to apply a value to a stuck term
@@ -179,6 +179,10 @@ impl ITerm {
 }
 
 impl Value {
+    pub fn bound(bvar: Named<Debruijn>) -> Value {
+        Value::from(SValue::Bound(bvar))
+    }
+
     pub fn free(name: Name) -> Value {
         Value::from(SValue::Free(name))
     }
@@ -204,27 +208,23 @@ impl Value {
     }
 
     pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
-        *self = match *self {
-            Value::Bound(Named(_, b)) if b == level => (**x).clone(),
-            Value::Type | Value::Bound(_) => return,
+        match *self {
+            Value::Type => {},
             Value::Lam(Named(_, ref mut ty), ref mut body) => {
                 if let Some(ref mut ty) = *ty {
                     Rc::make_mut(ty).instantiate_at(level, x);
                 }
                 Rc::make_mut(body).instantiate_at(level.succ(), x);
-                return;
             }
             Value::Pi(Named(_, ref mut ty), ref mut body) => {
                 Rc::make_mut(ty).instantiate_at(level, x);
                 Rc::make_mut(body).instantiate_at(level.succ(), x);
-                return;
             }
             Value::Stuck(ref mut stuck) => {
                 Rc::make_mut(stuck).instantiate_at(level, x);
-                return;
             }
-        };
     }
+}
 }
 
 impl SValue {
@@ -234,7 +234,9 @@ impl SValue {
 
     pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
         match *self {
-            SValue::Free(_) => {}
+            // SValue::Bound(Named(_, b)) if b == level => (**x).clone(),
+            SValue::Bound(Named(_, b)) if b == level => unimplemented!(),
+            SValue::Bound(_) | SValue::Free(_) => {}
             SValue::App(ref mut fn_expr, ref mut arg_expr) => {
                 Rc::make_mut(fn_expr).instantiate_at(level, x);
                 Rc::make_mut(arg_expr).instantiate_at(level, x);
@@ -245,7 +247,7 @@ impl SValue {
 
 // Evaluation
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum EvalError {
     /// Attempted to apply an argument to a term that is not a function
     ArgAppliedToNonFunction { arg: Rc<Value>, expr: Rc<Value> },
@@ -275,7 +277,7 @@ impl ITerm {
                 Named(name.clone(), ty.eval()?),
                 body.eval()?,
             ))),
-            ITerm::Bound(ref b) => Ok(Rc::new(Value::Bound(b.clone()))),
+            ITerm::Bound(ref b) => Ok(Rc::new(Value::bound(b.clone()))),
             ITerm::Free(ref n) => Ok(Rc::new(Value::free(n.clone()))),
             ITerm::App(ref lam, ref arg) => Value::app(lam.eval()?, arg.eval()?),
         }
@@ -284,7 +286,7 @@ impl ITerm {
 
 // Contexts and type checking
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypeError {
     Eval(EvalError),
     IllegalApplication,
@@ -323,6 +325,7 @@ impl<'a> Context<'a> {
         }
     }
 
+    /// Check that the type of an expression is compatible with the expected type
     pub fn check(&self, expr: &CTerm, expected_ty: &Type) -> Result<(), TypeError> {
         match *expr {
             CTerm::Inf(ref inf_expr) => match self.infer(inf_expr)? {
@@ -356,24 +359,24 @@ impl<'a> Context<'a> {
             }
             ITerm::Type => Ok(Rc::new(Value::Type)),
             ITerm::Lam(Named(ref param_name, ref param_ty), ref body_expr) => {
-                // Check that the type is actually at the type level
+                // Check that the parameter type is at the type level
                 self.check(param_ty, &Value::Type)?;
-                // Simplify the param type
+                // Simplify the parameter type
                 let simp_param_ty = param_ty.eval()?;
                 // Infer the body of the lambda
                 let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?;
 
                 Ok(Rc::new(Value::Pi(
                     Named(param_name.clone(), simp_param_ty),
-                    body_ty,
+                    body_ty, // shift??
                 )))
             }
             ITerm::Pi(Named(_, ref param_ty), ref body_ty) => {
-                // Check that the type is actually at the type level
+                // Check that the parameter type is at the type level
                 self.check(param_ty, &Value::Type)?;
-                // Simplify the type
+                // Simplify the parameter type
                 let simp_param_ty = param_ty.eval()?;
-                // Ensure that the body of the pi type is also a type, when the
+                // Ensure that the body of the pi type is also a type when the
                 // parameter is added to the context
                 self.extend(simp_param_ty).check(body_ty, &Value::Type)?;
                 // If this is true, the type of the pi type is also a type
@@ -417,71 +420,165 @@ mod tests {
 
         #[test]
         fn var() {
-            assert_eq!(parse(r"x").eval().unwrap(), parse(r"x").eval().unwrap(),);
+            assert_eq!(parse(r"x"), parse(r"x"));
         }
 
         #[test]
         #[should_panic]
         fn var_diff() {
-            assert_eq!(parse(r"x").eval().unwrap(), parse(r"y").eval().unwrap(),);
+            assert_eq!(parse(r"x"), parse(r"y"));
         }
 
         #[test]
         fn ty() {
-            assert_eq!(parse(r"*").eval().unwrap(), parse(r"*").eval().unwrap(),);
+            assert_eq!(parse(r"*"), parse(r"*"));
         }
 
         #[test]
         fn lam() {
-            assert_eq!(
-                parse(r"\x : *, x").eval().unwrap(),
-                parse(r"\a : *, a").eval().unwrap(),
-            );
+            assert_eq!(parse(r"\x : *, x"), parse(r"\a : *, a"));
         }
 
         #[test]
         fn pi() {
-            assert_eq!(
-                parse(r"[x : *], x").eval().unwrap(),
-                parse(r"[a : *], a").eval().unwrap(),
-            );
+            assert_eq!(parse(r"[x : *], x"), parse(r"[a : *], a"));
         }
 
         #[test]
         fn lam_app() {
-            assert_eq!(
-                parse(r"\x : (* -> *), x *").eval().unwrap(),
-                parse(r"\a : (* -> *), a *").eval().unwrap(),
-            );
+            assert_eq!(parse(r"\x : (* -> *), x *"), parse(r"\a : (* -> *), a *"));
         }
 
         #[test]
         fn pi_app() {
-            assert_eq!(
-                parse(r"[x : (* -> *)], x *").eval().unwrap(),
-                parse(r"[a : (* -> *)], a *").eval().unwrap(),
-            );
+            assert_eq!(parse(r"[x : (* -> *)], x *"), parse(r"[a : (* -> *)], a *"));
         }
 
         #[test]
         fn lam_lam_app() {
             assert_eq!(
-                parse(r"\x : (* -> *), \y : *, x y").eval().unwrap(),
-                parse(r"\a : (* -> *), \b : *, a b").eval().unwrap(),
+                parse(r"\x : (* -> *), \y : *, x y"),
+                parse(r"\a : (* -> *), \b : *, a b"),
             );
         }
 
         #[test]
         fn pi_pi_app() {
             assert_eq!(
-                parse(r"[x : (* -> *)], [y : *], x y").eval().unwrap(),
-                parse(r"[a : (* -> *)], [b : *], a b").eval().unwrap(),
+                parse(r"[x : (* -> *)], [y : *], x y"),
+                parse(r"[a : (* -> *)], [b : *], a b"),
+            );
+        }
+    }
+
+    mod eval {
+        use super::*;
+
+        #[test]
+        fn var() {
+            let x = Name(String::from("x"));
+
+            assert_eq!(
+                parse(r"x").eval().unwrap(),
+                Rc::new(Value::from(SValue::Free(x))),
+            );
+        }
+
+        #[test]
+        fn ty() {
+            let ty = Rc::new(Value::Type);
+
+            assert_eq!(parse(r"*").eval().unwrap(), ty);
+        }
+
+        #[test]
+        fn lam() {
+            let x = Name(String::from("x"));
+            let ty = Rc::new(Value::Type);
+
+            assert_eq!(
+                parse(r"\x : *, x").eval().unwrap(),
+                Rc::new(Value::Lam(
+                    Named(x.clone(), Some(ty)),
+                    Rc::new(Value::bound(Named(x, Debruijn(0)))),
+                )),
+            );
+        }
+
+        #[test]
+        fn pi() {
+            let x = Name(String::from("x"));
+            let ty = Rc::new(Value::Type);
+
+            assert_eq!(
+                parse(r"[x : *], x").eval().unwrap(),
+                Rc::new(Value::Pi(
+                    Named(x.clone(), ty),
+                    Rc::new(Value::bound(Named(x, Debruijn(0)))),
+                )),
+            );
+        }
+
+        #[test]
+        fn lam_app() {
+            let x = Name(String::from("x"));
+            let y = Name(String::from("y"));
+            let u = Name(String::from("_"));
+            let ty = Rc::new(Value::Type);
+            let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
+
+            assert_eq!(
+                parse(r"\x : (* -> *), \y : *, x y").eval().unwrap(),
+                Rc::new(Value::Lam(
+                    Named(x.clone(), Some(ty_arr)),
+                    Rc::new(Value::Lam(
+                        Named(y.clone(), Some(ty)),
+                        Rc::new(Value::from(SValue::App(
+                            Rc::new(SValue::Bound(Named(x, Debruijn(1)))),
+                            Rc::new(Value::bound(Named(y, Debruijn(0)))),
+                        ))),
+                    )),
+                )),
+            );
+        }
+
+        #[test]
+        fn pi_app() {
+            let x = Name(String::from("x"));
+            let y = Name(String::from("y"));
+            let u = Name(String::from("_"));
+            let ty = Rc::new(Value::Type);
+            let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
+
+            assert_eq!(
+                parse(r"[x : (* -> *)], \y : *, x y").eval().unwrap(),
+                Rc::new(Value::Pi(
+                    Named(x.clone(), ty_arr),
+                    Rc::new(Value::Lam(
+                        Named(y.clone(), Some(ty)),
+                        Rc::new(Value::from(SValue::App(
+                            Rc::new(SValue::Bound(Named(x, Debruijn(1)))),
+                            Rc::new(Value::bound(Named(y, Debruijn(0)))),
+                        ))),
+                    )),
+                )),
             );
         }
     }
 
     mod infer {
         use super::*;
+
+        #[test]
+        fn free() {
+            let ctx = Context::default();
+            let x = Name(String::from("x"));
+
+            assert_eq!(
+                ctx.infer(&parse(r"x")),
+                Err(TypeError::UnboundVariable(x)),
+            );
+        }
 
         #[test]
         fn ty() {
@@ -499,7 +596,7 @@ mod tests {
 
             assert_eq!(
                 ctx.infer(&parse(r"\a : *, a")).unwrap(),
-                parse(r"[a : *], a").eval().unwrap(),
+                parse(r"[a : *], *").eval().unwrap(),
             );
         }
 
@@ -519,7 +616,7 @@ mod tests {
 
             assert_eq!(
                 ctx.infer(&parse(r"\a : *, \x : a, x")).unwrap(),
-                parse(r"[a: *], a -> a").eval().unwrap(),
+                parse(r"[a : *], a -> a").eval().unwrap(),
             );
         }
     }

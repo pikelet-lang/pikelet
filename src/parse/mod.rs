@@ -210,12 +210,22 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn pi() {
-    //     assert_eq!(
-    //         parse(r"[x : *], x"),
-    //     );
-    // }
+    #[test]
+    fn pi_arrow() {
+        let x = Name(String::from("x"));
+        let u = Name(String::from("_"));
+
+        assert_eq!(
+            parse(r"[x : *], x -> x"),
+            ITerm::Pi(
+                Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
+                Rc::new(CTerm::from(ITerm::Pi(
+                    Named(u, Rc::new(CTerm::from(ITerm::Bound(Named(x.clone(), Debruijn(0)))))),
+                    Rc::new(CTerm::from(ITerm::Bound(Named(x, Debruijn(1))))),
+                ))),
+            ),
+        );
+    }
 
     #[test]
     fn lam_app() {
@@ -243,11 +253,4 @@ mod tests {
             ),
         );
     }
-
-    // #[test]
-    // fn pi_app() {
-    //     assert_eq!(
-    //         parse(r"[x : (* -> *)], [y : *], x y"),
-    //     );
-    // }
 }
