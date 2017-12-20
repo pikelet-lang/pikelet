@@ -703,12 +703,71 @@ mod tests {
         }
 
         #[test]
+        fn id_ann() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"(\a, \x : a, x) : [A : *], A -> A")).unwrap(),
+                parse(r"[a : *], a -> a").eval().unwrap(),
+            );
+        }
+
+        #[test]
         fn id_app_arr_ty() {
             let ctx = Context::default();
 
             assert_eq!(
                 ctx.infer(&parse(r"(\a : *, \x : a, x) * (* -> *)")).unwrap(),
-                parse(r"* -> *").eval().unwrap(),
+                parse(r"*").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn apply() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"
+                    \a : *, \b : *,
+                        \f : (a -> b), \x : a, f x
+                ")).unwrap(),
+                parse(r"
+                    [a : *], [b : *],
+                        (a -> b) -> a -> b
+                ").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn constant() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"
+                    \a : *, \b : *,
+                        \f : (a -> b), \x : a, \y : b, x
+                ")).unwrap(),
+                parse(r"
+                    [a : *], [b : *],
+                        (a -> b) -> a -> b -> a
+                ").eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn compose() {
+            let ctx = Context::default();
+
+            assert_eq!(
+                ctx.infer(&parse(r"
+                    \a : *, \b : *, \c : *,
+                        \f : (b -> c), \g : (a -> b), \x : a,
+                            f (g x)
+                ")).unwrap(),
+                parse(r"
+                    [a : *], [b : *], [c : *],
+                        (b -> c) -> (a -> b) -> (a -> c)
+                ").eval().unwrap(),
             );
         }
     }
