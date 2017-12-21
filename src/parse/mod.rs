@@ -41,7 +41,7 @@ impl Term {
     /// This may fail if the term is not fully inferrable.
     pub fn to_core(&self) -> Result<core::ITerm, ()> {
         use std::rc::Rc;
-        use core::{CTerm, ITerm, Name, Named};
+        use core::{CTerm, ITerm, Name, Named, Var};
 
         fn to_cterm<T>(tm: &Term) -> Result<CTerm, Option<T>> {
             match to_iterm(tm) {
@@ -53,7 +53,7 @@ impl Term {
 
         fn to_iterm(tm: &Term) -> Result<ITerm, Option<CTerm>> {
             match *tm {
-                Term::Var(ref x) => Ok(ITerm::Free(Name(x.clone()))),
+                Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name(x.clone())))),
                 Term::Type => Ok(ITerm::Type),
                 Term::Ann(ref e, ref t) => {
                     Ok(ITerm::Ann(Rc::new(to_cterm(e)?), Rc::new(to_cterm(t)?)))
@@ -103,7 +103,7 @@ impl Term {
 #[cfg(test)]
 mod tests {
     use std::rc::Rc;
-    use core::{CTerm, Debruijn, ITerm, Name, Named};
+    use core::{CTerm, Debruijn, ITerm, Name, Named, Var};
     use super::*;
 
     fn parse(src: &str) -> ITerm {
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn var() {
-        assert_eq!(parse(r"x"), ITerm::Free(Name(String::from("x"))));
+        assert_eq!(parse(r"x"), ITerm::from(Var::Free(Name(String::from("x")))));
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod tests {
             parse(r"\x : *, x"),
             ITerm::Lam(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(ITerm::Bound(Named(x, Debruijn(0)))),
+                Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
         );
     }
@@ -145,10 +145,10 @@ mod tests {
                     x.clone(),
                     Rc::new(CTerm::Lam(
                         Named(y.clone(), ()),
-                        Rc::new(CTerm::from(ITerm::Bound(Named(y, Debruijn(0)))))
+                        Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0)))))
                     ))
                 ),
-                Rc::new(ITerm::Bound(Named(x, Debruijn(0)))),
+                Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
         );
     }
@@ -164,7 +164,7 @@ mod tests {
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(ITerm::Lam(
                     Named(y, Rc::new(CTerm::from(ITerm::Type))),
-                    Rc::new(ITerm::Bound(Named(x, Debruijn(1)))),
+                    Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
                 )),
             ),
         );
@@ -191,7 +191,7 @@ mod tests {
             parse(r"[x : *] -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(CTerm::from(ITerm::Bound(Named(x, Debruijn(0))))),
+                Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
         );
     }
@@ -207,7 +207,7 @@ mod tests {
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(y, Rc::new(CTerm::from(ITerm::Type))),
-                    Rc::new(CTerm::from(ITerm::Bound(Named(x, Debruijn(1))))),
+                    Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
                 ))),
             ),
         );
@@ -225,9 +225,9 @@ mod tests {
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(
                         u,
-                        Rc::new(CTerm::from(ITerm::Bound(Named(x.clone(), Debruijn(0)))))
+                        Rc::new(CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))))
                     ),
-                    Rc::new(CTerm::from(ITerm::Bound(Named(x, Debruijn(1))))),
+                    Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
                 ))),
             ),
         );
@@ -252,8 +252,8 @@ mod tests {
                 Rc::new(ITerm::Lam(
                     Named(y.clone(), Rc::new(CTerm::from(ITerm::Type))),
                     Rc::new(ITerm::App(
-                        Rc::new(ITerm::Bound(Named(x, Debruijn(1)))),
-                        Rc::new(CTerm::from(ITerm::Bound(Named(y, Debruijn(0)))))
+                        Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
+                        Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0)))))
                     )),
                 )),
             ),

@@ -41,6 +41,30 @@ impl Debruijn {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Var {
+    /// A free variable
+    Free(Name),
+    /// A variable that is bound by a lambda or pi binder
+    Bound(Named<Debruijn>),
+}
+
+impl Var {
+    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
+        *self = match *self {
+            Var::Free(ref n) if n == name => Var::Bound(Named(n.clone(), level)),
+            Var::Bound(_) | Var::Free(_) => return,
+        };
+    }
+
+    pub fn instantiate_at(&self, level: Debruijn) -> bool {
+        match *self {
+            Var::Bound(Named(_, b)) if b == level => true,
+            Var::Bound(_) | Var::Free(_) => false,
+        }
+    }
+}
+
 /// Checkable terms
 ///
 /// These terms do not contain full type information within them, so in order to
@@ -63,6 +87,12 @@ impl From<ITerm> for CTerm {
     }
 }
 
+impl From<Var> for CTerm {
+    fn from(src: Var) -> CTerm {
+        CTerm::from(ITerm::from(src))
+    }
+}
+
 /// Inferrable terms
 ///
 /// These terms can be fully inferred without needing to resort to type
@@ -77,6 +107,8 @@ pub enum ITerm {
     Ann(Rc<CTerm>, Rc<CTerm>),
     /// Type of types
     Type,
+    /// A variable
+    Var(Var),
     /// Fully annotated lambda abstractions
     ///
     /// Note that the body of the lambda must have a type that can be inferred
@@ -92,16 +124,18 @@ pub enum ITerm {
     /// [x : t], t
     /// ```
     Pi(Named<Rc<CTerm>>, Rc<CTerm>),
-    /// A variable that is bound by an abstraction
-    Bound(Named<Debruijn>),
-    /// A free variable
-    Free(Name),
     /// Term application
     ///
     /// ```
     /// f x
     /// ```
     App(Rc<ITerm>, Rc<CTerm>),
+}
+
+impl From<Var> for ITerm {
+    fn from(src: Var) -> ITerm {
+        ITerm::Var(src)
+    }
 }
 
 /// Fully evaluated or stuck values
@@ -117,20 +151,37 @@ pub enum Value {
     Stuck(Rc<SValue>),
 }
 
+impl From<Rc<SValue>> for Value {
+    fn from(src: Rc<SValue>) -> Value {
+        Value::Stuck(src)
+    }
+}
+
 impl From<SValue> for Value {
     fn from(src: SValue) -> Value {
-        Value::Stuck(Rc::new(src))
+        Value::from(Rc::new(src))
+    }
+}
+
+impl From<Var> for Value {
+    fn from(src: Var) -> Value {
+        Value::from(SValue::from(src))
     }
 }
 
 /// 'Stuck' values that cannot be reduced further
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SValue {
-    Bound(Named<Debruijn>),
-    /// Attempted to evaluate a free variable
-    Free(Name),
+    /// Attempted to evaluate a variable
+    Var(Var),
     /// Tried to apply a value to a stuck term
     App(Rc<SValue>, Rc<Value>),
+}
+
+impl From<Var> for SValue {
+    fn from(src: Var) -> SValue {
+        SValue::Var(src)
+    }
 }
 
 /// Types are at the term level, so this is just an alias
@@ -157,79 +208,92 @@ impl ITerm {
     }
 
     pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
-        *self = match *self {
+        match *self {
             ITerm::Ann(ref mut expr, ref mut ty) => {
                 Rc::make_mut(expr).abstract_at(level, name);
                 Rc::make_mut(ty).abstract_at(level, name);
-                return;
             }
             ITerm::Lam(Named(_, ref mut ty), ref mut body) => {
                 Rc::make_mut(ty).abstract_at(level, name);
                 Rc::make_mut(body).abstract_at(level.succ(), name);
-                return;
             }
             ITerm::Pi(Named(_, ref mut ty), ref mut body) => {
                 Rc::make_mut(ty).abstract_at(level, name);
                 Rc::make_mut(body).abstract_at(level.succ(), name);
-                return;
             }
-            ITerm::Free(ref n) if n == name => ITerm::Bound(Named(n.clone(), level)),
-            ITerm::Type | ITerm::Bound(_) | ITerm::Free(_) => return,
+            ITerm::Var(ref mut var) => var.abstract_at(level, name),
+            ITerm::Type => {}
             ITerm::App(ref mut f, ref mut x) => {
                 Rc::make_mut(f).abstract_at(level, name);
                 Rc::make_mut(x).abstract_at(level, name);
-                return;
             }
         }
     }
 }
 
 impl Value {
-    pub fn bound(bvar: Named<Debruijn>) -> Value {
-        Value::from(SValue::Bound(bvar))
+    pub fn app(fn_expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
+        match *fn_expr {
+            Value::Lam(_, ref body) => Value::instantiate0(body, &arg),
+            Value::Stuck(ref stuck) => Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg)))),
+            _ => Err(EvalError::ArgAppliedToNonFunction {
+                expr: fn_expr.clone(),
+                arg: arg,
+            }),
+        }
     }
 
-    pub fn free(name: Name) -> Value {
-        Value::from(SValue::Free(name))
+    pub fn instantiate0(val: &Rc<Value>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
+        Value::instantiate_at(val, Debruijn::zero(), &x)
     }
 
-    pub fn instantiate0(&mut self, x: &Rc<Value>) {
-        self.instantiate_at(Debruijn::zero(), &x);
-    }
+    pub fn instantiate_at(
+        val: &Rc<Value>,
+        level: Debruijn,
+        x: &Rc<Value>,
+    ) -> Result<Rc<Value>, EvalError> {
+        match **val {
+            Value::Type => Ok(val.clone()),
+            Value::Lam(Named(ref name, ref param_ty), ref body) => {
+                let param_ty = match param_ty.as_ref() {
+                    None => None,
+                    Some(ref param_ty) => Some(Value::instantiate_at(param_ty, level, x)?),
+                };
+                let body = Value::instantiate_at(body, level.succ(), x)?;
 
-    pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
-        match *self {
-            Value::Type => {}
-            Value::Lam(Named(_, ref mut ty), ref mut body) => {
-                if let Some(ref mut ty) = *ty {
-                    Rc::make_mut(ty).instantiate_at(level, x);
-                }
-                Rc::make_mut(body).instantiate_at(level.succ(), x);
+                Ok(Rc::new(Value::Lam(Named(name.clone(), param_ty), body)))
             }
-            Value::Pi(Named(_, ref mut ty), ref mut body) => {
-                Rc::make_mut(ty).instantiate_at(level, x);
-                Rc::make_mut(body).instantiate_at(level.succ(), x);
+            Value::Pi(Named(ref name, ref param_ty), ref body) => {
+                let param_ty = Value::instantiate_at(param_ty, level, x)?;
+                let body = Value::instantiate_at(body, level.succ(), x)?;
+
+                Ok(Rc::new(Value::Pi(Named(name.clone(), param_ty), body)))
             }
-            Value::Stuck(ref mut stuck) => {
-                Rc::make_mut(stuck).instantiate_at(level, x);
-            }
+            Value::Stuck(ref stuck) => SValue::instantiate_at(stuck, level, x),
         }
     }
 }
 
 impl SValue {
-    pub fn instantiate0(&mut self, x: &Rc<Value>) {
-        self.instantiate_at(Debruijn::zero(), &x);
+    pub fn instantiate0(val: &Rc<SValue>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
+        SValue::instantiate_at(val, Debruijn::zero(), &x)
     }
 
-    pub fn instantiate_at(&mut self, level: Debruijn, x: &Rc<Value>) {
-        match *self {
-            // SValue::Bound(Named(_, b)) if b == level => (**x).clone(),
-            SValue::Bound(Named(_, b)) if b == level => unimplemented!(),
-            SValue::Bound(_) | SValue::Free(_) => {}
-            SValue::App(ref mut fn_expr, ref mut arg_expr) => {
-                Rc::make_mut(fn_expr).instantiate_at(level, x);
-                Rc::make_mut(arg_expr).instantiate_at(level, x);
+    pub fn instantiate_at(
+        val: &Rc<SValue>,
+        level: Debruijn,
+        x: &Rc<Value>,
+    ) -> Result<Rc<Value>, EvalError> {
+        match **val {
+            SValue::Var(ref var) => match var.instantiate_at(level) {
+                true => Ok(x.clone()),
+                false => Ok(Rc::new(Value::from(val.clone()))),
+            },
+            SValue::App(ref fn_expr, ref arg_expr) => {
+                let fn_expr = SValue::instantiate_at(fn_expr, level, x)?;
+                let arg = Value::instantiate_at(arg_expr, level, x)?;
+
+                Value::app(fn_expr, arg)
             }
         }
     }
@@ -264,8 +328,7 @@ impl ITerm {
             ITerm::Ann(ref expr, _) => expr.eval(),
 
             ITerm::Type => Ok(Rc::new(Value::Type)),
-            ITerm::Bound(ref b) => Ok(Rc::new(Value::bound(b.clone()))),
-            ITerm::Free(ref n) => Ok(Rc::new(Value::free(n.clone()))),
+            ITerm::Var(ref var) => Ok(Rc::new(Value::from(var.clone()))),
 
             ITerm::Lam(Named(ref name, ref param_ty), ref body_expr) => {
                 let name = name.clone();
@@ -283,23 +346,11 @@ impl ITerm {
                 Ok(Rc::new(Value::Pi(Named(name, param_ty), body_expr)))
             }
 
-            ITerm::App(ref expr, ref arg) => {
-                let expr = expr.eval()?;
+            ITerm::App(ref fn_expr, ref arg) => {
+                let fn_expr = fn_expr.eval()?;
                 let arg = arg.eval()?;
 
-                match *expr {
-                    Value::Lam(_, ref body_expr) => {
-                        let mut body_expr = body_expr.clone();
-                        Rc::make_mut(&mut body_expr).instantiate0(&arg);
-                        return Ok(body_expr);
-                    }
-                    Value::Stuck(ref stuck) => {
-                        return Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg))));
-                    }
-                    _ => {}
-                }
-
-                Err(EvalError::ArgAppliedToNonFunction { arg, expr })
+                Value::app(fn_expr, arg)
             }
         }
     }
@@ -414,10 +465,10 @@ impl<'a> Context<'a> {
                 // If this is true, the type of the pi type is also a type
                 Ok(Rc::new(Value::Type))
             }
-            ITerm::Bound(Named(_, b)) => {
+            ITerm::Var(Var::Bound(Named(_, b))) => {
                 Ok(self.lookup(b).expect("ICE: index out of bounds").clone())
             }
-            ITerm::Free(ref n) => Err(TypeError::UnboundVariable(n.clone())),
+            ITerm::Var(Var::Free(ref name)) => Err(TypeError::UnboundVariable(name.clone())),
             ITerm::App(ref fn_expr, ref arg_expr) => {
                 let fn_type = self.infer(fn_expr)?;
                 match *fn_type {
@@ -428,8 +479,7 @@ impl<'a> Context<'a> {
                         // Simplify the argument
                         let simp_arg_expr = arg_expr.eval()?;
                         // Apply the argument to the body of the pi type
-                        let mut body_ty = ret_ty.clone();
-                        Rc::make_mut(&mut body_ty).instantiate0(&simp_arg_expr);
+                        let body_ty = Value::instantiate0(ret_ty, &simp_arg_expr)?;
                         Ok(body_ty)
                     }
                     // TODO: More error info
@@ -517,7 +567,7 @@ mod tests {
 
             assert_eq!(
                 parse(r"x").eval().unwrap(),
-                Rc::new(Value::from(SValue::Free(x))),
+                Rc::new(Value::from(Var::Free(x))),
             );
         }
 
@@ -537,7 +587,7 @@ mod tests {
                 parse(r"\x : *, x").eval().unwrap(),
                 Rc::new(Value::Lam(
                     Named(x.clone(), Some(ty)),
-                    Rc::new(Value::bound(Named(x, Debruijn(0)))),
+                    Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
                 )),
             );
         }
@@ -551,7 +601,7 @@ mod tests {
                 parse(r"[x : *] -> x").eval().unwrap(),
                 Rc::new(Value::Pi(
                     Named(x.clone(), ty),
-                    Rc::new(Value::bound(Named(x, Debruijn(0)))),
+                    Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
                 )),
             );
         }
@@ -571,8 +621,8 @@ mod tests {
                     Rc::new(Value::Lam(
                         Named(y.clone(), Some(ty)),
                         Rc::new(Value::from(SValue::App(
-                            Rc::new(SValue::Bound(Named(x, Debruijn(1)))),
-                            Rc::new(Value::bound(Named(y, Debruijn(0)))),
+                            Rc::new(SValue::from(Var::Bound(Named(x, Debruijn(1))))),
+                            Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
                         ))),
                     )),
                 )),
@@ -594,8 +644,8 @@ mod tests {
                     Rc::new(Value::Lam(
                         Named(y.clone(), Some(ty)),
                         Rc::new(Value::from(SValue::App(
-                            Rc::new(SValue::Bound(Named(x, Debruijn(1)))),
-                            Rc::new(Value::bound(Named(y, Debruijn(0)))),
+                            Rc::new(SValue::from(Var::Bound(Named(x, Debruijn(1))))),
+                            Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
                         ))),
                     )),
                 )),
@@ -723,7 +773,7 @@ mod tests {
             assert_eq!(
                 ctx.infer(&parse(r"(\a : *, \x : a, x) * (* -> *)"))
                     .unwrap(),
-                parse(r"*").eval().unwrap(),
+                parse(r"* -> *").eval().unwrap(),
             );
         }
 
