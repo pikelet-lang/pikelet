@@ -659,47 +659,57 @@ mod tests {
         #[test]
         fn free() {
             let ctx = Context::default();
+            let given_expr = r"x";
             let x = Name(String::from("x"));
 
-            assert_eq!(ctx.infer(&parse(r"x")), Err(TypeError::UnboundVariable(x)));
+            assert_eq!(
+                ctx.infer(&parse(given_expr)),
+                Err(TypeError::UnboundVariable(x)),
+            );
         }
 
         #[test]
         fn ty() {
             let ctx = Context::default();
+            let given_expr = r"*";
+            let expected_ty = r"*";
 
             assert_eq!(
-                ctx.infer(&parse(r"*")).unwrap(),
-                parse(r"*").eval().unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn ann_ty_id() {
             let ctx = Context::default();
+            let given_expr = r"(\a, a) : * -> *";
+            let expected_ty = r"* -> *";
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a, a) : * -> *")).unwrap(),
-                parse(r"* -> *").eval().unwrap(),
-            )
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
+            );
         }
 
         #[test]
         fn ann_arrow_ty_id() {
             let ctx = Context::default();
+            let given_expr = r"(\a, a) : (* -> *) -> (* -> *)";
+            let expected_ty = r"(* -> *) -> (* -> *)";
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a, a) : (* -> *) -> (* -> *)"))
-                    .unwrap(),
-                parse(r"(* -> *) -> (* -> *)").eval().unwrap(),
-            )
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
+            );
         }
 
         #[test]
         fn ann_id_as_ty() {
             let ctx = Context::default();
+            let given_expr = r"(\a, a) : *";
 
-            match ctx.infer(&parse(r"(\a, a) : *")) {
+            match ctx.infer(&parse(given_expr)) {
                 Err(TypeError::ExpectedFunction { .. }) => {}
                 other => panic!("unexpected result: {:#?}", other),
             }
@@ -708,19 +718,22 @@ mod tests {
         #[test]
         fn app() {
             let ctx = Context::default();
+            let given_expr = r"(\a : *, a) *";
+            let expected_ty = r"*";
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a : *, a) *")).unwrap(),
-                parse(r"*").eval().unwrap(),
-            )
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
+            );
         }
 
         #[test]
         fn app_ty() {
             let ctx = Context::default();
+            let given_expr = r"* *";
 
             assert_eq!(
-                ctx.infer(&parse(r"* *")),
+                ctx.infer(&parse(given_expr)),
                 Err(TypeError::IllegalApplication),
             )
         }
@@ -728,116 +741,115 @@ mod tests {
         #[test]
         fn lam() {
             let ctx = Context::default();
+            let given_expr = r"\a : *, a";
+            let expected_ty = r"[a : *] -> *";
 
             assert_eq!(
-                ctx.infer(&parse(r"\a : *, a")).unwrap(),
-                parse(r"[a : *] -> *").eval().unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn pi() {
             let ctx = Context::default();
+            let given_expr = r"[a : *] -> a";
+            let expected_ty = r"*";
 
             assert_eq!(
-                ctx.infer(&parse(r"[a : *] -> a")).unwrap(),
-                parse(r"*").eval().unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn id() {
             let ctx = Context::default();
+            let given_expr = r"\a : *, \x : a, x";
+            let expected_ty = r"[a : *] -> a -> a";
 
             assert_eq!(
-                ctx.infer(&parse(r"\a : *, \x : a, x")).unwrap(),
-                parse(r"[a : *] -> a -> a").eval().unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn id_ann() {
             let ctx = Context::default();
+            let given_expr = r"(\a, \x : a, x) : [A : *] -> A -> A";
+            let expected_ty = r"[a : *] -> a -> a";
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a, \x : a, x) : [A : *] -> A -> A"))
-                    .unwrap(),
-                parse(r"[a : *] -> a -> a").eval().unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn id_app_arr_ty() {
             let ctx = Context::default();
+            let given_expr = r"(\a : *, \x : a, x) * (* -> *)";
+            let expected_ty = r"* -> *";
 
             assert_eq!(
-                ctx.infer(&parse(r"(\a : *, \x : a, x) * (* -> *)"))
-                    .unwrap(),
-                parse(r"* -> *").eval().unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn apply() {
             let ctx = Context::default();
+            let given_expr = r"
+                \a : *, \b : *,
+                    \f : (a -> b), \x : a, f x
+            ";
+            let expected_ty = r"
+                [a : *] -> [b : *] ->
+                    (a -> b) -> a -> b
+            ";
 
             assert_eq!(
-                ctx.infer(&parse(
-                    r"
-                    \a : *, \b : *,
-                        \f : (a -> b), \x : a, f x
-                "
-                )).unwrap(),
-                parse(
-                    r"
-                    [a : *] -> [b : *] ->
-                        (a -> b) -> a -> b
-                "
-                ).eval()
-                    .unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn constant() {
             let ctx = Context::default();
+            let given_expr = r"
+                \a : *, \b : *,
+                    \f : (a -> b), \x : a, \y : b, x
+            ";
+            let expected_ty = r"
+                [a : *] -> [b : *] ->
+                    (a -> b) -> a -> b -> a
+            ";
 
             assert_eq!(
-                ctx.infer(&parse(
-                    r"
-                    \a : *, \b : *,
-                        \f : (a -> b), \x : a, \y : b, x
-                "
-                )).unwrap(),
-                parse(
-                    r"
-                    [a : *] -> [b : *] ->
-                        (a -> b) -> a -> b -> a
-                "
-                ).eval()
-                    .unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
 
         #[test]
         fn compose() {
             let ctx = Context::default();
+            let given_expr = r"
+                \a : *, \b : *, \c : *,
+                    \f : (b -> c), \g : (a -> b), \x : a,
+                        f (g x)
+            ";
+            let expected_ty = r"
+                [a : *] -> [b : *] -> [c : *] ->
+                    (b -> c) -> (a -> b) -> (a -> c)
+            ";
 
             assert_eq!(
-                ctx.infer(&parse(
-                    r"
-                    \a : *, \b : *, \c : *,
-                        \f : (b -> c), \g : (a -> b), \x : a,
-                            f (g x)
-                "
-                )).unwrap(),
-                parse(
-                    r"
-                    [a : *] -> [b : *] -> [c : *] ->
-                        (b -> c) -> (a -> b) -> (a -> c)
-                "
-                ).eval()
-                    .unwrap(),
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
             );
         }
     }
