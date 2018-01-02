@@ -4,4 +4,5 @@ extern crate lalrpop_util;
 extern crate pretty_assertions;
 
 pub mod core;
+pub mod check;
 pub mod parse;
