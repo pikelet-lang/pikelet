@@ -303,10 +303,22 @@ mod tests {
         }
 
         #[test]
-        fn id_app_arr_ty() {
+        fn id_app_ty_arr_ty() {
             let ctx = Context::default();
             let given_expr = r"(\a : *, \x : a, x) * (* -> *)";
             let expected_ty = r"* -> *";
+
+            assert_eq!(
+                ctx.infer(&parse(given_expr)).unwrap(),
+                parse(expected_ty).eval().unwrap(),
+            );
+        }
+
+        #[test]
+        fn id_app_arr_pi_ty() {
+            let ctx = Context::default();
+            let given_expr = r"(\a : *, \x : a, x) (* -> *) (\x : *, *)";
+            let expected_ty = r"\x : *, *";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),

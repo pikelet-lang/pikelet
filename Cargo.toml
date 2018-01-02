@@ -7,9 +7,17 @@ authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
 description = "An implementation of the LambdaPi type system in Rust"
 publish = false
 
+[features]
+repl = ["rustyline"]
+
+[[bin]]
+name = "repl"
+required-features = ["repl"]
+
 [dependencies]
 lalrpop-util = "0.13.1"
 regex = "0.2.0"
+rustyline = { version = "1.0.0", optional = true }
 
 [build-dependencies]
 lalrpop = "0.13.1"
