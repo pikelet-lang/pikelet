@@ -41,7 +41,9 @@ impl Term {
     /// This may fail if the term is not fully inferrable.
     pub fn to_core(&self) -> Result<core::ITerm, ()> {
         use std::rc::Rc;
-        use core::{CTerm, ITerm, Name, Named, Var};
+
+        use core::{CTerm, ITerm};
+        use var::{Name, Named, Var};
 
         fn to_cterm<T>(tm: &Term) -> Result<CTerm, Option<T>> {
             match to_iterm(tm) {
@@ -103,7 +105,10 @@ impl Term {
 #[cfg(test)]
 mod tests {
     use std::rc::Rc;
-    use core::{CTerm, Debruijn, ITerm, Name, Named, Var};
+
+    use core::{CTerm, ITerm};
+    use var::{Debruijn, Name, Named, Var};
+
     use super::*;
 
     fn parse(src: &str) -> ITerm {

@@ -2,7 +2,8 @@
 
 use std::rc::Rc;
 
-use core::{CTerm, Debruijn, EvalError, ITerm, Name, Named, Type, Value, Var};
+use core::{CTerm, EvalError, ITerm, Type, Value};
+use var::{Debruijn, Name, Named, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TypeError {
