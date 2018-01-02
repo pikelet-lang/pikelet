@@ -151,7 +151,7 @@ mod tests {
                     Rc::new(CTerm::Lam(
                         Named(y.clone(), ()),
                         Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0)))))
-                    ))
+                    )),
                 ),
                 Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
@@ -258,10 +258,61 @@ mod tests {
                     Named(y.clone(), Rc::new(CTerm::from(ITerm::Type))),
                     Rc::new(ITerm::App(
                         Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                        Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0)))))
+                        Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0))))),
                     )),
                 )),
             ),
         );
+    }
+
+    #[test]
+    fn id() {
+        let x = Name(String::from("x"));
+        let a = Name(String::from("a"));
+
+        assert_eq!(
+            parse(r"\a : *, \x : a, x"),
+            ITerm::Lam(
+                Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
+                Rc::new(ITerm::Lam(
+                    Named(
+                        x.clone(),
+                        Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(0)))))),
+                    ),
+                    Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
+                )),
+            )
+        );
+    }
+
+    #[test]
+    fn id_ty() {
+        let a = Name(String::from("a"));
+        let u = Name(String::from("u"));
+
+        assert_eq!(
+            parse(r"[a : *] -> a -> a"),
+            ITerm::Pi(
+                Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
+                Rc::new(CTerm::from(ITerm::Pi(
+                    Named(
+                        u,
+                        Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(
+                            a.clone(),
+                            Debruijn(0)
+                        ))))),
+                    ),
+                    Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(1)))))),
+                ))),
+            ),
+        );
+    }
+
+    #[test]
+    fn id_ty_arr() {
+        assert_eq!(
+            parse(r"[a : *] -> a -> a"),
+            parse(r"[a : *] -> [x : a] -> a"),
+        )
     }
 }
