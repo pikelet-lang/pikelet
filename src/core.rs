@@ -12,7 +12,7 @@ pub enum CTerm {
     Inf(Rc<ITerm>),
     /// Lambdas without an explicit type annotation
     ///
-    /// ```
+    /// ```text
     /// \x, t
     /// ```
     Lam(Named<()>, Rc<CTerm>),
@@ -38,7 +38,7 @@ impl From<Var> for CTerm {
 pub enum ITerm {
     /// A term annotated with a type
     ///
-    /// ```
+    /// ```text
     /// e : t
     /// ```
     Ann(Rc<CTerm>, Rc<CTerm>),
@@ -51,19 +51,19 @@ pub enum ITerm {
     /// Note that the body of the lambda must have a type that can be inferred
     /// from context
     ///
-    /// ```
+    /// ```text
     /// \x : t, t
     /// ```
     Lam(Named<Rc<CTerm>>, Rc<ITerm>),
     /// Fully annotated pi types
     ///
-    /// ```
-    /// [x : t], t
+    /// ```text
+    /// [x : t] -> t
     /// ```
     Pi(Named<Rc<CTerm>>, Rc<CTerm>),
     /// Term application
     ///
-    /// ```
+    /// ```text
     /// f x
     /// ```
     App(Rc<ITerm>, Rc<CTerm>),
