@@ -139,11 +139,33 @@ impl<'a> Context<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::SValue;
 
     fn parse(src: &str) -> ITerm {
         use parse::Term;
 
         Term::to_core(&src.parse().unwrap()).unwrap()
+    }
+
+    #[test]
+    fn extend_lookup() {
+        let x = Rc::new(Value::from(SValue::Var(Var::Free(Name(String::from("x"))))));
+        let y = Rc::new(Value::from(SValue::Var(Var::Free(Name(String::from("y"))))));
+
+        let context0 = Context::Nil;
+
+        assert_eq!(context0.lookup(Debruijn(0)), None);
+
+        let context1 = context0.extend(x.clone());
+
+        assert_eq!(context1.lookup(Debruijn(0)), Some(&x));
+        assert_eq!(context1.lookup(Debruijn(1)), None);
+
+        let context2 = context1.extend(y.clone());
+
+        assert_eq!(context2.lookup(Debruijn(0)), Some(&y));
+        assert_eq!(context2.lookup(Debruijn(1)), Some(&x));
+        assert_eq!(context2.lookup(Debruijn(2)), None);
     }
 
     mod infer {
