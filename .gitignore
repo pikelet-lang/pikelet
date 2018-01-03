@@ -1,5 +1,5 @@
 /target/
 **/*.rs.bk
+.vscode
 Cargo.lock
 repl-history
-
