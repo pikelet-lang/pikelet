@@ -12,8 +12,8 @@ pub Term: Term = {
 
 AbsTerm : Term = {
     AppTerm,
-    <b: LamBind> "," <body: AbsTerm> => Term::Lam(b.0, b.1.map(Box::new), Box::new(body)),
-    <b: PiBind> "->" <body: AbsTerm> => Term::Pi(b.0, Box::new(b.1), Box::new(body)),
+    <b: LamBind> "," <body: AbsTerm> => Term::Lam(b.0, b.1, Box::new(body)),
+    <b: PiBind> "->" <body: AbsTerm> => Term::Pi(b.0, b.1, Box::new(body)),
 };
 
 AppTerm: Term = {
@@ -30,14 +30,14 @@ AtomicTerm: Term = {
     Ident => Term::Var(<>).into(),
 };
 
-LamBind : (String, Option<Term>) = {
+LamBind : (String, Option<Box<Term>>) = {
     r"\\" <x: Ident> => (x, None),
-    r"\\" <x: Ident> ":" <t: AppTerm> => (x, Some(t)),
+    r"\\" <x: Ident> ":" <t: AppTerm> => (x, Some(Box::new(t))),
 };
 
-PiBind : (Option<String>, Term) = {
-    <t: AppTerm> => (None, t),
-    "[" <x: Ident> ":" <t: AppTerm> "]" => (Some(x), t),
+PiBind : (Option<String>, Box<Term>) = {
+    <t: AppTerm> => (None, Box::new(t)),
+    "[" <x: Ident> ":" <t: AppTerm> "]" => (Some(x), Box::new(t)),
 };
 
 Ident: String = {
