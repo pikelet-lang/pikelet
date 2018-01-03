@@ -319,45 +319,48 @@ mod tests {
 
         #[test]
         fn ty() {
-            assert_eq!(parse(r"*"), parse(r"*"));
+            assert_eq!(parse(r"Type"), parse(r"Type"));
         }
 
         #[test]
         fn lam() {
-            assert_eq!(parse(r"\x : *, x"), parse(r"\a : *, a"));
+            assert_eq!(parse(r"\x : Type, x"), parse(r"\a : Type, a"));
         }
 
         #[test]
         fn pi() {
-            assert_eq!(parse(r"[x : *] -> x"), parse(r"[a : *] -> a"));
+            assert_eq!(parse(r"[x : Type] -> x"), parse(r"[a : Type] -> a"));
         }
 
         #[test]
         fn lam_app() {
-            assert_eq!(parse(r"\x : (* -> *), x *"), parse(r"\a : (* -> *), a *"));
+            assert_eq!(
+                parse(r"\x : (Type -> Type), x Type"),
+                parse(r"\a : (Type -> Type), a Type")
+            );
         }
 
         #[test]
         fn pi_app() {
             assert_eq!(
-                parse(r"[x : (* -> *)] -> x *"),
-                parse(r"[a : (* -> *)] -> a *")
+                parse(r"[x : (Type -> Type)] -> x Type"),
+                parse(r"[a : (Type -> Type)] -> a Type")
             );
         }
 
         #[test]
         fn lam_lam_app() {
             assert_eq!(
-                parse(r"\x : (* -> *), \y : *, x y"),
-                parse(r"\a : (* -> *), \b : *, a b"),
+                parse(r"\x : (Type -> Type), \y : Type, x y"),
+                parse(r"\a : (Type -> Type), \b : Type, a b"),
             );
         }
 
         #[test]
         fn pi_pi_app() {
             assert_eq!(
-                parse(r"[x : (* -> *)] -> [y : *] -> x y"),
-                parse(r"[a : (* -> *)] -> [b : *] -> a b"),
+                parse(r"[x : (Type -> Type)] -> [y : Type] -> x y"),
+                parse(r"[a : (Type -> Type)] -> [b : Type] -> a b"),
             );
         }
     }
@@ -379,7 +382,7 @@ mod tests {
         fn ty() {
             let ty = Rc::new(Value::Type);
 
-            assert_eq!(parse(r"*").eval().unwrap(), ty);
+            assert_eq!(parse(r"Type").eval().unwrap(), ty);
         }
 
         #[test]
@@ -388,7 +391,7 @@ mod tests {
             let ty = Rc::new(Value::Type);
 
             assert_eq!(
-                parse(r"\x : *, x").eval().unwrap(),
+                parse(r"\x : Type, x").eval().unwrap(),
                 Rc::new(Value::Lam(
                     Named(x.clone(), Some(ty)),
                     Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
@@ -402,7 +405,7 @@ mod tests {
             let ty = Rc::new(Value::Type);
 
             assert_eq!(
-                parse(r"[x : *] -> x").eval().unwrap(),
+                parse(r"[x : Type] -> x").eval().unwrap(),
                 Rc::new(Value::Pi(
                     Named(x.clone(), ty),
                     Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
@@ -419,7 +422,9 @@ mod tests {
             let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
 
             assert_eq!(
-                parse(r"\x : (* -> *), \y : *, x y").eval().unwrap(),
+                parse(r"\x : (Type -> Type), \y : Type, x y")
+                    .eval()
+                    .unwrap(),
                 Rc::new(Value::Lam(
                     Named(x.clone(), Some(ty_arr)),
                     Rc::new(Value::Lam(
@@ -442,7 +447,9 @@ mod tests {
             let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
 
             assert_eq!(
-                parse(r"[x : (* -> *)] -> \y : *, x y").eval().unwrap(),
+                parse(r"[x : (Type -> Type)] -> \y : Type, x y")
+                    .eval()
+                    .unwrap(),
                 Rc::new(Value::Pi(
                     Named(x.clone(), ty_arr),
                     Rc::new(Value::Lam(

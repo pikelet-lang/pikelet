@@ -187,8 +187,8 @@ mod tests {
         #[test]
         fn ty() {
             let ctx = Context::default();
-            let given_expr = r"*";
-            let expected_ty = r"*";
+            let given_expr = r"Type";
+            let expected_ty = r"Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -199,8 +199,8 @@ mod tests {
         #[test]
         fn ann_ty_id() {
             let ctx = Context::default();
-            let given_expr = r"(\a, a) : * -> *";
-            let expected_ty = r"* -> *";
+            let given_expr = r"(\a, a) : Type -> Type";
+            let expected_ty = r"Type -> Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -211,8 +211,8 @@ mod tests {
         #[test]
         fn ann_arrow_ty_id() {
             let ctx = Context::default();
-            let given_expr = r"(\a, a) : (* -> *) -> (* -> *)";
-            let expected_ty = r"(* -> *) -> (* -> *)";
+            let given_expr = r"(\a, a) : (Type -> Type) -> (Type -> Type)";
+            let expected_ty = r"(Type -> Type) -> (Type -> Type)";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -223,7 +223,7 @@ mod tests {
         #[test]
         fn ann_id_as_ty() {
             let ctx = Context::default();
-            let given_expr = r"(\a, a) : *";
+            let given_expr = r"(\a, a) : Type";
 
             match ctx.infer(&parse(given_expr)) {
                 Err(TypeError::ExpectedFunction { .. }) => {}
@@ -234,8 +234,8 @@ mod tests {
         #[test]
         fn app() {
             let ctx = Context::default();
-            let given_expr = r"(\a : *, a) *";
-            let expected_ty = r"*";
+            let given_expr = r"(\a : Type, a) Type";
+            let expected_ty = r"Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -246,7 +246,7 @@ mod tests {
         #[test]
         fn app_ty() {
             let ctx = Context::default();
-            let given_expr = r"* *";
+            let given_expr = r"Type Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)),
@@ -257,8 +257,8 @@ mod tests {
         #[test]
         fn lam() {
             let ctx = Context::default();
-            let given_expr = r"\a : *, a";
-            let expected_ty = r"[a : *] -> *";
+            let given_expr = r"\a : Type, a";
+            let expected_ty = r"[a : Type] -> Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -269,8 +269,8 @@ mod tests {
         #[test]
         fn pi() {
             let ctx = Context::default();
-            let given_expr = r"[a : *] -> a";
-            let expected_ty = r"*";
+            let given_expr = r"[a : Type] -> a";
+            let expected_ty = r"Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -281,8 +281,8 @@ mod tests {
         #[test]
         fn id() {
             let ctx = Context::default();
-            let given_expr = r"\a : *, \x : a, x";
-            let expected_ty = r"[a : *] -> a -> a";
+            let given_expr = r"\a : Type, \x : a, x";
+            let expected_ty = r"[a : Type] -> a -> a";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -293,8 +293,8 @@ mod tests {
         #[test]
         fn id_ann() {
             let ctx = Context::default();
-            let given_expr = r"(\a, \x : a, x) : [A : *] -> A -> A";
-            let expected_ty = r"[a : *] -> a -> a";
+            let given_expr = r"(\a, \x : a, x) : [A : Type] -> A -> A";
+            let expected_ty = r"[a : Type] -> a -> a";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -305,8 +305,8 @@ mod tests {
         #[test]
         fn id_app_ty_arr_ty() {
             let ctx = Context::default();
-            let given_expr = r"(\a : *, \x : a, x) * (* -> *)";
-            let expected_ty = r"* -> *";
+            let given_expr = r"(\a : Type, \x : a, x) Type (Type -> Type)";
+            let expected_ty = r"Type -> Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -317,8 +317,8 @@ mod tests {
         #[test]
         fn id_app_arr_pi_ty() {
             let ctx = Context::default();
-            let given_expr = r"(\a : *, \x : a, x) (* -> *) (\x : *, *)";
-            let expected_ty = r"\x : *, *";
+            let given_expr = r"(\a : Type, \x : a, x) (Type -> Type) (\x : Type, Type)";
+            let expected_ty = r"\x : Type, Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -330,11 +330,11 @@ mod tests {
         fn apply() {
             let ctx = Context::default();
             let given_expr = r"
-                \a : *, \b : *,
+                \a : Type, \b : Type,
                     \f : (a -> b), \x : a, f x
             ";
             let expected_ty = r"
-                [a : *] -> [b : *] ->
+                [a : Type] -> [b : Type] ->
                     (a -> b) -> a -> b
             ";
 
@@ -348,11 +348,11 @@ mod tests {
         fn constant() {
             let ctx = Context::default();
             let given_expr = r"
-                \a : *, \b : *,
+                \a : Type, \b : Type,
                     \f : (a -> b), \x : a, \y : b, x
             ";
             let expected_ty = r"
-                [a : *] -> [b : *] ->
+                [a : Type] -> [b : Type] ->
                     (a -> b) -> a -> b -> a
             ";
 
@@ -366,12 +366,12 @@ mod tests {
         fn compose() {
             let ctx = Context::default();
             let given_expr = r"
-                \a : *, \b : *, \c : *,
+                \a : Type, \b : Type, \c : Type,
                     \f : (b -> c), \g : (a -> b), \x : a,
                         f (g x)
             ";
             let expected_ty = r"
-                [a : *] -> [b : *] -> [c : *] ->
+                [a : Type] -> [b : Type] -> [c : Type] ->
                     (b -> c) -> (a -> b) -> (a -> c)
             ";
 

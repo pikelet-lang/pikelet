@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn ty() {
-        assert_eq!(parse(r"*"), ITerm::Type);
+        assert_eq!(parse(r"Type"), ITerm::Type);
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod tests {
         let x = Name(String::from("x"));
 
         assert_eq!(
-            parse(r"\x : *, x"),
+            parse(r"\x : Type, x"),
             ITerm::Lam(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
@@ -164,7 +164,7 @@ mod tests {
         let y = Name(String::from("y"));
 
         assert_eq!(
-            parse(r"\x : *, \y : *, x"),
+            parse(r"\x : Type, \y : Type, x"),
             ITerm::Lam(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(ITerm::Lam(
@@ -180,7 +180,7 @@ mod tests {
         let u = Name(String::from("_"));
 
         assert_eq!(
-            parse(r"* -> *"),
+            parse(r"Type -> Type"),
             ITerm::Pi(
                 Named(u, Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Type)),
@@ -193,7 +193,7 @@ mod tests {
         let x = Name(String::from("x"));
 
         assert_eq!(
-            parse(r"[x : *] -> x"),
+            parse(r"[x : Type] -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(0))))),
@@ -207,7 +207,7 @@ mod tests {
         let y = Name(String::from("y"));
 
         assert_eq!(
-            parse(r"[x : *] -> [y : *] -> x"),
+            parse(r"[x : Type] -> [y : Type] -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
@@ -224,7 +224,7 @@ mod tests {
         let u = Name(String::from("_"));
 
         assert_eq!(
-            parse(r"[x : *] -> x -> x"),
+            parse(r"[x : Type] -> x -> x"),
             ITerm::Pi(
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
@@ -245,7 +245,7 @@ mod tests {
         let u = Name(String::from("_"));
 
         assert_eq!(
-            parse(r"\x : (* -> *), \y : *, x y"),
+            parse(r"\x : (Type -> Type), \y : Type, x y"),
             ITerm::Lam(
                 Named(
                     x.clone(),
@@ -271,7 +271,7 @@ mod tests {
         let a = Name(String::from("a"));
 
         assert_eq!(
-            parse(r"\a : *, \x : a, x"),
+            parse(r"\a : Type, \x : a, x"),
             ITerm::Lam(
                 Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(ITerm::Lam(
@@ -291,7 +291,7 @@ mod tests {
         let u = Name(String::from("u"));
 
         assert_eq!(
-            parse(r"[a : *] -> a -> a"),
+            parse(r"[a : Type] -> a -> a"),
             ITerm::Pi(
                 Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
@@ -311,8 +311,8 @@ mod tests {
     #[test]
     fn id_ty_arr() {
         assert_eq!(
-            parse(r"[a : *] -> a -> a"),
-            parse(r"[a : *] -> [x : a] -> a"),
+            parse(r"[a : Type] -> a -> a"),
+            parse(r"[a : Type] -> [x : a] -> a"),
         )
     }
 }
