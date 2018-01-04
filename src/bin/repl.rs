@@ -16,9 +16,8 @@ fn main() {
     loop {
         match rl.readline(PROMPT) {
             Ok(line) => {
-                use pretty::Doc;
                 use lambdapi::check::Context;
-                use lambdapi::pretty::{Prec, ToDoc, INDENT_WIDTH};
+                use lambdapi::pretty::{pretty_ann, Prec};
                 use lambdapi::parse::Term;
 
                 rl.add_history_entry(&line);
@@ -51,7 +50,7 @@ fn main() {
                     }
                 };
 
-                let ty = match Context::default().infer(&core) {
+                let inferred = match Context::default().infer(&core) {
                     Ok(ty) => ty,
                     Err(err) => {
                         println!("type error: {:?}", err);
@@ -59,16 +58,10 @@ fn main() {
                     }
                 };
 
-                let result = Doc::nil()
-                    .append(core.to_doc(Prec::ANN))
-                    .append(Doc::space())
-                    .append(Doc::text(":"))
-                    .group()
-                    .append(Doc::space())
-                    .append(ty.to_doc(Prec::ANN).nest(INDENT_WIDTH))
-                    .group();
+                let evaluated = core.eval().unwrap();
+                let doc = pretty_ann(Prec::NO_WRAP, &*evaluated, &*inferred);
 
-                println!("{}", result.pretty(80));
+                println!("{}", doc.pretty(80));
             }
             Err(err) => {
                 match err {

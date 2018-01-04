@@ -32,24 +32,28 @@ fn parens_if<'a>(should_wrap: bool, inner: Doc<'a, BoxDoc<'a>>) -> Doc<'a, BoxDo
     }
 }
 
-fn pretty_ann<'a, E: ToDoc, T: ToDoc>(prec: Prec, expr: &'a E, ty: &'a T) -> Doc<'a, BoxDoc<'a>> {
+pub fn pretty_ann<'a, E: ToDoc, T: ToDoc>(
+    prec: Prec,
+    expr: &'a E,
+    ty: &'a T,
+) -> Doc<'a, BoxDoc<'a>> {
     parens_if(
         Prec::ANN < prec,
-        Doc::nil()
-            .append(expr.to_doc(Prec::ANN))
-            .append(Doc::space())
-            .append(Doc::text(":"))
-            .group()
-            .append(Doc::space())
-            .append(ty.to_doc(Prec::ANN).nest(INDENT_WIDTH)),
+        Doc::group(
+            expr.to_doc(Prec::LAM)
+                .append(Doc::space())
+                .append(Doc::text(":")),
+        ).append(Doc::group(
+            Doc::space().append(ty.to_doc(Prec::ANN)).nest(INDENT_WIDTH),
+        )),
     )
 }
 
-fn pretty_ty<'a>() -> Doc<'a, BoxDoc<'a>> {
+pub fn pretty_ty<'a>() -> Doc<'a, BoxDoc<'a>> {
     Doc::text("Type")
 }
 
-fn pretty_lam<'a, A: ToDoc, B: ToDoc>(
+pub fn pretty_lam<'a, A: ToDoc, B: ToDoc>(
     prec: Prec,
     name: &'a Name,
     ann: Option<&'a A>,
@@ -57,27 +61,27 @@ fn pretty_lam<'a, A: ToDoc, B: ToDoc>(
 ) -> Doc<'a, BoxDoc<'a>> {
     parens_if(
         Prec::LAM < prec,
-        Doc::nil()
-            .append(
-                Doc::text(r"\")
-                    .append(Doc::as_string(name))
-                    .append(match ann.as_ref() {
-                        Some(ann) => Doc::space()
-                            .append(Doc::text(":"))
-                            .append(Doc::space())
-                            .append(ann.to_doc(Prec::PI).group()),
-                        None => Doc::nil(),
-                    })
-                    .append(Doc::space())
-                    .append(Doc::text("=>"))
-                    .group(),
-            )
-            .append(Doc::space())
-            .append(body.to_doc(Prec::NO_WRAP).nest(INDENT_WIDTH)),
+        Doc::group(
+            Doc::text(r"\")
+                .append(Doc::as_string(name))
+                .append(match ann.as_ref() {
+                    Some(ann) => Doc::space()
+                        .append(Doc::text(":"))
+                        .append(Doc::space())
+                        .append(ann.to_doc(Prec::PI).group()),
+                    None => Doc::nil(),
+                })
+                .append(Doc::space())
+                .append(Doc::text("=>")),
+        ).append(Doc::group(
+            Doc::space()
+                .append(body.to_doc(Prec::NO_WRAP))
+                .nest(INDENT_WIDTH),
+        )),
     )
 }
 
-fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
+pub fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
     prec: Prec,
     name: &'a Name,
     ann: &'a A,
@@ -86,35 +90,36 @@ fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
     parens_if(
         Prec::PI < prec,
         if name.0 == "_" {
-            Doc::nil()
-                .append(ann.to_doc(Prec::APP))
-                .append(Doc::space())
-                .append(Doc::text("->"))
-                .append(Doc::space())
-                .append(body.to_doc(Prec::NO_WRAP).nest(INDENT_WIDTH))
-                .group()
+            Doc::group(
+                ann.to_doc(Prec::APP)
+                    .append(Doc::space())
+                    .append(Doc::text("->")),
+            ).append(Doc::group(
+                Doc::space()
+                    .append(body.to_doc(Prec::NO_WRAP))
+                    .nest(INDENT_WIDTH),
+            ))
         } else {
-            Doc::nil()
-                .append(
-                    Doc::text("[")
-                        .append(Doc::as_string(name))
-                        .append(Doc::space())
-                        .append(Doc::text(":"))
-                        .append(Doc::space())
-                        .append(ann.to_doc(Prec::PI))
-                        .append(Doc::text("]"))
-                        .group(),
-                )
-                .append(Doc::space())
-                .append(Doc::text("->"))
-                .append(Doc::space())
-                .append(body.to_doc(Prec::NO_WRAP).nest(INDENT_WIDTH))
-                .group()
+            Doc::group(
+                Doc::text("[")
+                    .append(Doc::as_string(name))
+                    .append(Doc::space())
+                    .append(Doc::text(":"))
+                    .append(Doc::space())
+                    .append(ann.to_doc(Prec::PI))
+                    .append(Doc::text("]"))
+                    .append(Doc::space())
+                    .append(Doc::text("->")),
+            ).append(Doc::group(
+                Doc::space()
+                    .append(body.to_doc(Prec::NO_WRAP))
+                    .nest(INDENT_WIDTH),
+            ))
         },
     )
 }
 
-fn pretty_app<'a, F: ToDoc, A: ToDoc>(
+pub fn pretty_app<'a, F: ToDoc, A: ToDoc>(
     prec: Prec,
     fn_term: &'a F,
     arg_term: &'a A,
