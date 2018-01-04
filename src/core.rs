@@ -69,7 +69,7 @@ pub enum ITerm {
     /// Dependent function type
     ///
     /// ```text
-    /// [x : t] -> t
+    /// (x : t) -> t
     /// ```
     Pi(Named<RcCTerm>, RcCTerm),
     /// Term application
@@ -482,7 +482,7 @@ mod tests {
 
         #[test]
         fn pi() {
-            assert_eq!(parse(r"[x : Type] -> x"), parse(r"[a : Type] -> a"));
+            assert_eq!(parse(r"(x : Type) -> x"), parse(r"(a : Type) -> a"));
         }
 
         #[test]
@@ -496,8 +496,8 @@ mod tests {
         #[test]
         fn pi_app() {
             assert_eq!(
-                parse(r"[x : Type -> Type] -> x Type"),
-                parse(r"[a : Type -> Type] -> a Type")
+                parse(r"(x : Type -> Type) -> x Type"),
+                parse(r"(a : Type -> Type) -> a Type")
             );
         }
 
@@ -512,8 +512,8 @@ mod tests {
         #[test]
         fn pi_pi_app() {
             assert_eq!(
-                parse(r"[x : Type -> Type] -> [y : Type] -> x y"),
-                parse(r"[a : Type -> Type] -> [b : Type] -> a b"),
+                parse(r"(x : Type -> Type) -> (y : Type) -> x y"),
+                parse(r"(a : Type -> Type) -> (b : Type) -> a b"),
             );
         }
     }
@@ -558,7 +558,7 @@ mod tests {
             let ty: RcValue = Value::Type.into();
 
             assert_eq!(
-                parse(r"[x : Type] -> x").eval().unwrap(),
+                parse(r"(x : Type) -> x").eval().unwrap(),
                 Value::Pi(
                     Named(x.clone(), ty),
                     Value::from(Var::Bound(Named(x, Debruijn(0)))).into(),
@@ -598,7 +598,7 @@ mod tests {
             let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
             assert_eq!(
-                parse(r"[x : Type -> Type] -> \y : Type => x y")
+                parse(r"(x : Type -> Type) -> \y : Type => x y")
                     .eval()
                     .unwrap(),
                 Value::Pi(

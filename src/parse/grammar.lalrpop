@@ -1,4 +1,5 @@
 use parse::{Term, ReplCommand};
+use lalrpop_util::ParseError;
 
 grammar();
 
@@ -28,12 +29,28 @@ LamTerm : Term = {
 
 PiTerm : Term = {
     AppTerm,
-   "[" <x: Ident> ":" <ann: PiTerm> "]" "->" <body: LamTerm> => {
-        Term::Pi(x, Box::new(ann), Box::new(body))
-    },
-    <ann: AppTerm> "->" <body: LamTerm> => {
-        Term::Arrow(Box::new(ann), Box::new(body))
-    },
+    // Naively we would want to write the following rules:
+    //
+    // ```lalrpop
+    // "(" <x: Ident> ":" <ann: PiTerm> ")" "->" <body: LamTerm> => {
+    //      Term::Pi(x, Box::new(ann), Box::new(body))
+    //  },
+    //  <ann: AppTerm> "->" <body: LamTerm> => {
+    //      Term::Arrow(Box::new(ann), Box::new(body))
+    //  },
+    // ```
+    //
+    // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
+    // have to hack this in with a dyncamic check:
+    <binder: AtomicTerm> "->" <body: LamTerm> =>? {
+        match binder {
+            Term::Ann(x, ann) => match *x {
+                Term::Var(x) => Ok(Term::Pi(x, ann, Box::new(body))),
+                _ => Err(ParseError::User { error: () }), // TODO: More descriptive error!
+            },
+            ann => Ok(Term::Arrow(Box::new(ann), Box::new(body)))
+        }
+    }
 };
 
 AppTerm: Term = {

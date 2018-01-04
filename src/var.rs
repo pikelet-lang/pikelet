@@ -54,7 +54,7 @@ pub enum Name {
     /// will be stored as:
     ///
     /// ```text
-    /// [_ : t1] -> [_ : t2] -> t3
+    /// (_ : t1) -> (_ : t2) -> t3
     /// ```
     ///
     /// They should never actually appear as variables in terms.

@@ -294,7 +294,7 @@ mod tests {
             let ctx = Context::default();
 
             let given_expr = r"\a : Type => a";
-            let expected_ty = r"[a : Type] -> Type";
+            let expected_ty = r"(a : Type) -> Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -306,7 +306,7 @@ mod tests {
         fn pi() {
             let ctx = Context::default();
 
-            let given_expr = r"[a : Type] -> a";
+            let given_expr = r"(a : Type) -> a";
             let expected_ty = r"Type";
 
             assert_eq!(
@@ -320,7 +320,7 @@ mod tests {
             let ctx = Context::default();
 
             let given_expr = r"\a : Type => \x : a => x";
-            let expected_ty = r"[a : Type] -> a -> a";
+            let expected_ty = r"(a : Type) -> a -> a";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -332,8 +332,8 @@ mod tests {
         fn id_ann() {
             let ctx = Context::default();
 
-            let given_expr = r"(\a => \x : a => x) : [A : Type] -> A -> A";
-            let expected_ty = r"[a : Type] -> a -> a";
+            let given_expr = r"(\a => \x : a => x) : (A : Type) -> A -> A";
+            let expected_ty = r"(a : Type) -> a -> a";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -376,7 +376,7 @@ mod tests {
                     \f : (a -> b) => \x : a => f x
             ";
             let expected_ty = r"
-                [a : Type] -> [b : Type] ->
+                (a : Type) -> (b : Type) ->
                     (a -> b) -> a -> b
             ";
 
@@ -391,7 +391,7 @@ mod tests {
             let ctx = Context::default();
 
             let given_expr = r"\a : Type => \b : Type => \x : a => \y : b => x";
-            let expected_ty = r"[a : Type] -> [b : Type] -> a -> b -> a";
+            let expected_ty = r"(a : Type) -> (b : Type) -> a -> b -> a";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -409,7 +409,7 @@ mod tests {
                         f (g x)
             ";
             let expected_ty = r"
-                [a : Type] -> [b : Type] -> [c : Type] ->
+                (a : Type) -> (b : Type) -> (c : Type) ->
                     (b -> c) -> (a -> b) -> (a -> c)
             ";
 
@@ -426,7 +426,7 @@ mod tests {
             fn and() {
                 let ctx = Context::default();
 
-                let given_expr = r"\p : Type => \q : Type => [c : Type] -> (p -> q -> c) -> c";
+                let given_expr = r"\p : Type => \q : Type => (c : Type) -> (p -> q -> c) -> c";
                 let expected_ty = r"Type -> Type -> Type";
 
                 assert_eq!(
@@ -444,8 +444,8 @@ mod tests {
                         \c : Type => \f : (p -> q -> c) => f x y
                 ";
                 let expected_ty = r"
-                    [p : Type] -> [q : Type] -> p -> q ->
-                        ([c : Type] -> (p -> q -> c) -> c)
+                    (p : Type) -> (q : Type) -> p -> q ->
+                        ((c : Type) -> (p -> q -> c) -> c)
                 ";
 
                 assert_eq!(
@@ -459,12 +459,12 @@ mod tests {
                 let ctx = Context::default();
 
                 let given_expr = r"
-                    \p : Type => \q : Type => \pq : [c : Type] -> (p -> q -> c) -> c =>
+                    \p : Type => \q : Type => \pq : (c : Type) -> (p -> q -> c) -> c =>
                         pq p (\x => \y => x)
                 ";
                 let expected_ty = r"
-                    [p : Type] -> [q : Type] ->
-                        ([c : Type] -> (p -> q -> c) -> c) -> p
+                    (p : Type) -> (q : Type) ->
+                        ((c : Type) -> (p -> q -> c) -> c) -> p
                 ";
 
                 assert_eq!(
@@ -478,12 +478,12 @@ mod tests {
                 let ctx = Context::default();
 
                 let given_expr = r"
-                    \p : Type => \q : Type => \pq : [c : Type] -> (p -> q -> c) -> c =>
+                    \p : Type => \q : Type => \pq : (c : Type) -> (p -> q -> c) -> c =>
                         pq q (\x => \y => y)
                 ";
                 let expected_ty = r"
-                    [p : Type] -> [q : Type] ->
-                        ([c : Type] -> (p -> q -> c) -> c) -> q
+                    (p : Type) -> (q : Type) ->
+                        ((c : Type) -> (p -> q -> c) -> c) -> q
                 ";
 
                 assert_eq!(

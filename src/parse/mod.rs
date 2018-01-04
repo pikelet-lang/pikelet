@@ -102,6 +102,23 @@ mod tests {
     }
 
     #[test]
+    fn ann_ann_ann() {
+        assert_eq!(
+            parse(r"(Type : Type) : (Type : Type)"),
+            ITerm::Ann(
+                CTerm::from(ITerm::Ann(
+                    CTerm::from(ITerm::Type).into(),
+                    CTerm::from(ITerm::Type).into(),
+                )).into(),
+                CTerm::from(ITerm::Ann(
+                    CTerm::from(ITerm::Type).into(),
+                    CTerm::from(ITerm::Type).into(),
+                )).into(),
+            ).into(),
+        );
+    }
+
+    #[test]
     fn lam_ann() {
         let x = Name::user("x");
 
@@ -173,7 +190,7 @@ mod tests {
         let x = Name::user("x");
 
         assert_eq!(
-            parse(r"[x : Type -> Type] -> x"),
+            parse(r"(x : Type -> Type) -> x"),
             ITerm::Pi(
                 Named(
                     x.clone(),
@@ -193,7 +210,7 @@ mod tests {
         let y = Name::user("y");
 
         assert_eq!(
-            parse(r"[x : Type] -> [y : Type] -> x"),
+            parse(r"(x : Type) -> (y : Type) -> x"),
             ITerm::Pi(
                 Named(x.clone(), CTerm::from(ITerm::Type).into()),
                 CTerm::from(ITerm::Pi(
@@ -209,7 +226,7 @@ mod tests {
         let x = Name::user("x");
 
         assert_eq!(
-            parse(r"[x : Type] -> x -> x"),
+            parse(r"(x : Type) -> x -> x"),
             ITerm::Pi(
                 Named(x.clone(), CTerm::from(ITerm::Type).into()),
                 CTerm::from(ITerm::Pi(
@@ -275,7 +292,7 @@ mod tests {
         let a = Name::user("a");
 
         assert_eq!(
-            parse(r"[a : Type] -> a -> a"),
+            parse(r"(a : Type) -> a -> a"),
             ITerm::Pi(
                 Named(a.clone(), CTerm::from(ITerm::Type).into()),
                 CTerm::from(ITerm::Pi(
@@ -292,8 +309,8 @@ mod tests {
     #[test]
     fn id_ty_arr() {
         assert_eq!(
-            parse(r"[a : Type] -> a -> a"),
-            parse(r"[a : Type] -> [x : a] -> a"),
+            parse(r"(a : Type) -> a -> a"),
+            parse(r"(a : Type) -> (x : a) -> a"),
         )
     }
 }
