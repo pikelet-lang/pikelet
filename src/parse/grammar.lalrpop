@@ -4,10 +4,7 @@ grammar();
 
 pub Term: Term = {
     LamTerm,
-    // Annotated terms
-    <x: Term> ":" <t: LamTerm> => {
-        Term::Ann(Box::new(x), Box::new(t))
-    },
+    <x: Term> ":" <t: LamTerm> => Term::Ann(Box::new(x), Box::new(t)),
 };
 
 LamTerm : Term = {
@@ -22,10 +19,7 @@ PiTerm : Term = {
 
 AppTerm: Term = {
     AtomicTerm,
-    // Applications
-    <f: AppTerm> <x: AtomicTerm> => {
-        Term::App(Box::new(f), Box::new(x)).into()
-    },
+    <f: AppTerm> <x: AtomicTerm> => Term::App(Box::new(f), Box::new(x)).into(),
 };
 
 AtomicTerm: Term = {
