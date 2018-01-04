@@ -1,4 +1,5 @@
 extern crate lambdapi;
+extern crate pretty;
 extern crate rustyline;
 
 use rustyline::error::ReadlineError;
@@ -15,7 +16,9 @@ fn main() {
     loop {
         match rl.readline(PROMPT) {
             Ok(line) => {
+                use pretty::Doc;
                 use lambdapi::check::Context;
+                use lambdapi::pretty::{Prec, ToDoc, INDENT_WIDTH};
                 use lambdapi::parse::Term;
 
                 rl.add_history_entry(&line);
@@ -56,8 +59,16 @@ fn main() {
                     }
                 };
 
-                // TODO: pretty printing!
-                println!("{:?} : {:?}", core.eval().unwrap(), ty);
+                let result = Doc::nil()
+                    .append(core.to_doc(Prec::ANN))
+                    .append(Doc::space())
+                    .append(Doc::text(":"))
+                    .group()
+                    .append(Doc::space())
+                    .append(ty.to_doc(Prec::ANN).nest(INDENT_WIDTH))
+                    .group();
+
+                println!("{}", result.pretty(80));
             }
             Err(err) => {
                 match err {

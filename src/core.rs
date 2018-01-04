@@ -1,5 +1,7 @@
+use std::fmt;
 use std::rc::Rc;
 
+use pretty::{Prec, ToDoc};
 use var::{Debruijn, Name, Named, Var};
 
 /// Checkable terms
@@ -27,6 +29,14 @@ impl From<ITerm> for CTerm {
 impl From<Var> for CTerm {
     fn from(src: Var) -> CTerm {
         CTerm::from(ITerm::from(src))
+    }
+}
+
+impl fmt::Display for CTerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(Prec::NO_WRAP)
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
     }
 }
 
@@ -75,6 +85,14 @@ impl From<Var> for ITerm {
     }
 }
 
+impl fmt::Display for ITerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(Prec::NO_WRAP)
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
+}
+
 /// Fully evaluated or stuck values
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
@@ -106,6 +124,14 @@ impl From<Var> for Value {
     }
 }
 
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(Prec::NO_WRAP)
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
+}
+
 /// 'Stuck' values that cannot be reduced further
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SValue {
@@ -118,6 +144,14 @@ pub enum SValue {
 impl From<Var> for SValue {
     fn from(src: Var) -> SValue {
         SValue::Var(src)
+    }
+}
+
+impl fmt::Display for SValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(Prec::NO_WRAP)
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
     }
 }
 

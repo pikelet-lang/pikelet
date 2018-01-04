@@ -16,6 +16,7 @@ required-features = ["repl"]
 
 [dependencies]
 lalrpop-util = "0.13.1"
+pretty = "0.3.2"
 regex = "0.2.0"
 rustyline = { version = "1.0.0", optional = true }
 
