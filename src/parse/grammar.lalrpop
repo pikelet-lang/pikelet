@@ -3,17 +3,21 @@ use parse::Term;
 grammar();
 
 pub Term: Term = {
-    AbsTerm,
+    LamTerm,
     // Annotated terms
-    <x: Term> ":" <t: AbsTerm> => {
+    <x: Term> ":" <t: LamTerm> => {
         Term::Ann(Box::new(x), Box::new(t))
     },
 };
 
-AbsTerm : Term = {
+LamTerm : Term = {
+    PiTerm,
+    <b: LamBind> "=>" <body: LamTerm> => Term::Lam(b.0, b.1, Box::new(body)),
+};
+
+PiTerm : Term = {
     AppTerm,
-    <b: LamBind> "=>" <body: AbsTerm> => Term::Lam(b.0, b.1, Box::new(body)),
-    <b: PiBind> "->" <body: AbsTerm> => Term::Pi(b.0, b.1, Box::new(body)),
+    <b: PiBind> "->" <body: LamTerm> => Term::Pi(b.0, b.1, Box::new(body)),
 };
 
 AppTerm: Term = {
@@ -32,12 +36,12 @@ AtomicTerm: Term = {
 
 LamBind : (String, Option<Box<Term>>) = {
     r"\\" <x: Ident> => (x, None),
-    r"\\" <x: Ident> ":" <t: AppTerm> => (x, Some(Box::new(t))),
+    r"\\" <x: Ident> ":" <t: PiTerm> => (x, Some(Box::new(t))),
 };
 
 PiBind : (Option<String>, Box<Term>) = {
     <t: AppTerm> => (None, Box::new(t)),
-    "[" <x: Ident> ":" <t: AppTerm> "]" => (Some(x), Box::new(t)),
+    "[" <x: Ident> ":" <t: PiTerm> "]" => (Some(x), Box::new(t)),
 };
 
 Ident: String = {

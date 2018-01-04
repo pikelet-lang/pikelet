@@ -14,7 +14,7 @@ impl Prec {
     pub const NO_WRAP: Prec = Prec(-1);
     pub const ANN: Prec = Prec(0);
     pub const LAM: Prec = Prec(1);
-    pub const PI: Prec = Prec(1);
+    pub const PI: Prec = Prec(2);
     pub const APP: Prec = Prec(10);
 }
 
@@ -65,7 +65,7 @@ fn pretty_lam<'a, A: ToDoc, B: ToDoc>(
                         Some(ann) => Doc::space()
                             .append(Doc::text(":"))
                             .append(Doc::space())
-                            .append(ann.to_doc(Prec::APP).group()),
+                            .append(ann.to_doc(Prec::PI).group()),
                         None => Doc::nil(),
                     })
                     .append(Doc::space())
@@ -101,7 +101,7 @@ fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
                         .append(Doc::space())
                         .append(Doc::text(":"))
                         .append(Doc::space())
-                        .append(ann.to_doc(Prec::APP))
+                        .append(ann.to_doc(Prec::PI))
                         .append(Doc::text("]"))
                         .group(),
                 )

@@ -127,12 +127,19 @@ mod tests {
 
     #[test]
     fn lam_ann() {
+        let u = Name(String::from("_"));
         let x = Name(String::from("x"));
 
         assert_eq!(
-            parse(r"\x : Type => x"),
+            parse(r"\x : Type -> Type => x"),
             ITerm::Lam(
-                Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
+                Named(
+                    x.clone(),
+                    Rc::new(CTerm::from(ITerm::Pi(
+                        Named(u, Rc::new(CTerm::from(ITerm::Type))),
+                        Rc::new(CTerm::from(ITerm::Type)),
+                    )))
+                ),
                 Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
         );
@@ -190,12 +197,19 @@ mod tests {
 
     #[test]
     fn pi() {
+        let u = Name(String::from("_"));
         let x = Name(String::from("x"));
 
         assert_eq!(
-            parse(r"[x : Type] -> x"),
+            parse(r"[x : Type -> Type] -> x"),
             ITerm::Pi(
-                Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
+                Named(
+                    x.clone(),
+                    Rc::new(CTerm::from(ITerm::Pi(
+                        Named(u, Rc::new(CTerm::from(ITerm::Type))),
+                        Rc::new(CTerm::from(ITerm::Type)),
+                    )))
+                ),
                 Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
         );
