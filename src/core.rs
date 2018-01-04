@@ -169,7 +169,7 @@ impl ITerm {
 }
 
 impl Value {
-    pub fn app(fn_expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
+    pub fn eval_app(fn_expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
         match *fn_expr {
             Value::Lam(_, ref body) => Value::instantiate0(body, &arg),
             Value::Stuck(ref stuck) => Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg)))),
@@ -230,7 +230,7 @@ impl SValue {
                 let fn_expr = SValue::instantiate_at(fn_expr, level, x)?;
                 let arg = Value::instantiate_at(arg_expr, level, x)?;
 
-                Value::app(fn_expr, arg)
+                Value::eval_app(fn_expr, arg)
             }
         }
     }
@@ -246,14 +246,17 @@ pub enum EvalError {
 
 impl CTerm {
     pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
+        // e ⇓ v
         match *self {
             CTerm::Inf(ref inf) => inf.eval(),
+
+            //     e ⇓ v
+            // ───────────── (EVAL/LAM)
+            //  λx.e ⇓ λx.v
             CTerm::Lam(Named(ref name, ()), ref body_expr) => {
-                // Evalute the body before building the lambda
-                let name = name.clone();
                 let body_expr = body_expr.eval()?;
 
-                Ok(Rc::new(Value::Lam(Named(name, None), body_expr)))
+                Ok(Rc::new(Value::Lam(Named(name.clone(), None), body_expr)))
             }
         }
     }
@@ -261,33 +264,57 @@ impl CTerm {
 
 impl ITerm {
     pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
+        // e ⇓ v
         match *self {
-            ITerm::Ann(ref expr, _) => expr.eval(),
+            //  1.  e ⇓ v
+            // ────────────────── (EVAL/ANN)
+            //      e : ρ ⇓ v
+            ITerm::Ann(ref expr, _) => {
+                expr.eval() // 1.
+            }
 
+            // ───────────── (EVAL/TYPE)
+            //  Type ⇓ Type
             ITerm::Type => Ok(Rc::new(Value::Type)),
+
+            // ─────── (EVAL/Var)
+            //  x ⇓ x
             ITerm::Var(ref var) => Ok(Rc::new(Value::from(var.clone()))),
 
+            //  1.  ρ ⇓ τ
+            //  2.  e ⇓ v
+            // ──────────────────────── (EVAL/LAM-ANN)
+            //      λx:ρ.e ⇓ λx:τ.v
             ITerm::Lam(Named(ref name, ref param_ty), ref body_expr) => {
-                let name = name.clone();
-                let param_ty = param_ty.eval()?;
-                let body_expr = body_expr.eval()?;
+                let param_ty = param_ty.eval()?; // 1.
+                let body_expr = body_expr.eval()?; // 2.
 
-                Ok(Rc::new(Value::Lam(Named(name, Some(param_ty)), body_expr)))
+                Ok(Rc::new(Value::Lam(
+                    Named(name.clone(), Some(param_ty)),
+                    body_expr,
+                )))
             }
 
+            //  1.  ρ₁ ⇓ τ₁
+            //  2.  ρ₂ ⇓ τ₂
+            // ─────────────────────────── (EVAL/PI-ANN)
+            //      Пx:ρ₁.ρ₂ ⇓ Пx:τ₁.τ₂
             ITerm::Pi(Named(ref name, ref param_ty), ref body_expr) => {
-                let name = name.clone();
-                let param_ty = param_ty.eval()?;
-                let body_expr = body_expr.eval()?;
+                let param_ty = param_ty.eval()?; // 1.
+                let body_expr = body_expr.eval()?; // 2.
 
-                Ok(Rc::new(Value::Pi(Named(name, param_ty), body_expr)))
+                Ok(Rc::new(Value::Pi(Named(name.clone(), param_ty), body_expr)))
             }
 
+            //  1.  e₁ ⇓ λx.v₁
+            //  2.  v₁[x↦e₂] ⇓ v₂
+            // ───────────────────── (EVAL/APP)
+            //      e₁ e₂ ⇓ v₂
             ITerm::App(ref fn_expr, ref arg) => {
-                let fn_expr = fn_expr.eval()?;
-                let arg = arg.eval()?;
+                let fn_expr = fn_expr.eval()?; // 1.
+                let arg = arg.eval()?; // 2.
 
-                Value::app(fn_expr, arg)
+                Value::eval_app(fn_expr, arg)
             }
         }
     }

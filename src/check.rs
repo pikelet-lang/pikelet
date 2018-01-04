@@ -27,45 +27,60 @@ impl From<EvalError> for TypeError {
     }
 }
 
+/// Contexts
 pub enum Context<'a> {
-    Nil,
-    Cons(&'a Context<'a>, Rc<Value>),
+    //
+    // Γ ::= ε           1. empty context
+    //     | Γ,x:τ       2. context extension
+    //
+    Empty,                           // 1.
+    Cons(&'a Context<'a>, Rc<Type>), // 2.
 }
 
 impl Default for Context<'static> {
     fn default() -> Context<'static> {
-        Context::Nil
+        Context::Empty
     }
 }
 
 impl<'a> Context<'a> {
-    pub fn extend(&'a self, value: Rc<Value>) -> Context<'a> {
-        Context::Cons(self, value)
+    pub fn extend(&'a self, ty: Rc<Type>) -> Context<'a> {
+        Context::Cons(self, ty)
     }
 
-    pub fn lookup(&'a self, x: Debruijn) -> Option<&'a Rc<Value>> {
+    pub fn lookup_ty(&'a self, x: Debruijn) -> Option<&'a Rc<Type>> {
         match (self, x) {
-            (&Context::Nil, _) => None,
+            (&Context::Empty, _) => None,
             (&Context::Cons(_, ref value), Debruijn(0)) => Some(value),
-            (&Context::Cons(parent, _), Debruijn(x)) => parent.lookup(Debruijn(x - 1)),
+            (&Context::Cons(parent, _), Debruijn(x)) => parent.lookup_ty(Debruijn(x - 1)),
         }
     }
 
     /// Check that the type of an expression is compatible with the expected type
     pub fn check(&self, expr: &CTerm, expected_ty: &Type) -> Result<(), TypeError> {
+        // Γ ⊢ e :↓ τ
         match *expr {
-            CTerm::Inf(ref inf_expr) => match self.infer(inf_expr)? {
-                // Ensure that the inferred type matches the expected type
-                ref inf_ty if &**inf_ty == expected_ty => Ok(()),
-                inf_ty => Err(TypeError::Mismatch {
-                    expr: inf_expr.clone(),
-                    found: inf_ty,
-                    expected: Rc::new(expected_ty.clone()),
-                }),
-            },
+            //  1.  Γ ⊢ e :↑ τ
+            // ─────────────────── (CHECK/INFER)
+            //      Γ ⊢ e :↓ τ
+            CTerm::Inf(ref inferrable_expr) => {
+                let inferred_ty = self.infer(inferrable_expr)?; // 1.
+                match &*inferred_ty == expected_ty {
+                    true => Ok(()),
+                    false => Err(TypeError::Mismatch {
+                        expr: inferrable_expr.clone(),
+                        found: inferred_ty,
+                        expected: Rc::new(expected_ty.clone()),
+                    }),
+                }
+            }
+
+            //  1.  Γ, x:τ₁ ⊢ e :↓ τ₂
+            // ─────────────────────────────── (CHECK/LAM)
+            //      Γ ⊢ λx.e :↓ Пx:τ₁.τ₂
             CTerm::Lam(_, ref body_expr) => match *expected_ty {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
-                    self.extend(param_ty.clone()).check(body_expr, ret_ty)
+                    self.extend(param_ty.clone()).check(body_expr, ret_ty) // 1.
                 }
                 _ => Err(TypeError::ExpectedFunction {
                     lam_expr: Rc::new(expr.clone()),
@@ -76,57 +91,74 @@ impl<'a> Context<'a> {
     }
 
     pub fn infer(&self, expr: &ITerm) -> Result<Rc<Type>, TypeError> {
+        // Γ ⊢ e :↑ τ
         match *expr {
+            //  1.  Γ ⊢ ρ₁ :↓ Type
+            //  2.  ρ ⇓ τ
+            //  3.  Γ ⊢ e :↓ τ
+            // ───────────────────────── (INFER/ANN)
+            //      Γ ⊢ (e : ρ) :↑ τ
             ITerm::Ann(ref expr, ref ty) => {
-                // Check that the type is actually at the type level
-                self.check(ty, &Value::Type)?;
-                // Simplify the type
-                let simp_ty = ty.eval()?;
-                // Ensure that the type of the expression is compatible with the
-                // simplified annotation
-                self.check(expr, &simp_ty)?;
+                self.check(ty, &Value::Type)?; // 1.
+                let simp_ty = ty.eval()?; // 2.
+                self.check(expr, &simp_ty)?; // 3.
                 Ok(simp_ty)
             }
+
+            // ─────────────────── (INFER/TYPE)
+            //  Γ ⊢ TYPE :↑ Type
             ITerm::Type => Ok(Rc::new(Value::Type)),
+
+            //  1.  Γ ⊢ ρ :↓ Type
+            //  2.  ρ ⇓ τ₁
+            //  3.  Γ, x:τ₁ ⊢ e :↑ τ₂
+            // ─────────────────────────────── (INFER/LAM)
+            //      Γ ⊢ λx:ρ.e :↑ Пx:τ₁.τ₂
             ITerm::Lam(Named(ref param_name, ref param_ty), ref body_expr) => {
-                // Check that the parameter type is at the type level
-                self.check(param_ty, &Value::Type)?;
-                // Simplify the parameter type
-                let simp_param_ty = param_ty.eval()?;
-                // Infer the body of the lambda
-                let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?;
+                self.check(param_ty, &Value::Type)?; // 1.
+                let simp_param_ty = param_ty.eval()?; // 2.
+                let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?; // 3.
 
                 Ok(Rc::new(Value::Pi(
                     Named(param_name.clone(), simp_param_ty),
                     body_ty, // shift??
                 )))
             }
+
+            //  1.  Γ ⊢ ρ₁ :↓ Type
+            //  2.  ρ₁ ⇓ τ₁
+            //  3.  Γ, x:τ₁ ⊢ ρ₂ :↓ Type
+            // ────────────────────────────── (INFER/PI)
+            //      Γ ⊢ Пx:ρ₁.ρ₂ :↑ Type
             ITerm::Pi(Named(_, ref param_ty), ref body_ty) => {
-                // Check that the parameter type is at the type level
-                self.check(param_ty, &Value::Type)?;
-                // Simplify the parameter type
-                let simp_param_ty = param_ty.eval()?;
-                // Ensure that the body of the pi type is also a type when the
-                // parameter is added to the context
-                self.extend(simp_param_ty).check(body_ty, &Value::Type)?;
-                // If this is true, the type of the pi type is also a type
+                self.check(param_ty, &Value::Type)?; // 1.
+                let simp_param_ty = param_ty.eval()?; // 2.
+                self.extend(simp_param_ty).check(body_ty, &Value::Type)?; // 3.
                 Ok(Rc::new(Value::Type))
             }
-            ITerm::Var(Var::Bound(Named(_, b))) => {
-                Ok(self.lookup(b).expect("ICE: index out of bounds").clone())
-            }
-            ITerm::Var(Var::Free(ref name)) => Err(TypeError::UnboundVariable(name.clone())),
+
+            //  1.  Γ(x) = τ
+            // ────────────────────────────── (INFER/VAR)
+            //      Γ ⊢ x :↑ τ
+            ITerm::Var(ref var) => match *var {
+                Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
+                Var::Bound(Named(_, b)) => match self.lookup_ty(b) {
+                    Some(ty) => Ok(ty.clone()), // 1.
+                    None => panic!("ICE: index out of bounds"),
+                },
+            },
+
+            //  1.  Γ ⊢ e₁ :↑ Пx:τ₁.τ₂
+            //  2.  Γ ⊢ e₂ :↓ τ₁
+            //  3.  τ₂[x↦e₂] ⇓ τ₃
+            // ────────────────────────────── (INFER/APP)
+            //      Γ ⊢ e₁ e₂ :↑ τ₃
             ITerm::App(ref fn_expr, ref arg_expr) => {
-                let fn_type = self.infer(fn_expr)?;
+                let fn_type = self.infer(fn_expr)?; // 1.
                 match *fn_type {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
-                        // Check that the type of the argument matches the
-                        // expected type of the parameter
-                        self.check(arg_expr, param_ty)?;
-                        // Simplify the argument
-                        let simp_arg_expr = arg_expr.eval()?;
-                        // Apply the argument to the body of the pi type
-                        let body_ty = Value::instantiate0(ret_ty, &simp_arg_expr)?;
+                        self.check(arg_expr, param_ty)?; // 2.
+                        let body_ty = Value::instantiate0(ret_ty, &arg_expr.eval()?)?; // 3.
                         Ok(body_ty)
                     }
                     // TODO: More error info
@@ -149,24 +181,24 @@ mod tests {
     }
 
     #[test]
-    fn extend_lookup() {
+    fn extend_lookup_ty() {
         let x = Rc::new(Value::from(SValue::Var(Var::Free(Name(String::from("x"))))));
         let y = Rc::new(Value::from(SValue::Var(Var::Free(Name(String::from("y"))))));
 
-        let context0 = Context::Nil;
+        let context0 = Context::Empty;
 
-        assert_eq!(context0.lookup(Debruijn(0)), None);
+        assert_eq!(context0.lookup_ty(Debruijn(0)), None);
 
         let context1 = context0.extend(x.clone());
 
-        assert_eq!(context1.lookup(Debruijn(0)), Some(&x));
-        assert_eq!(context1.lookup(Debruijn(1)), None);
+        assert_eq!(context1.lookup_ty(Debruijn(0)), Some(&x));
+        assert_eq!(context1.lookup_ty(Debruijn(1)), None);
 
         let context2 = context1.extend(y.clone());
 
-        assert_eq!(context2.lookup(Debruijn(0)), Some(&y));
-        assert_eq!(context2.lookup(Debruijn(1)), Some(&x));
-        assert_eq!(context2.lookup(Debruijn(2)), None);
+        assert_eq!(context2.lookup_ty(Debruijn(0)), Some(&y));
+        assert_eq!(context2.lookup_ty(Debruijn(1)), Some(&x));
+        assert_eq!(context2.lookup_ty(Debruijn(2)), None);
     }
 
     mod infer {
