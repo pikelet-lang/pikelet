@@ -126,6 +126,45 @@ mod tests {
     }
 
     #[test]
+    fn ann() {
+        assert_eq!(
+            parse(r"Type : Type"),
+            ITerm::Ann(
+                Rc::new(CTerm::from(ITerm::Type)),
+                Rc::new(CTerm::from(ITerm::Type)),
+            )
+        );
+    }
+
+    #[test]
+    fn ann_ann_left() {
+        assert_eq!(
+            parse(r"Type : Type : Type"),
+            ITerm::Ann(
+                Rc::new(CTerm::from(ITerm::Ann(
+                    Rc::new(CTerm::from(ITerm::Type)),
+                    Rc::new(CTerm::from(ITerm::Type)),
+                ),),),
+                Rc::new(CTerm::from(ITerm::Type)),
+            )
+        );
+    }
+
+    #[test]
+    fn ann_ann_right() {
+        assert_eq!(
+            parse(r"Type : (Type : Type)"),
+            ITerm::Ann(
+                Rc::new(CTerm::from(ITerm::Type)),
+                Rc::new(CTerm::from(ITerm::Ann(
+                    Rc::new(CTerm::from(ITerm::Type)),
+                    Rc::new(CTerm::from(ITerm::Type)),
+                ),),),
+            )
+        );
+    }
+
+    #[test]
     fn lam_ann() {
         let u = Name(String::from("_"));
         let x = Name(String::from("x"));
@@ -138,7 +177,7 @@ mod tests {
                     Rc::new(CTerm::from(ITerm::Pi(
                         Named(u, Rc::new(CTerm::from(ITerm::Type))),
                         Rc::new(CTerm::from(ITerm::Type)),
-                    )))
+                    ),),),
                 ),
                 Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
@@ -177,7 +216,7 @@ mod tests {
                 Rc::new(ITerm::Lam(
                     Named(y, Rc::new(CTerm::from(ITerm::Type))),
                     Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                )),
+                ),),
             ),
         );
     }
@@ -208,7 +247,7 @@ mod tests {
                     Rc::new(CTerm::from(ITerm::Pi(
                         Named(u, Rc::new(CTerm::from(ITerm::Type))),
                         Rc::new(CTerm::from(ITerm::Type)),
-                    )))
+                    ),),),
                 ),
                 Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(0))))),
             ),
@@ -227,7 +266,7 @@ mod tests {
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(y, Rc::new(CTerm::from(ITerm::Type))),
                     Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                ))),
+                ),),),
             ),
         );
     }
@@ -247,7 +286,7 @@ mod tests {
                         Rc::new(CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))))
                     ),
                     Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                ))),
+                ),),),
             ),
         );
     }
@@ -266,15 +305,15 @@ mod tests {
                     Rc::new(CTerm::from(ITerm::Pi(
                         Named(u, Rc::new(CTerm::from(ITerm::Type))),
                         Rc::new(CTerm::from(ITerm::Type)),
-                    ))),
+                    ),),),
                 ),
                 Rc::new(ITerm::Lam(
                     Named(y.clone(), Rc::new(CTerm::from(ITerm::Type))),
                     Rc::new(ITerm::App(
                         Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
                         Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0))))),
-                    )),
-                )),
+                    ),),
+                ),),
             ),
         );
     }
@@ -294,7 +333,7 @@ mod tests {
                         Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(0)))))),
                     ),
                     Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
-                )),
+                ),),
             )
         );
     }
@@ -311,13 +350,12 @@ mod tests {
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(
                         u,
-                        Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(
-                            a.clone(),
-                            Debruijn(0)
-                        ))))),
+                        Rc::new(CTerm::from(
+                            ITerm::from(Var::Bound(Named(a.clone(), Debruijn(0))))
+                        )),
                     ),
                     Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(1)))))),
-                ))),
+                ),),),
             ),
         );
     }
