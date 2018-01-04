@@ -17,7 +17,7 @@ fn main() {
         match rl.readline(PROMPT) {
             Ok(line) => {
                 use lambdapi::check::Context;
-                use lambdapi::pretty::{pretty_ann, Prec};
+                use lambdapi::pretty;
                 use lambdapi::parse::Term;
 
                 rl.add_history_entry(&line);
@@ -59,7 +59,7 @@ fn main() {
                 };
 
                 let evaluated = core.eval().unwrap();
-                let doc = pretty_ann(Prec::NO_WRAP, &*evaluated, &*inferred);
+                let doc = pretty::pretty_ann(pretty::Context::default(), &*evaluated, &*inferred);
 
                 println!("{}", doc.pretty(80));
             }

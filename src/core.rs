@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use pretty::{Prec, ToDoc};
+use pretty::{self, ToDoc};
 use var::{Debruijn, Name, Named, Var};
 
 /// Checkable terms
@@ -34,7 +34,7 @@ impl From<Var> for CTerm {
 
 impl fmt::Display for CTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(Prec::NO_WRAP)
+        self.to_doc(pretty::Context::default())
             .group()
             .render_fmt(f.width().unwrap_or(80), f)
     }
@@ -87,7 +87,7 @@ impl From<Var> for ITerm {
 
 impl fmt::Display for ITerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(Prec::NO_WRAP)
+        self.to_doc(pretty::Context::default())
             .group()
             .render_fmt(f.width().unwrap_or(80), f)
     }
@@ -126,7 +126,7 @@ impl From<Var> for Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(Prec::NO_WRAP)
+        self.to_doc(pretty::Context::default())
             .group()
             .render_fmt(f.width().unwrap_or(80), f)
     }
@@ -149,7 +149,7 @@ impl From<Var> for SValue {
 
 impl fmt::Display for SValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(Prec::NO_WRAP)
+        self.to_doc(pretty::Context::default())
             .group()
             .render_fmt(f.width().unwrap_or(80), f)
     }
@@ -323,10 +323,9 @@ impl ITerm {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
 
-                Ok(Rc::new(Value::Lam(
-                    Named(name.clone(), Some(param_ty)),
-                    body_expr,
-                )))
+                Ok(Rc::new(
+                    Value::Lam(Named(name.clone(), Some(param_ty)), body_expr),
+                ))
             }
 
             //  1.  ρ₁ ⇓ τ₁
@@ -456,7 +455,7 @@ mod tests {
                 Rc::new(Value::Lam(
                     Named(x.clone(), Some(ty)),
                     Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
-                )),
+                ),),
             );
         }
 
@@ -470,7 +469,7 @@ mod tests {
                 Rc::new(Value::Pi(
                     Named(x.clone(), ty),
                     Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
-                )),
+                ),),
             );
         }
 
@@ -493,9 +492,9 @@ mod tests {
                         Rc::new(Value::from(SValue::App(
                             Rc::new(SValue::from(Var::Bound(Named(x, Debruijn(1))))),
                             Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
-                        ))),
-                    )),
-                )),
+                        ),),),
+                    ),),
+                ),),
             );
         }
 
@@ -518,9 +517,9 @@ mod tests {
                         Rc::new(Value::from(SValue::App(
                             Rc::new(SValue::from(Var::Bound(Named(x, Debruijn(1))))),
                             Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
-                        ))),
-                    )),
-                )),
+                        ),),),
+                    ),),
+                ),),
             );
         }
     }
