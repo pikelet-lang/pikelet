@@ -6,6 +6,25 @@ mod grammar {
     include!(concat!(env!("OUT_DIR"), "/parse/grammar.rs"));
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseError(pub String);
+
+#[derive(Debug, Clone)]
+pub enum ReplCommand {
+    NoOp,
+    Help,
+    Eval(Box<Term>),
+    TypeOf(Box<Term>),
+}
+
+impl FromStr for ReplCommand {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<ReplCommand, ParseError> {
+        grammar::parse_ReplCommand(src).map_err(|e| ParseError(format!("{:?}", e)))
+    }
+}
+
 /// The AST of the concrete syntax
 #[derive(Debug, Clone)]
 pub enum Term {
@@ -18,15 +37,17 @@ pub enum Term {
 }
 
 impl FromStr for Term {
-    type Err = String;
+    type Err = ParseError;
 
-    fn from_str(src: &str) -> Result<Term, String> {
-        grammar::parse_Term(src).map_err(|e| format!("{:?}", e))
+    fn from_str(src: &str) -> Result<Term, ParseError> {
+        grammar::parse_Term(src).map_err(|e| ParseError(format!("{:?}", e)))
     }
 }
 
 // FIXME: use a proper error type
-//
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToCoreError;
+
 // enum ToCoreError {
 //     /// Tried to convert a checkable term to an inferrable term
 //     CTerm(CTerm),
@@ -39,7 +60,7 @@ impl Term {
     /// Convert a parsed term into an inferrable term.
     ///
     /// This may fail if the term is not fully inferrable.
-    pub fn to_core(&self) -> Result<core::ITerm, ()> {
+    pub fn to_core(&self) -> Result<core::ITerm, ToCoreError> {
         use std::rc::Rc;
 
         use core::{CTerm, ITerm};
@@ -70,7 +91,7 @@ impl Term {
                             Rc::new(body),
                         ))
                     }
-                    Err(()) => return Err(None),
+                    Err(ToCoreError) => return Err(None),
                 },
                 Term::Lam(ref n, None, ref body) => {
                     let name = Name(n.clone());
@@ -92,13 +113,12 @@ impl Term {
                 Term::App(ref f, ref x) => match f.to_core() {
                     Ok(f) => Ok(ITerm::App(Rc::new(f), Rc::new(to_cterm(x)?))),
                     // Type annotations needed!
-                    Err(()) => Err(None),
+                    Err(ToCoreError) => Err(None),
                 },
             }
         }
 
-        // FIXME: use a proper error type
-        to_iterm(self).map_err(|_| ())
+        to_iterm(self).map_err(|_| ToCoreError)
     }
 }
 
@@ -350,9 +370,10 @@ mod tests {
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(
                         u,
-                        Rc::new(CTerm::from(
-                            ITerm::from(Var::Bound(Named(a.clone(), Debruijn(0))))
-                        )),
+                        Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(
+                            a.clone(),
+                            Debruijn(0)
+                        ))))),
                     ),
                     Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(1)))))),
                 ),),),

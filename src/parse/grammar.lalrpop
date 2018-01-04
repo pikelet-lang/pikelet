@@ -1,6 +1,13 @@
-use parse::Term;
+use parse::{Term, ReplCommand};
 
 grammar();
+
+pub ReplCommand : ReplCommand = {
+    "" => ReplCommand::NoOp,
+    ":h" => ReplCommand::Help,
+    <Term> => ReplCommand::Eval(Box::new(<>)),
+    ":t" <Term> => ReplCommand::TypeOf(Box::new(<>)),
+};
 
 pub Term: Term = {
     LamTerm,
