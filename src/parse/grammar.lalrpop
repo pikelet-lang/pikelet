@@ -12,7 +12,7 @@ pub Term: Term = {
 
 AbsTerm : Term = {
     AppTerm,
-    <b: LamBind> "," <body: AbsTerm> => Term::Lam(b.0, b.1, Box::new(body)),
+    <b: LamBind> "=>" <body: AbsTerm> => Term::Lam(b.0, b.1, Box::new(body)),
     <b: PiBind> "->" <body: AbsTerm> => Term::Pi(b.0, b.1, Box::new(body)),
 };
 
