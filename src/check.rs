@@ -207,6 +207,7 @@ mod tests {
         #[test]
         fn free() {
             let ctx = Context::default();
+
             let given_expr = r"x";
             let x = Name(String::from("x"));
 
@@ -219,6 +220,7 @@ mod tests {
         #[test]
         fn ty() {
             let ctx = Context::default();
+
             let given_expr = r"Type";
             let expected_ty = r"Type";
 
@@ -231,6 +233,7 @@ mod tests {
         #[test]
         fn ann_ty_id() {
             let ctx = Context::default();
+
             let given_expr = r"(\a => a) : Type -> Type";
             let expected_ty = r"Type -> Type";
 
@@ -243,6 +246,7 @@ mod tests {
         #[test]
         fn ann_arrow_ty_id() {
             let ctx = Context::default();
+
             let given_expr = r"(\a => a) : (Type -> Type) -> (Type -> Type)";
             let expected_ty = r"(Type -> Type) -> (Type -> Type)";
 
@@ -255,6 +259,7 @@ mod tests {
         #[test]
         fn ann_id_as_ty() {
             let ctx = Context::default();
+
             let given_expr = r"(\a => a) : Type";
 
             match ctx.infer(&parse(given_expr)) {
@@ -266,6 +271,7 @@ mod tests {
         #[test]
         fn app() {
             let ctx = Context::default();
+
             let given_expr = r"(\a : Type => a) Type";
             let expected_ty = r"Type";
 
@@ -278,6 +284,7 @@ mod tests {
         #[test]
         fn app_ty() {
             let ctx = Context::default();
+
             let given_expr = r"Type Type";
 
             assert_eq!(
@@ -289,6 +296,7 @@ mod tests {
         #[test]
         fn lam() {
             let ctx = Context::default();
+
             let given_expr = r"\a : Type => a";
             let expected_ty = r"[a : Type] -> Type";
 
@@ -301,6 +309,7 @@ mod tests {
         #[test]
         fn pi() {
             let ctx = Context::default();
+
             let given_expr = r"[a : Type] -> a";
             let expected_ty = r"Type";
 
@@ -313,6 +322,7 @@ mod tests {
         #[test]
         fn id() {
             let ctx = Context::default();
+
             let given_expr = r"\a : Type => \x : a => x";
             let expected_ty = r"[a : Type] -> a -> a";
 
@@ -325,6 +335,7 @@ mod tests {
         #[test]
         fn id_ann() {
             let ctx = Context::default();
+
             let given_expr = r"(\a => \x : a => x) : [A : Type] -> A -> A";
             let expected_ty = r"[a : Type] -> a -> a";
 
@@ -337,6 +348,7 @@ mod tests {
         #[test]
         fn id_app_ty_arr_ty() {
             let ctx = Context::default();
+
             let given_expr = r"(\a : Type => \x : a => x) Type (Type -> Type)";
             let expected_ty = r"Type -> Type";
 
@@ -349,8 +361,9 @@ mod tests {
         #[test]
         fn id_app_arr_pi_ty() {
             let ctx = Context::default();
+
             let given_expr = r"(\a : Type => \x : a => x) (Type -> Type) (\x : Type => Type)";
-            let expected_ty = r"\x : Type, Type";
+            let expected_ty = r"\x : Type => Type";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -361,6 +374,7 @@ mod tests {
         #[test]
         fn apply() {
             let ctx = Context::default();
+
             let given_expr = r"
                 \a : Type => \b : Type =>
                     \f : (a -> b) => \x : a => f x
@@ -377,16 +391,11 @@ mod tests {
         }
 
         #[test]
-        fn constant() {
+        fn const_() {
             let ctx = Context::default();
-            let given_expr = r"
-                \a : Type => \b : Type =>
-                    \f : (a -> b) => \x : a => \y : b => x
-            ";
-            let expected_ty = r"
-                [a : Type] -> [b : Type] ->
-                    (a -> b) -> a -> b -> a
-            ";
+
+            let given_expr = r"\a : Type => \b : Type => \x : a => \y : b => x";
+            let expected_ty = r"[a : Type] -> [b : Type] -> a -> b -> a";
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)).unwrap(),
@@ -397,6 +406,7 @@ mod tests {
         #[test]
         fn compose() {
             let ctx = Context::default();
+
             let given_expr = r"
                 \a : Type => \b : Type => \c : Type =>
                     \f : (b -> c) => \g : (a -> b) => \x : a =>
