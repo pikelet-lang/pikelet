@@ -422,5 +422,79 @@ mod tests {
                 parse(expected_ty).eval().unwrap(),
             );
         }
+
+        mod church_encodings {
+            use super::*;
+
+            #[test]
+            fn and() {
+                let ctx = Context::default();
+
+                let given_expr = r"\p : Type => \q : Type => [c : Type] -> (p -> q -> c) -> c";
+                let expected_ty = r"Type -> Type -> Type";
+
+                assert_eq!(
+                    ctx.infer(&parse(given_expr)).unwrap(),
+                    parse(expected_ty).eval().unwrap(),
+                );
+            }
+
+            #[test]
+            fn and_intro() {
+                let ctx = Context::default();
+
+                let given_expr = r"
+                    \p : Type => \q : Type => \x : p => \y : q =>
+                        \c : Type => \f : (p -> q -> c) => f x y
+                ";
+                let expected_ty = r"
+                    [p : Type] -> [q : Type] -> p -> q ->
+                        ([c : Type] -> (p -> q -> c) -> c)
+                ";
+
+                assert_eq!(
+                    ctx.infer(&parse(given_expr)).unwrap(),
+                    parse(expected_ty).eval().unwrap(),
+                );
+            }
+
+            #[test]
+            fn and_proj_left() {
+                let ctx = Context::default();
+
+                let given_expr = r"
+                    \p : Type => \q : Type => \pq : [c : Type] -> (p -> q -> c) -> c =>
+                        pq p (\x => \y => x)
+                ";
+                let expected_ty = r"
+                    [p : Type] -> [q : Type] ->
+                        ([c : Type] -> (p -> q -> c) -> c) -> p
+                ";
+
+                assert_eq!(
+                    ctx.infer(&parse(given_expr)).unwrap(),
+                    parse(expected_ty).eval().unwrap(),
+                );
+            }
+
+            #[test]
+            fn and_proj_right() {
+                let ctx = Context::default();
+
+                let given_expr = r"
+                    \p : Type => \q : Type => \pq : [c : Type] -> (p -> q -> c) -> c =>
+                        pq q (\x => \y => y)
+                ";
+                let expected_ty = r"
+                    [p : Type] -> [q : Type] ->
+                        ([c : Type] -> (p -> q -> c) -> c) -> q
+                ";
+
+                assert_eq!(
+                    ctx.infer(&parse(given_expr)).unwrap(),
+                    parse(expected_ty).eval().unwrap(),
+                );
+            }
+        }
     }
 }
