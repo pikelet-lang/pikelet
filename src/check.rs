@@ -182,8 +182,8 @@ mod tests {
 
     #[test]
     fn extend_lookup_ty() {
-        let x = Rc::new(Value::from(SValue::Var(Var::Free(Name(String::from("x"))))));
-        let y = Rc::new(Value::from(SValue::Var(Var::Free(Name(String::from("y"))))));
+        let x = Rc::new(Value::from(SValue::Var(Var::Free(Name::user("x")))));
+        let y = Rc::new(Value::from(SValue::Var(Var::Free(Name::user("y")))));
 
         let context0 = Context::Empty;
 
@@ -209,7 +209,7 @@ mod tests {
             let ctx = Context::default();
 
             let given_expr = r"x";
-            let x = Name(String::from("x"));
+            let x = Name::user("x");
 
             assert_eq!(
                 ctx.infer(&parse(given_expr)),

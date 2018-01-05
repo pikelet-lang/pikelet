@@ -323,9 +323,10 @@ impl ITerm {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
 
-                Ok(Rc::new(
-                    Value::Lam(Named(name.clone(), Some(param_ty)), body_expr),
-                ))
+                Ok(Rc::new(Value::Lam(
+                    Named(name.clone(), Some(param_ty)),
+                    body_expr,
+                )))
             }
 
             //  1.  ρ₁ ⇓ τ₁
@@ -430,7 +431,7 @@ mod tests {
 
         #[test]
         fn var() {
-            let x = Name(String::from("x"));
+            let x = Name::user("x");
 
             assert_eq!(
                 parse(r"x").eval().unwrap(),
@@ -447,7 +448,7 @@ mod tests {
 
         #[test]
         fn lam() {
-            let x = Name(String::from("x"));
+            let x = Name::user("x");
             let ty = Rc::new(Value::Type);
 
             assert_eq!(
@@ -461,7 +462,7 @@ mod tests {
 
         #[test]
         fn pi() {
-            let x = Name(String::from("x"));
+            let x = Name::user("x");
             let ty = Rc::new(Value::Type);
 
             assert_eq!(
@@ -475,11 +476,10 @@ mod tests {
 
         #[test]
         fn lam_app() {
-            let x = Name(String::from("x"));
-            let y = Name(String::from("y"));
-            let u = Name(String::from("_"));
+            let x = Name::user("x");
+            let y = Name::user("y");
             let ty = Rc::new(Value::Type);
-            let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
+            let ty_arr = Rc::new(Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()));
 
             assert_eq!(
                 parse(r"\x : (Type -> Type) => \y : Type => x y")
@@ -500,11 +500,10 @@ mod tests {
 
         #[test]
         fn pi_app() {
-            let x = Name(String::from("x"));
-            let y = Name(String::from("y"));
-            let u = Name(String::from("_"));
+            let x = Name::user("x");
+            let y = Name::user("y");
             let ty = Rc::new(Value::Type);
-            let ty_arr = Rc::new(Value::Pi(Named(u, ty.clone()), ty.clone()));
+            let ty_arr = Rc::new(Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()));
 
             assert_eq!(
                 parse(r"[x : (Type -> Type)] -> \y : Type => x y")

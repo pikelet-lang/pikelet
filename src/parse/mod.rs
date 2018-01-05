@@ -76,14 +76,14 @@ impl Term {
 
         fn to_iterm(tm: &Term) -> Result<ITerm, Option<CTerm>> {
             match *tm {
-                Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name(x.clone())))),
+                Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone())))),
                 Term::Type => Ok(ITerm::Type),
                 Term::Ann(ref e, ref t) => {
                     Ok(ITerm::Ann(Rc::new(to_cterm(e)?), Rc::new(to_cterm(t)?)))
                 }
                 Term::Lam(ref n, Some(ref t), ref body) => match body.to_core() {
                     Ok(mut body) => {
-                        let name = Name(n.clone());
+                        let name = Name::User(n.clone());
                         body.abstract0(&name);
 
                         Ok(ITerm::Lam(
@@ -94,7 +94,7 @@ impl Term {
                     Err(ToCoreError) => return Err(None),
                 },
                 Term::Lam(ref n, None, ref body) => {
-                    let name = Name(n.clone());
+                    let name = Name::User(n.clone());
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
@@ -102,8 +102,8 @@ impl Term {
                 }
                 Term::Pi(ref n, ref t, ref body) => {
                     let name = match *n {
-                        Some(ref n) => Name(n.clone()),
-                        None => Name(String::from("_")),
+                        Some(ref n) => Name::User(n.clone()),
+                        None => Name::Abstract,
                     };
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn var() {
-        assert_eq!(parse(r"x"), ITerm::from(Var::Free(Name(String::from("x")))));
+        assert_eq!(parse(r"x"), ITerm::from(Var::Free(Name::user("x"))));
     }
 
     #[test]
@@ -186,8 +186,7 @@ mod tests {
 
     #[test]
     fn lam_ann() {
-        let u = Name(String::from("_"));
-        let x = Name(String::from("x"));
+        let x = Name::user("x");
 
         assert_eq!(
             parse(r"\x : Type -> Type => x"),
@@ -195,7 +194,7 @@ mod tests {
                 Named(
                     x.clone(),
                     Rc::new(CTerm::from(ITerm::Pi(
-                        Named(u, Rc::new(CTerm::from(ITerm::Type))),
+                        Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
                         Rc::new(CTerm::from(ITerm::Type)),
                     ),),),
                 ),
@@ -206,8 +205,8 @@ mod tests {
 
     #[test]
     fn lam() {
-        let x = Name(String::from("x"));
-        let y = Name(String::from("y"));
+        let x = Name::user("x");
+        let y = Name::user("y");
 
         assert_eq!(
             parse(r"\x : (\y => y) => x"),
@@ -226,8 +225,8 @@ mod tests {
 
     #[test]
     fn lam_lam_ann() {
-        let x = Name(String::from("x"));
-        let y = Name(String::from("y"));
+        let x = Name::user("x");
+        let y = Name::user("y");
 
         assert_eq!(
             parse(r"\x : Type => \y : Type => x"),
@@ -243,12 +242,10 @@ mod tests {
 
     #[test]
     fn arrow() {
-        let u = Name(String::from("_"));
-
         assert_eq!(
             parse(r"Type -> Type"),
             ITerm::Pi(
-                Named(u, Rc::new(CTerm::from(ITerm::Type))),
+                Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Type)),
             ),
         );
@@ -256,8 +253,7 @@ mod tests {
 
     #[test]
     fn pi() {
-        let u = Name(String::from("_"));
-        let x = Name(String::from("x"));
+        let x = Name::user("x");
 
         assert_eq!(
             parse(r"[x : Type -> Type] -> x"),
@@ -265,7 +261,7 @@ mod tests {
                 Named(
                     x.clone(),
                     Rc::new(CTerm::from(ITerm::Pi(
-                        Named(u, Rc::new(CTerm::from(ITerm::Type))),
+                        Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
                         Rc::new(CTerm::from(ITerm::Type)),
                     ),),),
                 ),
@@ -276,8 +272,8 @@ mod tests {
 
     #[test]
     fn pi_pi() {
-        let x = Name(String::from("x"));
-        let y = Name(String::from("y"));
+        let x = Name::user("x");
+        let y = Name::user("y");
 
         assert_eq!(
             parse(r"[x : Type] -> [y : Type] -> x"),
@@ -293,8 +289,7 @@ mod tests {
 
     #[test]
     fn pi_arrow() {
-        let x = Name(String::from("x"));
-        let u = Name(String::from("_"));
+        let x = Name::user("x");
 
         assert_eq!(
             parse(r"[x : Type] -> x -> x"),
@@ -302,7 +297,7 @@ mod tests {
                 Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(
-                        u,
+                        Name::Abstract,
                         Rc::new(CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))))
                     ),
                     Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
@@ -313,9 +308,8 @@ mod tests {
 
     #[test]
     fn lam_app() {
-        let x = Name(String::from("x"));
-        let y = Name(String::from("y"));
-        let u = Name(String::from("_"));
+        let x = Name::user("x");
+        let y = Name::user("y");
 
         assert_eq!(
             parse(r"\x : (Type -> Type) => \y : Type => x y"),
@@ -323,7 +317,7 @@ mod tests {
                 Named(
                     x.clone(),
                     Rc::new(CTerm::from(ITerm::Pi(
-                        Named(u, Rc::new(CTerm::from(ITerm::Type))),
+                        Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
                         Rc::new(CTerm::from(ITerm::Type)),
                     ),),),
                 ),
@@ -340,8 +334,8 @@ mod tests {
 
     #[test]
     fn id() {
-        let x = Name(String::from("x"));
-        let a = Name(String::from("a"));
+        let x = Name::user("x");
+        let a = Name::user("a");
 
         assert_eq!(
             parse(r"\a : Type => \x : a => x"),
@@ -360,8 +354,7 @@ mod tests {
 
     #[test]
     fn id_ty() {
-        let a = Name(String::from("a"));
-        let u = Name(String::from("u"));
+        let a = Name::user("a");
 
         assert_eq!(
             parse(r"[a : Type] -> a -> a"),
@@ -369,7 +362,7 @@ mod tests {
                 Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
                 Rc::new(CTerm::from(ITerm::Pi(
                     Named(
-                        u,
+                        Name::Abstract,
                         Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(
                             a.clone(),
                             Debruijn(0)

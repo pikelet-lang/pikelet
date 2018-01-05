@@ -135,7 +135,7 @@ pub fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
 ) -> Doc<'a, BoxDoc<'a>> {
     parens_if(
         Prec::PI < context.prec,
-        if name.0 == "_" {
+        if name == &Name::Abstract {
             Doc::group(
                 ann.to_doc(context.with_prec(Prec::APP))
                     .append(Doc::space())
