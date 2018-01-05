@@ -57,7 +57,7 @@ pub enum Name {
     /// [_ : t1] -> [_ : t2] -> t3
     /// ```
     ///
-    /// They should never actually appear in terms.
+    /// They should never actually appear as variables in terms.
     ///
     /// Comparing two abstract names will always return false because we cannot
     /// be sure what they actually refer to. For example, in the type
