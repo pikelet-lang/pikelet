@@ -396,32 +396,32 @@ mod tests {
         #[test]
         fn lam_app() {
             assert_eq!(
-                parse(r"\x : (Type -> Type) => x Type"),
-                parse(r"\a : (Type -> Type) => a Type")
+                parse(r"\x : Type -> Type => x Type"),
+                parse(r"\a : Type -> Type => a Type")
             );
         }
 
         #[test]
         fn pi_app() {
             assert_eq!(
-                parse(r"[x : (Type -> Type)] -> x Type"),
-                parse(r"[a : (Type -> Type)] -> a Type")
+                parse(r"[x : Type -> Type] -> x Type"),
+                parse(r"[a : Type -> Type] -> a Type")
             );
         }
 
         #[test]
         fn lam_lam_app() {
             assert_eq!(
-                parse(r"\x : (Type -> Type) => \y : Type => x y"),
-                parse(r"\a : (Type -> Type) => \b : Type => a b"),
+                parse(r"\x : Type -> Type => \y : Type => x y"),
+                parse(r"\a : Type -> Type => \b : Type => a b"),
             );
         }
 
         #[test]
         fn pi_pi_app() {
             assert_eq!(
-                parse(r"[x : (Type -> Type)] -> [y : Type] -> x y"),
-                parse(r"[a : (Type -> Type)] -> [b : Type] -> a b"),
+                parse(r"[x : Type -> Type] -> [y : Type] -> x y"),
+                parse(r"[a : Type -> Type] -> [b : Type] -> a b"),
             );
         }
     }
@@ -482,7 +482,7 @@ mod tests {
             let ty_arr = Rc::new(Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()));
 
             assert_eq!(
-                parse(r"\x : (Type -> Type) => \y : Type => x y")
+                parse(r"\x : Type -> Type => \y : Type => x y")
                     .eval()
                     .unwrap(),
                 Rc::new(Value::Lam(
@@ -506,7 +506,7 @@ mod tests {
             let ty_arr = Rc::new(Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()));
 
             assert_eq!(
-                parse(r"[x : (Type -> Type)] -> \y : Type => x y")
+                parse(r"[x : Type -> Type] -> \y : Type => x y")
                     .eval()
                     .unwrap(),
                 Rc::new(Value::Pi(
