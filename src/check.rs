@@ -172,7 +172,7 @@ impl<'a> Context<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::SValue;
+    use core::Neutral;
 
     fn parse(src: &str) -> ITerm {
         use parse::Term;
@@ -182,8 +182,8 @@ mod tests {
 
     #[test]
     fn extend_lookup_ty() {
-        let x = Rc::new(Value::from(SValue::Var(Var::Free(Name::user("x")))));
-        let y = Rc::new(Value::from(SValue::Var(Var::Free(Name::user("y")))));
+        let x = Rc::new(Value::from(Neutral::Var(Var::Free(Name::user("x")))));
+        let y = Rc::new(Value::from(Neutral::Var(Var::Free(Name::user("y")))));
 
         let context0 = Context::Empty;
 

@@ -93,7 +93,7 @@ impl fmt::Display for ITerm {
     }
 }
 
-/// Fully evaluated or stuck values
+/// Normal forms
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
     /// The type of types
@@ -102,25 +102,25 @@ pub enum Value {
     Lam(Named<Option<Rc<Value>>>, Rc<Value>),
     /// A pi type
     Pi(Named<Rc<Value>>, Rc<Value>),
-    /// Stuck values
-    Stuck(Rc<SValue>),
+    /// Neutral values
+    Neutral(Rc<Neutral>),
 }
 
-impl From<Rc<SValue>> for Value {
-    fn from(src: Rc<SValue>) -> Value {
-        Value::Stuck(src)
+impl From<Rc<Neutral>> for Value {
+    fn from(src: Rc<Neutral>) -> Value {
+        Value::Neutral(src)
     }
 }
 
-impl From<SValue> for Value {
-    fn from(src: SValue) -> Value {
+impl From<Neutral> for Value {
+    fn from(src: Neutral) -> Value {
         Value::from(Rc::new(src))
     }
 }
 
 impl From<Var> for Value {
     fn from(src: Var) -> Value {
-        Value::from(SValue::from(src))
+        Value::from(Neutral::from(src))
     }
 }
 
@@ -132,22 +132,24 @@ impl fmt::Display for Value {
     }
 }
 
-/// 'Stuck' values that cannot be reduced further
+/// Neutral forms
+///
+/// https://cs.stackexchange.com/questions/69434/intuitive-explanation-of-neutral-normal-form-in-lambda-calculus
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum SValue {
-    /// Attempted to evaluate a variable
+pub enum Neutral {
+    /// Variabls
     Var(Var),
-    /// Tried to apply a value to a stuck term
-    App(Rc<SValue>, Rc<Value>),
+    /// Application of normal forms to neutral forms
+    App(Rc<Neutral>, Rc<Value>),
 }
 
-impl From<Var> for SValue {
-    fn from(src: Var) -> SValue {
-        SValue::Var(src)
+impl From<Var> for Neutral {
+    fn from(src: Var) -> Neutral {
+        Neutral::Var(src)
     }
 }
 
-impl fmt::Display for SValue {
+impl fmt::Display for Neutral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Context::default())
             .group()
@@ -206,7 +208,7 @@ impl Value {
     pub fn eval_app(fn_expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
         match *fn_expr {
             Value::Lam(_, ref body) => Value::instantiate0(body, &arg),
-            Value::Stuck(ref stuck) => Ok(Rc::new(Value::from(SValue::App(stuck.clone(), arg)))),
+            Value::Neutral(ref stuck) => Ok(Rc::new(Value::from(Neutral::App(stuck.clone(), arg)))),
             _ => Err(EvalError::ArgAppliedToNonFunction {
                 expr: fn_expr.clone(),
                 arg: arg,
@@ -240,28 +242,28 @@ impl Value {
 
                 Ok(Rc::new(Value::Pi(Named(name.clone(), param_ty), body)))
             }
-            Value::Stuck(ref stuck) => SValue::instantiate_at(stuck, level, x),
+            Value::Neutral(ref stuck) => Neutral::instantiate_at(stuck, level, x),
         }
     }
 }
 
-impl SValue {
-    pub fn instantiate0(val: &Rc<SValue>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        SValue::instantiate_at(val, Debruijn::zero(), &x)
+impl Neutral {
+    pub fn instantiate0(val: &Rc<Neutral>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
+        Neutral::instantiate_at(val, Debruijn::zero(), &x)
     }
 
     pub fn instantiate_at(
-        val: &Rc<SValue>,
+        val: &Rc<Neutral>,
         level: Debruijn,
         x: &Rc<Value>,
     ) -> Result<Rc<Value>, EvalError> {
         match **val {
-            SValue::Var(ref var) => match var.instantiate_at(level) {
+            Neutral::Var(ref var) => match var.instantiate_at(level) {
                 true => Ok(x.clone()),
                 false => Ok(Rc::new(Value::from(val.clone()))),
             },
-            SValue::App(ref fn_expr, ref arg_expr) => {
-                let fn_expr = SValue::instantiate_at(fn_expr, level, x)?;
+            Neutral::App(ref fn_expr, ref arg_expr) => {
+                let fn_expr = Neutral::instantiate_at(fn_expr, level, x)?;
                 let arg = Value::instantiate_at(arg_expr, level, x)?;
 
                 Value::eval_app(fn_expr, arg)
@@ -489,8 +491,8 @@ mod tests {
                     Named(x.clone(), Some(ty_arr)),
                     Rc::new(Value::Lam(
                         Named(y.clone(), Some(ty)),
-                        Rc::new(Value::from(SValue::App(
-                            Rc::new(SValue::from(Var::Bound(Named(x, Debruijn(1))))),
+                        Rc::new(Value::from(Neutral::App(
+                            Rc::new(Neutral::from(Var::Bound(Named(x, Debruijn(1))))),
                             Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
                         ),),),
                     ),),
@@ -513,8 +515,8 @@ mod tests {
                     Named(x.clone(), ty_arr),
                     Rc::new(Value::Lam(
                         Named(y.clone(), Some(ty)),
-                        Rc::new(Value::from(SValue::App(
-                            Rc::new(SValue::from(Var::Bound(Named(x, Debruijn(1))))),
+                        Rc::new(Value::from(Neutral::App(
+                            Rc::new(Neutral::from(Var::Bound(Named(x, Debruijn(1))))),
                             Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
                         ),),),
                     ),),

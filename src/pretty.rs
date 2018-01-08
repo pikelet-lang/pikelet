@@ -1,6 +1,6 @@
 extern crate pretty;
 
-use core::{CTerm, ITerm, SValue, Value};
+use core::{CTerm, ITerm, Neutral, Value};
 use var::{Name, Named};
 
 use self::pretty::{BoxDoc, Doc};
@@ -211,19 +211,19 @@ impl ToDoc for Value {
                 pretty_lam(context, n, a.as_ref().map(|a| &**a), &**b)
             }
             Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, &**a, &**b),
-            Value::Stuck(ref svalue) => svalue.to_doc(context),
+            Value::Neutral(ref svalue) => svalue.to_doc(context),
         }
     }
 }
 
-impl ToDoc for SValue {
+impl ToDoc for Neutral {
     fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
         match *self {
-            SValue::Var(ref var) => match context.debug_indices {
+            Neutral::Var(ref var) => match context.debug_indices {
                 true => Doc::text(format!("{:#}", var)),
                 false => Doc::as_string(var),
             },
-            SValue::App(ref fn_term, ref arg_term) => pretty_app(context, &**fn_term, &**arg_term),
+            Neutral::App(ref fn_term, ref arg_term) => pretty_app(context, &**fn_term, &**arg_term),
         }
     }
 }
