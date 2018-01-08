@@ -286,11 +286,11 @@ impl CTerm {
         match *self {
             CTerm::Inf(ref inf) => inf.eval(),
 
-            //     e ⇓ v
-            // ───────────── (EVAL/LAM)
-            //  λx.e ⇓ λx.v
+            //  1. e ⇓ v
+            // ───────────────── (EVAL/LAM)
+            //     λx.e ⇓ λx.v
             CTerm::Lam(Named(ref name, ()), ref body_expr) => {
-                let body_expr = body_expr.eval()?;
+                let body_expr = body_expr.eval()?; // 1.
 
                 Ok(Rc::new(Value::Lam(Named(name.clone(), None), body_expr)))
             }
