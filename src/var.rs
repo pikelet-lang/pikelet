@@ -111,18 +111,23 @@ impl<T: PartialEq> PartialEq for Named<T> {
 /// ```
 ///
 /// [debruijn index]: https://en.wikipedia.org/wiki/De_Bruijn_index
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Debruijn(pub u32);
 
 impl Debruijn {
     /// The debruijn index of the current binder
-    pub fn zero() -> Debruijn {
-        Debruijn(0)
-    }
+    pub const ZERO: Debruijn = Debruijn(0);
 
     /// Move the current debruijn index into an inner binder
     pub fn succ(self) -> Debruijn {
         Debruijn(self.0 + 1)
+    }
+
+    pub fn pred(self) -> Option<Debruijn> {
+        match self {
+            Debruijn::ZERO => None,
+            Debruijn(i) => Some(Debruijn(i - 1)),
+        }
     }
 }
 

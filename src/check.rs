@@ -51,8 +51,10 @@ impl<'a> Context<'a> {
     pub fn lookup_ty(&'a self, x: Debruijn) -> Option<&'a Rc<Type>> {
         match (self, x) {
             (&Context::Empty, _) => None,
-            (&Context::Cons(_, ref value), Debruijn(0)) => Some(value),
-            (&Context::Cons(parent, _), Debruijn(x)) => parent.lookup_ty(Debruijn(x - 1)),
+            (&Context::Cons(parent, ref value), x) => match x.pred() {
+                None => Some(value),
+                Some(x) => parent.lookup_ty(x),
+            },
         }
     }
 

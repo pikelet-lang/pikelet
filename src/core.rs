@@ -164,7 +164,7 @@ pub type Type = Value;
 
 impl CTerm {
     pub fn abstract0(&mut self, name: &Name) {
-        self.abstract_at(Debruijn::zero(), name);
+        self.abstract_at(Debruijn::ZERO, name);
     }
 
     pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
@@ -177,7 +177,7 @@ impl CTerm {
 
 impl ITerm {
     pub fn abstract0(&mut self, name: &Name) {
-        self.abstract_at(Debruijn::zero(), name);
+        self.abstract_at(Debruijn::ZERO, name);
     }
 
     pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
@@ -217,7 +217,7 @@ impl Value {
     }
 
     pub fn instantiate0(val: &Rc<Value>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        Value::instantiate_at(val, Debruijn::zero(), &x)
+        Value::instantiate_at(val, Debruijn::ZERO, &x)
     }
 
     pub fn instantiate_at(
@@ -249,7 +249,7 @@ impl Value {
 
 impl Neutral {
     pub fn instantiate0(val: &Rc<Neutral>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        Neutral::instantiate_at(val, Debruijn::zero(), &x)
+        Neutral::instantiate_at(val, Debruijn::ZERO, &x)
     }
 
     pub fn instantiate_at(
