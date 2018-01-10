@@ -1,6 +1,6 @@
 extern crate pretty;
 
-use core::{CTerm, ITerm, Neutral, Value};
+use core::{CTerm, ITerm, Neutral, RcCTerm, RcITerm, RcNeutral, RcValue, Value};
 use var::{Name, Named};
 
 use self::pretty::{BoxDoc, Doc};
@@ -184,22 +184,34 @@ impl ToDoc for CTerm {
         match *self {
             CTerm::Inf(ref iterm) => iterm.to_doc(context),
             CTerm::Lam(Named(ref name, ()), ref body) => {
-                pretty_lam(context, name, None::<&ITerm>, &**body)
+                pretty_lam(context, name, None::<&ITerm>, body)
             }
         }
+    }
+}
+
+impl ToDoc for RcCTerm {
+    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+        self.inner.to_doc(context)
     }
 }
 
 impl ToDoc for ITerm {
     fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
         match *self {
-            ITerm::Ann(ref expr, ref ty) => pretty_ann(context, &**expr, &**ty),
+            ITerm::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
             ITerm::Type => pretty_ty(),
             ITerm::Var(ref var) => Doc::as_string(var),
-            ITerm::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, Some(&**a), &**b),
-            ITerm::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, &**a, &**b),
-            ITerm::App(ref f, ref a) => pretty_app(context, &**f, &**a),
+            ITerm::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, Some(a), b),
+            ITerm::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
+            ITerm::App(ref f, ref a) => pretty_app(context, f, a),
         }
+    }
+}
+
+impl ToDoc for RcITerm {
+    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+        self.inner.to_doc(context)
     }
 }
 
@@ -207,12 +219,16 @@ impl ToDoc for Value {
     fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
         match *self {
             Value::Type => pretty_ty(),
-            Value::Lam(Named(ref n, ref a), ref b) => {
-                pretty_lam(context, n, a.as_ref().map(|a| &**a), &**b)
-            }
-            Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, &**a, &**b),
+            Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
+            Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
             Value::Neutral(ref svalue) => svalue.to_doc(context),
         }
+    }
+}
+
+impl ToDoc for RcValue {
+    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+        self.inner.to_doc(context)
     }
 }
 
@@ -223,7 +239,13 @@ impl ToDoc for Neutral {
                 true => Doc::text(format!("{:#}", var)),
                 false => Doc::as_string(var),
             },
-            Neutral::App(ref fn_term, ref arg_term) => pretty_app(context, &**fn_term, &**arg_term),
+            Neutral::App(ref fn_term, ref arg_term) => pretty_app(context, fn_term, arg_term),
         }
+    }
+}
+
+impl ToDoc for RcNeutral {
+    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+        self.inner.to_doc(context)
     }
 }

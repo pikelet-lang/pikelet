@@ -60,36 +60,31 @@ impl Term {
     /// Convert a parsed term into an inferrable term.
     ///
     /// This may fail if the term is not fully inferrable.
-    pub fn to_core(&self) -> Result<core::ITerm, ToCoreError> {
-        use std::rc::Rc;
-
-        use core::{CTerm, ITerm};
+    pub fn to_core(&self) -> Result<core::RcITerm, ToCoreError> {
+        use core::{CTerm, ITerm, RcCTerm, RcITerm};
         use var::{Name, Named, Var};
 
-        fn to_cterm<T>(tm: &Term) -> Result<CTerm, Option<T>> {
-            match to_iterm(tm) {
-                Ok(itm) => Ok(CTerm::Inf(Rc::new(itm))),
-                Err(Some(etm)) => Ok(etm),
+        fn to_cterm<T>(term: &Term) -> Result<RcCTerm, Option<T>> {
+            match to_iterm(term) {
+                Ok(iterm) => Ok(CTerm::Inf(RcITerm::from(iterm)).into()),
+                Err(Some(cterm)) => Ok(cterm),
                 Err(None) => Err(None),
             }
         }
 
-        fn to_iterm(tm: &Term) -> Result<ITerm, Option<CTerm>> {
-            match *tm {
-                Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone())))),
-                Term::Type => Ok(ITerm::Type),
+        fn to_iterm(term: &Term) -> Result<RcITerm, Option<RcCTerm>> {
+            match *term {
+                Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone()))).into()),
+                Term::Type => Ok(ITerm::Type.into()),
                 Term::Ann(ref e, ref t) => {
-                    Ok(ITerm::Ann(Rc::new(to_cterm(e)?), Rc::new(to_cterm(t)?)))
+                    Ok(ITerm::Ann(to_cterm(e)?.into(), to_cterm(t)?.into()).into())
                 }
                 Term::Lam(ref n, Some(ref t), ref body) => match body.to_core() {
                     Ok(mut body) => {
                         let name = Name::User(n.clone());
                         body.abstract0(&name);
 
-                        Ok(ITerm::Lam(
-                            Named(name, Rc::new(to_cterm(t)?)),
-                            Rc::new(body),
-                        ))
+                        Ok(ITerm::Lam(Named(name, to_cterm(t)?.into()), body.into()).into())
                     }
                     Err(ToCoreError) => return Err(None),
                 },
@@ -98,7 +93,7 @@ impl Term {
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
-                    Err(Some(CTerm::Lam(Named(name, ()), Rc::new(body))))
+                    Err(Some(CTerm::Lam(Named(name, ()), body.into()).into()).into())
                 }
                 Term::Pi(ref n, ref t, ref body) => {
                     let name = match *n {
@@ -108,10 +103,10 @@ impl Term {
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
-                    Ok(ITerm::Pi(Named(name, Rc::new(to_cterm(t)?)), Rc::new(body)))
+                    Ok(ITerm::Pi(Named(name, to_cterm(t)?.into()), body.into()).into())
                 }
                 Term::App(ref f, ref x) => match f.to_core() {
-                    Ok(f) => Ok(ITerm::App(Rc::new(f), Rc::new(to_cterm(x)?))),
+                    Ok(f) => Ok(ITerm::App(f.into(), to_cterm(x)?.into()).into()),
                     // Type annotations needed!
                     Err(ToCoreError) => Err(None),
                 },
@@ -124,25 +119,23 @@ impl Term {
 
 #[cfg(test)]
 mod tests {
-    use std::rc::Rc;
-
-    use core::{CTerm, ITerm};
+    use core::{CTerm, ITerm, RcITerm};
     use var::{Debruijn, Name, Named, Var};
 
     use super::*;
 
-    fn parse(src: &str) -> ITerm {
+    fn parse(src: &str) -> RcITerm {
         Term::to_core(&src.parse().unwrap()).unwrap()
     }
 
     #[test]
     fn var() {
-        assert_eq!(parse(r"x"), ITerm::from(Var::Free(Name::user("x"))));
+        assert_eq!(parse(r"x"), ITerm::from(Var::Free(Name::user("x"))).into());
     }
 
     #[test]
     fn ty() {
-        assert_eq!(parse(r"Type"), ITerm::Type);
+        assert_eq!(parse(r"Type"), ITerm::Type.into());
     }
 
     #[test]
@@ -150,9 +143,9 @@ mod tests {
         assert_eq!(
             parse(r"Type : Type"),
             ITerm::Ann(
-                Rc::new(CTerm::from(ITerm::Type)),
-                Rc::new(CTerm::from(ITerm::Type)),
-            )
+                CTerm::from(ITerm::Type).into(),
+                CTerm::from(ITerm::Type).into(),
+            ).into(),
         );
     }
 
@@ -161,12 +154,12 @@ mod tests {
         assert_eq!(
             parse(r"Type : Type : Type"),
             ITerm::Ann(
-                Rc::new(CTerm::from(ITerm::Ann(
-                    Rc::new(CTerm::from(ITerm::Type)),
-                    Rc::new(CTerm::from(ITerm::Type)),
-                ),),),
-                Rc::new(CTerm::from(ITerm::Type)),
-            )
+                CTerm::from(ITerm::Ann(
+                    CTerm::from(ITerm::Type).into(),
+                    CTerm::from(ITerm::Type).into(),
+                )).into(),
+                CTerm::from(ITerm::Type).into(),
+            ).into(),
         );
     }
 
@@ -175,12 +168,12 @@ mod tests {
         assert_eq!(
             parse(r"Type : (Type : Type)"),
             ITerm::Ann(
-                Rc::new(CTerm::from(ITerm::Type)),
-                Rc::new(CTerm::from(ITerm::Ann(
-                    Rc::new(CTerm::from(ITerm::Type)),
-                    Rc::new(CTerm::from(ITerm::Type)),
-                ),),),
-            )
+                CTerm::from(ITerm::Type).into(),
+                CTerm::from(ITerm::Ann(
+                    CTerm::from(ITerm::Type).into(),
+                    CTerm::from(ITerm::Type).into(),
+                )).into(),
+            ).into(),
         );
     }
 
@@ -193,13 +186,13 @@ mod tests {
             ITerm::Lam(
                 Named(
                     x.clone(),
-                    Rc::new(CTerm::from(ITerm::Pi(
-                        Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
-                        Rc::new(CTerm::from(ITerm::Type)),
-                    ),),),
+                    CTerm::from(ITerm::Pi(
+                        Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
+                        CTerm::from(ITerm::Type).into(),
+                    )).into(),
                 ),
-                Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
-            ),
+                ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+            ).into(),
         );
     }
 
@@ -213,13 +206,13 @@ mod tests {
             ITerm::Lam(
                 Named(
                     x.clone(),
-                    Rc::new(CTerm::Lam(
+                    CTerm::Lam(
                         Named(y.clone(), ()),
-                        Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0)))))
-                    )),
+                        CTerm::from(Var::Bound(Named(y, Debruijn(0)))).into(),
+                    ).into(),
                 ),
-                Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
-            ),
+                ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+            ).into(),
         );
     }
 
@@ -231,12 +224,12 @@ mod tests {
         assert_eq!(
             parse(r"\x : Type => \y : Type => x"),
             ITerm::Lam(
-                Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(ITerm::Lam(
-                    Named(y, Rc::new(CTerm::from(ITerm::Type))),
-                    Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                ),),
-            ),
+                Named(x.clone(), CTerm::from(ITerm::Type).into()),
+                ITerm::Lam(
+                    Named(y, CTerm::from(ITerm::Type).into()),
+                    ITerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                ).into(),
+            ).into(),
         );
     }
 
@@ -245,9 +238,9 @@ mod tests {
         assert_eq!(
             parse(r"Type -> Type"),
             ITerm::Pi(
-                Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(CTerm::from(ITerm::Type)),
-            ),
+                Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
+                CTerm::from(ITerm::Type).into(),
+            ).into(),
         );
     }
 
@@ -260,13 +253,13 @@ mod tests {
             ITerm::Pi(
                 Named(
                     x.clone(),
-                    Rc::new(CTerm::from(ITerm::Pi(
-                        Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
-                        Rc::new(CTerm::from(ITerm::Type)),
-                    ),),),
+                    CTerm::from(ITerm::Pi(
+                        Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
+                        CTerm::from(ITerm::Type).into(),
+                    )).into(),
                 ),
-                Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(0))))),
-            ),
+                CTerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+            ).into(),
         );
     }
 
@@ -278,12 +271,12 @@ mod tests {
         assert_eq!(
             parse(r"[x : Type] -> [y : Type] -> x"),
             ITerm::Pi(
-                Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(CTerm::from(ITerm::Pi(
-                    Named(y, Rc::new(CTerm::from(ITerm::Type))),
-                    Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                ),),),
-            ),
+                Named(x.clone(), CTerm::from(ITerm::Type).into()),
+                CTerm::from(ITerm::Pi(
+                    Named(y, CTerm::from(ITerm::Type).into()),
+                    CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                )).into(),
+            ).into(),
         );
     }
 
@@ -294,15 +287,15 @@ mod tests {
         assert_eq!(
             parse(r"[x : Type] -> x -> x"),
             ITerm::Pi(
-                Named(x.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(CTerm::from(ITerm::Pi(
+                Named(x.clone(), CTerm::from(ITerm::Type).into()),
+                CTerm::from(ITerm::Pi(
                     Named(
                         Name::Abstract,
-                        Rc::new(CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))))
+                        CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))).into(),
                     ),
-                    Rc::new(CTerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                ),),),
-            ),
+                    CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                )).into(),
+            ).into(),
         );
     }
 
@@ -316,19 +309,19 @@ mod tests {
             ITerm::Lam(
                 Named(
                     x.clone(),
-                    Rc::new(CTerm::from(ITerm::Pi(
-                        Named(Name::Abstract, Rc::new(CTerm::from(ITerm::Type))),
-                        Rc::new(CTerm::from(ITerm::Type)),
-                    ),),),
+                    CTerm::from(ITerm::Pi(
+                        Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
+                        CTerm::from(ITerm::Type).into(),
+                    )).into(),
                 ),
-                Rc::new(ITerm::Lam(
-                    Named(y.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                    Rc::new(ITerm::App(
-                        Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(1))))),
-                        Rc::new(CTerm::from(Var::Bound(Named(y, Debruijn(0))))),
-                    ),),
-                ),),
-            ),
+                ITerm::Lam(
+                    Named(y.clone(), CTerm::from(ITerm::Type).into()),
+                    ITerm::App(
+                        ITerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                        CTerm::from(Var::Bound(Named(y, Debruijn(0)))).into(),
+                    ).into(),
+                ).into(),
+            ).into(),
         );
     }
 
@@ -340,15 +333,15 @@ mod tests {
         assert_eq!(
             parse(r"\a : Type => \x : a => x"),
             ITerm::Lam(
-                Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(ITerm::Lam(
+                Named(a.clone(), CTerm::from(ITerm::Type).into()),
+                ITerm::Lam(
                     Named(
                         x.clone(),
-                        Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(0)))))),
+                        CTerm::from(Var::Bound(Named(a, Debruijn(0)))).into(),
                     ),
-                    Rc::new(ITerm::from(Var::Bound(Named(x, Debruijn(0))))),
-                ),),
-            )
+                    ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                ).into(),
+            ).into(),
         );
     }
 
@@ -359,18 +352,15 @@ mod tests {
         assert_eq!(
             parse(r"[a : Type] -> a -> a"),
             ITerm::Pi(
-                Named(a.clone(), Rc::new(CTerm::from(ITerm::Type))),
-                Rc::new(CTerm::from(ITerm::Pi(
+                Named(a.clone(), CTerm::from(ITerm::Type).into()),
+                CTerm::from(ITerm::Pi(
                     Named(
                         Name::Abstract,
-                        Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(
-                            a.clone(),
-                            Debruijn(0)
-                        ))))),
+                        CTerm::from(Var::Bound(Named(a.clone(), Debruijn(0)))).into(),
                     ),
-                    Rc::new(CTerm::from(ITerm::from(Var::Bound(Named(a, Debruijn(1)))))),
-                ),),),
-            ),
+                    CTerm::from(Var::Bound(Named(a, Debruijn(1)))).into(),
+                )).into(),
+            ).into(),
         );
     }
 

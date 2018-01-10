@@ -11,18 +11,18 @@ use var::{Debruijn, Name, Named, Var};
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CTerm {
     /// Inferrable terms
-    Inf(Rc<ITerm>),
+    Inf(RcITerm),
     /// Lambdas without an explicit type annotation
     ///
     /// ```text
     /// \x => t
     /// ```
-    Lam(Named<()>, Rc<CTerm>),
+    Lam(Named<()>, RcCTerm),
 }
 
 impl From<ITerm> for CTerm {
     fn from(src: ITerm) -> CTerm {
-        CTerm::Inf(Rc::new(src))
+        CTerm::Inf(src.into())
     }
 }
 
@@ -40,6 +40,25 @@ impl fmt::Display for CTerm {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub struct RcCTerm {
+    pub inner: Rc<CTerm>,
+}
+
+impl From<CTerm> for RcCTerm {
+    fn from(src: CTerm) -> RcCTerm {
+        RcCTerm {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl fmt::Debug for RcCTerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
 /// Inferrable terms
 ///
 /// These terms can be fully inferred without needing to resort to type
@@ -51,7 +70,7 @@ pub enum ITerm {
     /// ```text
     /// e : t
     /// ```
-    Ann(Rc<CTerm>, Rc<CTerm>),
+    Ann(RcCTerm, RcCTerm),
     /// Type of types
     Type,
     /// A variable
@@ -64,19 +83,19 @@ pub enum ITerm {
     /// ```text
     /// \x : t => t
     /// ```
-    Lam(Named<Rc<CTerm>>, Rc<ITerm>),
+    Lam(Named<RcCTerm>, RcITerm),
     /// Fully annotated pi types
     ///
     /// ```text
     /// [x : t] -> t
     /// ```
-    Pi(Named<Rc<CTerm>>, Rc<CTerm>),
+    Pi(Named<RcCTerm>, RcCTerm),
     /// Term application
     ///
     /// ```text
     /// f x
     /// ```
-    App(Rc<ITerm>, Rc<CTerm>),
+    App(RcITerm, RcCTerm),
 }
 
 impl From<Var> for ITerm {
@@ -93,28 +112,47 @@ impl fmt::Display for ITerm {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub struct RcITerm {
+    pub inner: Rc<ITerm>,
+}
+
+impl From<ITerm> for RcITerm {
+    fn from(src: ITerm) -> RcITerm {
+        RcITerm {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl fmt::Debug for RcITerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
 /// Normal forms
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
     /// The type of types
     Type,
     /// A partially evaluated lambda
-    Lam(Named<Option<Rc<Value>>>, Rc<Value>),
+    Lam(Named<Option<RcValue>>, RcValue),
     /// A pi type
-    Pi(Named<Rc<Value>>, Rc<Value>),
+    Pi(Named<RcValue>, RcValue),
     /// Neutral values
-    Neutral(Rc<Neutral>),
+    Neutral(RcNeutral),
 }
 
-impl From<Rc<Neutral>> for Value {
-    fn from(src: Rc<Neutral>) -> Value {
+impl From<RcNeutral> for Value {
+    fn from(src: RcNeutral) -> Value {
         Value::Neutral(src)
     }
 }
 
 impl From<Neutral> for Value {
     fn from(src: Neutral) -> Value {
-        Value::from(Rc::new(src))
+        Value::from(RcNeutral::from(src))
     }
 }
 
@@ -132,6 +170,25 @@ impl fmt::Display for Value {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub struct RcValue {
+    pub inner: Rc<Value>,
+}
+
+impl From<Value> for RcValue {
+    fn from(src: Value) -> RcValue {
+        RcValue {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl fmt::Debug for RcValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
 /// Neutral forms
 ///
 /// https://cs.stackexchange.com/questions/69434/intuitive-explanation-of-neutral-normal-form-in-lambda-calculus
@@ -140,7 +197,7 @@ pub enum Neutral {
     /// Variabls
     Var(Var),
     /// Application of normal forms to neutral forms
-    App(Rc<Neutral>, Rc<Value>),
+    App(RcNeutral, RcValue),
 }
 
 impl From<Var> for Neutral {
@@ -157,58 +214,80 @@ impl fmt::Display for Neutral {
     }
 }
 
-/// Types are at the term level, so this is just an alias
-pub type Type = Value;
+#[derive(Clone, PartialEq, Eq)]
+pub struct RcNeutral {
+    pub inner: Rc<Neutral>,
+}
 
-// Abstraction and instantiation
-
-impl CTerm {
-    pub fn abstract0(&mut self, name: &Name) {
-        self.abstract_at(Debruijn::ZERO, name);
-    }
-
-    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            CTerm::Inf(ref mut i) => Rc::make_mut(i).abstract_at(level, name),
-            CTerm::Lam(_, ref mut body) => Rc::make_mut(body).abstract_at(level.succ(), name),
+impl From<Neutral> for RcNeutral {
+    fn from(src: Neutral) -> RcNeutral {
+        RcNeutral {
+            inner: Rc::new(src),
         }
     }
 }
 
-impl ITerm {
+impl fmt::Debug for RcNeutral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
+    }
+}
+
+/// Types are at the term level, so this is just an alias
+pub type Type = Value;
+
+/// Types are at the term level, so this is just an alias
+pub type RcType = RcValue;
+
+// Abstraction and instantiation
+
+impl RcCTerm {
     pub fn abstract0(&mut self, name: &Name) {
         self.abstract_at(Debruijn::ZERO, name);
     }
 
     pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
+        match *Rc::make_mut(&mut self.inner) {
+            CTerm::Inf(ref mut i) => i.abstract_at(level, name),
+            CTerm::Lam(_, ref mut body) => body.abstract_at(level.succ(), name),
+        }
+    }
+}
+
+impl RcITerm {
+    pub fn abstract0(&mut self, name: &Name) {
+        self.abstract_at(Debruijn::ZERO, name);
+    }
+
+    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
+        match *Rc::make_mut(&mut self.inner) {
             ITerm::Ann(ref mut expr, ref mut ty) => {
-                Rc::make_mut(expr).abstract_at(level, name);
-                Rc::make_mut(ty).abstract_at(level, name);
+                expr.abstract_at(level, name);
+                ty.abstract_at(level, name);
             }
             ITerm::Lam(Named(_, ref mut ty), ref mut body) => {
-                Rc::make_mut(ty).abstract_at(level, name);
-                Rc::make_mut(body).abstract_at(level.succ(), name);
+                ty.abstract_at(level, name);
+                body.abstract_at(level.succ(), name);
             }
             ITerm::Pi(Named(_, ref mut ty), ref mut body) => {
-                Rc::make_mut(ty).abstract_at(level, name);
-                Rc::make_mut(body).abstract_at(level.succ(), name);
+                ty.abstract_at(level, name);
+                body.abstract_at(level.succ(), name);
             }
             ITerm::Var(ref mut var) => var.abstract_at(level, name),
             ITerm::Type => {}
             ITerm::App(ref mut f, ref mut x) => {
-                Rc::make_mut(f).abstract_at(level, name);
-                Rc::make_mut(x).abstract_at(level, name);
+                f.abstract_at(level, name);
+                x.abstract_at(level, name);
             }
         }
     }
 }
 
-impl Value {
-    pub fn eval_app(fn_expr: Rc<Value>, arg: Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        match *fn_expr {
-            Value::Lam(_, ref body) => Value::instantiate0(body, &arg),
-            Value::Neutral(ref stuck) => Ok(Rc::new(Value::from(Neutral::App(stuck.clone(), arg)))),
+impl RcValue {
+    pub fn eval_app(fn_expr: RcValue, arg: RcValue) -> Result<RcValue, EvalError> {
+        match *fn_expr.inner {
+            Value::Lam(_, ref body) => RcValue::instantiate0(body, &arg),
+            Value::Neutral(ref stuck) => Ok(Value::from(Neutral::App(stuck.clone(), arg)).into()),
             _ => Err(EvalError::ArgAppliedToNonFunction {
                 expr: fn_expr.clone(),
                 arg: arg,
@@ -216,57 +295,57 @@ impl Value {
         }
     }
 
-    pub fn instantiate0(val: &Rc<Value>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        Value::instantiate_at(val, Debruijn::ZERO, &x)
+    pub fn instantiate0(val: &RcValue, x: &RcValue) -> Result<RcValue, EvalError> {
+        RcValue::instantiate_at(val, Debruijn::ZERO, &x)
     }
 
     pub fn instantiate_at(
-        val: &Rc<Value>,
+        val: &RcValue,
         level: Debruijn,
-        x: &Rc<Value>,
-    ) -> Result<Rc<Value>, EvalError> {
-        match **val {
+        x: &RcValue,
+    ) -> Result<RcValue, EvalError> {
+        match *val.inner {
             Value::Type => Ok(val.clone()),
             Value::Lam(Named(ref name, ref param_ty), ref body) => {
                 let param_ty = match param_ty.as_ref() {
                     None => None,
-                    Some(ref param_ty) => Some(Value::instantiate_at(param_ty, level, x)?),
+                    Some(ref param_ty) => Some(RcValue::instantiate_at(param_ty, level, x)?),
                 };
-                let body = Value::instantiate_at(body, level.succ(), x)?;
+                let body = RcValue::instantiate_at(body, level.succ(), x)?;
 
-                Ok(Rc::new(Value::Lam(Named(name.clone(), param_ty), body)))
+                Ok(Value::Lam(Named(name.clone(), param_ty), body).into())
             }
             Value::Pi(Named(ref name, ref param_ty), ref body) => {
-                let param_ty = Value::instantiate_at(param_ty, level, x)?;
-                let body = Value::instantiate_at(body, level.succ(), x)?;
+                let param_ty = RcValue::instantiate_at(param_ty, level, x)?;
+                let body = RcValue::instantiate_at(body, level.succ(), x)?;
 
-                Ok(Rc::new(Value::Pi(Named(name.clone(), param_ty), body)))
+                Ok(Value::Pi(Named(name.clone(), param_ty), body).into())
             }
-            Value::Neutral(ref stuck) => Neutral::instantiate_at(stuck, level, x),
+            Value::Neutral(ref stuck) => RcNeutral::instantiate_at(stuck, level, x),
         }
     }
 }
 
-impl Neutral {
-    pub fn instantiate0(val: &Rc<Neutral>, x: &Rc<Value>) -> Result<Rc<Value>, EvalError> {
-        Neutral::instantiate_at(val, Debruijn::ZERO, &x)
+impl RcNeutral {
+    pub fn instantiate0(val: &RcNeutral, x: &RcValue) -> Result<RcValue, EvalError> {
+        RcNeutral::instantiate_at(val, Debruijn::ZERO, &x)
     }
 
     pub fn instantiate_at(
-        val: &Rc<Neutral>,
+        val: &RcNeutral,
         level: Debruijn,
-        x: &Rc<Value>,
-    ) -> Result<Rc<Value>, EvalError> {
-        match **val {
+        x: &RcValue,
+    ) -> Result<RcValue, EvalError> {
+        match *val.inner {
             Neutral::Var(ref var) => match var.instantiate_at(level) {
                 true => Ok(x.clone()),
-                false => Ok(Rc::new(Value::from(val.clone()))),
+                false => Ok(Value::from(val.clone()).into()),
             },
             Neutral::App(ref fn_expr, ref arg_expr) => {
-                let fn_expr = Neutral::instantiate_at(fn_expr, level, x)?;
-                let arg = Value::instantiate_at(arg_expr, level, x)?;
+                let fn_expr = RcNeutral::instantiate_at(fn_expr, level, x)?;
+                let arg = RcValue::instantiate_at(arg_expr, level, x)?;
 
-                Value::eval_app(fn_expr, arg)
+                RcValue::eval_app(fn_expr, arg)
             }
         }
     }
@@ -277,13 +356,13 @@ impl Neutral {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum EvalError {
     /// Attempted to apply an argument to a term that is not a function
-    ArgAppliedToNonFunction { arg: Rc<Value>, expr: Rc<Value> },
+    ArgAppliedToNonFunction { arg: RcValue, expr: RcValue },
 }
 
-impl CTerm {
-    pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
+impl RcCTerm {
+    pub fn eval(&self) -> Result<RcValue, EvalError> {
         // e ⇓ v
-        match *self {
+        match *self.inner {
             CTerm::Inf(ref inf) => inf.eval(),
 
             //  1. e ⇓ v
@@ -292,16 +371,16 @@ impl CTerm {
             CTerm::Lam(Named(ref name, ()), ref body_expr) => {
                 let body_expr = body_expr.eval()?; // 1.
 
-                Ok(Rc::new(Value::Lam(Named(name.clone(), None), body_expr)))
+                Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
             }
         }
     }
 }
 
-impl ITerm {
-    pub fn eval(&self) -> Result<Rc<Value>, EvalError> {
+impl RcITerm {
+    pub fn eval(&self) -> Result<RcValue, EvalError> {
         // e ⇓ v
-        match *self {
+        match *self.inner {
             //  1.  e ⇓ v
             // ────────────────── (EVAL/ANN)
             //      e : ρ ⇓ v
@@ -311,11 +390,11 @@ impl ITerm {
 
             // ───────────── (EVAL/TYPE)
             //  Type ⇓ Type
-            ITerm::Type => Ok(Rc::new(Value::Type)),
+            ITerm::Type => Ok(Value::Type.into()),
 
             // ─────── (EVAL/Var)
             //  x ⇓ x
-            ITerm::Var(ref var) => Ok(Rc::new(Value::from(var.clone()))),
+            ITerm::Var(ref var) => Ok(Value::from(var.clone()).into()),
 
             //  1.  ρ ⇓ τ
             //  2.  e ⇓ v
@@ -325,10 +404,7 @@ impl ITerm {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
 
-                Ok(Rc::new(Value::Lam(
-                    Named(name.clone(), Some(param_ty)),
-                    body_expr,
-                )))
+                Ok(Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into())
             }
 
             //  1.  ρ₁ ⇓ τ₁
@@ -339,7 +415,7 @@ impl ITerm {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
 
-                Ok(Rc::new(Value::Pi(Named(name.clone(), param_ty), body_expr)))
+                Ok(Value::Pi(Named(name.clone(), param_ty), body_expr).into())
             }
 
             //  1.  e₁ ⇓ λx.v₁
@@ -350,7 +426,7 @@ impl ITerm {
                 let fn_expr = fn_expr.eval()?; // 1.
                 let arg = arg.eval()?; // 2.
 
-                Value::eval_app(fn_expr, arg)
+                RcValue::eval_app(fn_expr, arg)
             }
         }
     }
@@ -360,7 +436,7 @@ impl ITerm {
 mod tests {
     use super::*;
 
-    fn parse(src: &str) -> ITerm {
+    fn parse(src: &str) -> RcITerm {
         use parse::Term;
 
         Term::to_core(&src.parse().unwrap()).unwrap()
@@ -437,13 +513,13 @@ mod tests {
 
             assert_eq!(
                 parse(r"x").eval().unwrap(),
-                Rc::new(Value::from(Var::Free(x))),
+                Value::from(Var::Free(x)).into(),
             );
         }
 
         #[test]
         fn ty() {
-            let ty = Rc::new(Value::Type);
+            let ty: RcValue = Value::Type.into();
 
             assert_eq!(parse(r"Type").eval().unwrap(), ty);
         }
@@ -451,28 +527,28 @@ mod tests {
         #[test]
         fn lam() {
             let x = Name::user("x");
-            let ty = Rc::new(Value::Type);
+            let ty: RcValue = Value::Type.into();
 
             assert_eq!(
                 parse(r"\x : Type => x").eval().unwrap(),
-                Rc::new(Value::Lam(
+                Value::Lam(
                     Named(x.clone(), Some(ty)),
-                    Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
-                ),),
+                    Value::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                ).into(),
             );
         }
 
         #[test]
         fn pi() {
             let x = Name::user("x");
-            let ty = Rc::new(Value::Type);
+            let ty: RcValue = Value::Type.into();
 
             assert_eq!(
                 parse(r"[x : Type] -> x").eval().unwrap(),
-                Rc::new(Value::Pi(
+                Value::Pi(
                     Named(x.clone(), ty),
-                    Rc::new(Value::from(Var::Bound(Named(x, Debruijn(0))))),
-                ),),
+                    Value::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                ).into(),
             );
         }
 
@@ -480,23 +556,23 @@ mod tests {
         fn lam_app() {
             let x = Name::user("x");
             let y = Name::user("y");
-            let ty = Rc::new(Value::Type);
-            let ty_arr = Rc::new(Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()));
+            let ty: RcValue = Value::Type.into();
+            let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
             assert_eq!(
                 parse(r"\x : Type -> Type => \y : Type => x y")
                     .eval()
                     .unwrap(),
-                Rc::new(Value::Lam(
+                Value::Lam(
                     Named(x.clone(), Some(ty_arr)),
-                    Rc::new(Value::Lam(
+                    Value::Lam(
                         Named(y.clone(), Some(ty)),
-                        Rc::new(Value::from(Neutral::App(
-                            Rc::new(Neutral::from(Var::Bound(Named(x, Debruijn(1))))),
-                            Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
-                        ),),),
-                    ),),
-                ),),
+                        Value::from(Neutral::App(
+                            Neutral::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                            Value::from(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        )).into(),
+                    ).into(),
+                ).into(),
             );
         }
 
@@ -504,23 +580,23 @@ mod tests {
         fn pi_app() {
             let x = Name::user("x");
             let y = Name::user("y");
-            let ty = Rc::new(Value::Type);
-            let ty_arr = Rc::new(Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()));
+            let ty: RcValue = Value::Type.into();
+            let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
             assert_eq!(
                 parse(r"[x : Type -> Type] -> \y : Type => x y")
                     .eval()
                     .unwrap(),
-                Rc::new(Value::Pi(
+                Value::Pi(
                     Named(x.clone(), ty_arr),
-                    Rc::new(Value::Lam(
+                    Value::Lam(
                         Named(y.clone(), Some(ty)),
-                        Rc::new(Value::from(Neutral::App(
-                            Rc::new(Neutral::from(Var::Bound(Named(x, Debruijn(1))))),
-                            Rc::new(Value::from(Var::Bound(Named(y, Debruijn(0))))),
-                        ),),),
-                    ),),
-                ),),
+                        Value::from(Neutral::App(
+                            Neutral::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                            Value::from(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        )).into(),
+                    ).into(),
+                ).into(),
             );
         }
     }

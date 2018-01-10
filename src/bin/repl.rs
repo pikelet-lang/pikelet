@@ -65,7 +65,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             let core = term.to_core()?;
             let inferred = Context::default().infer(&core)?;
             let evaluated = core.eval()?;
-            let doc = pretty::pretty_ann(pretty::Context::default(), &*evaluated, &*inferred);
+            let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
         }
