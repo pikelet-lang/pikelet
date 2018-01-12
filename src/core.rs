@@ -40,25 +40,6 @@ impl fmt::Display for CTerm {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct RcCTerm {
-    pub inner: Rc<CTerm>,
-}
-
-impl From<CTerm> for RcCTerm {
-    fn from(src: CTerm) -> RcCTerm {
-        RcCTerm {
-            inner: Rc::new(src),
-        }
-    }
-}
-
-impl fmt::Debug for RcCTerm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.inner, f)
-    }
-}
-
 /// Inferrable terms
 ///
 /// These terms can be fully inferred without needing to resort to type
@@ -112,25 +93,6 @@ impl fmt::Display for ITerm {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct RcITerm {
-    pub inner: Rc<ITerm>,
-}
-
-impl From<ITerm> for RcITerm {
-    fn from(src: ITerm) -> RcITerm {
-        RcITerm {
-            inner: Rc::new(src),
-        }
-    }
-}
-
-impl fmt::Debug for RcITerm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.inner, f)
-    }
-}
-
 /// Normal forms
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
@@ -170,25 +132,6 @@ impl fmt::Display for Value {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct RcValue {
-    pub inner: Rc<Value>,
-}
-
-impl From<Value> for RcValue {
-    fn from(src: Value) -> RcValue {
-        RcValue {
-            inner: Rc::new(src),
-        }
-    }
-}
-
-impl fmt::Debug for RcValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.inner, f)
-    }
-}
-
 /// Neutral forms
 ///
 /// https://cs.stackexchange.com/questions/69434/intuitive-explanation-of-neutral-normal-form-in-lambda-calculus
@@ -214,24 +157,35 @@ impl fmt::Display for Neutral {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct RcNeutral {
-    pub inner: Rc<Neutral>,
-}
+// Wrapper types
 
-impl From<Neutral> for RcNeutral {
-    fn from(src: Neutral) -> RcNeutral {
-        RcNeutral {
-            inner: Rc::new(src),
+macro_rules! make_wrapper {
+    ($name:ident, $inner:ty) => {
+        #[derive(Clone, PartialEq, Eq)]
+        pub struct $name {
+            pub inner: Rc<$inner>,
         }
-    }
+
+        impl From<$inner> for $name {
+            fn from(src: $inner) -> $name {
+                $name {
+                    inner: Rc::new(src),
+                }
+            }
+        }
+
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Debug::fmt(&self.inner, f)
+            }
+        }
+    };
 }
 
-impl fmt::Debug for RcNeutral {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.inner, f)
-    }
-}
+make_wrapper!(RcCTerm, CTerm);
+make_wrapper!(RcITerm, ITerm);
+make_wrapper!(RcValue, Value);
+make_wrapper!(RcNeutral, Neutral);
 
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
