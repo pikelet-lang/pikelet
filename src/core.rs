@@ -367,7 +367,7 @@ impl RcCTerm {
 
             //  1. e ⇓ v
             // ───────────────── (EVAL/LAM)
-            //     λx.e ⇓ λx.v
+            //     λx.e ⇓ λx→v
             CTerm::Lam(Named(ref name, ()), ref body_expr) => {
                 let body_expr = body_expr.eval()?; // 1.
 
@@ -399,7 +399,7 @@ impl RcITerm {
             //  1.  ρ ⇓ τ
             //  2.  e ⇓ v
             // ──────────────────────── (EVAL/LAM-ANN)
-            //      λx:ρ.e ⇓ λx:τ.v
+            //      λx:ρ→e ⇓ λx:τ→v
             ITerm::Lam(Named(ref name, ref param_ty), ref body_expr) => {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
@@ -410,7 +410,7 @@ impl RcITerm {
             //  1.  ρ₁ ⇓ τ₁
             //  2.  ρ₂ ⇓ τ₂
             // ─────────────────────────── (EVAL/PI-ANN)
-            //      Пx:ρ₁.ρ₂ ⇓ Пx:τ₁.τ₂
+            //      (x:ρ₁)→ρ₂ ⇓ (x:τ₁)→τ₂
             ITerm::Pi(Named(ref name, ref param_ty), ref body_expr) => {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
@@ -418,7 +418,7 @@ impl RcITerm {
                 Ok(Value::Pi(Named(name.clone(), param_ty), body_expr).into())
             }
 
-            //  1.  e₁ ⇓ λx.v₁
+            //  1.  e₁ ⇓ λx→v₁
             //  2.  v₁[x↦e₂] ⇓ v₂
             // ───────────────────── (EVAL/APP)
             //      e₁ e₂ ⇓ v₂

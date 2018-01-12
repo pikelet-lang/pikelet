@@ -75,7 +75,7 @@ impl<'a> Context<'a> {
 
             //  1.  Γ, x:τ₁ ⊢ e :↓ τ₂
             // ─────────────────────────────── (CHECK/LAM)
-            //      Γ ⊢ λx.e :↓ Пx:τ₁.τ₂
+            //      Γ ⊢ λx→e :↓ (x:τ₁)→τ₂
             CTerm::Lam(_, ref body_expr) => match *expected_ty.inner {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                     self.extend(param_ty.clone()).check(body_expr, ret_ty) // 1.
@@ -111,7 +111,7 @@ impl<'a> Context<'a> {
             //  2.  ρ ⇓ τ₁
             //  3.  Γ, x:τ₁ ⊢ e :↑ τ₂
             // ─────────────────────────────── (INFER/LAM)
-            //      Γ ⊢ λx:ρ.e :↑ Пx:τ₁.τ₂
+            //      Γ ⊢ λx:ρ→e :↑ (x:τ₁)→τ₂
             ITerm::Lam(Named(ref param_name, ref param_ty), ref body_expr) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = param_ty.eval()?; // 2.
@@ -127,7 +127,7 @@ impl<'a> Context<'a> {
             //  2.  ρ₁ ⇓ τ₁
             //  3.  Γ, x:τ₁ ⊢ ρ₂ :↓ Type
             // ────────────────────────────── (INFER/PI)
-            //      Γ ⊢ Пx:ρ₁.ρ₂ :↑ Type
+            //      Γ ⊢ (x:ρ₁)→ρ₂ :↑ Type
             ITerm::Pi(Named(_, ref param_ty), ref body_ty) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = param_ty.eval()?; // 2.
@@ -147,7 +147,7 @@ impl<'a> Context<'a> {
                 },
             },
 
-            //  1.  Γ ⊢ e₁ :↑ Пx:τ₁.τ₂
+            //  1.  Γ ⊢ e₁ :↑ (x:τ₁)→τ₂
             //  2.  Γ ⊢ e₂ :↓ τ₁
             //  3.  τ₂[x↦e₂] ⇓ τ₃
             // ────────────────────────────── (INFER/APP)
