@@ -11,38 +11,42 @@ pub ReplCommand : ReplCommand = {
 
 pub Term: Term = {
     LamTerm,
-    <x: Term> ":" <t: LamTerm> => Term::Ann(Box::new(x), Box::new(t)),
+    <x: Term> ":" <t: LamTerm> => {
+        Term::Ann(Box::new(x), Box::new(t))
+    },
 };
 
 LamTerm : Term = {
     PiTerm,
-    <b: LamBind> "=>" <body: LamTerm> => Term::Lam(b.0, b.1, Box::new(body)),
+    r"\\" <x: Ident> "=>" <body: LamTerm> => {
+        Term::Lam(x, None, Box::new(body))
+    },
+    r"\\" <x: Ident> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
+        Term::Lam(x, Some(Box::new(ann)), Box::new(body))
+    },
 };
 
 PiTerm : Term = {
     AppTerm,
-    <b: PiBind> "->" <body: LamTerm> => Term::Pi(b.0, b.1, Box::new(body)),
+   "[" <x: Ident> ":" <ann: PiTerm> "]" "->" <body: LamTerm> => {
+        Term::Pi(x, Box::new(ann), Box::new(body))
+    },
+    <ann: AppTerm> "->" <body: LamTerm> => {
+        Term::Arrow(Box::new(ann), Box::new(body))
+    },
 };
 
 AppTerm: Term = {
     AtomicTerm,
-    <f: AppTerm> <x: AtomicTerm> => Term::App(Box::new(f), Box::new(x)).into(),
+    <f: AppTerm> <arg: AtomicTerm> => {
+        Term::App(Box::new(f), Box::new(arg))
+    },
 };
 
 AtomicTerm: Term = {
     "(" <Term> ")",
     "Type" => Term::Type,
-    Ident => Term::Var(<>).into(),
-};
-
-LamBind : (String, Option<Box<Term>>) = {
-    r"\\" <x: Ident> => (x, None),
-    r"\\" <x: Ident> ":" <t: PiTerm> => (x, Some(Box::new(t))),
-};
-
-PiBind : (Option<String>, Box<Term>) = {
-    <t: AppTerm> => (None, Box::new(t)),
-    "[" <x: Ident> ":" <t: PiTerm> "]" => (Some(x), Box::new(t)),
+    Ident => Term::Var(<>),
 };
 
 Ident: String = {

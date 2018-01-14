@@ -65,7 +65,7 @@ pub enum ITerm {
     /// \x : t => t
     /// ```
     Lam(Named<RcCTerm>, RcITerm),
-    /// Fully annotated pi types
+    /// Dependent function type
     ///
     /// ```text
     /// [x : t] -> t

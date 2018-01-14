@@ -32,7 +32,8 @@ pub enum Term {
     Type,
     Ann(Box<Term>, Box<Term>),
     Lam(String, Option<Box<Term>>, Box<Term>),
-    Pi(Option<String>, Box<Term>, Box<Term>),
+    Pi(String, Box<Term>, Box<Term>),
+    Arrow(Box<Term>, Box<Term>),
     App(Box<Term>, Box<Term>),
 }
 
@@ -79,34 +80,38 @@ impl Term {
                 Term::Ann(ref e, ref t) => {
                     Ok(ITerm::Ann(to_cterm(e)?.into(), to_cterm(t)?.into()).into())
                 }
-                Term::Lam(ref n, Some(ref t), ref body) => match body.to_core() {
+                Term::Lam(ref name, Some(ref ann), ref body) => match body.to_core() {
                     Ok(mut body) => {
-                        let name = Name::User(n.clone());
+                        let name = Name::User(name.clone());
                         body.abstract0(&name);
 
-                        Ok(ITerm::Lam(Named(name, to_cterm(t)?.into()), body.into()).into())
+                        Ok(ITerm::Lam(Named(name, to_cterm(ann)?.into()), body.into()).into())
                     }
                     Err(ToCoreError) => return Err(None),
                 },
-                Term::Lam(ref n, None, ref body) => {
-                    let name = Name::User(n.clone());
+                Term::Lam(ref name, None, ref body) => {
+                    let name = Name::User(name.clone());
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
                     Err(Some(CTerm::Lam(Named(name, ()), body.into()).into()).into())
                 }
-                Term::Pi(ref n, ref t, ref body) => {
-                    let name = match *n {
-                        Some(ref n) => Name::User(n.clone()),
-                        None => Name::Abstract,
-                    };
+                Term::Pi(ref name, ref ann, ref body) => {
+                    let name = Name::User(name.clone());
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
-                    Ok(ITerm::Pi(Named(name, to_cterm(t)?.into()), body.into()).into())
+                    Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body.into()).into())
                 }
-                Term::App(ref f, ref x) => match f.to_core() {
-                    Ok(f) => Ok(ITerm::App(f.into(), to_cterm(x)?.into()).into()),
+                Term::Arrow(ref ann, ref body) => {
+                    let name = Name::Abstract;
+                    let mut body = to_cterm(body)?;
+                    body.abstract0(&name);
+
+                    Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body.into()).into())
+                }
+                Term::App(ref f, ref arg) => match f.to_core() {
+                    Ok(f) => Ok(ITerm::App(f.into(), to_cterm(arg)?.into()).into()),
                     // Type annotations needed!
                     Err(ToCoreError) => Err(None),
                 },
@@ -157,7 +162,8 @@ mod tests {
                 CTerm::from(ITerm::Ann(
                     CTerm::from(ITerm::Type).into(),
                     CTerm::from(ITerm::Type).into(),
-                )).into(),
+                ),)
+                    .into(),
                 CTerm::from(ITerm::Type).into(),
             ).into(),
         );
@@ -172,7 +178,8 @@ mod tests {
                 CTerm::from(ITerm::Ann(
                     CTerm::from(ITerm::Type).into(),
                     CTerm::from(ITerm::Type).into(),
-                )).into(),
+                ),)
+                    .into(),
             ).into(),
         );
     }
@@ -189,7 +196,8 @@ mod tests {
                     CTerm::from(ITerm::Pi(
                         Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
                         CTerm::from(ITerm::Type).into(),
-                    )).into(),
+                    ),)
+                        .into(),
                 ),
                 ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
@@ -256,7 +264,8 @@ mod tests {
                     CTerm::from(ITerm::Pi(
                         Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
                         CTerm::from(ITerm::Type).into(),
-                    )).into(),
+                    ),)
+                        .into(),
                 ),
                 CTerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
@@ -275,7 +284,8 @@ mod tests {
                 CTerm::from(ITerm::Pi(
                     Named(y, CTerm::from(ITerm::Type).into()),
                     CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                )).into(),
+                ),)
+                    .into(),
             ).into(),
         );
     }
@@ -294,7 +304,8 @@ mod tests {
                         CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))).into(),
                     ),
                     CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                )).into(),
+                ),)
+                    .into(),
             ).into(),
         );
     }
@@ -312,7 +323,8 @@ mod tests {
                     CTerm::from(ITerm::Pi(
                         Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
                         CTerm::from(ITerm::Type).into(),
-                    )).into(),
+                    ),)
+                        .into(),
                 ),
                 ITerm::Lam(
                     Named(y.clone(), CTerm::from(ITerm::Type).into()),
@@ -359,7 +371,8 @@ mod tests {
                         CTerm::from(Var::Bound(Named(a.clone(), Debruijn(0)))).into(),
                     ),
                     CTerm::from(Var::Bound(Named(a, Debruijn(1)))).into(),
-                )).into(),
+                ),)
+                    .into(),
             ).into(),
         );
     }
