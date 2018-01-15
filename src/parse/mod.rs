@@ -62,63 +62,57 @@ impl Term {
     ///
     /// This may fail if the term is not fully inferrable.
     pub fn to_core(&self) -> Result<core::RcITerm, ToCoreError> {
-        use core::{CTerm, ITerm, RcCTerm, RcITerm};
+        use core::{CTerm, ITerm, RcCTerm};
         use var::{Name, Named, Var};
 
-        fn to_cterm<T>(term: &Term) -> Result<RcCTerm, Option<T>> {
-            match to_iterm(term) {
-                Ok(iterm) => Ok(CTerm::Inf(RcITerm::from(iterm)).into()),
-                Err(Some(cterm)) => Ok(cterm),
-                Err(None) => Err(None),
-            }
-        }
-
-        fn to_iterm(term: &Term) -> Result<RcITerm, Option<RcCTerm>> {
+        fn to_cterm(term: &Term) -> Result<RcCTerm, ToCoreError> {
             match *term {
-                Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone()))).into()),
-                Term::Type => Ok(ITerm::Type.into()),
-                Term::Ann(ref e, ref t) => {
-                    Ok(ITerm::Ann(to_cterm(e)?.into(), to_cterm(t)?.into()).into())
-                }
-                Term::Lam(ref name, Some(ref ann), ref body) => match body.to_core() {
-                    Ok(mut body) => {
-                        let name = Name::User(name.clone());
-                        body.abstract0(&name);
-
-                        Ok(ITerm::Lam(Named(name, to_cterm(ann)?.into()), body.into()).into())
-                    }
-                    Err(ToCoreError) => return Err(None),
-                },
                 Term::Lam(ref name, None, ref body) => {
                     let name = Name::User(name.clone());
                     let mut body = to_cterm(body)?;
                     body.abstract0(&name);
 
-                    Err(Some(CTerm::Lam(Named(name, ()), body.into()).into()).into())
+                    Ok(CTerm::Lam(Named(name, ()), body.into()).into())
                 }
-                Term::Pi(ref name, ref ann, ref body) => {
-                    let name = Name::User(name.clone());
-                    let mut body = to_cterm(body)?;
-                    body.abstract0(&name);
-
-                    Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body.into()).into())
-                }
-                Term::Arrow(ref ann, ref body) => {
-                    let name = Name::Abstract;
-                    let mut body = to_cterm(body)?;
-                    body.abstract0(&name);
-
-                    Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body.into()).into())
-                }
-                Term::App(ref f, ref arg) => match f.to_core() {
-                    Ok(f) => Ok(ITerm::App(f.into(), to_cterm(arg)?.into()).into()),
-                    // Type annotations needed!
-                    Err(ToCoreError) => Err(None),
-                },
+                _ => Ok(CTerm::Inf(term.to_core()?).into()),
             }
         }
 
-        to_iterm(self).map_err(|_| ToCoreError)
+        match *self {
+            Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone()))).into()),
+            Term::Type => Ok(ITerm::Type.into()),
+            Term::Ann(ref e, ref t) => {
+                Ok(ITerm::Ann(to_cterm(e)?.into(), to_cterm(t)?.into()).into())
+            }
+            Term::Lam(ref name, Some(ref ann), ref body) => {
+                let name = Name::User(name.clone());
+                let mut body = body.to_core()?;
+                body.abstract0(&name);
+
+                Ok(ITerm::Lam(Named(name, to_cterm(ann)?.into()), body).into())
+            }
+            // Type annotations needed!
+            Term::Lam(_, None, _) => Err(ToCoreError),
+            Term::Pi(ref name, ref ann, ref body) => {
+                let name = Name::User(name.clone());
+                let mut body = to_cterm(body)?;
+                body.abstract0(&name);
+
+                Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body).into())
+            }
+            Term::Arrow(ref ann, ref body) => {
+                let name = Name::Abstract;
+                let mut body = to_cterm(body)?;
+                body.abstract0(&name);
+
+                Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body).into())
+            }
+            Term::App(ref f, ref arg) => match f.to_core() {
+                Ok(f) => Ok(ITerm::App(f.into(), to_cterm(arg)?).into()),
+                // Type annotations needed!
+                Err(ToCoreError) => Err(ToCoreError),
+            },
+        }
     }
 }
 
