@@ -1,7 +1,5 @@
 use std::str::FromStr;
 
-use core;
-
 mod grammar {
     include!(concat!(env!("OUT_DIR"), "/parse/grammar.rs"));
 }
@@ -45,86 +43,13 @@ impl FromStr for Term {
     }
 }
 
-// FIXME: use a proper error type
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ToCoreError;
-
-// enum ToCoreError {
-//     /// Tried to convert a checkable term to an inferrable term
-//     CTerm(CTerm),
-//     TypeAnnRequiredForTopLevelLam,
-//     /// Tried to apply an argument to a checkable term
-//     ArgumentAppliedToAmbiguousTerm,
-// }
-
-impl Term {
-    /// Convert a parsed term into an inferrable term.
-    ///
-    /// This may fail if the term is not fully inferrable.
-    pub fn to_core(&self) -> Result<core::RcITerm, ToCoreError> {
-        use core::{CTerm, ITerm, RcCTerm};
-        use var::{Name, Named, Var};
-
-        fn to_cterm(term: &Term) -> Result<RcCTerm, ToCoreError> {
-            match *term {
-                Term::Lam(ref name, None, ref body) => {
-                    let name = Name::User(name.clone());
-                    let mut body = to_cterm(body)?;
-                    body.abstract0(&name);
-
-                    Ok(CTerm::Lam(Named(name, ()), body.into()).into())
-                }
-                _ => Ok(CTerm::Inf(term.to_core()?).into()),
-            }
-        }
-
-        match *self {
-            Term::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone()))).into()),
-            Term::Type => Ok(ITerm::Type.into()),
-            Term::Ann(ref e, ref t) => {
-                Ok(ITerm::Ann(to_cterm(e)?.into(), to_cterm(t)?.into()).into())
-            }
-            Term::Lam(ref name, Some(ref ann), ref body) => {
-                let name = Name::User(name.clone());
-                let mut body = body.to_core()?;
-                body.abstract0(&name);
-
-                Ok(ITerm::Lam(Named(name, to_cterm(ann)?.into()), body).into())
-            }
-            // Type annotations needed!
-            Term::Lam(_, None, _) => Err(ToCoreError),
-            Term::Pi(ref name, ref ann, ref body) => {
-                let name = Name::User(name.clone());
-                let mut body = to_cterm(body)?;
-                body.abstract0(&name);
-
-                Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body).into())
-            }
-            Term::Arrow(ref ann, ref body) => {
-                let name = Name::Abstract;
-                let mut body = to_cterm(body)?;
-                body.abstract0(&name);
-
-                Ok(ITerm::Pi(Named(name, to_cterm(ann)?.into()), body).into())
-            }
-            Term::App(ref f, ref arg) => match f.to_core() {
-                Ok(f) => Ok(ITerm::App(f.into(), to_cterm(arg)?).into()),
-                // Type annotations needed!
-                Err(ToCoreError) => Err(ToCoreError),
-            },
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use core::{CTerm, ITerm, RcITerm};
     use var::{Debruijn, Name, Named, Var};
 
-    use super::*;
-
     fn parse(src: &str) -> RcITerm {
-        Term::to_core(&src.parse().unwrap()).unwrap()
+        RcITerm::from_parse(&src.parse().unwrap()).unwrap()
     }
 
     #[test]

@@ -7,10 +7,7 @@ use var::{Debruijn, Name, Named, Var};
 pub enum TypeError {
     Eval(EvalError),
     IllegalApplication,
-    ExpectedFunction {
-        lam_expr: RcCTerm,
-        expected: RcType,
-    },
+    ExpectedFunction { lam_expr: RcCTerm, expected: RcType },
     Mismatch {
         expr: RcITerm,
         found: RcType,
@@ -117,10 +114,12 @@ impl<'a> Context<'a> {
                 let simp_param_ty = param_ty.eval()?; // 2.
                 let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?; // 3.
 
-                Ok(Value::Pi(
-                    Named(param_name.clone(), simp_param_ty),
-                    body_ty, // shift??
-                ).into())
+                Ok(
+                    Value::Pi(
+                        Named(param_name.clone(), simp_param_ty),
+                        body_ty, // shift??
+                    ).into(),
+                )
             }
 
             //  1.  Γ ⊢ ρ₁ :↓ Type
@@ -174,9 +173,7 @@ mod tests {
     use core::Neutral;
 
     fn parse(src: &str) -> RcITerm {
-        use parse::Term;
-
-        Term::to_core(&src.parse().unwrap()).unwrap()
+        RcITerm::from_parse(&src.parse().unwrap()).unwrap()
     }
 
     #[test]

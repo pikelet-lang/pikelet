@@ -1,6 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
+use parse::Term as ParseTerm;
 use pretty::{self, ToDoc};
 use var::{Debruijn, Name, Named, Var};
 
@@ -305,6 +306,67 @@ impl RcNeutral {
     }
 }
 
+// Conversions from the parse tree
+
+// FIXME: use a proper error type
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FromParseError;
+
+impl RcCTerm {
+    /// Convert a parsed term into a checkable term
+    fn from_parse(term: &ParseTerm) -> Result<RcCTerm, FromParseError> {
+        match *term {
+            ParseTerm::Lam(ref name, None, ref body) => {
+                let name = Name::User(name.clone());
+                let mut body = RcCTerm::from_parse(body)?;
+                body.abstract0(&name);
+
+                Ok(CTerm::Lam(Named(name, ()), body.into()).into())
+            }
+            _ => Ok(CTerm::Inf(RcITerm::from_parse(term)?).into()),
+        }
+    }
+}
+
+impl RcITerm {
+    /// Convert a parsed term into an inferrable term
+    pub fn from_parse(term: &ParseTerm) -> Result<RcITerm, FromParseError> {
+        match *term {
+            ParseTerm::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone()))).into()),
+            ParseTerm::Type => Ok(ITerm::Type.into()),
+            ParseTerm::Ann(ref e, ref t) => {
+                Ok(ITerm::Ann(RcCTerm::from_parse(e)?.into(), RcCTerm::from_parse(t)?.into()).into())
+            }
+            ParseTerm::Lam(ref name, Some(ref ann), ref body) => {
+                let name = Name::User(name.clone());
+                let mut body = RcITerm::from_parse(body)?;
+                body.abstract0(&name);
+
+                Ok(ITerm::Lam(Named(name, RcCTerm::from_parse(ann)?.into()), body).into())
+            }
+            // Type annotations needed!
+            ParseTerm::Lam(_, None, _) => Err(FromParseError),
+            ParseTerm::Pi(ref name, ref ann, ref body) => {
+                let name = Name::User(name.clone());
+                let mut body = RcCTerm::from_parse(body)?;
+                body.abstract0(&name);
+
+                Ok(ITerm::Pi(Named(name, RcCTerm::from_parse(ann)?.into()), body).into())
+            }
+            ParseTerm::Arrow(ref ann, ref body) => {
+                let name = Name::Abstract;
+                let mut body = RcCTerm::from_parse(body)?;
+                body.abstract0(&name);
+
+                Ok(ITerm::Pi(Named(name, RcCTerm::from_parse(ann)?.into()), body).into())
+            }
+            ParseTerm::App(ref f, ref arg) => {
+                Ok(ITerm::App(RcITerm::from_parse(f)?, RcCTerm::from_parse(arg)?).into())
+            },
+        }
+    }
+}
+
 // Evaluation
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -391,9 +453,7 @@ mod tests {
     use super::*;
 
     fn parse(src: &str) -> RcITerm {
-        use parse::Term;
-
-        Term::to_core(&src.parse().unwrap()).unwrap()
+        RcITerm::from_parse(&src.parse().unwrap()).unwrap()
     }
 
     mod alpha_eq {
