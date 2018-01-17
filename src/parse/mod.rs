@@ -81,8 +81,7 @@ mod tests {
                 CTerm::from(ITerm::Ann(
                     CTerm::from(ITerm::Type).into(),
                     CTerm::from(ITerm::Type).into(),
-                ),)
-                    .into(),
+                )).into(),
                 CTerm::from(ITerm::Type).into(),
             ).into(),
         );
@@ -97,8 +96,7 @@ mod tests {
                 CTerm::from(ITerm::Ann(
                     CTerm::from(ITerm::Type).into(),
                     CTerm::from(ITerm::Type).into(),
-                ),)
-                    .into(),
+                )).into(),
             ).into(),
         );
     }
@@ -115,8 +113,7 @@ mod tests {
                     CTerm::from(ITerm::Pi(
                         Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
                         CTerm::from(ITerm::Type).into(),
-                    ),)
-                        .into(),
+                    )).into(),
                 ),
                 ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
@@ -183,8 +180,7 @@ mod tests {
                     CTerm::from(ITerm::Pi(
                         Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
                         CTerm::from(ITerm::Type).into(),
-                    ),)
-                        .into(),
+                    )).into(),
                 ),
                 CTerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
@@ -203,8 +199,7 @@ mod tests {
                 CTerm::from(ITerm::Pi(
                     Named(y, CTerm::from(ITerm::Type).into()),
                     CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                ),)
-                    .into(),
+                )).into(),
             ).into(),
         );
     }
@@ -223,8 +218,7 @@ mod tests {
                         CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))).into(),
                     ),
                     CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                ),)
-                    .into(),
+                )).into(),
             ).into(),
         );
     }
@@ -290,8 +284,7 @@ mod tests {
                         CTerm::from(Var::Bound(Named(a.clone(), Debruijn(0)))).into(),
                     ),
                     CTerm::from(Var::Bound(Named(a, Debruijn(1)))).into(),
-                ),)
-                    .into(),
+                )).into(),
             ).into(),
         );
     }
