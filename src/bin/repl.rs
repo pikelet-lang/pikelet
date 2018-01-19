@@ -4,8 +4,8 @@ extern crate rustyline;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use lambdapi::parse::{ParseError, ToCoreError};
-use lambdapi::core::EvalError;
+use lambdapi::parse::ParseError;
+use lambdapi::core::{EvalError, FromParseError, RcITerm};
 use lambdapi::check::TypeError;
 
 const PROMPT: &str = "λΠ> ";
@@ -24,7 +24,9 @@ fn main() {
                 match run_repl(&line) {
                     Ok(()) => {}
                     Err(ReplError::Parse(err)) => println!("parse error: {}", err.0),
-                    Err(ReplError::ToCore(ToCoreError)) => println!("not enough type annotations"),
+                    Err(ReplError::FromParse(FromParseError)) => {
+                        println!("not enough type annotations")
+                    }
                     Err(ReplError::Eval(err)) => println!("eval error: {:?}", err),
                     Err(ReplError::Type(err)) => println!("type error: {:?}", err),
                 }
@@ -55,16 +57,16 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             println!(":h           print command help");
             println!(":t <expr>    infer the type of an expression");
         }
-        ReplCommand::TypeOf(term) => {
-            let core = term.to_core()?;
-            let inferred = Context::default().infer(&core)?;
+        ReplCommand::TypeOf(parse_term) => {
+            let term = RcITerm::from_parse(&parse_term)?;
+            let inferred = Context::default().infer(&term)?;
 
             println!("{}", inferred.to_doc(pretty::Context::default()).pretty(80));
         }
-        ReplCommand::Eval(term) => {
-            let core = term.to_core()?;
-            let inferred = Context::default().infer(&core)?;
-            let evaluated = core.eval()?;
+        ReplCommand::Eval(parse_term) => {
+            let term = RcITerm::from_parse(&parse_term)?;
+            let inferred = Context::default().infer(&term)?;
+            let evaluated = term.eval()?;
             let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
@@ -76,7 +78,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
 
 enum ReplError {
     Parse(ParseError),
-    ToCore(ToCoreError),
+    FromParse(FromParseError),
     Eval(EvalError),
     Type(TypeError),
 }
@@ -87,9 +89,9 @@ impl From<ParseError> for ReplError {
     }
 }
 
-impl From<ToCoreError> for ReplError {
-    fn from(src: ToCoreError) -> ReplError {
-        ReplError::ToCore(src)
+impl From<FromParseError> for ReplError {
+    fn from(src: FromParseError) -> ReplError {
+        ReplError::FromParse(src)
     }
 }
 
