@@ -31,14 +31,17 @@ fn main() {
                     Err(ReplError::Type(err)) => println!("type error: {:?}", err),
                 }
             }
-            Err(err) => {
-                match err {
-                    ReadlineError::Interrupted => println!("CTRL-C"),
-                    ReadlineError::Eof => println!("CTRL-D"),
-                    err => println!("Error: {:?}", err),
+            Err(err) => match err {
+                ReadlineError::Interrupted => println!("Interrupt"),
+                ReadlineError::Eof => {
+                    println!("Bye bye");
+                    break;
                 }
-                break;
-            }
+                err => {
+                    println!("Error: {:?}", err);
+                    break;
+                }
+            },
         }
     }
 
