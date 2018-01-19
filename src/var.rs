@@ -39,7 +39,7 @@
 use std::fmt;
 
 /// The name of a free variable
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub enum Name {
     /// Names originating from user input
     User(String),
@@ -92,7 +92,7 @@ impl fmt::Display for Name {
 /// A type annotated with a name for debugging purposes
 ///
 /// The name is ignored for equality comparisons
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct Named<T>(pub Name, pub T);
 
 impl<T: PartialEq> PartialEq for Named<T> {
@@ -138,7 +138,7 @@ impl fmt::Display for Debruijn {
 }
 
 /// A variable that can either be free or bound
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Var {
     /// A free variable
     Free(Name),

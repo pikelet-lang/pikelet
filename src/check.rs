@@ -3,11 +3,14 @@
 use core::{CTerm, EvalError, ITerm, RcCTerm, RcITerm, RcType, RcValue, Value};
 use var::{Debruijn, Name, Named, Var};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
     Eval(EvalError),
     IllegalApplication,
-    ExpectedFunction { lam_expr: RcCTerm, expected: RcType },
+    ExpectedFunction {
+        lam_expr: RcCTerm,
+        expected: RcType,
+    },
     Mismatch {
         expr: RcITerm,
         found: RcType,

@@ -9,7 +9,7 @@ use var::{Debruijn, Name, Named, Var};
 ///
 /// These terms do not contain full type information within them, so in order to
 /// check them we need to supply a type to the checking algorithm
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CTerm {
     /// Inferrable terms
     Inf(RcITerm),
@@ -45,7 +45,7 @@ impl fmt::Display for CTerm {
 ///
 /// These terms can be fully inferred without needing to resort to type
 /// inference
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ITerm {
     /// A term annotated with a type
     ///
@@ -95,7 +95,7 @@ impl fmt::Display for ITerm {
 }
 
 /// Normal forms
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// The type of types
     Type,
@@ -136,7 +136,7 @@ impl fmt::Display for Value {
 /// Neutral forms
 ///
 /// https://cs.stackexchange.com/questions/69434/intuitive-explanation-of-neutral-normal-form-in-lambda-calculus
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Neutral {
     /// Variabls
     Var(Var),
@@ -162,7 +162,7 @@ impl fmt::Display for Neutral {
 
 macro_rules! make_wrapper {
     ($name:ident, $inner:ty) => {
-        #[derive(Clone, PartialEq, Eq)]
+        #[derive(Clone, PartialEq)]
         pub struct $name {
             pub inner: Rc<$inner>,
         }
@@ -309,7 +309,7 @@ impl RcNeutral {
 // Conversions from the parse tree
 
 // FIXME: use a proper error type
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FromParseError;
 
 impl RcCTerm {
@@ -369,7 +369,7 @@ impl RcITerm {
 
 // Evaluation
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum EvalError {
     /// Attempted to apply an argument to a term that is not a function
     ArgAppliedToNonFunction { arg: RcValue, expr: RcValue },
