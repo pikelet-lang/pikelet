@@ -46,7 +46,9 @@ PiTerm : Term = {
         match binder {
             Term::Ann(x, ann) => match *x {
                 Term::Var(x) => Ok(Term::Pi(x, ann, Box::new(body))),
-                _ => Err(ParseError::User { error: () }), // TODO: More descriptive error!
+                _ => Err(ParseError::User {
+                    error: "identifier expected in pi type", // TODO: better error!
+                }),
             },
             ann => Ok(Term::Arrow(Box::new(ann), Box::new(body)))
         }
