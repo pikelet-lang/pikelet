@@ -5,7 +5,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 use lambdapi::parse::ParseError;
-use lambdapi::core::{EvalError, FromParseError, RcITerm};
+use lambdapi::core::RcTerm;
 use lambdapi::check::TypeError;
 
 const PROMPT: &str = "λΠ> ";
@@ -24,10 +24,6 @@ fn main() {
                 match run_repl(&line) {
                     Ok(()) => {}
                     Err(ReplError::Parse(err)) => println!("parse error: {}", err.0),
-                    Err(ReplError::FromParse(FromParseError)) => {
-                        println!("not enough type annotations")
-                    }
-                    Err(ReplError::Eval(err)) => println!("eval error: {:?}", err),
                     Err(ReplError::Type(err)) => println!("type error: {:?}", err),
                     Err(ReplError::Quit) => {
                         println!("Bye bye");
@@ -70,16 +66,17 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
         }
 
         ReplCommand::Eval(parse_term) => {
-            let term = RcITerm::from_parse(&parse_term)?;
-            let inferred = Context::default().infer(&term)?;
-            let evaluated = term.eval()?;
+            let term = RcTerm::from_parse(&parse_term);
+            let context = Context::new();
+            let inferred = context.infer(&term)?;
+            let evaluated = context.eval(&term);
             let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
         }
         ReplCommand::TypeOf(parse_term) => {
-            let term = RcITerm::from_parse(&parse_term)?;
-            let inferred = Context::default().infer(&term)?;
+            let term = RcTerm::from_parse(&parse_term);
+            let inferred = Context::new().infer(&term)?;
             let doc = inferred.to_doc(pretty::Context::default());
 
             println!("{}", doc.pretty(80));
@@ -94,8 +91,6 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
 
 enum ReplError {
     Parse(ParseError),
-    FromParse(FromParseError),
-    Eval(EvalError),
     Type(TypeError),
     Quit,
 }
@@ -103,18 +98,6 @@ enum ReplError {
 impl From<ParseError> for ReplError {
     fn from(src: ParseError) -> ReplError {
         ReplError::Parse(src)
-    }
-}
-
-impl From<FromParseError> for ReplError {
-    fn from(src: FromParseError) -> ReplError {
-        ReplError::FromParse(src)
-    }
-}
-
-impl From<EvalError> for ReplError {
-    fn from(src: EvalError) -> ReplError {
-        ReplError::Eval(src)
     }
 }
 

@@ -1,11 +1,49 @@
 //! Contexts and type checking
 
-use core::{EvalError, RcTerm, RcType, RcValue, Term, Value};
+use rpds::List;
+
+use core::{Module, RcTerm, RcType, RcValue, Term, Value};
 use var::{Debruijn, Name, Named, Var};
+
+pub struct CheckedModule {
+    pub name: String,
+    pub definitions: Vec<Definition>,
+}
+
+pub struct Definition {
+    pub name: String,
+    pub term: RcValue,
+    pub ann: RcType,
+}
+
+pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
+    let mut context = Context::new();
+    let mut definitions = Vec::with_capacity(module.definitions.len());
+
+    for definition in &module.definitions {
+        let ann = match definition.ann {
+            None => context.infer(&definition.term)?,
+            Some(ref ann) => {
+                let ann = context.eval(&ann);
+                context.check(&definition.term, &ann)?;
+                ann
+            }
+        };
+        let term = context.eval(&definition.term);
+        let name = definition.name.clone();
+        context = context.extend(Binder::Let(term.clone(), ann.clone()));
+
+        definitions.push(Definition { name, term, ann })
+    }
+
+    Ok(CheckedModule {
+        name: module.name.clone(),
+        definitions,
+    })
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
-    Eval(EvalError),
     IllegalApplication,
     TypeAnnotationsNeeded,
     ExpectedFunction {
@@ -20,39 +58,145 @@ pub enum TypeError {
     UnboundVariable(Name),
 }
 
-impl From<EvalError> for TypeError {
-    fn from(src: EvalError) -> TypeError {
-        TypeError::Eval(src)
+/// A binder that introduces a variable into the context
+#[derive(Debug, Clone)]
+pub enum Binder {
+    /// A type introduced after entering a lambda abstraction
+    Lam(RcType),
+    /// A type introduced after entering a pi type
+    Pi(RcType),
+    /// A value and type binding that was introduced by passing over a let binding
+    Let(RcValue, RcType),
+}
+
+impl Binder {
+    /// Return the value associated with a binder
+    pub fn value(&self) -> Option<&RcValue> {
+        match *self {
+            Binder::Lam(_) | Binder::Pi(_) => None,
+            Binder::Let(_, ref ty) => Some(ty),
+        }
+    }
+
+    /// Return the type associated with a binder
+    pub fn ty(&self) -> &RcType {
+        match *self {
+            Binder::Lam(ref ty) | Binder::Pi(ref ty) | Binder::Let(_, ref ty) => ty,
+        }
     }
 }
 
-/// Contexts
-pub enum Context<'a> {
+#[derive(Debug, Clone)]
+pub struct Context {
     // Γ ::= ε           1. empty context
     //     | Γ,x:τ       2. context extension
-    Empty,                         // 1.
-    Cons(&'a Context<'a>, RcType), // 2.
+    binders: List<Binder>,
 }
 
-impl Default for Context<'static> {
-    fn default() -> Context<'static> {
-        Context::Empty
-    }
-}
-
-impl<'a> Context<'a> {
-    pub fn extend(&'a self, ty: RcType) -> Context<'a> {
-        Context::Cons(self, ty)
-    }
-
-    pub fn lookup_ty(&'a self, x: Debruijn) -> Option<&'a RcType> {
-        match (self, x) {
-            (&Context::Empty, _) => None,
-            (&Context::Cons(parent, ref value), x) => match x.pred() {
-                None => Some(value),
-                Some(x) => parent.lookup_ty(x),
-            },
+impl Context {
+    pub fn new() -> Context {
+        Context {
+            binders: List::new(),
         }
+    }
+
+    pub fn extend(&self, binder: Binder) -> Context {
+        Context {
+            binders: self.binders.push_front(binder),
+        }
+    }
+
+    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Binder> {
+        self.binders.iter().nth(index.0 as usize)
+    }
+
+    /// Evaluation of core terms to normal forms
+    pub fn eval(&self, term: &RcTerm) -> RcValue {
+        /// Evaluate a term at a certain depth
+        ///
+        /// This ensures that we can skip lambdas and pi types that we pass through along the way.
+        /// I'm not fully confident with this method, but it works so lets go with it for now...
+        fn eval_at(context: &Context, term: &RcTerm, level: Debruijn) -> RcValue {
+            // FIXME: judgements do not mention the context :/
+            // e ⇓ v
+            match *term.inner {
+                //  1.  e ⇓ v
+                // ────────────────── (EVAL/ANN)
+                //      e : ρ ⇓ v
+                Term::Ann(ref expr, _) => {
+                    eval_at(context, expr, level) // 1.
+                }
+
+                // ───────────── (EVAL/TYPE)
+                //  Type ⇓ Type
+                Term::Type => Value::Type.into(),
+
+                Term::Var(ref var) => match *var {
+                    // ─────── (EVAL/Var)
+                    //  x ⇓ x
+                    Var::Free(_) => Value::Var(var.clone()).into(),
+                    // FIXME: Yuck!
+                    Var::Bound(Named(_, index)) if index < level => Value::Var(var.clone()).into(),
+                    Var::Bound(Named(_, index)) => {
+                        // FIXME: Blegh
+                        match context.lookup_binder(Debruijn(index.0 - level.0)) {
+                            Some(binder) => match binder.value().cloned() {
+                                Some(value) => value,
+                                None => Value::Var(var.clone()).into(),
+                            },
+                            None => panic!("ICE: index {} out of bounds", index),
+                        }
+                    }
+                },
+
+                //  1. e ⇓ v
+                // ───────────────── (EVAL/LAM)
+                //     λx.e ⇓ λx→v
+                Term::Lam(Named(ref name, None), ref body_expr) => {
+                    let body_expr = eval_at(context, body_expr, level.succ()); // 1.
+
+                    Value::Lam(Named(name.clone(), None), body_expr).into()
+                }
+
+                //  1.  ρ ⇓ τ
+                //  2.  e ⇓ v
+                // ──────────────────────── (EVAL/LAM-ANN)
+                //      λx:ρ→e ⇓ λx:τ→v
+                Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
+                    let param_ty = eval_at(context, param_ty, level); // 1.
+                    let body_expr = eval_at(context, body_expr, level.succ()); // 2.
+
+                    Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into()
+                }
+
+                //  1.  ρ₁ ⇓ τ₁
+                //  2.  ρ₂ ⇓ τ₂
+                // ─────────────────────────── (EVAL/PI-ANN)
+                //      (x:ρ₁)→ρ₂ ⇓ (x:τ₁)→τ₂
+                Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
+                    let param_ty = eval_at(context, param_ty, level); // 1.
+                    let body_expr = eval_at(context, body_expr, level.succ()); // 2.
+
+                    Value::Pi(Named(name.clone(), param_ty), body_expr).into()
+                }
+
+                //  1.  e₁ ⇓ λx→v₁
+                //  2.  v₁[x↦e₂] ⇓ v₂
+                // ───────────────────── (EVAL/APP)
+                //      e₁ e₂ ⇓ v₂
+                Term::App(ref fn_expr, ref arg) => {
+                    let fn_expr = eval_at(context, fn_expr, level); // 1.
+                    let arg = eval_at(context, arg, level); // 2.
+
+                    match *fn_expr.inner {
+                        Value::Lam(_, ref body) => body.instantiate0(&arg),
+                        _ => Value::App(fn_expr.clone(), arg).into(),
+                    }
+                }
+            }
+        }
+
+        eval_at(self, term, Debruijn::ZERO)
     }
 
     /// Check that the given term has the expected type
@@ -64,7 +208,8 @@ impl<'a> Context<'a> {
             //      Γ ⊢ λx→e :↓ (x:τ₁)→τ₂
             Term::Lam(Named(_, None), ref body_expr) => match *expected.inner {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
-                    self.extend(param_ty.clone()).check(body_expr, ret_ty) // 1.
+                    self.extend(Binder::Pi(param_ty.clone()))
+                        .check(body_expr, ret_ty) // 1.
                 }
                 _ => Err(TypeError::ExpectedFunction {
                     lam_expr: term.clone(),
@@ -100,7 +245,7 @@ impl<'a> Context<'a> {
             //      Γ ⊢ (e : ρ) :↑ τ
             Term::Ann(ref expr, ref ty) => {
                 self.check(ty, &Value::Type.into())?; // 1.
-                let simp_ty = ty.eval()?; // 2.
+                let simp_ty = self.eval(&ty); // 2.
                 self.check(expr, &simp_ty)?; // 3.
                 Ok(simp_ty)
             }
@@ -121,8 +266,9 @@ impl<'a> Context<'a> {
             //      Γ ⊢ λx:ρ→e :↑ (x:τ₁)→τ₂
             Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
-                let simp_param_ty = param_ty.eval()?; // 2.
-                let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?; // 3.
+                let simp_param_ty = self.eval(&param_ty); // 2.
+                let body_ty = self.extend(Binder::Pi(simp_param_ty.clone()))
+                    .infer(body_expr)?; // 3.
 
                 Ok(
                     Value::Pi(
@@ -139,8 +285,8 @@ impl<'a> Context<'a> {
             //      Γ ⊢ (x:ρ₁)→ρ₂ :↑ Type
             Term::Pi(Named(_, ref param_ty), ref body_ty) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
-                let simp_param_ty = param_ty.eval()?; // 2.
-                self.extend(simp_param_ty)
+                let simp_param_ty = self.eval(&param_ty); // 2.
+                self.extend(Binder::Pi(simp_param_ty))
                     .check(body_ty, &Value::Type.into())?; // 3.
                 Ok(Value::Type.into())
             }
@@ -150,9 +296,9 @@ impl<'a> Context<'a> {
             //      Γ ⊢ x :↑ τ
             Term::Var(ref var) => match *var {
                 Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
-                Var::Bound(Named(_, b)) => match self.lookup_ty(b) {
-                    Some(ty) => Ok(ty.clone()), // 1.
-                    None => panic!("ICE: index out of bounds"),
+                Var::Bound(Named(_, index)) => match self.lookup_binder(index) {
+                    Some(binder) => Ok(binder.ty().clone()), // 1.
+                    None => panic!("ICE: index {} out of bounds", index),
                 },
             },
 
@@ -166,7 +312,7 @@ impl<'a> Context<'a> {
                 match *fn_type.inner {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                         self.check(arg_expr, param_ty)?; // 2.
-                        let body_ty = RcValue::instantiate0(ret_ty, &arg_expr.eval()?)?; // 3.
+                        let body_ty = ret_ty.instantiate0(&self.eval(&arg_expr)); // 3.
                         Ok(body_ty)
                     }
                     // TODO: More error info
@@ -180,31 +326,111 @@ impl<'a> Context<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::Neutral;
 
     fn parse(src: &str) -> RcTerm {
         RcTerm::from_parse(&src.parse().unwrap())
     }
 
-    #[test]
-    fn extend_lookup_ty() {
-        let x: RcValue = Value::from(Neutral::Var(Var::Free(Name::user("x")))).into();
-        let y: RcValue = Value::from(Neutral::Var(Var::Free(Name::user("y")))).into();
+    mod eval {
+        use super::*;
 
-        let context0 = Context::Empty;
+        #[test]
+        fn var() {
+            let context = Context::new();
 
-        assert_eq!(context0.lookup_ty(Debruijn(0)), None);
+            let x = Name::user("x");
 
-        let context1 = context0.extend(x.clone());
+            assert_eq!(context.eval(&parse(r"x")), Value::Var(Var::Free(x)).into(),);
+        }
 
-        assert_eq!(context1.lookup_ty(Debruijn(0)), Some(&x));
-        assert_eq!(context1.lookup_ty(Debruijn(1)), None);
+        #[test]
+        fn ty() {
+            let context = Context::new();
 
-        let context2 = context1.extend(y.clone());
+            let ty: RcValue = Value::Type.into();
 
-        assert_eq!(context2.lookup_ty(Debruijn(0)), Some(&y));
-        assert_eq!(context2.lookup_ty(Debruijn(1)), Some(&x));
-        assert_eq!(context2.lookup_ty(Debruijn(2)), None);
+            assert_eq!(context.eval(&parse(r"Type")), ty);
+        }
+
+        #[test]
+        fn lam() {
+            let context = Context::new();
+
+            let x = Name::user("x");
+            let ty: RcValue = Value::Type.into();
+
+            assert_eq!(
+                context.eval(&parse(r"\x : Type => x")),
+                Value::Lam(
+                    Named(x.clone(), Some(ty)),
+                    Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
+                ).into(),
+            );
+        }
+
+        #[test]
+        fn pi() {
+            let context = Context::new();
+
+            let x = Name::user("x");
+            let ty: RcValue = Value::Type.into();
+
+            assert_eq!(
+                context.eval(&parse(r"(x : Type) -> x")),
+                Value::Pi(
+                    Named(x.clone(), ty),
+                    Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
+                ).into(),
+            );
+        }
+
+        #[test]
+        fn lam_app() {
+            let context = Context::new();
+
+            let x = Name::user("x");
+            let y = Name::user("y");
+            let ty: RcValue = Value::Type.into();
+            let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
+
+            assert_eq!(
+                context.eval(&parse(r"\x : Type -> Type => \y : Type => x y")),
+                Value::Lam(
+                    Named(x.clone(), Some(ty_arr)),
+                    Value::Lam(
+                        Named(y.clone(), Some(ty)),
+                        Value::App(
+                            Value::Var(Var::Bound(Named(x, Debruijn(1)))).into(),
+                            Value::Var(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        ).into(),
+                    ).into(),
+                ).into(),
+            );
+        }
+
+        #[test]
+        fn pi_app() {
+            let context = Context::new();
+
+            let x = Name::user("x");
+            let y = Name::user("y");
+            let ty: RcValue = Value::Type.into();
+            let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
+
+            assert_eq!(
+                context.eval(&parse(r"(x : Type -> Type) -> \y : Type => x y")),
+                Value::Pi(
+                    Named(x.clone(), ty_arr),
+                    Value::Lam(
+                        Named(y.clone(), Some(ty)),
+                        Value::App(
+                            Value::Var(Var::Bound(Named(x, Debruijn(1)))).into(),
+                            Value::Var(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        ).into(),
+                    ).into(),
+                ).into(),
+            );
+        }
     }
 
     mod infer {
@@ -212,63 +438,63 @@ mod tests {
 
         #[test]
         fn free() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"x";
             let x = Name::user("x");
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)),
+                context.infer(&parse(given_expr)),
                 Err(TypeError::UnboundVariable(x)),
             );
         }
 
         #[test]
         fn ty() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"Type";
             let expected_ty = r"Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn ann_ty_id() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a => a) : Type -> Type";
             let expected_ty = r"Type -> Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn ann_arrow_ty_id() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a => a) : (Type -> Type) -> (Type -> Type)";
             let expected_ty = r"(Type -> Type) -> (Type -> Type)";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn ann_id_as_ty() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a => a) : Type";
 
-            match ctx.infer(&parse(given_expr)) {
+            match context.infer(&parse(given_expr)) {
                 Err(TypeError::ExpectedFunction { .. }) => {}
                 other => panic!("unexpected result: {:#?}", other),
             }
@@ -276,110 +502,110 @@ mod tests {
 
         #[test]
         fn app() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a : Type => a) Type";
             let expected_ty = r"Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn app_ty() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"Type Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)),
+                context.infer(&parse(given_expr)),
                 Err(TypeError::IllegalApplication),
             )
         }
 
         #[test]
         fn lam() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"\a : Type => a";
             let expected_ty = r"(a : Type) -> Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn pi() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(a : Type) -> a";
             let expected_ty = r"Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn id() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"\a : Type => \x : a => x";
             let expected_ty = r"(a : Type) -> a -> a";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn id_ann() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a => \x : a => x) : (A : Type) -> A -> A";
             let expected_ty = r"(a : Type) -> a -> a";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn id_app_ty_arr_ty() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a : Type => \x : a => x) Type (Type -> Type)";
             let expected_ty = r"Type -> Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn id_app_arr_pi_ty() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"(\a : Type => \x : a => x) (Type -> Type) (\x : Type => Type)";
             let expected_ty = r"\x : Type => Type";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn apply() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"
                 \a : Type => \b : Type =>
@@ -391,27 +617,27 @@ mod tests {
             ";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn const_() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"\a : Type => \b : Type => \x : a => \y : b => x";
             let expected_ty = r"(a : Type) -> (b : Type) -> a -> b -> a";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
         #[test]
         fn compose() {
-            let ctx = Context::default();
+            let context = Context::new();
 
             let given_expr = r"
                 \a : Type => \b : Type => \c : Type =>
@@ -424,8 +650,8 @@ mod tests {
             ";
 
             assert_eq!(
-                ctx.infer(&parse(given_expr)).unwrap(),
-                parse(expected_ty).eval().unwrap(),
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
             );
         }
 
@@ -434,20 +660,20 @@ mod tests {
 
             #[test]
             fn and() {
-                let ctx = Context::default();
+                let context = Context::new();
 
                 let given_expr = r"\p : Type => \q : Type => (c : Type) -> (p -> q -> c) -> c";
                 let expected_ty = r"Type -> Type -> Type";
 
                 assert_eq!(
-                    ctx.infer(&parse(given_expr)).unwrap(),
-                    parse(expected_ty).eval().unwrap(),
+                    context.infer(&parse(given_expr)).unwrap(),
+                    context.eval(&parse(expected_ty)),
                 );
             }
 
             #[test]
             fn and_intro() {
-                let ctx = Context::default();
+                let context = Context::new();
 
                 let given_expr = r"
                     \p : Type => \q : Type => \x : p => \y : q =>
@@ -459,14 +685,14 @@ mod tests {
                 ";
 
                 assert_eq!(
-                    ctx.infer(&parse(given_expr)).unwrap(),
-                    parse(expected_ty).eval().unwrap(),
+                    context.infer(&parse(given_expr)).unwrap(),
+                    context.eval(&parse(expected_ty)),
                 );
             }
 
             #[test]
             fn and_proj_left() {
-                let ctx = Context::default();
+                let context = Context::new();
 
                 let given_expr = r"
                     \p : Type => \q : Type => \pq : (c : Type) -> (p -> q -> c) -> c =>
@@ -478,14 +704,14 @@ mod tests {
                 ";
 
                 assert_eq!(
-                    ctx.infer(&parse(given_expr)).unwrap(),
-                    parse(expected_ty).eval().unwrap(),
+                    context.infer(&parse(given_expr)).unwrap(),
+                    context.eval(&parse(expected_ty)),
                 );
             }
 
             #[test]
             fn and_proj_right() {
-                let ctx = Context::default();
+                let context = Context::new();
 
                 let given_expr = r"
                     \p : Type => \q : Type => \pq : (c : Type) -> (p -> q -> c) -> c =>
@@ -497,10 +723,21 @@ mod tests {
                 ";
 
                 assert_eq!(
-                    ctx.infer(&parse(given_expr)).unwrap(),
-                    parse(expected_ty).eval().unwrap(),
+                    context.infer(&parse(given_expr)).unwrap(),
+                    context.eval(&parse(expected_ty)),
                 );
             }
+        }
+    }
+
+    mod check_module {
+        use super::*;
+
+        #[test]
+        fn check_prelude() {
+            let module = Module::from_parse(&include_str!("../prelude.lp").parse().unwrap());
+
+            check_module(&module).unwrap();
         }
     }
 }

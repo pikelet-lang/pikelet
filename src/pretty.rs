@@ -1,6 +1,6 @@
 extern crate pretty;
 
-use core::{Neutral, RcNeutral, RcTerm, RcValue, Term, Value};
+use core::{RcTerm, RcValue, Term, Value};
 use var::{Name, Named};
 
 use self::pretty::{BoxDoc, Doc};
@@ -204,30 +204,16 @@ impl ToDoc for Value {
             Value::Type => pretty_ty(),
             Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
             Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
-            Value::Neutral(ref svalue) => svalue.to_doc(context),
+            Value::Var(ref var) => match context.debug_indices {
+                true => Doc::text(format!("{:#}", var)),
+                false => Doc::as_string(var),
+            },
+            Value::App(ref fn_term, ref arg_term) => pretty_app(context, fn_term, arg_term),
         }
     }
 }
 
 impl ToDoc for RcValue {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
-        self.inner.to_doc(context)
-    }
-}
-
-impl ToDoc for Neutral {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
-        match *self {
-            Neutral::Var(ref var) => match context.debug_indices {
-                true => Doc::text(format!("{:#}", var)),
-                false => Doc::as_string(var),
-            },
-            Neutral::App(ref fn_term, ref arg_term) => pretty_app(context, fn_term, arg_term),
-        }
-    }
-}
-
-impl ToDoc for RcNeutral {
     fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
         self.inner.to_doc(context)
     }

@@ -156,7 +156,7 @@ impl Var {
 
     pub fn instantiate_at(&self, level: Debruijn) -> bool {
         match *self {
-            Var::Bound(Named(_, b)) if b == level => true,
+            Var::Bound(Named(_, index)) if index == level => true,
             Var::Bound(_) | Var::Free(_) => false,
         }
     }

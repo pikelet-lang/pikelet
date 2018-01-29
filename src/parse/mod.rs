@@ -24,6 +24,38 @@ impl FromStr for ReplCommand {
     }
 }
 
+/// A module definition
+pub struct Module {
+    /// The name of the module
+    pub name: String,
+    /// The declarations contained in the module
+    pub declarations: Vec<Declaration>,
+}
+
+impl FromStr for Module {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<Module, ParseError> {
+        grammar::parse_Module(src).map_err(|e| ParseError(format!("{}", e)))
+    }
+}
+
+/// Top level declarations
+pub enum Declaration {
+    /// Claims that a term abides by the given type
+    Claim(String, Term),
+    /// Declares the body of a term
+    Definition(String, Vec<(String, Option<Box<Term>>)>, Term),
+}
+
+impl FromStr for Declaration {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<Declaration, ParseError> {
+        grammar::parse_Declaration(src).map_err(|e| ParseError(format!("{}", e)))
+    }
+}
+
 /// The AST of the concrete syntax
 #[derive(Debug, Clone)]
 pub enum Term {
@@ -46,7 +78,7 @@ impl FromStr for Term {
 
 #[cfg(test)]
 mod tests {
-    use core::{RcTerm, Term};
+    use core::{Module, RcTerm, Term};
     use var::{Debruijn, Name, Named, Var};
 
     fn parse(src: &str) -> RcTerm {
@@ -54,8 +86,21 @@ mod tests {
     }
 
     #[test]
+    fn parse_prelude() {
+        Module::from_parse(&include_str!("../../prelude.lp").parse().unwrap());
+    }
+
+    #[test]
     fn var() {
         assert_eq!(parse(r"x"), Term::from(Var::Free(Name::user("x"))).into());
+    }
+
+    #[test]
+    fn var_kebab_case() {
+        assert_eq!(
+            parse(r"or-elim"),
+            Term::from(Var::Free(Name::user("or-elim"))).into(),
+        );
     }
 
     #[test]

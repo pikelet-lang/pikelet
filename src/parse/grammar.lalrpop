@@ -1,4 +1,4 @@
-use parse::{Term, ReplCommand};
+use parse::{Declaration, Module, Term, ReplCommand};
 use lalrpop_util::ParseError;
 
 grammar();
@@ -15,6 +15,21 @@ pub ReplCommand: ReplCommand = {
     ":type" <Term> => ReplCommand::TypeOf(Box::new(<>)),
 };
 
+pub Module: Module = {
+    "module" <name: Ident> ";" <declarations: Declaration*> => {
+        Module { name, declarations }
+    },
+};
+
+pub Declaration: Declaration = {
+    <name: Ident> ":" <term: Term> ";" => {
+        Declaration::Claim(name, term)
+    },
+    <name: Ident> <params: AtomicLamParam*> "=" <term: Term> ";" => {
+        Declaration::Definition(name, params, term)
+    },
+};
+
 pub Term: Term = {
     LamTerm,
     <x: Term> ":" <t: LamTerm> => {
@@ -22,7 +37,7 @@ pub Term: Term = {
     },
 };
 
-AtomicArg: (String, Option<Box<Term>>) = {
+AtomicLamParam: (String, Option<Box<Term>>) = {
     <name: Ident> => (name, None),
     "(" <name: Ident> ":" <ann: PiTerm> ")" => (name, Some(Box::new(ann))),
 };
@@ -32,12 +47,12 @@ LamTerm: Term = {
     r"\\" <name: Ident> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
         Term::Lam(vec![(name, Some(Box::new(ann)))], Box::new(body))
     },
-    r"\\" <args: AtomicArg+> "=>" <body: LamTerm> => {
-        Term::Lam(args, Box::new(body))
+    r"\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
+        Term::Lam(params, Box::new(body))
     },
 };
 
-PiTerm : Term = {
+PiTerm: Term = {
     AppTerm,
     // Naively we would want to write the following rules:
     //
@@ -52,7 +67,7 @@ PiTerm : Term = {
     //
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in with a dyncamic check:
-    <binder: AtomicTerm> "->" <body: LamTerm> =>? {
+    <binder: AppTerm> "->" <body: LamTerm> =>? {
         match binder {
             Term::Ann(name, ann) => match *name {
                 Term::Var(name) => Ok(Term::Pi(name, ann, Box::new(body))),
@@ -79,5 +94,5 @@ AtomicTerm: Term = {
 };
 
 Ident: String = {
-    r"[a-zA-Z][a-zA-Z0-9]*" => String::from(<>),
+    r"[a-zA-Z][a-zA-Z0-9_-]*" => String::from(<>),
 };

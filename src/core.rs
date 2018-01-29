@@ -1,9 +1,29 @@
 use std::fmt;
 use std::rc::Rc;
 
+use parse::Declaration as ParseDeclaration;
+use parse::Module as ParseModule;
 use parse::Term as ParseTerm;
 use pretty::{self, ToDoc};
 use var::{Debruijn, Name, Named, Var};
+
+/// A module definition
+pub struct Module {
+    /// The name of the module
+    pub name: String,
+    /// The definitions contained in the module
+    pub definitions: Vec<Definition>,
+}
+
+/// Top level definitions
+pub struct Definition {
+    /// The name of the declaration
+    pub name: String,
+    /// The body of the definition
+    pub term: RcTerm,
+    /// An optional type annotation to aid in type inference
+    pub ann: Option<RcTerm>,
+}
 
 /// Terms
 #[derive(Debug, Clone, PartialEq)]
@@ -58,30 +78,14 @@ impl fmt::Display for Term {
 pub enum Value {
     /// The type of types
     Type,
+    /// Variables
+    Var(Var),
     /// A partially evaluated lambda
     Lam(Named<Option<RcValue>>, RcValue),
     /// A pi type
     Pi(Named<RcValue>, RcValue),
-    /// Neutral values
-    Neutral(RcNeutral),
-}
-
-impl From<RcNeutral> for Value {
-    fn from(src: RcNeutral) -> Value {
-        Value::Neutral(src)
-    }
-}
-
-impl From<Neutral> for Value {
-    fn from(src: Neutral) -> Value {
-        Value::from(RcNeutral::from(src))
-    }
-}
-
-impl From<Var> for Value {
-    fn from(src: Var) -> Value {
-        Value::from(Neutral::from(src))
-    }
+    /// Term application
+    App(RcValue, RcValue),
 }
 
 impl fmt::Display for Value {
@@ -92,59 +96,34 @@ impl fmt::Display for Value {
     }
 }
 
-/// Neutral forms
-///
-/// https://cs.stackexchange.com/questions/69434/intuitive-explanation-of-neutral-normal-form-in-lambda-calculus
-#[derive(Debug, Clone, PartialEq)]
-pub enum Neutral {
-    /// Variabls
-    Var(Var),
-    /// Application of normal forms to neutral forms
-    App(RcNeutral, RcValue),
-}
-
-impl From<Var> for Neutral {
-    fn from(src: Var) -> Neutral {
-        Neutral::Var(src)
-    }
-}
-
-impl fmt::Display for Neutral {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Context::default())
-            .group()
-            .render_fmt(f.width().unwrap_or(80), f)
-    }
-}
-
 // Wrapper types
 
+#[macro_export]
 macro_rules! make_wrapper {
-    ($name:ident, $inner:ty) => {
+    ($name:ident, $wrapper:ident, $inner:ty) => {
         #[derive(Clone, PartialEq)]
         pub struct $name {
-            pub inner: Rc<$inner>,
+            pub inner: $wrapper<$inner>,
         }
 
         impl From<$inner> for $name {
             fn from(src: $inner) -> $name {
                 $name {
-                    inner: Rc::new(src),
+                    inner: $wrapper::new(src),
                 }
             }
         }
 
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Debug::fmt(&self.inner, f)
+        impl $crate::std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut $crate::std::fmt::Formatter) -> $crate::std::fmt::Result {
+                $crate::std::fmt::Debug::fmt(&self.inner, f)
             }
         }
     };
 }
 
-make_wrapper!(RcTerm, Term);
-make_wrapper!(RcValue, Value);
-make_wrapper!(RcNeutral, Neutral);
+make_wrapper!(RcTerm, Rc, Term);
+make_wrapper!(RcValue, Rc, Value);
 
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
@@ -185,74 +164,114 @@ impl RcTerm {
 }
 
 impl RcValue {
-    pub fn eval_app(fn_expr: RcValue, arg: RcValue) -> Result<RcValue, EvalError> {
-        match *fn_expr.inner {
-            Value::Lam(_, ref body) => RcValue::instantiate0(body, &arg),
-            Value::Neutral(ref stuck) => Ok(Value::from(Neutral::App(stuck.clone(), arg)).into()),
-            _ => Err(EvalError::ArgAppliedToNonFunction {
-                expr: fn_expr.clone(),
-                arg: arg,
-            }),
-        }
+    pub fn instantiate0(&self, x: &RcValue) -> RcValue {
+        self.instantiate_at(Debruijn::ZERO, &x)
     }
 
-    pub fn instantiate0(val: &RcValue, x: &RcValue) -> Result<RcValue, EvalError> {
-        RcValue::instantiate_at(val, Debruijn::ZERO, &x)
-    }
-
-    pub fn instantiate_at(
-        val: &RcValue,
-        level: Debruijn,
-        x: &RcValue,
-    ) -> Result<RcValue, EvalError> {
-        match *val.inner {
-            Value::Type => Ok(val.clone()),
+    pub fn instantiate_at(&self, level: Debruijn, x: &RcValue) -> RcValue {
+        match *self.inner {
+            Value::Type => self.clone(),
+            Value::Var(ref var) => match var.instantiate_at(level) {
+                true => x.clone(),
+                false => self.clone(),
+            },
             Value::Lam(Named(ref name, ref param_ty), ref body) => {
-                let param_ty = match param_ty.as_ref() {
-                    None => None,
-                    Some(ref param_ty) => Some(RcValue::instantiate_at(param_ty, level, x)?),
-                };
-                let body = RcValue::instantiate_at(body, level.succ(), x)?;
+                let param_ty = param_ty
+                    .as_ref()
+                    .map(|param_ty| param_ty.instantiate_at(level, x));
+                let body = body.instantiate_at(level.succ(), x);
 
-                Ok(Value::Lam(Named(name.clone(), param_ty), body).into())
+                Value::Lam(Named(name.clone(), param_ty), body).into()
             }
             Value::Pi(Named(ref name, ref param_ty), ref body) => {
-                let param_ty = RcValue::instantiate_at(param_ty, level, x)?;
-                let body = RcValue::instantiate_at(body, level.succ(), x)?;
+                let param_ty = param_ty.instantiate_at(level, x);
+                let body = body.instantiate_at(level.succ(), x);
 
-                Ok(Value::Pi(Named(name.clone(), param_ty), body).into())
+                Value::Pi(Named(name.clone(), param_ty), body).into()
             }
-            Value::Neutral(ref stuck) => RcNeutral::instantiate_at(stuck, level, x),
-        }
-    }
-}
+            Value::App(ref fn_expr, ref arg_expr) => {
+                let fn_expr = fn_expr.instantiate_at(level, x);
+                let arg = arg_expr.instantiate_at(level, x);
 
-impl RcNeutral {
-    pub fn instantiate0(val: &RcNeutral, x: &RcValue) -> Result<RcValue, EvalError> {
-        RcNeutral::instantiate_at(val, Debruijn::ZERO, &x)
-    }
-
-    pub fn instantiate_at(
-        val: &RcNeutral,
-        level: Debruijn,
-        x: &RcValue,
-    ) -> Result<RcValue, EvalError> {
-        match *val.inner {
-            Neutral::Var(ref var) => match var.instantiate_at(level) {
-                true => Ok(x.clone()),
-                false => Ok(Value::from(val.clone()).into()),
-            },
-            Neutral::App(ref fn_expr, ref arg_expr) => {
-                let fn_expr = RcNeutral::instantiate_at(fn_expr, level, x)?;
-                let arg = RcValue::instantiate_at(arg_expr, level, x)?;
-
-                RcValue::eval_app(fn_expr, arg)
+                Value::App(fn_expr, arg).into()
             }
         }
     }
 }
 
 // Conversions from the parse tree
+
+fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm) -> RcTerm {
+    let mut term = RcTerm::from_parse(body);
+
+    for &(ref name, ref ann) in params.iter().rev() {
+        let name = Name::User(name.clone());
+        term.abstract0(&name);
+        term = match *ann {
+            None => Term::Lam(Named(name, None), term).into(),
+            Some(ref ann) => {
+                let ann = RcTerm::from_parse(ann).into();
+                Term::Lam(Named(name, Some(ann)), term).into()
+            }
+        };
+    }
+
+    term
+}
+
+impl Module {
+    pub fn from_parse(module: &ParseModule) -> Module {
+        use std::collections::BTreeMap;
+        use std::collections::btree_map::Entry;
+
+        let mut claims = BTreeMap::new();
+        let mut definitions = Vec::<Definition>::new();
+
+        for declaration in &module.declarations {
+            match *declaration {
+                ParseDeclaration::Claim(ref name, ref term) => {
+                    match claims.entry(name) {
+                        Entry::Occupied(_) => panic!(), // FIXME: Better error
+                        Entry::Vacant(mut entry) => {
+                            let mut term = RcTerm::from_parse(term);
+
+                            for (level, definition) in definitions.iter().rev().enumerate() {
+                                term.abstract_at(
+                                    Debruijn(level as u32),
+                                    &Name::user(definition.name.clone()),
+                                );
+                            }
+
+                            entry.insert(term)
+                        }
+                    };
+                }
+                ParseDeclaration::Definition(ref name, ref params, ref term) => {
+                    let name = name.clone();
+                    let mut term = lam_from_parse(params, term);
+                    let ann = claims.remove(&name);
+
+                    for (level, definition) in definitions.iter().rev().enumerate() {
+                        term.abstract_at(
+                            Debruijn(level as u32),
+                            &Name::user(definition.name.clone()),
+                        );
+                    }
+
+                    definitions.push(Definition { name, term, ann });
+                }
+            }
+        }
+
+        // FIXME: Better error
+        assert!(claims.is_empty());
+
+        Module {
+            name: module.name.clone(),
+            definitions,
+        }
+    }
+}
 
 impl RcTerm {
     /// Convert a parsed term into a checkable term
@@ -263,23 +282,7 @@ impl RcTerm {
             ParseTerm::Ann(ref e, ref t) => {
                 Term::Ann(RcTerm::from_parse(e).into(), RcTerm::from_parse(t).into()).into()
             }
-            ParseTerm::Lam(ref args, ref body) => {
-                let mut term = RcTerm::from_parse(body);
-
-                for &(ref name, ref ann) in args.iter().rev() {
-                    let name = Name::User(name.clone());
-                    term.abstract0(&name);
-                    term = match *ann {
-                        None => Term::Lam(Named(name, None), term).into(),
-                        Some(ref ann) => {
-                            let ann = RcTerm::from_parse(ann).into();
-                            Term::Lam(Named(name, Some(ann)), term).into()
-                        }
-                    };
-                }
-
-                term
-            }
+            ParseTerm::Lam(ref params, ref body) => lam_from_parse(params, body),
             ParseTerm::Pi(ref name, ref ann, ref body) => {
                 let name = Name::User(name.clone());
                 let mut body = RcTerm::from_parse(body);
@@ -296,78 +299,6 @@ impl RcTerm {
             }
             ParseTerm::App(ref f, ref arg) => {
                 Term::App(RcTerm::from_parse(f), RcTerm::from_parse(arg)).into()
-            }
-        }
-    }
-}
-
-// Evaluation
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum EvalError {
-    /// Attempted to apply an argument to a term that is not a function
-    ArgAppliedToNonFunction { arg: RcValue, expr: RcValue },
-}
-
-impl RcTerm {
-    pub fn eval(&self) -> Result<RcValue, EvalError> {
-        // e ⇓ v
-        match *self.inner {
-            //  1.  e ⇓ v
-            // ────────────────── (EVAL/ANN)
-            //      e : ρ ⇓ v
-            Term::Ann(ref expr, _) => {
-                expr.eval() // 1.
-            }
-
-            // ───────────── (EVAL/TYPE)
-            //  Type ⇓ Type
-            Term::Type => Ok(Value::Type.into()),
-
-            // ─────── (EVAL/Var)
-            //  x ⇓ x
-            Term::Var(ref var) => Ok(Value::from(var.clone()).into()),
-
-            //  1. e ⇓ v
-            // ───────────────── (EVAL/LAM)
-            //     λx.e ⇓ λx→v
-            Term::Lam(Named(ref name, None), ref body_expr) => {
-                let body_expr = body_expr.eval()?; // 1.
-
-                Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
-            }
-
-            //  1.  ρ ⇓ τ
-            //  2.  e ⇓ v
-            // ──────────────────────── (EVAL/LAM-ANN)
-            //      λx:ρ→e ⇓ λx:τ→v
-            Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
-                let param_ty = param_ty.eval()?; // 1.
-                let body_expr = body_expr.eval()?; // 2.
-
-                Ok(Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into())
-            }
-
-            //  1.  ρ₁ ⇓ τ₁
-            //  2.  ρ₂ ⇓ τ₂
-            // ─────────────────────────── (EVAL/PI-ANN)
-            //      (x:ρ₁)→ρ₂ ⇓ (x:τ₁)→τ₂
-            Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
-                let param_ty = param_ty.eval()?; // 1.
-                let body_expr = body_expr.eval()?; // 2.
-
-                Ok(Value::Pi(Named(name.clone(), param_ty), body_expr).into())
-            }
-
-            //  1.  e₁ ⇓ λx→v₁
-            //  2.  v₁[x↦e₂] ⇓ v₂
-            // ───────────────────── (EVAL/APP)
-            //      e₁ e₂ ⇓ v₂
-            Term::App(ref fn_expr, ref arg) => {
-                let fn_expr = fn_expr.eval()?; // 1.
-                let arg = arg.eval()?; // 2.
-
-                RcValue::eval_app(fn_expr, arg)
             }
         }
     }
@@ -439,103 +370,6 @@ mod tests {
             assert_eq!(
                 parse(r"(x : Type -> Type) -> (y : Type) -> x y"),
                 parse(r"(a : Type -> Type) -> (b : Type) -> a b"),
-            );
-        }
-    }
-
-    mod eval {
-        use super::*;
-
-        #[test]
-        fn var() {
-            let x = Name::user("x");
-
-            assert_eq!(
-                parse(r"x").eval().unwrap(),
-                Value::from(Var::Free(x)).into(),
-            );
-        }
-
-        #[test]
-        fn ty() {
-            let ty: RcValue = Value::Type.into();
-
-            assert_eq!(parse(r"Type").eval().unwrap(), ty);
-        }
-
-        #[test]
-        fn lam() {
-            let x = Name::user("x");
-            let ty: RcValue = Value::Type.into();
-
-            assert_eq!(
-                parse(r"\x : Type => x").eval().unwrap(),
-                Value::Lam(
-                    Named(x.clone(), Some(ty)),
-                    Value::from(Var::Bound(Named(x, Debruijn(0)))).into(),
-                ).into(),
-            );
-        }
-
-        #[test]
-        fn pi() {
-            let x = Name::user("x");
-            let ty: RcValue = Value::Type.into();
-
-            assert_eq!(
-                parse(r"(x : Type) -> x").eval().unwrap(),
-                Value::Pi(
-                    Named(x.clone(), ty),
-                    Value::from(Var::Bound(Named(x, Debruijn(0)))).into(),
-                ).into(),
-            );
-        }
-
-        #[test]
-        fn lam_app() {
-            let x = Name::user("x");
-            let y = Name::user("y");
-            let ty: RcValue = Value::Type.into();
-            let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
-
-            assert_eq!(
-                parse(r"\x : Type -> Type => \y : Type => x y")
-                    .eval()
-                    .unwrap(),
-                Value::Lam(
-                    Named(x.clone(), Some(ty_arr)),
-                    Value::Lam(
-                        Named(y.clone(), Some(ty)),
-                        Value::from(Neutral::App(
-                            Neutral::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                            Value::from(Var::Bound(Named(y, Debruijn(0)))).into(),
-                        )).into(),
-                    ).into(),
-                ).into(),
-            );
-        }
-
-        #[test]
-        fn pi_app() {
-            let x = Name::user("x");
-            let y = Name::user("y");
-            let ty: RcValue = Value::Type.into();
-            let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
-
-            assert_eq!(
-                parse(r"(x : Type -> Type) -> \y : Type => x y")
-                    .eval()
-                    .unwrap(),
-                Value::Pi(
-                    Named(x.clone(), ty_arr),
-                    Value::Lam(
-                        Named(y.clone(), Some(ty)),
-                        Value::from(Neutral::App(
-                            Neutral::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                            Value::from(Var::Bound(Named(y, Debruijn(0)))).into(),
-                        )).into(),
-                    ).into(),
-                ).into(),
             );
         }
     }
