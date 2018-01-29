@@ -55,20 +55,20 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Check that the type of an expression is compatible with the expected type
-    pub fn check(&self, expr: &RcTerm, expected_ty: &RcType) -> Result<(), TypeError> {
+    /// Check that the given term has the expected type
+    pub fn check(&self, term: &RcTerm, expected: &RcType) -> Result<(), TypeError> {
         // Γ ⊢ e :↓ τ
-        match *expr.inner {
+        match *term.inner {
             //  1.  Γ, x:τ₁ ⊢ e :↓ τ₂
             // ─────────────────────────────── (CHECK/LAM)
             //      Γ ⊢ λx→e :↓ (x:τ₁)→τ₂
-            Term::Lam(Named(_, None), ref body_expr) => match *expected_ty.inner {
+            Term::Lam(Named(_, None), ref body_expr) => match *expected.inner {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                     self.extend(param_ty.clone()).check(body_expr, ret_ty) // 1.
                 }
                 _ => Err(TypeError::ExpectedFunction {
-                    lam_expr: expr.clone(),
-                    expected: expected_ty.clone(),
+                    lam_expr: term.clone(),
+                    expected: expected.clone(),
                 }),
             },
 
@@ -76,22 +76,23 @@ impl<'a> Context<'a> {
             // ─────────────────── (CHECK/INFER)
             //      Γ ⊢ e :↓ τ
             _ => {
-                let inferred_ty = self.infer(expr)?; // 1.
-                match &inferred_ty == expected_ty {
+                let inferred_ty = self.infer(term)?; // 1.
+                match &inferred_ty == expected {
                     true => Ok(()),
                     false => Err(TypeError::Mismatch {
-                        expr: expr.clone(),
+                        expr: term.clone(),
                         found: inferred_ty,
-                        expected: expected_ty.clone(),
+                        expected: expected.clone(),
                     }),
                 }
             }
         }
     }
 
-    pub fn infer(&self, expr: &RcTerm) -> Result<RcType, TypeError> {
+    /// Infer the type of the given term
+    pub fn infer(&self, term: &RcTerm) -> Result<RcType, TypeError> {
         // Γ ⊢ e :↑ τ
-        match *expr.inner {
+        match *term.inner {
             //  1.  Γ ⊢ ρ₁ :↓ Type
             //  2.  ρ ⇓ τ
             //  3.  Γ ⊢ e :↓ τ
