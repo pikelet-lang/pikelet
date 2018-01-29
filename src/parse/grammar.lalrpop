@@ -3,11 +3,16 @@ use lalrpop_util::ParseError;
 
 grammar();
 
-pub ReplCommand : ReplCommand = {
-    "" => ReplCommand::NoOp,
-    ":h" => ReplCommand::Help,
+pub ReplCommand: ReplCommand = {
     <Term> => ReplCommand::Eval(Box::new(<>)),
+    ":?" => ReplCommand::Help,
+    ":h" => ReplCommand::Help,
+    ":help" => ReplCommand::Help,
+    "" => ReplCommand::NoOp,
+    ":q" => ReplCommand::Quit,
+    ":quit" => ReplCommand::Quit,
     ":t" <Term> => ReplCommand::TypeOf(Box::new(<>)),
+    ":type" <Term> => ReplCommand::TypeOf(Box::new(<>)),
 };
 
 pub Term: Term = {

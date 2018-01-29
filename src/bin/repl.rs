@@ -29,6 +29,10 @@ fn main() {
                     }
                     Err(ReplError::Eval(err)) => println!("eval error: {:?}", err),
                     Err(ReplError::Type(err)) => println!("type error: {:?}", err),
+                    Err(ReplError::Quit) => {
+                        println!("Bye bye");
+                        break;
+                    }
                 }
             }
             Err(err) => match err {
@@ -54,18 +58,17 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
     use lambdapi::parse::ReplCommand;
 
     match line.parse()? {
-        ReplCommand::NoOp => {}
         ReplCommand::Help => {
-            println!("<expr>       evaluate a term");
-            println!(":h           print command help");
-            println!(":t <expr>    infer the type of an expression");
+            println!("");
+            println!("Command       Arguments   Purpose");
+            println!("");
+            println!("<expr>                    evaluate a term");
+            println!(":? :h :help               display this help text");
+            println!(":q :quit                  quit the repl");
+            println!(":t :type      <expr>      infer the type of an expression");
+            println!("");
         }
-        ReplCommand::TypeOf(parse_term) => {
-            let term = RcITerm::from_parse(&parse_term)?;
-            let inferred = Context::default().infer(&term)?;
 
-            println!("{}", inferred.to_doc(pretty::Context::default()).pretty(80));
-        }
         ReplCommand::Eval(parse_term) => {
             let term = RcITerm::from_parse(&parse_term)?;
             let inferred = Context::default().infer(&term)?;
@@ -74,6 +77,16 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
 
             println!("{}", doc.pretty(80));
         }
+        ReplCommand::TypeOf(parse_term) => {
+            let term = RcITerm::from_parse(&parse_term)?;
+            let inferred = Context::default().infer(&term)?;
+            let doc = inferred.to_doc(pretty::Context::default());
+
+            println!("{}", doc.pretty(80));
+        }
+
+        ReplCommand::NoOp => {}
+        ReplCommand::Quit => return Err(ReplError::Quit),
     }
 
     Ok(())
@@ -84,6 +97,7 @@ enum ReplError {
     FromParse(FromParseError),
     Eval(EvalError),
     Type(TypeError),
+    Quit,
 }
 
 impl From<ParseError> for ReplError {

@@ -9,9 +9,10 @@ pub struct ParseError(pub String);
 
 #[derive(Debug, Clone)]
 pub enum ReplCommand {
-    NoOp,
-    Help,
     Eval(Box<Term>),
+    Help,
+    NoOp,
+    Quit,
     TypeOf(Box<Term>),
 }
 
