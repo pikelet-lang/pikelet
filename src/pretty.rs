@@ -1,6 +1,6 @@
 extern crate pretty;
 
-use core::{CTerm, ITerm, Neutral, RcCTerm, RcITerm, RcNeutral, RcValue, Value};
+use core::{Neutral, RcNeutral, RcTerm, RcValue, Term, Value};
 use var::{Name, Named};
 
 use self::pretty::{BoxDoc, Doc};
@@ -179,37 +179,20 @@ pub fn pretty_app<'a, F: ToDoc, A: ToDoc>(
     )
 }
 
-impl ToDoc for CTerm {
+impl ToDoc for Term {
     fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
         match *self {
-            CTerm::Inf(ref iterm) => iterm.to_doc(context),
-            CTerm::Lam(Named(ref name, ()), ref body) => {
-                pretty_lam(context, name, None::<&ITerm>, body)
-            }
+            Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
+            Term::Type => pretty_ty(),
+            Term::Var(ref var) => Doc::as_string(var),
+            Term::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
+            Term::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
+            Term::App(ref f, ref a) => pretty_app(context, f, a),
         }
     }
 }
 
-impl ToDoc for RcCTerm {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
-        self.inner.to_doc(context)
-    }
-}
-
-impl ToDoc for ITerm {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
-        match *self {
-            ITerm::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
-            ITerm::Type => pretty_ty(),
-            ITerm::Var(ref var) => Doc::as_string(var),
-            ITerm::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, Some(a), b),
-            ITerm::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
-            ITerm::App(ref f, ref a) => pretty_app(context, f, a),
-        }
-    }
-}
-
-impl ToDoc for RcITerm {
+impl ToDoc for RcTerm {
     fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
         self.inner.to_doc(context)
     }

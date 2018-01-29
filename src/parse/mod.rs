@@ -29,7 +29,7 @@ pub enum Term {
     Var(String),
     Type,
     Ann(Box<Term>, Box<Term>),
-    Lam(String, Option<Box<Term>>, Box<Term>),
+    Lam(Vec<(String, Option<Box<Term>>)>, Box<Term>),
     Pi(String, Box<Term>, Box<Term>),
     Arrow(Box<Term>, Box<Term>),
     App(Box<Term>, Box<Term>),
@@ -45,31 +45,28 @@ impl FromStr for Term {
 
 #[cfg(test)]
 mod tests {
-    use core::{CTerm, ITerm, RcITerm};
+    use core::{RcTerm, Term};
     use var::{Debruijn, Name, Named, Var};
 
-    fn parse(src: &str) -> RcITerm {
-        RcITerm::from_parse(&src.parse().unwrap()).unwrap()
+    fn parse(src: &str) -> RcTerm {
+        RcTerm::from_parse(&src.parse().unwrap())
     }
 
     #[test]
     fn var() {
-        assert_eq!(parse(r"x"), ITerm::from(Var::Free(Name::user("x"))).into());
+        assert_eq!(parse(r"x"), Term::from(Var::Free(Name::user("x"))).into());
     }
 
     #[test]
     fn ty() {
-        assert_eq!(parse(r"Type"), ITerm::Type.into());
+        assert_eq!(parse(r"Type"), Term::Type.into());
     }
 
     #[test]
     fn ann() {
         assert_eq!(
             parse(r"Type : Type"),
-            ITerm::Ann(
-                CTerm::from(ITerm::Type).into(),
-                CTerm::from(ITerm::Type).into(),
-            ).into(),
+            Term::Ann(Term::from(Term::Type).into(), Term::from(Term::Type).into(),).into(),
         );
     }
 
@@ -77,12 +74,12 @@ mod tests {
     fn ann_ann_left() {
         assert_eq!(
             parse(r"Type : Type : Type"),
-            ITerm::Ann(
-                CTerm::from(ITerm::Ann(
-                    CTerm::from(ITerm::Type).into(),
-                    CTerm::from(ITerm::Type).into(),
+            Term::Ann(
+                Term::from(Term::Ann(
+                    Term::from(Term::Type).into(),
+                    Term::from(Term::Type).into(),
                 )).into(),
-                CTerm::from(ITerm::Type).into(),
+                Term::from(Term::Type).into(),
             ).into(),
         );
     }
@@ -91,11 +88,11 @@ mod tests {
     fn ann_ann_right() {
         assert_eq!(
             parse(r"Type : (Type : Type)"),
-            ITerm::Ann(
-                CTerm::from(ITerm::Type).into(),
-                CTerm::from(ITerm::Ann(
-                    CTerm::from(ITerm::Type).into(),
-                    CTerm::from(ITerm::Type).into(),
+            Term::Ann(
+                Term::from(Term::Type).into(),
+                Term::from(Term::Ann(
+                    Term::from(Term::Type).into(),
+                    Term::from(Term::Type).into(),
                 )).into(),
             ).into(),
         );
@@ -105,14 +102,14 @@ mod tests {
     fn ann_ann_ann() {
         assert_eq!(
             parse(r"(Type : Type) : (Type : Type)"),
-            ITerm::Ann(
-                CTerm::from(ITerm::Ann(
-                    CTerm::from(ITerm::Type).into(),
-                    CTerm::from(ITerm::Type).into(),
+            Term::Ann(
+                Term::from(Term::Ann(
+                    Term::from(Term::Type).into(),
+                    Term::from(Term::Type).into(),
                 )).into(),
-                CTerm::from(ITerm::Ann(
-                    CTerm::from(ITerm::Type).into(),
-                    CTerm::from(ITerm::Type).into(),
+                Term::from(Term::Ann(
+                    Term::from(Term::Type).into(),
+                    Term::from(Term::Type).into(),
                 )).into(),
             ).into(),
         );
@@ -124,15 +121,17 @@ mod tests {
 
         assert_eq!(
             parse(r"\x : Type -> Type => x"),
-            ITerm::Lam(
+            Term::Lam(
                 Named(
                     x.clone(),
-                    CTerm::from(ITerm::Pi(
-                        Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
-                        CTerm::from(ITerm::Type).into(),
-                    )).into(),
+                    Some(
+                        Term::from(Term::Pi(
+                            Named(Name::Abstract, Term::from(Term::Type).into()),
+                            Term::from(Term::Type).into(),
+                        )).into()
+                    ),
                 ),
-                ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                Term::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
         );
     }
@@ -144,16 +143,26 @@ mod tests {
 
         assert_eq!(
             parse(r"\x : (\y => y) => x"),
-            ITerm::Lam(
+            Term::Lam(
                 Named(
                     x.clone(),
-                    CTerm::Lam(
-                        Named(y.clone(), ()),
-                        CTerm::from(Var::Bound(Named(y, Debruijn(0)))).into(),
-                    ).into(),
+                    Some(
+                        Term::Lam(
+                            Named(y.clone(), None),
+                            Term::from(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        ).into()
+                    ),
                 ),
-                ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                Term::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
+        );
+    }
+
+    #[test]
+    fn lam_multi() {
+        assert_eq!(
+            parse(r"\y (x : Type) z => x"),
+            parse(r"\y => \x : Type => \z => x"),
         );
     }
 
@@ -164,11 +173,11 @@ mod tests {
 
         assert_eq!(
             parse(r"\x : Type => \y : Type => x"),
-            ITerm::Lam(
-                Named(x.clone(), CTerm::from(ITerm::Type).into()),
-                ITerm::Lam(
-                    Named(y, CTerm::from(ITerm::Type).into()),
-                    ITerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+            Term::Lam(
+                Named(x.clone(), Some(Term::from(Term::Type).into())),
+                Term::Lam(
+                    Named(y, Some(Term::from(Term::Type).into())),
+                    Term::from(Var::Bound(Named(x, Debruijn(1)))).into(),
                 ).into(),
             ).into(),
         );
@@ -178,9 +187,9 @@ mod tests {
     fn arrow() {
         assert_eq!(
             parse(r"Type -> Type"),
-            ITerm::Pi(
-                Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
-                CTerm::from(ITerm::Type).into(),
+            Term::Pi(
+                Named(Name::Abstract, Term::from(Term::Type).into()),
+                Term::from(Term::Type).into(),
             ).into(),
         );
     }
@@ -191,15 +200,15 @@ mod tests {
 
         assert_eq!(
             parse(r"(x : Type -> Type) -> x"),
-            ITerm::Pi(
+            Term::Pi(
                 Named(
                     x.clone(),
-                    CTerm::from(ITerm::Pi(
-                        Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
-                        CTerm::from(ITerm::Type).into(),
+                    Term::from(Term::Pi(
+                        Named(Name::Abstract, Term::from(Term::Type).into()),
+                        Term::from(Term::Type).into(),
                     )).into(),
                 ),
-                CTerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                Term::from(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
         );
     }
@@ -211,11 +220,11 @@ mod tests {
 
         assert_eq!(
             parse(r"(x : Type) -> (y : Type) -> x"),
-            ITerm::Pi(
-                Named(x.clone(), CTerm::from(ITerm::Type).into()),
-                CTerm::from(ITerm::Pi(
-                    Named(y, CTerm::from(ITerm::Type).into()),
-                    CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+            Term::Pi(
+                Named(x.clone(), Term::from(Term::Type).into()),
+                Term::from(Term::Pi(
+                    Named(y, Term::from(Term::Type).into()),
+                    Term::from(Var::Bound(Named(x, Debruijn(1)))).into(),
                 )).into(),
             ).into(),
         );
@@ -227,14 +236,14 @@ mod tests {
 
         assert_eq!(
             parse(r"(x : Type) -> x -> x"),
-            ITerm::Pi(
-                Named(x.clone(), CTerm::from(ITerm::Type).into()),
-                CTerm::from(ITerm::Pi(
+            Term::Pi(
+                Named(x.clone(), Term::from(Term::Type).into()),
+                Term::from(Term::Pi(
                     Named(
                         Name::Abstract,
-                        CTerm::from(Var::Bound(Named(x.clone(), Debruijn(0)))).into(),
+                        Term::from(Var::Bound(Named(x.clone(), Debruijn(0)))).into(),
                     ),
-                    CTerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                    Term::from(Var::Bound(Named(x, Debruijn(1)))).into(),
                 )).into(),
             ).into(),
         );
@@ -247,20 +256,21 @@ mod tests {
 
         assert_eq!(
             parse(r"\x : (Type -> Type) => \y : Type => x y"),
-            ITerm::Lam(
+            Term::Lam(
                 Named(
                     x.clone(),
-                    CTerm::from(ITerm::Pi(
-                        Named(Name::Abstract, CTerm::from(ITerm::Type).into()),
-                        CTerm::from(ITerm::Type).into(),
-                    ),)
-                        .into(),
+                    Some(
+                        Term::from(Term::Pi(
+                            Named(Name::Abstract, Term::from(Term::Type).into()),
+                            Term::from(Term::Type).into(),
+                        )).into(),
+                    ),
                 ),
-                ITerm::Lam(
-                    Named(y.clone(), CTerm::from(ITerm::Type).into()),
-                    ITerm::App(
-                        ITerm::from(Var::Bound(Named(x, Debruijn(1)))).into(),
-                        CTerm::from(Var::Bound(Named(y, Debruijn(0)))).into(),
+                Term::Lam(
+                    Named(y.clone(), Some(Term::from(Term::Type).into())),
+                    Term::App(
+                        Term::from(Var::Bound(Named(x, Debruijn(1)))).into(),
+                        Term::from(Var::Bound(Named(y, Debruijn(0)))).into(),
                     ).into(),
                 ).into(),
             ).into(),
@@ -274,14 +284,14 @@ mod tests {
 
         assert_eq!(
             parse(r"\a : Type => \x : a => x"),
-            ITerm::Lam(
-                Named(a.clone(), CTerm::from(ITerm::Type).into()),
-                ITerm::Lam(
+            Term::Lam(
+                Named(a.clone(), Some(Term::from(Term::Type).into())),
+                Term::Lam(
                     Named(
                         x.clone(),
-                        CTerm::from(Var::Bound(Named(a, Debruijn(0)))).into(),
+                        Some(Term::from(Var::Bound(Named(a, Debruijn(0)))).into()),
                     ),
-                    ITerm::from(Var::Bound(Named(x, Debruijn(0)))).into(),
+                    Term::from(Var::Bound(Named(x, Debruijn(0)))).into(),
                 ).into(),
             ).into(),
         );
@@ -293,14 +303,14 @@ mod tests {
 
         assert_eq!(
             parse(r"(a : Type) -> a -> a"),
-            ITerm::Pi(
-                Named(a.clone(), CTerm::from(ITerm::Type).into()),
-                CTerm::from(ITerm::Pi(
+            Term::Pi(
+                Named(a.clone(), Term::from(Term::Type).into()),
+                Term::from(Term::Pi(
                     Named(
                         Name::Abstract,
-                        CTerm::from(Var::Bound(Named(a.clone(), Debruijn(0)))).into(),
+                        Term::from(Var::Bound(Named(a.clone(), Debruijn(0)))).into(),
                     ),
-                    CTerm::from(Var::Bound(Named(a, Debruijn(1)))).into(),
+                    Term::from(Var::Bound(Named(a, Debruijn(1)))).into(),
                 )).into(),
             ).into(),
         );

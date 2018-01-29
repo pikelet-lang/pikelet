@@ -5,88 +5,47 @@ use parse::Term as ParseTerm;
 use pretty::{self, ToDoc};
 use var::{Debruijn, Name, Named, Var};
 
-/// Checkable terms
-///
-/// These terms do not contain full type information within them, so in order to
-/// check them we need to supply a type to the checking algorithm
+/// Terms
 #[derive(Debug, Clone, PartialEq)]
-pub enum CTerm {
-    /// Inferrable terms
-    Inf(RcITerm),
-    /// Lambdas without an explicit type annotation
-    ///
-    /// ```text
-    /// \x => t
-    /// ```
-    Lam(Named<()>, RcCTerm),
-}
-
-impl From<ITerm> for CTerm {
-    fn from(src: ITerm) -> CTerm {
-        CTerm::Inf(src.into())
-    }
-}
-
-impl From<Var> for CTerm {
-    fn from(src: Var) -> CTerm {
-        CTerm::from(ITerm::from(src))
-    }
-}
-
-impl fmt::Display for CTerm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Context::default())
-            .group()
-            .render_fmt(f.width().unwrap_or(80), f)
-    }
-}
-
-/// Inferrable terms
-///
-/// These terms can be fully inferred without needing to resort to type
-/// inference
-#[derive(Debug, Clone, PartialEq)]
-pub enum ITerm {
+pub enum Term {
     /// A term annotated with a type
     ///
     /// ```text
     /// e : t
     /// ```
-    Ann(RcCTerm, RcCTerm),
+    Ann(RcTerm, RcTerm),
     /// Type of types
     Type,
     /// A variable
     Var(Var),
-    /// Fully annotated lambda abstractions
-    ///
-    /// Note that the body of the lambda must have a type that can be inferred
-    /// from context
+    /// Lambda abstractions
     ///
     /// ```text
+    /// \x => t
     /// \x : t => t
     /// ```
-    Lam(Named<RcCTerm>, RcITerm),
+    Lam(Named<Option<RcTerm>>, RcTerm),
     /// Dependent function type
     ///
     /// ```text
     /// (x : t) -> t
     /// ```
-    Pi(Named<RcCTerm>, RcCTerm),
+    Pi(Named<RcTerm>, RcTerm),
     /// Term application
     ///
     /// ```text
     /// f x
     /// ```
-    App(RcITerm, RcCTerm),
+    App(RcTerm, RcTerm),
 }
 
-impl From<Var> for ITerm {
-    fn from(src: Var) -> ITerm {
-        ITerm::Var(src)
+impl From<Var> for Term {
+    fn from(src: Var) -> Term {
+        Term::Var(src)
     }
 }
 
-impl fmt::Display for ITerm {
+impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Context::default())
             .group()
@@ -183,8 +142,7 @@ macro_rules! make_wrapper {
     };
 }
 
-make_wrapper!(RcCTerm, CTerm);
-make_wrapper!(RcITerm, ITerm);
+make_wrapper!(RcTerm, Term);
 make_wrapper!(RcValue, Value);
 make_wrapper!(RcNeutral, Neutral);
 
@@ -196,41 +154,29 @@ pub type RcType = RcValue;
 
 // Abstraction and instantiation
 
-impl RcCTerm {
+impl RcTerm {
     pub fn abstract0(&mut self, name: &Name) {
         self.abstract_at(Debruijn::ZERO, name);
     }
 
     pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
         match *Rc::make_mut(&mut self.inner) {
-            CTerm::Inf(ref mut i) => i.abstract_at(level, name),
-            CTerm::Lam(_, ref mut body) => body.abstract_at(level.succ(), name),
-        }
-    }
-}
-
-impl RcITerm {
-    pub fn abstract0(&mut self, name: &Name) {
-        self.abstract_at(Debruijn::ZERO, name);
-    }
-
-    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
-            ITerm::Ann(ref mut expr, ref mut ty) => {
+            Term::Ann(ref mut expr, ref mut ty) => {
                 expr.abstract_at(level, name);
                 ty.abstract_at(level, name);
             }
-            ITerm::Lam(Named(_, ref mut ty), ref mut body) => {
+            Term::Lam(Named(_, None), ref mut body) => body.abstract_at(level.succ(), name),
+            Term::Lam(Named(_, Some(ref mut ty)), ref mut body) => {
                 ty.abstract_at(level, name);
                 body.abstract_at(level.succ(), name);
             }
-            ITerm::Pi(Named(_, ref mut ty), ref mut body) => {
+            Term::Pi(Named(_, ref mut ty), ref mut body) => {
                 ty.abstract_at(level, name);
                 body.abstract_at(level.succ(), name);
             }
-            ITerm::Var(ref mut var) => var.abstract_at(level, name),
-            ITerm::Type => {}
-            ITerm::App(ref mut f, ref mut x) => {
+            Term::Var(ref mut var) => var.abstract_at(level, name),
+            Term::Type => {}
+            Term::App(ref mut f, ref mut x) => {
                 f.abstract_at(level, name);
                 x.abstract_at(level, name);
             }
@@ -308,61 +254,49 @@ impl RcNeutral {
 
 // Conversions from the parse tree
 
-// FIXME: use a proper error type
-#[derive(Debug, Clone, PartialEq)]
-pub struct FromParseError;
-
-impl RcCTerm {
+impl RcTerm {
     /// Convert a parsed term into a checkable term
-    fn from_parse(term: &ParseTerm) -> Result<RcCTerm, FromParseError> {
+    pub fn from_parse(term: &ParseTerm) -> RcTerm {
         match *term {
-            ParseTerm::Lam(ref name, None, ref body) => {
-                let name = Name::User(name.clone());
-                let mut body = RcCTerm::from_parse(body)?;
-                body.abstract0(&name);
-
-                Ok(CTerm::Lam(Named(name, ()), body.into()).into())
-            }
-            _ => Ok(CTerm::Inf(RcITerm::from_parse(term)?).into()),
-        }
-    }
-}
-
-impl RcITerm {
-    /// Convert a parsed term into an inferrable term
-    pub fn from_parse(term: &ParseTerm) -> Result<RcITerm, FromParseError> {
-        match *term {
-            ParseTerm::Var(ref x) => Ok(ITerm::Var(Var::Free(Name::User(x.clone()))).into()),
-            ParseTerm::Type => Ok(ITerm::Type.into()),
+            ParseTerm::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
+            ParseTerm::Type => Term::Type.into(),
             ParseTerm::Ann(ref e, ref t) => {
-                Ok(ITerm::Ann(RcCTerm::from_parse(e)?.into(), RcCTerm::from_parse(t)?.into()).into())
+                Term::Ann(RcTerm::from_parse(e).into(), RcTerm::from_parse(t).into()).into()
             }
-            ParseTerm::Lam(ref name, Some(ref ann), ref body) => {
-                let name = Name::User(name.clone());
-                let mut body = RcITerm::from_parse(body)?;
-                body.abstract0(&name);
+            ParseTerm::Lam(ref args, ref body) => {
+                let mut term = RcTerm::from_parse(body);
 
-                Ok(ITerm::Lam(Named(name, RcCTerm::from_parse(ann)?.into()), body).into())
+                for &(ref name, ref ann) in args.iter().rev() {
+                    let name = Name::User(name.clone());
+                    term.abstract0(&name);
+                    term = match *ann {
+                        None => Term::Lam(Named(name, None), term).into(),
+                        Some(ref ann) => {
+                            let ann = RcTerm::from_parse(ann).into();
+                            Term::Lam(Named(name, Some(ann)), term).into()
+                        }
+                    };
+                }
+
+                term
             }
-            // Type annotations needed!
-            ParseTerm::Lam(_, None, _) => Err(FromParseError),
             ParseTerm::Pi(ref name, ref ann, ref body) => {
                 let name = Name::User(name.clone());
-                let mut body = RcCTerm::from_parse(body)?;
+                let mut body = RcTerm::from_parse(body);
                 body.abstract0(&name);
 
-                Ok(ITerm::Pi(Named(name, RcCTerm::from_parse(ann)?.into()), body).into())
+                Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
             }
             ParseTerm::Arrow(ref ann, ref body) => {
                 let name = Name::Abstract;
-                let mut body = RcCTerm::from_parse(body)?;
+                let mut body = RcTerm::from_parse(body);
                 body.abstract0(&name);
 
-                Ok(ITerm::Pi(Named(name, RcCTerm::from_parse(ann)?.into()), body).into())
+                Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
             }
             ParseTerm::App(ref f, ref arg) => {
-                Ok(ITerm::App(RcITerm::from_parse(f)?, RcCTerm::from_parse(arg)?).into())
-            },
+                Term::App(RcTerm::from_parse(f), RcTerm::from_parse(arg)).into()
+            }
         }
     }
 }
@@ -375,48 +309,39 @@ pub enum EvalError {
     ArgAppliedToNonFunction { arg: RcValue, expr: RcValue },
 }
 
-impl RcCTerm {
-    pub fn eval(&self) -> Result<RcValue, EvalError> {
-        // e ⇓ v
-        match *self.inner {
-            CTerm::Inf(ref inf) => inf.eval(),
-
-            //  1. e ⇓ v
-            // ───────────────── (EVAL/LAM)
-            //     λx.e ⇓ λx→v
-            CTerm::Lam(Named(ref name, ()), ref body_expr) => {
-                let body_expr = body_expr.eval()?; // 1.
-
-                Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
-            }
-        }
-    }
-}
-
-impl RcITerm {
+impl RcTerm {
     pub fn eval(&self) -> Result<RcValue, EvalError> {
         // e ⇓ v
         match *self.inner {
             //  1.  e ⇓ v
             // ────────────────── (EVAL/ANN)
             //      e : ρ ⇓ v
-            ITerm::Ann(ref expr, _) => {
+            Term::Ann(ref expr, _) => {
                 expr.eval() // 1.
             }
 
             // ───────────── (EVAL/TYPE)
             //  Type ⇓ Type
-            ITerm::Type => Ok(Value::Type.into()),
+            Term::Type => Ok(Value::Type.into()),
 
             // ─────── (EVAL/Var)
             //  x ⇓ x
-            ITerm::Var(ref var) => Ok(Value::from(var.clone()).into()),
+            Term::Var(ref var) => Ok(Value::from(var.clone()).into()),
+
+            //  1. e ⇓ v
+            // ───────────────── (EVAL/LAM)
+            //     λx.e ⇓ λx→v
+            Term::Lam(Named(ref name, None), ref body_expr) => {
+                let body_expr = body_expr.eval()?; // 1.
+
+                Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
+            }
 
             //  1.  ρ ⇓ τ
             //  2.  e ⇓ v
             // ──────────────────────── (EVAL/LAM-ANN)
             //      λx:ρ→e ⇓ λx:τ→v
-            ITerm::Lam(Named(ref name, ref param_ty), ref body_expr) => {
+            Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
 
@@ -427,7 +352,7 @@ impl RcITerm {
             //  2.  ρ₂ ⇓ τ₂
             // ─────────────────────────── (EVAL/PI-ANN)
             //      (x:ρ₁)→ρ₂ ⇓ (x:τ₁)→τ₂
-            ITerm::Pi(Named(ref name, ref param_ty), ref body_expr) => {
+            Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
                 let param_ty = param_ty.eval()?; // 1.
                 let body_expr = body_expr.eval()?; // 2.
 
@@ -438,7 +363,7 @@ impl RcITerm {
             //  2.  v₁[x↦e₂] ⇓ v₂
             // ───────────────────── (EVAL/APP)
             //      e₁ e₂ ⇓ v₂
-            ITerm::App(ref fn_expr, ref arg) => {
+            Term::App(ref fn_expr, ref arg) => {
                 let fn_expr = fn_expr.eval()?; // 1.
                 let arg = arg.eval()?; // 2.
 
@@ -452,8 +377,8 @@ impl RcITerm {
 mod tests {
     use super::*;
 
-    fn parse(src: &str) -> RcITerm {
-        RcITerm::from_parse(&src.parse().unwrap()).unwrap()
+    fn parse(src: &str) -> RcTerm {
+        RcTerm::from_parse(&src.parse().unwrap())
     }
 
     mod alpha_eq {

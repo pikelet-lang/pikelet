@@ -1,18 +1,19 @@
 //! Contexts and type checking
 
-use core::{CTerm, EvalError, ITerm, RcCTerm, RcITerm, RcType, RcValue, Value};
+use core::{EvalError, RcTerm, RcType, RcValue, Term, Value};
 use var::{Debruijn, Name, Named, Var};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
     Eval(EvalError),
     IllegalApplication,
+    TypeAnnotationsNeeded,
     ExpectedFunction {
-        lam_expr: RcCTerm,
+        lam_expr: RcTerm,
         expected: RcType,
     },
     Mismatch {
-        expr: RcITerm,
+        expr: RcTerm,
         found: RcType,
         expected: RcType,
     },
@@ -55,28 +56,13 @@ impl<'a> Context<'a> {
     }
 
     /// Check that the type of an expression is compatible with the expected type
-    pub fn check(&self, expr: &RcCTerm, expected_ty: &RcType) -> Result<(), TypeError> {
+    pub fn check(&self, expr: &RcTerm, expected_ty: &RcType) -> Result<(), TypeError> {
         // Γ ⊢ e :↓ τ
         match *expr.inner {
-            //  1.  Γ ⊢ e :↑ τ
-            // ─────────────────── (CHECK/INFER)
-            //      Γ ⊢ e :↓ τ
-            CTerm::Inf(ref inferrable_expr) => {
-                let inferred_ty = self.infer(inferrable_expr)?; // 1.
-                match &inferred_ty == expected_ty {
-                    true => Ok(()),
-                    false => Err(TypeError::Mismatch {
-                        expr: inferrable_expr.clone(),
-                        found: inferred_ty,
-                        expected: expected_ty.clone(),
-                    }),
-                }
-            }
-
             //  1.  Γ, x:τ₁ ⊢ e :↓ τ₂
             // ─────────────────────────────── (CHECK/LAM)
             //      Γ ⊢ λx→e :↓ (x:τ₁)→τ₂
-            CTerm::Lam(_, ref body_expr) => match *expected_ty.inner {
+            Term::Lam(Named(_, None), ref body_expr) => match *expected_ty.inner {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                     self.extend(param_ty.clone()).check(body_expr, ret_ty) // 1.
                 }
@@ -85,10 +71,25 @@ impl<'a> Context<'a> {
                     expected: expected_ty.clone(),
                 }),
             },
+
+            //  1.  Γ ⊢ e :↑ τ
+            // ─────────────────── (CHECK/INFER)
+            //      Γ ⊢ e :↓ τ
+            _ => {
+                let inferred_ty = self.infer(expr)?; // 1.
+                match &inferred_ty == expected_ty {
+                    true => Ok(()),
+                    false => Err(TypeError::Mismatch {
+                        expr: expr.clone(),
+                        found: inferred_ty,
+                        expected: expected_ty.clone(),
+                    }),
+                }
+            }
         }
     }
 
-    pub fn infer(&self, expr: &RcITerm) -> Result<RcType, TypeError> {
+    pub fn infer(&self, expr: &RcTerm) -> Result<RcType, TypeError> {
         // Γ ⊢ e :↑ τ
         match *expr.inner {
             //  1.  Γ ⊢ ρ₁ :↓ Type
@@ -96,7 +97,7 @@ impl<'a> Context<'a> {
             //  3.  Γ ⊢ e :↓ τ
             // ───────────────────────── (INFER/ANN)
             //      Γ ⊢ (e : ρ) :↑ τ
-            ITerm::Ann(ref expr, ref ty) => {
+            Term::Ann(ref expr, ref ty) => {
                 self.check(ty, &Value::Type.into())?; // 1.
                 let simp_ty = ty.eval()?; // 2.
                 self.check(expr, &simp_ty)?; // 3.
@@ -105,14 +106,19 @@ impl<'a> Context<'a> {
 
             // ─────────────────── (INFER/TYPE)
             //  Γ ⊢ TYPE :↑ Type
-            ITerm::Type => Ok(Value::Type.into()),
+            Term::Type => Ok(Value::Type.into()),
+
+            Term::Lam(Named(_, None), _) => {
+                // TODO: More error info
+                Err(TypeError::TypeAnnotationsNeeded)
+            }
 
             //  1.  Γ ⊢ ρ :↓ Type
             //  2.  ρ ⇓ τ₁
             //  3.  Γ, x:τ₁ ⊢ e :↑ τ₂
             // ─────────────────────────────── (INFER/LAM)
             //      Γ ⊢ λx:ρ→e :↑ (x:τ₁)→τ₂
-            ITerm::Lam(Named(ref param_name, ref param_ty), ref body_expr) => {
+            Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = param_ty.eval()?; // 2.
                 let body_ty = self.extend(simp_param_ty.clone()).infer(body_expr)?; // 3.
@@ -130,7 +136,7 @@ impl<'a> Context<'a> {
             //  3.  Γ, x:τ₁ ⊢ ρ₂ :↓ Type
             // ────────────────────────────── (INFER/PI)
             //      Γ ⊢ (x:ρ₁)→ρ₂ :↑ Type
-            ITerm::Pi(Named(_, ref param_ty), ref body_ty) => {
+            Term::Pi(Named(_, ref param_ty), ref body_ty) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = param_ty.eval()?; // 2.
                 self.extend(simp_param_ty)
@@ -141,7 +147,7 @@ impl<'a> Context<'a> {
             //  1.  Γ(x) = τ
             // ────────────────────────────── (INFER/VAR)
             //      Γ ⊢ x :↑ τ
-            ITerm::Var(ref var) => match *var {
+            Term::Var(ref var) => match *var {
                 Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
                 Var::Bound(Named(_, b)) => match self.lookup_ty(b) {
                     Some(ty) => Ok(ty.clone()), // 1.
@@ -154,7 +160,7 @@ impl<'a> Context<'a> {
             //  3.  τ₂[x↦e₂] ⇓ τ₃
             // ────────────────────────────── (INFER/APP)
             //      Γ ⊢ e₁ e₂ :↑ τ₃
-            ITerm::App(ref fn_expr, ref arg_expr) => {
+            Term::App(ref fn_expr, ref arg_expr) => {
                 let fn_type = self.infer(fn_expr)?; // 1.
                 match *fn_type.inner {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
@@ -175,8 +181,8 @@ mod tests {
     use super::*;
     use core::Neutral;
 
-    fn parse(src: &str) -> RcITerm {
-        RcITerm::from_parse(&src.parse().unwrap()).unwrap()
+    fn parse(src: &str) -> RcTerm {
+        RcTerm::from_parse(&src.parse().unwrap())
     }
 
     #[test]

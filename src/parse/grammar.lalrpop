@@ -17,13 +17,18 @@ pub Term: Term = {
     },
 };
 
-LamTerm : Term = {
+AtomicArg: (String, Option<Box<Term>>) = {
+    <name: Ident> => (name, None),
+    "(" <name: Ident> ":" <ann: PiTerm> ")" => (name, Some(Box::new(ann))),
+};
+
+LamTerm: Term = {
     PiTerm,
-    r"\\" <x: Ident> "=>" <body: LamTerm> => {
-        Term::Lam(x, None, Box::new(body))
+    r"\\" <name: Ident> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
+        Term::Lam(vec![(name, Some(Box::new(ann)))], Box::new(body))
     },
-    r"\\" <x: Ident> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
-        Term::Lam(x, Some(Box::new(ann)), Box::new(body))
+    r"\\" <args: AtomicArg+> "=>" <body: LamTerm> => {
+        Term::Lam(args, Box::new(body))
     },
 };
 
@@ -32,8 +37,8 @@ PiTerm : Term = {
     // Naively we would want to write the following rules:
     //
     // ```lalrpop
-    // "(" <x: Ident> ":" <ann: PiTerm> ")" "->" <body: LamTerm> => {
-    //      Term::Pi(x, Box::new(ann), Box::new(body))
+    // "(" <name: Ident> ":" <ann: PiTerm> ")" "->" <body: LamTerm> => {
+    //      Term::Pi(name, Box::new(ann), Box::new(body))
     //  },
     //  <ann: AppTerm> "->" <body: LamTerm> => {
     //      Term::Arrow(Box::new(ann), Box::new(body))
@@ -44,8 +49,8 @@ PiTerm : Term = {
     // have to hack this in with a dyncamic check:
     <binder: AtomicTerm> "->" <body: LamTerm> =>? {
         match binder {
-            Term::Ann(x, ann) => match *x {
-                Term::Var(x) => Ok(Term::Pi(x, ann, Box::new(body))),
+            Term::Ann(name, ann) => match *name {
+                Term::Var(name) => Ok(Term::Pi(name, ann, Box::new(body))),
                 _ => Err(ParseError::User {
                     error: "identifier expected in pi type", // TODO: better error!
                 }),
