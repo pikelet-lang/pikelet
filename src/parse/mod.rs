@@ -19,7 +19,7 @@ impl FromStr for ReplCommand {
     type Err = ParseError;
 
     fn from_str(src: &str) -> Result<ReplCommand, ParseError> {
-        grammar::parse_ReplCommand(src).map_err(|e| ParseError(format!("{:?}", e)))
+        grammar::parse_ReplCommand(src).map_err(|e| ParseError(format!("{}", e)))
     }
 }
 
@@ -39,7 +39,7 @@ impl FromStr for Term {
     type Err = ParseError;
 
     fn from_str(src: &str) -> Result<Term, ParseError> {
-        grammar::parse_Term(src).map_err(|e| ParseError(format!("{:?}", e)))
+        grammar::parse_Term(src).map_err(|e| ParseError(format!("{}", e)))
     }
 }
 
