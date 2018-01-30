@@ -134,64 +134,62 @@ pub type RcType = RcValue;
 // Abstraction and instantiation
 
 impl RcTerm {
-    pub fn abstract0(&mut self, name: &Name) {
-        self.abstract_at(Debruijn::ZERO, name);
+    pub fn close(&mut self, name: &Name) {
+        self.close_at(Debruijn::ZERO, name);
     }
 
-    pub fn abstract_at(&mut self, level: Debruijn, name: &Name) {
+    pub fn close_at(&mut self, level: Debruijn, name: &Name) {
         match *Rc::make_mut(&mut self.inner) {
             Term::Ann(ref mut expr, ref mut ty) => {
-                expr.abstract_at(level, name);
-                ty.abstract_at(level, name);
+                expr.close_at(level, name);
+                ty.close_at(level, name);
             },
-            Term::Lam(Named(_, None), ref mut body) => body.abstract_at(level.succ(), name),
+            Term::Lam(Named(_, None), ref mut body) => body.close_at(level.succ(), name),
             Term::Lam(Named(_, Some(ref mut ty)), ref mut body) => {
-                ty.abstract_at(level, name);
-                body.abstract_at(level.succ(), name);
+                ty.close_at(level, name);
+                body.close_at(level.succ(), name);
             },
             Term::Pi(Named(_, ref mut ty), ref mut body) => {
-                ty.abstract_at(level, name);
-                body.abstract_at(level.succ(), name);
+                ty.close_at(level, name);
+                body.close_at(level.succ(), name);
             },
-            Term::Var(ref mut var) => var.abstract_at(level, name),
+            Term::Var(ref mut var) => var.close_at(level, name),
             Term::Type => {},
             Term::App(ref mut f, ref mut x) => {
-                f.abstract_at(level, name);
-                x.abstract_at(level, name);
+                f.close_at(level, name);
+                x.close_at(level, name);
             },
         }
     }
 }
 
 impl RcValue {
-    pub fn instantiate0(&self, x: &RcValue) -> RcValue {
-        self.instantiate_at(Debruijn::ZERO, &x)
+    pub fn open(&self, x: &RcValue) -> RcValue {
+        self.open_at(Debruijn::ZERO, &x)
     }
 
-    pub fn instantiate_at(&self, level: Debruijn, x: &RcValue) -> RcValue {
+    pub fn open_at(&self, level: Debruijn, x: &RcValue) -> RcValue {
         match *self.inner {
             Value::Type => self.clone(),
-            Value::Var(ref var) => match var.instantiate_at(level) {
+            Value::Var(ref var) => match var.open_at(level) {
                 true => x.clone(),
                 false => self.clone(),
             },
             Value::Lam(Named(ref name, ref param_ty), ref body) => {
-                let param_ty = param_ty
-                    .as_ref()
-                    .map(|param_ty| param_ty.instantiate_at(level, x));
-                let body = body.instantiate_at(level.succ(), x);
+                let param_ty = param_ty.as_ref().map(|param_ty| param_ty.open_at(level, x));
+                let body = body.open_at(level.succ(), x);
 
                 Value::Lam(Named(name.clone(), param_ty), body).into()
             },
             Value::Pi(Named(ref name, ref param_ty), ref body) => {
-                let param_ty = param_ty.instantiate_at(level, x);
-                let body = body.instantiate_at(level.succ(), x);
+                let param_ty = param_ty.open_at(level, x);
+                let body = body.open_at(level.succ(), x);
 
                 Value::Pi(Named(name.clone(), param_ty), body).into()
             },
             Value::App(ref fn_expr, ref arg_expr) => {
-                let fn_expr = fn_expr.instantiate_at(level, x);
-                let arg = arg_expr.instantiate_at(level, x);
+                let fn_expr = fn_expr.open_at(level, x);
+                let arg = arg_expr.open_at(level, x);
 
                 Value::App(fn_expr, arg).into()
             },
@@ -206,7 +204,7 @@ fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm)
 
     for &(ref name, ref ann) in params.iter().rev() {
         let name = Name::User(name.clone());
-        term.abstract0(&name);
+        term.close(&name);
         term = match *ann {
             None => Term::Lam(Named(name, None), term).into(),
             Some(ref ann) => {
@@ -236,7 +234,7 @@ impl Module {
                             let mut term = RcTerm::from_parse(term);
 
                             for (level, definition) in definitions.iter().rev().enumerate() {
-                                term.abstract_at(
+                                term.close_at(
                                     Debruijn(level as u32),
                                     &Name::user(definition.name.clone()),
                                 );
@@ -252,10 +250,7 @@ impl Module {
                     let ann = claims.remove(&name);
 
                     for (level, definition) in definitions.iter().rev().enumerate() {
-                        term.abstract_at(
-                            Debruijn(level as u32),
-                            &Name::user(definition.name.clone()),
-                        );
+                        term.close_at(Debruijn(level as u32), &Name::user(definition.name.clone()));
                     }
 
                     definitions.push(Definition { name, term, ann });
@@ -286,14 +281,14 @@ impl RcTerm {
             ParseTerm::Pi(ref name, ref ann, ref body) => {
                 let name = Name::User(name.clone());
                 let mut body = RcTerm::from_parse(body);
-                body.abstract0(&name);
+                body.close(&name);
 
                 Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
             },
             ParseTerm::Arrow(ref ann, ref body) => {
                 let name = Name::Abstract;
                 let mut body = RcTerm::from_parse(body);
-                body.abstract0(&name);
+                body.close(&name);
 
                 Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
             },

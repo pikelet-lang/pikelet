@@ -186,7 +186,7 @@ impl Context {
                 let arg = self.eval(arg); // 2.
 
                 match *fn_expr.inner {
-                    Value::Lam(_, ref body) => body.instantiate0(&arg),
+                    Value::Lam(_, ref body) => body.open(&arg),
                     _ => Value::App(fn_expr.clone(), arg).into(),
                 }
             },
@@ -304,7 +304,7 @@ impl Context {
                 match *fn_type.inner {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                         self.check(arg_expr, param_ty)?; // 2.
-                        let body_ty = ret_ty.instantiate0(&self.eval(&arg_expr)); // 3.
+                        let body_ty = ret_ty.open(&self.eval(&arg_expr)); // 3.
                         Ok(body_ty)
                     },
                     // TODO: More error info
