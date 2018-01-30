@@ -27,7 +27,7 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
                 let ann = context.eval(&ann);
                 context.check(&definition.term, &ann)?;
                 ann
-            }
+            },
         };
         let term = context.eval(&definition.term);
         let name = definition.name.clone();
@@ -121,7 +121,7 @@ impl Context {
             //      e : ρ ⇓ v
             Term::Ann(ref expr, _) => {
                 self.eval(expr) // 1.
-            }
+            },
 
             // ───────────── (EVAL/TYPE)
             //  Type ⇓ Type
@@ -140,7 +140,7 @@ impl Context {
                         },
                         None => panic!("ICE: index {} out of bounds", index),
                     }
-                }
+                },
             },
 
             //  1. e ⇓ v
@@ -151,7 +151,7 @@ impl Context {
                 let body_expr = self.extend(binder).eval(body_expr); // 1.
 
                 Value::Lam(Named(name.clone(), None), body_expr).into()
-            }
+            },
 
             //  1.  ρ ⇓ τ
             //  2.  e ⇓ v
@@ -163,7 +163,7 @@ impl Context {
                 let body_expr = self.extend(binder).eval(body_expr); // 2.
 
                 Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into()
-            }
+            },
 
             //  1.  ρ₁ ⇓ τ₁
             //  2.  ρ₂ ⇓ τ₂
@@ -175,7 +175,7 @@ impl Context {
                 let body_expr = self.extend(binder).eval(body_expr); // 2.
 
                 Value::Pi(Named(name.clone(), param_ty), body_expr).into()
-            }
+            },
 
             //  1.  e₁ ⇓ λx→v₁
             //  2.  v₁[x↦e₂] ⇓ v₂
@@ -189,7 +189,7 @@ impl Context {
                     Value::Lam(_, ref body) => body.instantiate0(&arg),
                     _ => Value::App(fn_expr.clone(), arg).into(),
                 }
-            }
+            },
         }
     }
 
@@ -204,7 +204,7 @@ impl Context {
                 Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                     self.extend(Binder::Pi(param_ty.clone()))
                         .check(body_expr, ret_ty) // 1.
-                }
+                },
                 _ => Err(TypeError::ExpectedFunction {
                     lam_expr: term.clone(),
                     expected: expected.clone(),
@@ -224,7 +224,7 @@ impl Context {
                         expected: expected.clone(),
                     }),
                 }
-            }
+            },
         }
     }
 
@@ -242,7 +242,7 @@ impl Context {
                 let simp_ty = self.eval(&ty); // 2.
                 self.check(expr, &simp_ty)?; // 3.
                 Ok(simp_ty)
-            }
+            },
 
             // ─────────────────── (INFER/TYPE)
             //  Γ ⊢ TYPE :↑ Type
@@ -251,7 +251,7 @@ impl Context {
             Term::Lam(Named(_, None), _) => {
                 // TODO: More error info
                 Err(TypeError::TypeAnnotationsNeeded)
-            }
+            },
 
             //  1.  Γ ⊢ ρ :↓ Type
             //  2.  ρ ⇓ τ₁
@@ -264,13 +264,8 @@ impl Context {
                 let body_ty = self.extend(Binder::Pi(simp_param_ty.clone()))
                     .infer(body_expr)?; // 3.
 
-                Ok(
-                    Value::Pi(
-                        Named(param_name.clone(), simp_param_ty),
-                        body_ty, // shift??
-                    ).into(),
-                )
-            }
+                Ok(Value::Pi(Named(param_name.clone(), simp_param_ty), body_ty).into())
+            },
 
             //  1.  Γ ⊢ ρ₁ :↓ Type
             //  2.  ρ₁ ⇓ τ₁
@@ -283,7 +278,7 @@ impl Context {
                 self.extend(Binder::Pi(simp_param_ty))
                     .check(body_ty, &Value::Type.into())?; // 3.
                 Ok(Value::Type.into())
-            }
+            },
 
             //  1.  Γ(x) = τ
             // ────────────────────────────── (INFER/VAR)
@@ -311,11 +306,11 @@ impl Context {
                         self.check(arg_expr, param_ty)?; // 2.
                         let body_ty = ret_ty.instantiate0(&self.eval(&arg_expr)); // 3.
                         Ok(body_ty)
-                    }
+                    },
                     // TODO: More error info
                     _ => Err(TypeError::IllegalApplication),
                 }
-            }
+            },
         }
     }
 }
@@ -492,7 +487,7 @@ mod tests {
             let given_expr = r"(\a => a) : Type";
 
             match context.infer(&parse(given_expr)) {
-                Err(TypeError::ExpectedFunction { .. }) => {}
+                Err(TypeError::ExpectedFunction { .. }) => {},
                 other => panic!("unexpected result: {:#?}", other),
             }
         }

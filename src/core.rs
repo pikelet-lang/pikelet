@@ -143,22 +143,22 @@ impl RcTerm {
             Term::Ann(ref mut expr, ref mut ty) => {
                 expr.abstract_at(level, name);
                 ty.abstract_at(level, name);
-            }
+            },
             Term::Lam(Named(_, None), ref mut body) => body.abstract_at(level.succ(), name),
             Term::Lam(Named(_, Some(ref mut ty)), ref mut body) => {
                 ty.abstract_at(level, name);
                 body.abstract_at(level.succ(), name);
-            }
+            },
             Term::Pi(Named(_, ref mut ty), ref mut body) => {
                 ty.abstract_at(level, name);
                 body.abstract_at(level.succ(), name);
-            }
+            },
             Term::Var(ref mut var) => var.abstract_at(level, name),
-            Term::Type => {}
+            Term::Type => {},
             Term::App(ref mut f, ref mut x) => {
                 f.abstract_at(level, name);
                 x.abstract_at(level, name);
-            }
+            },
         }
     }
 }
@@ -182,19 +182,19 @@ impl RcValue {
                 let body = body.instantiate_at(level.succ(), x);
 
                 Value::Lam(Named(name.clone(), param_ty), body).into()
-            }
+            },
             Value::Pi(Named(ref name, ref param_ty), ref body) => {
                 let param_ty = param_ty.instantiate_at(level, x);
                 let body = body.instantiate_at(level.succ(), x);
 
                 Value::Pi(Named(name.clone(), param_ty), body).into()
-            }
+            },
             Value::App(ref fn_expr, ref arg_expr) => {
                 let fn_expr = fn_expr.instantiate_at(level, x);
                 let arg = arg_expr.instantiate_at(level, x);
 
                 Value::App(fn_expr, arg).into()
-            }
+            },
         }
     }
 }
@@ -212,7 +212,7 @@ fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm)
             Some(ref ann) => {
                 let ann = RcTerm::from_parse(ann).into();
                 Term::Lam(Named(name, Some(ann)), term).into()
-            }
+            },
         };
     }
 
@@ -243,9 +243,9 @@ impl Module {
                             }
 
                             entry.insert(term)
-                        }
+                        },
                     };
-                }
+                },
                 ParseDeclaration::Definition(ref name, ref params, ref term) => {
                     let name = name.clone();
                     let mut term = lam_from_parse(params, term);
@@ -259,7 +259,7 @@ impl Module {
                     }
 
                     definitions.push(Definition { name, term, ann });
-                }
+                },
             }
         }
 
@@ -281,7 +281,7 @@ impl RcTerm {
             ParseTerm::Type => Term::Type.into(),
             ParseTerm::Ann(ref e, ref t) => {
                 Term::Ann(RcTerm::from_parse(e).into(), RcTerm::from_parse(t).into()).into()
-            }
+            },
             ParseTerm::Lam(ref params, ref body) => lam_from_parse(params, body),
             ParseTerm::Pi(ref name, ref ann, ref body) => {
                 let name = Name::User(name.clone());
@@ -289,17 +289,17 @@ impl RcTerm {
                 body.abstract0(&name);
 
                 Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
-            }
+            },
             ParseTerm::Arrow(ref ann, ref body) => {
                 let name = Name::Abstract;
                 let mut body = RcTerm::from_parse(body);
                 body.abstract0(&name);
 
                 Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
-            }
+            },
             ParseTerm::App(ref f, ref arg) => {
                 Term::App(RcTerm::from_parse(f), RcTerm::from_parse(arg)).into()
-            }
+            },
         }
     }
 }

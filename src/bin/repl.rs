@@ -22,25 +22,25 @@ fn main() {
                 rl.add_history_entry(&line);
 
                 match run_repl(&line) {
-                    Ok(()) => {}
+                    Ok(()) => {},
                     Err(ReplError::Parse(err)) => println!("parse error: {}", err.0),
                     Err(ReplError::Type(err)) => println!("type error: {:?}", err),
                     Err(ReplError::Quit) => {
                         println!("Bye bye");
                         break;
-                    }
+                    },
                 }
-            }
+            },
             Err(err) => match err {
                 ReadlineError::Interrupted => println!("Interrupt"),
                 ReadlineError::Eof => {
                     println!("Bye bye");
                     break;
-                }
+                },
                 err => {
                     println!("Error: {:?}", err);
                     break;
-                }
+                },
             },
         }
     }
@@ -63,7 +63,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             println!(":q :quit                  quit the repl");
             println!(":t :type      <expr>      infer the type of an expression");
             println!("");
-        }
+        },
 
         ReplCommand::Eval(parse_term) => {
             let term = RcTerm::from_parse(&parse_term);
@@ -73,16 +73,16 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
-        }
+        },
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_parse(&parse_term);
             let inferred = Context::new().infer(&term)?;
             let doc = inferred.to_doc(pretty::Context::default());
 
             println!("{}", doc.pretty(80));
-        }
+        },
 
-        ReplCommand::NoOp => {}
+        ReplCommand::NoOp => {},
         ReplCommand::Quit => return Err(ReplError::Quit),
     }
 
