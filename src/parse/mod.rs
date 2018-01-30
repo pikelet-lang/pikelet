@@ -25,6 +25,7 @@ impl FromStr for ReplCommand {
 }
 
 /// A module definition
+#[derive(Debug, Clone, PartialEq)]
 pub struct Module {
     /// The name of the module
     pub name: String,
@@ -41,6 +42,7 @@ impl FromStr for Module {
 }
 
 /// Top level declarations
+#[derive(Debug, Clone, PartialEq)]
 pub enum Declaration {
     /// Claims that a term abides by the given type
     Claim(String, Term),
@@ -57,7 +59,7 @@ impl FromStr for Declaration {
 }
 
 /// The AST of the concrete syntax
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Var(String),
     Type,
@@ -78,8 +80,12 @@ impl FromStr for Term {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use core::{Module, RcTerm, Term};
     use var::{Debruijn, Name, Named, Var};
+
+    use super::{ParseError, Term as ParseTerm};
 
     fn parse(src: &str) -> RcTerm {
         RcTerm::from_parse(&src.parse().unwrap())
@@ -292,6 +298,16 @@ mod tests {
                     Term::from(Var::Bound(Named(x, Debruijn(1)))).into(),
                 )).into(),
             ).into(),
+        );
+    }
+
+    #[test]
+    fn pi_bad_ident() {
+        let parse_result = ParseTerm::from_str("((x : Type) : Type) -> Type");
+
+        assert_eq!(
+            parse_result,
+            Err(ParseError(String::from("identifier expected in pi type"))),
         );
     }
 
