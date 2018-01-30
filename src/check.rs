@@ -275,8 +275,8 @@ impl Context {
             Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = self.eval(&param_ty); // 2.
-                let body_ty = self.extend(Binder::Pi(simp_param_ty.clone()))
-                    .infer(body_expr)?; // 3.
+                let binder = Binder::Pi(simp_param_ty.clone());
+                let body_ty = self.extend(binder).infer(body_expr)?; // 3.
 
                 Ok(Value::Pi(Named(param_name.clone(), simp_param_ty), body_ty).into())
             },
@@ -289,8 +289,8 @@ impl Context {
             Term::Pi(Named(_, ref param_ty), ref body_ty) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = self.eval(&param_ty); // 2.
-                self.extend(Binder::Pi(simp_param_ty))
-                    .check(body_ty, &Value::Type.into())?; // 3.
+                let binder = Binder::Pi(simp_param_ty);
+                self.extend(binder).check(body_ty, &Value::Type.into())?; // 3.
                 Ok(Value::Type.into())
             },
 
