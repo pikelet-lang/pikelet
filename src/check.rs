@@ -5,35 +5,44 @@ use rpds::List;
 use core::{Module, RcTerm, RcType, RcValue, Term, Value};
 use var::{Debruijn, Name, Named, Var};
 
+/// A typechecked and elaborated module
 pub struct CheckedModule {
     pub name: String,
-    pub definitions: Vec<Definition>,
+    pub definitions: Vec<CheckedDefinition>,
 }
 
-pub struct Definition {
+/// A typechecked and elaborated definition
+pub struct CheckedDefinition {
     pub name: String,
     pub term: RcValue,
     pub ann: RcType,
 }
 
+/// Typecheck and elaborate a module
 pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
     let mut context = Context::new();
     let mut definitions = Vec::with_capacity(module.definitions.len());
 
     for definition in &module.definitions {
         let ann = match definition.ann {
+            // We don't have a type annotation available to us! Instead we will attempt to infer it
+            // based on the body of the definition
             None => context.infer(&definition.term)?,
+            // We have a type annotation! Evaluate it to its normal form, then check that it matches
+            // the body of the definition
             Some(ref ann) => {
                 let ann = context.eval(&ann);
                 context.check(&definition.term, &ann)?;
                 ann
             },
         };
+        // Evaluate the body of the definition
         let term = context.eval(&definition.term);
         let name = definition.name.clone();
+        // Add the definition to the context
         context = context.extend(Binder::Let(term.clone(), ann.clone()));
 
-        definitions.push(Definition { name, term, ann })
+        definitions.push(CheckedDefinition { name, term, ann })
     }
 
     Ok(CheckedModule {
@@ -42,6 +51,7 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
     })
 }
 
+/// An error produced during typechecking
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
     IllegalApplication,
@@ -87,6 +97,7 @@ impl Binder {
     }
 }
 
+/// A list of binders that have been accumulated during typechecking
 #[derive(Debug, Clone)]
 pub struct Context {
     // Γ ::= ε           1. empty context
@@ -95,23 +106,26 @@ pub struct Context {
 }
 
 impl Context {
+    /// Create a new, empty context
     pub fn new() -> Context {
         Context {
             binders: List::new(),
         }
     }
 
+    /// Extend the context with a binder
     pub fn extend(&self, binder: Binder) -> Context {
         Context {
             binders: self.binders.push_front(binder),
         }
     }
 
+    /// Look up a binder based on the given Debruijn index
     pub fn lookup_binder(&self, index: Debruijn) -> Option<&Binder> {
         self.binders.iter().nth(index.0 as usize)
     }
 
-    /// Evaluation of core terms to normal forms
+    /// Evaluation of a core term to its normal form
     pub fn eval(&self, term: &RcTerm) -> RcValue {
         // FIXME: judgements do not mention the context :/
         // e ⇓ v

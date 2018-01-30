@@ -218,18 +218,26 @@ fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm)
 }
 
 impl Module {
+    /// Convert the module in the concrete syntax to a module in the core syntax
     pub fn from_parse(module: &ParseModule) -> Module {
         use std::collections::BTreeMap;
         use std::collections::btree_map::Entry;
 
+        // The type claims that we have encountered so far! We'll use these when
+        // we encounter their corresponding definitions later as type annotations
         let mut claims = BTreeMap::new();
+        // The definitions, desugared from the concrete syntax
         let mut definitions = Vec::<Definition>::new();
 
         for declaration in &module.declarations {
             match *declaration {
+                // We've enountered a claim! Let's try to add it to the claims
+                // that we've seen so far...
                 ParseDeclaration::Claim(ref name, ref term) => {
                     match claims.entry(name) {
+                        // Oh no! We've already seen a claim for this name!
                         Entry::Occupied(_) => panic!(), // FIXME: Better error
+                        // This name does not yet have a claim associated with it
                         Entry::Vacant(mut entry) => {
                             let mut term = RcTerm::from_parse(term);
 
@@ -244,6 +252,7 @@ impl Module {
                         },
                     };
                 },
+                // We've encountered a definition. Let's desugar it!
                 ParseDeclaration::Definition(ref name, ref params, ref term) => {
                     let name = name.clone();
                     let mut term = lam_from_parse(params, term);
@@ -269,7 +278,7 @@ impl Module {
 }
 
 impl RcTerm {
-    /// Convert a parsed term into a checkable term
+    /// Convert a parsed term into a core term
     pub fn from_parse(term: &ParseTerm) -> RcTerm {
         match *term {
             ParseTerm::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
