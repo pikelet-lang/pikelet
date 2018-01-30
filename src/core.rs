@@ -67,7 +67,7 @@ impl From<Var> for Term {
 
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Context::default())
+        self.to_doc(pretty::Context::default().with_debug_indices(f.alternate()))
             .group()
             .render_fmt(f.width().unwrap_or(80), f)
     }
@@ -90,7 +90,7 @@ pub enum Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Context::default())
+        self.to_doc(pretty::Context::default().with_debug_indices(f.alternate()))
             .group()
             .render_fmt(f.width().unwrap_or(80), f)
     }
@@ -117,6 +117,12 @@ macro_rules! make_wrapper {
         impl $crate::std::fmt::Debug for $name {
             fn fmt(&self, f: &mut $crate::std::fmt::Formatter) -> $crate::std::fmt::Result {
                 $crate::std::fmt::Debug::fmt(&self.inner, f)
+            }
+        }
+
+        impl $crate::std::fmt::Display for $name {
+            fn fmt(&self, f: &mut $crate::std::fmt::Formatter) -> $crate::std::fmt::Result {
+                $crate::std::fmt::Display::fmt(&self.inner, f)
             }
         }
     };

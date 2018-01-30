@@ -61,12 +61,14 @@ impl Prec {
     pub const APP: Prec = Prec(10);
 }
 
+pub type StaticDoc = Doc<'static, BoxDoc<'static>>;
+
 /// Convert a datatype to a pretty-printable document
 pub trait ToDoc {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc>;
+    fn to_doc(&self, context: Context) -> StaticDoc;
 }
 
-fn parens_if<'a>(should_wrap: bool, inner: Doc<'a, BoxDoc<'a>>) -> Doc<'a, BoxDoc<'a>> {
+fn parens_if(should_wrap: bool, inner: StaticDoc) -> StaticDoc {
     match should_wrap {
         false => inner,
         true => Doc::nil()
@@ -76,11 +78,7 @@ fn parens_if<'a>(should_wrap: bool, inner: Doc<'a, BoxDoc<'a>>) -> Doc<'a, BoxDo
     }
 }
 
-pub fn pretty_ann<'a, E: ToDoc, T: ToDoc>(
-    context: Context,
-    expr: &'a E,
-    ty: &'a T,
-) -> Doc<'a, BoxDoc<'a>> {
+pub fn pretty_ann<E: ToDoc, T: ToDoc>(context: Context, expr: &E, ty: &T) -> StaticDoc {
     parens_if(
         Prec::ANN < context.prec,
         Doc::group(
@@ -95,16 +93,16 @@ pub fn pretty_ann<'a, E: ToDoc, T: ToDoc>(
     )
 }
 
-pub fn pretty_ty<'a>() -> Doc<'a, BoxDoc<'a>> {
+pub fn pretty_ty() -> StaticDoc {
     Doc::text("Type")
 }
 
-pub fn pretty_lam<'a, A: ToDoc, B: ToDoc>(
+pub fn pretty_lam<A: ToDoc, B: ToDoc>(
     context: Context,
-    name: &'a Name,
-    ann: Option<&'a A>,
-    body: &'a B,
-) -> Doc<'a, BoxDoc<'a>> {
+    name: &Name,
+    ann: Option<&A>,
+    body: &B,
+) -> StaticDoc {
     parens_if(
         Prec::LAM < context.prec,
         Doc::group(
@@ -127,12 +125,12 @@ pub fn pretty_lam<'a, A: ToDoc, B: ToDoc>(
     )
 }
 
-pub fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
+pub fn pretty_pi<A: ToDoc, B: ToDoc>(
     context: Context,
-    name: &'a Name,
-    ann: &'a A,
-    body: &'a B,
-) -> Doc<'a, BoxDoc<'a>> {
+    name: &Name,
+    ann: &A,
+    body: &B,
+) -> StaticDoc {
     parens_if(
         Prec::PI < context.prec,
         if name == &Name::Abstract {
@@ -147,13 +145,13 @@ pub fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
             ))
         } else {
             Doc::group(
-                Doc::text("[")
+                Doc::text("(")
                     .append(Doc::as_string(name))
                     .append(Doc::space())
                     .append(Doc::text(":"))
                     .append(Doc::space())
                     .append(ann.to_doc(context.with_prec(Prec::PI)))
-                    .append(Doc::text("]"))
+                    .append(Doc::text(")"))
                     .append(Doc::space())
                     .append(Doc::text("->")),
             ).append(Doc::group(
@@ -165,11 +163,7 @@ pub fn pretty_pi<'a, A: ToDoc, B: ToDoc>(
     )
 }
 
-pub fn pretty_app<'a, F: ToDoc, A: ToDoc>(
-    context: Context,
-    fn_term: &'a F,
-    arg_term: &'a A,
-) -> Doc<'a, BoxDoc<'a>> {
+pub fn pretty_app<F: ToDoc, A: ToDoc>(context: Context, fn_term: &F, arg_term: &A) -> StaticDoc {
     parens_if(
         Prec::APP < context.prec,
         Doc::nil()
@@ -180,7 +174,7 @@ pub fn pretty_app<'a, F: ToDoc, A: ToDoc>(
 }
 
 impl ToDoc for Term {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+    fn to_doc(&self, context: Context) -> StaticDoc {
         match *self {
             Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
             Term::Type => pretty_ty(),
@@ -193,13 +187,13 @@ impl ToDoc for Term {
 }
 
 impl ToDoc for RcTerm {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+    fn to_doc(&self, context: Context) -> StaticDoc {
         self.inner.to_doc(context)
     }
 }
 
 impl ToDoc for Value {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+    fn to_doc(&self, context: Context) -> StaticDoc {
         match *self {
             Value::Type => pretty_ty(),
             Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
@@ -214,7 +208,7 @@ impl ToDoc for Value {
 }
 
 impl ToDoc for RcValue {
-    fn to_doc(&self, context: Context) -> Doc<BoxDoc> {
+    fn to_doc(&self, context: Context) -> StaticDoc {
         self.inner.to_doc(context)
     }
 }
