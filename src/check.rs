@@ -642,6 +642,37 @@ mod tests {
         }
 
         #[test]
+        fn const_flipped() {
+            let context = Context::new();
+
+            let given_expr = r"\a : Type => \b : Type => \x : a => \y : b => y";
+            let expected_ty = r"(a : Type) -> (b : Type) -> a -> b -> b";
+
+            assert_eq!(
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
+            );
+        }
+
+        #[test]
+        fn flip() {
+            let context = Context::new();
+
+            let given_expr = r"
+                \(a : Type) (b : Type) (c : Type) =>
+                    \(f : a -> b -> c) (x : a) (y : b) => f y x
+            ";
+            let expected_ty = r"
+                (a : Type) -> (b : Type) -> (c : Type) -> (a -> b -> c) -> (b -> a -> c)
+            ";
+
+            assert_eq!(
+                context.infer(&parse(given_expr)).unwrap(),
+                context.eval(&parse(expected_ty)),
+            );
+        }
+
+        #[test]
         fn compose() {
             let context = Context::new();
 
