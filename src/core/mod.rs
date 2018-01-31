@@ -101,7 +101,6 @@ impl fmt::Display for Value {
 
 // Wrapper types
 
-#[macro_export]
 macro_rules! make_wrapper {
     ($name:ident, $wrapper:ident, $inner:ty) => {
         #[derive(Clone, PartialEq)]
