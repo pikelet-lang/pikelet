@@ -4,7 +4,7 @@ fn parse(src: &str) -> RcTerm {
     RcTerm::from_parse(&src.parse().unwrap())
 }
 
-mod eval {
+mod normalize {
     use super::*;
 
     #[test]
@@ -13,7 +13,10 @@ mod eval {
 
         let x = Name::user("x");
 
-        assert_eq!(context.eval(&parse(r"x")), Value::Var(Var::Free(x)).into(),);
+        assert_eq!(
+            context.normalize(&parse(r"x")),
+            Value::Var(Var::Free(x)).into(),
+        );
     }
 
     #[test]
@@ -22,7 +25,7 @@ mod eval {
 
         let ty: RcValue = Value::Type.into();
 
-        assert_eq!(context.eval(&parse(r"Type")), ty);
+        assert_eq!(context.normalize(&parse(r"Type")), ty);
     }
 
     #[test]
@@ -33,7 +36,7 @@ mod eval {
         let ty: RcValue = Value::Type.into();
 
         assert_eq!(
-            context.eval(&parse(r"\x : Type => x")),
+            context.normalize(&parse(r"\x : Type => x")),
             Value::Lam(
                 Named(x.clone(), Some(ty)),
                 Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
@@ -49,7 +52,7 @@ mod eval {
         let ty: RcValue = Value::Type.into();
 
         assert_eq!(
-            context.eval(&parse(r"(x : Type) -> x")),
+            context.normalize(&parse(r"(x : Type) -> x")),
             Value::Pi(
                 Named(x.clone(), ty),
                 Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
@@ -67,7 +70,7 @@ mod eval {
         let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
         assert_eq!(
-            context.eval(&parse(r"\x : Type -> Type => \y : Type => x y")),
+            context.normalize(&parse(r"\x : Type -> Type => \y : Type => x y")),
             Value::Lam(
                 Named(x.clone(), Some(ty_arr)),
                 Value::Lam(
@@ -91,7 +94,7 @@ mod eval {
         let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
         assert_eq!(
-            context.eval(&parse(r"(x : Type -> Type) -> \y : Type => x y")),
+            context.normalize(&parse(r"(x : Type -> Type) -> \y : Type => x y")),
             Value::Pi(
                 Named(x.clone(), ty_arr),
                 Value::Lam(
@@ -131,7 +134,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -144,7 +147,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -157,7 +160,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -182,7 +185,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -207,7 +210,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -220,7 +223,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -233,7 +236,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -246,7 +249,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -259,7 +262,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -272,7 +275,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -291,7 +294,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -304,7 +307,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -317,7 +320,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -335,7 +338,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -355,7 +358,7 @@ mod infer {
 
         assert_eq!(
             context.infer(&parse(given_expr)).unwrap(),
-            context.eval(&parse(expected_ty)),
+            context.normalize(&parse(expected_ty)),
         );
     }
 
@@ -371,7 +374,7 @@ mod infer {
 
             assert_eq!(
                 context.infer(&parse(given_expr)).unwrap(),
-                context.eval(&parse(expected_ty)),
+                context.normalize(&parse(expected_ty)),
             );
         }
 
@@ -390,7 +393,7 @@ mod infer {
 
             assert_eq!(
                 context.infer(&parse(given_expr)).unwrap(),
-                context.eval(&parse(expected_ty)),
+                context.normalize(&parse(expected_ty)),
             );
         }
 
@@ -409,7 +412,7 @@ mod infer {
 
             assert_eq!(
                 context.infer(&parse(given_expr)).unwrap(),
-                context.eval(&parse(expected_ty)),
+                context.normalize(&parse(expected_ty)),
             );
         }
 
@@ -428,7 +431,7 @@ mod infer {
 
             assert_eq!(
                 context.infer(&parse(given_expr)).unwrap(),
-                context.eval(&parse(expected_ty)),
+                context.normalize(&parse(expected_ty)),
             );
         }
     }

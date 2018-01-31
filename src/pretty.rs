@@ -1,7 +1,7 @@
 extern crate pretty;
 
 use core::{RcTerm, RcValue, Term, Value};
-use var::{Name, Named};
+use var::{Name, Named, Var};
 
 use self::pretty::{BoxDoc, Doc};
 
@@ -97,6 +97,13 @@ pub fn pretty_ty() -> StaticDoc {
     Doc::text("Type")
 }
 
+pub fn pretty_var(context: Context, var: &Var) -> StaticDoc {
+    match context.debug_indices {
+        true => Doc::text(format!("{:#}", var)),
+        false => Doc::as_string(var),
+    }
+}
+
 pub fn pretty_lam<A: ToDoc, B: ToDoc>(
     context: Context,
     name: &Name,
@@ -178,7 +185,7 @@ impl ToDoc for Term {
         match *self {
             Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
             Term::Type => pretty_ty(),
-            Term::Var(ref var) => Doc::as_string(var),
+            Term::Var(ref var) => pretty_var(context, var),
             Term::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
             Term::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
             Term::App(ref f, ref a) => pretty_app(context, f, a),
@@ -198,10 +205,7 @@ impl ToDoc for Value {
             Value::Type => pretty_ty(),
             Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
             Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
-            Value::Var(ref var) => match context.debug_indices {
-                true => Doc::text(format!("{:#}", var)),
-                false => Doc::as_string(var),
-            },
+            Value::Var(ref var) => pretty_var(context, var),
             Value::App(ref fn_term, ref arg_term) => pretty_app(context, fn_term, arg_term),
         }
     }

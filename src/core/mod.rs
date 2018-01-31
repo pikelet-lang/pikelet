@@ -83,7 +83,7 @@ pub enum Value {
     Type,
     /// Variables
     Var(Var),
-    /// A partially evaluated lambda
+    /// A lambda abstraction
     Lam(Named<Option<RcValue>>, RcValue),
     /// A pi type
     Pi(Named<RcValue>, RcValue),

@@ -69,7 +69,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             let term = RcTerm::from_parse(&parse_term);
             let context = Context::new();
             let inferred = context.infer(&term)?;
-            let evaluated = context.eval(&term);
+            let evaluated = context.normalize(&term);
             let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
