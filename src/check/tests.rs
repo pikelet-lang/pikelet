@@ -107,6 +107,45 @@ mod normalize {
             ).into(),
         );
     }
+
+    // Passing the id function to itself should yield the id function
+    #[test]
+    fn id_app_id() {
+        let context = Context::new();
+
+        let given_expr = r"
+            (\a : Type => \x : a => x)
+                ((a : Type) -> a -> a)
+                (\a : Type => \x : a => x)
+        ";
+        let expected_expr = r"\a : Type => \x : a => x";
+
+        assert_eq!(
+            context.normalize(&parse(given_expr)),
+            context.normalize(&parse(expected_expr)),
+        );
+    }
+
+    // Passing the id function to the 'const' combinator should yeild a
+    // function that always returns the id function
+    #[test]
+    fn const_app_id_ty() {
+        let context = Context::new();
+
+        let given_expr = r"
+            (\a : Type => \b : Type => \x : a => \y : b => x)
+                ((a : Type) -> a -> a)
+                Type
+                (\a : Type => \x : a => x)
+                Type
+        ";
+        let expected_expr = r"\a : Type => \x : a => x";
+
+        assert_eq!(
+            context.normalize(&parse(given_expr)),
+            context.normalize(&parse(expected_expr)),
+        );
+    }
 }
 
 mod infer {
