@@ -1,2 +1,1 @@
-error_on_line_overflow_comments = false
 match_block_trailing_comma = true
