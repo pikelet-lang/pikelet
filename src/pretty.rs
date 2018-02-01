@@ -1,21 +1,22 @@
 extern crate pretty;
 
 use core::{RcTerm, RcValue, Term, Value};
+use check::{Binder, Context};
 use var::{Name, Named, Var};
 
 use self::pretty::{BoxDoc, Doc};
 
 /// Configurable parameters for controlling the pretty printer
 #[derive(Copy, Clone)]
-pub struct Context {
+pub struct Options {
     pub indent_width: u8,
     pub debug_indices: bool,
     pub prec: Prec,
 }
 
-impl Default for Context {
-    fn default() -> Context {
-        Context {
+impl Default for Options {
+    fn default() -> Options {
+        Options {
             indent_width: 4,
             debug_indices: false,
             prec: Prec::NO_WRAP,
@@ -23,26 +24,26 @@ impl Default for Context {
     }
 }
 
-impl Context {
+impl Options {
     /// Set the number of spaces to indent by
-    pub fn with_indent_width(self, indent_width: u8) -> Context {
-        Context {
+    pub fn with_indent_width(self, indent_width: u8) -> Options {
+        Options {
             indent_width,
             ..self
         }
     }
 
     /// Set whether the Debruijn indices should be displayed
-    pub fn with_debug_indices(self, debug_indices: bool) -> Context {
-        Context {
+    pub fn with_debug_indices(self, debug_indices: bool) -> Options {
+        Options {
             debug_indices,
             ..self
         }
     }
 
     /// Set the current precedence of the pretty printer
-    pub fn with_prec(self, prec: Prec) -> Context {
-        Context { prec, ..self }
+    pub fn with_prec(self, prec: Prec) -> Options {
+        Options { prec, ..self }
     }
 }
 
@@ -65,7 +66,7 @@ pub type StaticDoc = Doc<'static, BoxDoc<'static>>;
 
 /// Convert a datatype to a pretty-printable document
 pub trait ToDoc {
-    fn to_doc(&self, context: Context) -> StaticDoc;
+    fn to_doc(&self, context: Options) -> StaticDoc;
 }
 
 fn parens_if(should_wrap: bool, inner: StaticDoc) -> StaticDoc {
@@ -78,7 +79,7 @@ fn parens_if(should_wrap: bool, inner: StaticDoc) -> StaticDoc {
     }
 }
 
-pub fn pretty_ann<E: ToDoc, T: ToDoc>(context: Context, expr: &E, ty: &T) -> StaticDoc {
+pub fn pretty_ann<E: ToDoc, T: ToDoc>(context: Options, expr: &E, ty: &T) -> StaticDoc {
     parens_if(
         Prec::ANN < context.prec,
         Doc::group(
@@ -97,7 +98,7 @@ pub fn pretty_ty() -> StaticDoc {
     Doc::text("Type")
 }
 
-pub fn pretty_var(context: Context, var: &Var) -> StaticDoc {
+pub fn pretty_var(context: Options, var: &Var) -> StaticDoc {
     match context.debug_indices {
         true => Doc::text(format!("{:#}", var)),
         false => Doc::as_string(var),
@@ -105,7 +106,7 @@ pub fn pretty_var(context: Context, var: &Var) -> StaticDoc {
 }
 
 pub fn pretty_lam<A: ToDoc, B: ToDoc>(
-    context: Context,
+    context: Options,
     name: &Name,
     ann: Option<&A>,
     body: &B,
@@ -133,7 +134,7 @@ pub fn pretty_lam<A: ToDoc, B: ToDoc>(
 }
 
 pub fn pretty_pi<A: ToDoc, B: ToDoc>(
-    context: Context,
+    context: Options,
     name: &Name,
     ann: &A,
     body: &B,
@@ -170,7 +171,7 @@ pub fn pretty_pi<A: ToDoc, B: ToDoc>(
     )
 }
 
-pub fn pretty_app<F: ToDoc, A: ToDoc>(context: Context, fn_term: &F, arg_term: &A) -> StaticDoc {
+pub fn pretty_app<F: ToDoc, A: ToDoc>(context: Options, fn_term: &F, arg_term: &A) -> StaticDoc {
     parens_if(
         Prec::APP < context.prec,
         Doc::nil()
@@ -181,7 +182,7 @@ pub fn pretty_app<F: ToDoc, A: ToDoc>(context: Context, fn_term: &F, arg_term: &
 }
 
 impl ToDoc for Term {
-    fn to_doc(&self, context: Context) -> StaticDoc {
+    fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
             Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
             Term::Type => pretty_ty(),
@@ -194,13 +195,13 @@ impl ToDoc for Term {
 }
 
 impl ToDoc for RcTerm {
-    fn to_doc(&self, context: Context) -> StaticDoc {
+    fn to_doc(&self, context: Options) -> StaticDoc {
         self.inner.to_doc(context)
     }
 }
 
 impl ToDoc for Value {
-    fn to_doc(&self, context: Context) -> StaticDoc {
+    fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
             Value::Type => pretty_ty(),
             Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
@@ -212,7 +213,58 @@ impl ToDoc for Value {
 }
 
 impl ToDoc for RcValue {
-    fn to_doc(&self, context: Context) -> StaticDoc {
+    fn to_doc(&self, context: Options) -> StaticDoc {
         self.inner.to_doc(context)
+    }
+}
+
+impl ToDoc for Binder {
+    fn to_doc(&self, context: Options) -> StaticDoc {
+        match *self {
+            Binder::Lam(ref ann) => Doc::group(
+                Doc::text(r"\")
+                    .append(Doc::text("_"))
+                    .append(match ann.as_ref() {
+                        Some(ann) => Doc::space()
+                            .append(Doc::text(":"))
+                            .append(Doc::space())
+                            .append(ann.to_doc(context.with_prec(Prec::PI)).group()),
+                        None => Doc::nil(),
+                    }),
+            ),
+            Binder::Pi(ref ann) => Doc::group(
+                Doc::text("(")
+                    .append(Doc::text("_"))
+                    .append(Doc::space())
+                    .append(Doc::text(":"))
+                    .append(Doc::space())
+                    .append(ann.to_doc(context.with_prec(Prec::PI)))
+                    .append(Doc::text(")")),
+            ),
+            Binder::Let(ref ann, ref value) => Doc::group(
+                Doc::text("let")
+                    .append(Doc::space())
+                    .append(Doc::text("_"))
+                    .append(Doc::space())
+                    .append(Doc::text(":"))
+                    .append(Doc::space())
+                    .append(ann.to_doc(context.with_prec(Prec::PI)))
+                    .append(Doc::space())
+                    .append(Doc::text("="))
+                    .append(Doc::space())
+                    .append(value.to_doc(context.with_prec(Prec::PI))),
+            ),
+        }
+    }
+}
+
+impl ToDoc for Context {
+    fn to_doc(&self, context: Options) -> StaticDoc {
+        Doc::text("[")
+            .append(Doc::intersperse(
+                self.binders.iter().map(|b| b.to_doc(context)),
+                Doc::text(",").append(Doc::space()),
+            ))
+            .append(Doc::text("]"))
     }
 }

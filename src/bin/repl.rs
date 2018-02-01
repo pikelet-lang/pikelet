@@ -70,14 +70,14 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             let context = Context::new();
             let inferred = context.infer(&term)?;
             let evaluated = context.normalize(&term)?;
-            let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
+            let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
         },
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_parse(&parse_term);
             let inferred = Context::new().infer(&term)?;
-            let doc = inferred.to_doc(pretty::Context::default());
+            let doc = inferred.to_doc(pretty::Options::default());
 
             println!("{}", doc.pretty(80));
         },

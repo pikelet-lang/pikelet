@@ -1,8 +1,10 @@
 //! Contexts and type checking
 
 use rpds::List;
+use std::fmt;
 
 use core::{Module, RcTerm, RcType, RcValue, Term, Value};
+use pretty::{self, ToDoc};
 use var::{Debruijn, Name, Named, Var};
 
 #[cfg(test)]
@@ -111,12 +113,28 @@ impl Binder {
     }
 }
 
+impl fmt::Display for Binder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
+}
+
 /// A list of binders that have been accumulated during typechecking
 #[derive(Debug, Clone, PartialEq)]
 pub struct Context {
     // Γ ::= ε           1. empty context
-    //     | Γ;b         2. context extension
-    binders: List<Binder>,
+    //     | Γ,b         2. context extension
+    pub binders: List<Binder>,
+}
+
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
 }
 
 impl Context {
@@ -183,7 +201,7 @@ impl Context {
                 },
             },
 
-            //  1. Γ;λx ⊢ e ⇓ v
+            //  1. Γ,λx ⊢ e ⇓ v
             // ───────────────────────── (EVAL/LAM)
             //     Γ ⊢ λx.e ⇓ λx.v
             Term::Lam(Named(ref name, None), ref body_expr) => {
@@ -194,7 +212,7 @@ impl Context {
             },
 
             //  1.  Γ ⊢ ρ ⇓ τ
-            //  2.  Γ;λx:τ ⊢ e ⇓ v
+            //  2.  Γ,λx:τ ⊢ e ⇓ v
             // ──────────────────────────────── (EVAL/LAM-ANN)
             //      Γ ⊢ λx:ρ.e ⇓ λx:τ.v
             Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
@@ -206,7 +224,7 @@ impl Context {
             },
 
             //  1.  Γ ⊢ ρ₁ ⇓ τ₁
-            //  2.  Γ;Πx:τ ⊢ ρ₂ ⇓ τ₂
+            //  2.  Γ,Πx:τ ⊢ ρ₂ ⇓ τ₂
             // ─────────────────────────────────── (EVAL/PI-ANN)
             //      Γ ⊢ Πx:ρ₁.ρ₂ ⇓ Πx:τ₁.τ₂
             Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
@@ -242,7 +260,7 @@ impl Context {
     //
     pub fn check(&self, term: &RcTerm, expected: &RcType) -> Result<(), TypeError> {
         match *term.inner {
-            //  1.  Γ;x:τ₁ ⊢ e :↓ τ₂
+            //  1.  Γ,Πx:τ₁ ⊢ e :↓ τ₂
             // ─────────────────────────────── (CHECK/LAM)
             //      Γ ⊢ λx.e :↓ Πx:τ₁.τ₂
             Term::Lam(Named(_, None), ref body_expr) => match *expected.inner {
@@ -302,7 +320,7 @@ impl Context {
 
             //  1.  Γ ⊢ ρ :↓ Type
             //  2.  ρ ⇓ τ₁
-            //  3.  Γ;x:τ₁ ⊢ e :↑ τ₂
+            //  3.  Γ,Πx:τ₁ ⊢ e :↑ τ₂
             // ─────────────────────────────── (INFER/LAM)
             //      Γ ⊢ λx:ρ.e :↑ Πx:τ₁.τ₂
             Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
@@ -316,7 +334,7 @@ impl Context {
 
             //  1.  Γ ⊢ ρ₁ :↓ Type
             //  2.  ρ₁ ⇓ τ₁
-            //  3.  Γ;x:τ₁ ⊢ ρ₂ :↓ Type
+            //  3.  Γ,Πx:τ₁ ⊢ ρ₂ :↓ Type
             // ────────────────────────────── (INFER/PI)
             //      Γ ⊢ Πx:ρ₁.ρ₂ :↑ Type
             Term::Pi(Named(_, ref param_ty), ref body_ty) => {
