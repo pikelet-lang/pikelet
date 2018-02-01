@@ -6,7 +6,7 @@ use rustyline::Editor;
 
 use lambdapi::parse::ParseError;
 use lambdapi::core::RcTerm;
-use lambdapi::check::TypeError;
+use lambdapi::check::{InternalError, TypeError};
 
 const PROMPT: &str = "λΠ> ";
 const REPL_HISTORY_FILE: &str = "repl-history";
@@ -69,7 +69,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             let term = RcTerm::from_parse(&parse_term);
             let context = Context::new();
             let inferred = context.infer(&term)?;
-            let evaluated = context.normalize(&term);
+            let evaluated = context.normalize(&term)?;
             let doc = pretty::pretty_ann(pretty::Context::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
@@ -104,5 +104,11 @@ impl From<ParseError> for ReplError {
 impl From<TypeError> for ReplError {
     fn from(src: TypeError) -> ReplError {
         ReplError::Type(src)
+    }
+}
+
+impl From<InternalError> for ReplError {
+    fn from(src: InternalError) -> ReplError {
+        ReplError::Type(src.into())
     }
 }

@@ -34,13 +34,13 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
             // We have a type annotation! Evaluate it to its normal form, then check that it matches
             // the body of the definition
             Some(ref ann) => {
-                let ann = context.normalize(&ann);
+                let ann = context.normalize(&ann)?;
                 context.check(&definition.term, &ann)?;
                 ann
             },
         };
         // Evaluate the body of the definition
-        let term = context.normalize(&definition.term);
+        let term = context.normalize(&definition.term)?;
         let name = definition.name.clone();
         // Add the definition to the context
         context = context.extend(Binder::Let(term.clone(), ann.clone()));
@@ -52,6 +52,13 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
         name: module.name.clone(),
         definitions,
     })
+}
+
+/// An internal error. These are bugs!
+#[derive(Debug, Clone, PartialEq)]
+pub enum InternalError {
+    NormalizedUnboundVariable(Name),
+    DeBruijnIndexOutOfScope { index: Debruijn, context: Context },
 }
 
 /// An error produced during typechecking
@@ -69,6 +76,13 @@ pub enum TypeError {
         expected: RcType,
     },
     UnboundVariable(Name),
+    Internal(InternalError),
+}
+
+impl From<InternalError> for TypeError {
+    fn from(src: InternalError) -> TypeError {
+        TypeError::Internal(src)
+    }
 }
 
 /// A binder that introduces a variable into the context
@@ -77,7 +91,7 @@ pub enum TypeError {
 //     | Πx:τ           2. dependent function
 //     | let x:τ = v    3. let binding
 //
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Binder {
     /// A type introduced after entering a lambda abstraction
     Lam(Option<RcType>), // 1.
@@ -88,14 +102,6 @@ pub enum Binder {
 }
 
 impl Binder {
-    /// Return the value associated with a binder
-    pub fn value(&self) -> Option<&RcValue> {
-        match *self {
-            Binder::Lam(_) | Binder::Pi(_) => None,
-            Binder::Let(_, ref value) => Some(value),
-        }
-    }
-
     /// Return the type associated with a binder
     pub fn ty(&self) -> Option<&RcType> {
         match *self {
@@ -106,7 +112,7 @@ impl Binder {
 }
 
 /// A list of binders that have been accumulated during typechecking
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Context {
     // Γ ::= ε           1. empty context
     //     | Γ;b         2. context extension
@@ -129,15 +135,20 @@ impl Context {
     }
 
     /// Look up a binder based on the given Debruijn index
-    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Binder> {
-        self.binders.iter().nth(index.0 as usize)
+    pub fn lookup_binder(&self, index: Debruijn) -> Result<&Binder, InternalError> {
+        self.binders.iter().nth(index.0 as usize).ok_or_else(|| {
+            InternalError::DeBruijnIndexOutOfScope {
+                index,
+                context: self.clone(),
+            }
+        })
     }
 
     /// Evaluates a core term to its normal form
     //
     // Γ ⊢ e ⇓ v
     //
-    pub fn normalize(&self, term: &RcTerm) -> RcValue {
+    pub fn normalize(&self, term: &RcTerm) -> Result<RcValue, InternalError> {
         match *term.inner {
             //  1.  Γ ⊢ e ⇓ v
             // ─────────────────────── (EVAL/ANN)
@@ -148,32 +159,27 @@ impl Context {
 
             // ─────────────────── (EVAL/TYPE)
             //  Γ ⊢ Type ⇓ Type
-            Term::Type => Value::Type.into(),
+            Term::Type => Ok(Value::Type.into()),
 
             Term::Var(ref var) => match *var {
-                // ───────────── (EVAL/VAR)
-                //  Γ ⊢ x ⇓ x
-                Var::Free(_) => Value::Var(var.clone()).into(),
-                Var::Bound(Named(_, index)) => match self.lookup_binder(index) {
-                    Some(binder) => match *binder {
-                        // Can't reduce further - we are in a pi or let binding
-                        //
-                        //  1.  λx:τ ∈ Γ
-                        // ───────────────────── (EVAL/VAR-LAM)
-                        //      Γ ⊢ x ⇓ x
-                        //
-                        //  1.  Πx:τ ∈ Γ
-                        // ───────────────────── (EVAL/VAR-PI)
-                        //      Γ ⊢ x ⇓ x
-                        Binder::Lam(_) | Binder::Pi(_) => Value::Var(var.clone()).into(),
-                        // We have a value in scope, let's use that!
-                        //
-                        //  1.  let x:τ = v ∈ Γ
-                        // ───────────────────── (EVAL/VAR-LET)
-                        //      Γ ⊢ x ⇓ v
-                        Binder::Let(_, ref value) => value.clone(),
-                    },
-                    None => panic!("ICE: index {} out of bounds", index),
+                Var::Free(ref name) => Err(InternalError::NormalizedUnboundVariable(name.clone())),
+                Var::Bound(Named(_, index)) => match *self.lookup_binder(index)? {
+                    // Can't reduce further - we are in a pi or let binding
+                    //
+                    //  1.  λx:τ ∈ Γ
+                    // ───────────────────── (EVAL/VAR-LAM)
+                    //      Γ ⊢ x ⇓ x
+                    //
+                    //  2.  Πx:τ ∈ Γ
+                    // ───────────────────── (EVAL/VAR-PI)
+                    //      Γ ⊢ x ⇓ x
+                    Binder::Lam(_) | Binder::Pi(_) => Ok(Value::Var(var.clone()).into()),
+                    // We have a value in scope, let's use that!
+                    //
+                    //  1.  let x:τ = v ∈ Γ
+                    // ───────────────────── (EVAL/VAR-LET)
+                    //      Γ ⊢ x ⇓ v
+                    Binder::Let(_, ref value) => Ok(value.clone()),
                 },
             },
 
@@ -182,9 +188,9 @@ impl Context {
             //     Γ ⊢ λx.e ⇓ λx.v
             Term::Lam(Named(ref name, None), ref body_expr) => {
                 let binder = Binder::Lam(None);
-                let body_expr = self.extend(binder).normalize(body_expr); // 1.
+                let body_expr = self.extend(binder).normalize(body_expr)?; // 1.
 
-                Value::Lam(Named(name.clone(), None), body_expr).into()
+                Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
             },
 
             //  1.  Γ ⊢ ρ ⇓ τ
@@ -192,11 +198,11 @@ impl Context {
             // ──────────────────────────────── (EVAL/LAM-ANN)
             //      Γ ⊢ λx:ρ.e ⇓ λx:τ.v
             Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
-                let param_ty = self.normalize(param_ty); // 1.
+                let param_ty = self.normalize(param_ty)?; // 1.
                 let binder = Binder::Lam(Some(param_ty.clone()));
-                let body_expr = self.extend(binder).normalize(body_expr); // 2.
+                let body_expr = self.extend(binder).normalize(body_expr)?; // 2.
 
-                Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into()
+                Ok(Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into())
             },
 
             //  1.  Γ ⊢ ρ₁ ⇓ τ₁
@@ -204,11 +210,11 @@ impl Context {
             // ─────────────────────────────────── (EVAL/PI-ANN)
             //      Γ ⊢ Πx:ρ₁.ρ₂ ⇓ Πx:τ₁.τ₂
             Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
-                let param_ty = self.normalize(param_ty); // 1.
+                let param_ty = self.normalize(param_ty)?; // 1.
                 let binder = Binder::Pi(param_ty.clone());
-                let body_expr = self.extend(binder).normalize(body_expr); // 2.
+                let body_expr = self.extend(binder).normalize(body_expr)?; // 2.
 
-                Value::Pi(Named(name.clone(), param_ty), body_expr).into()
+                Ok(Value::Pi(Named(name.clone(), param_ty), body_expr).into())
             },
 
             // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -219,12 +225,12 @@ impl Context {
             // ───────────────────────────── (EVAL/APP)
             //      Γ ⊢ e₁ e₂ ⇓ v₂
             Term::App(ref fn_expr, ref arg) => {
-                let fn_expr = self.normalize(fn_expr); // 1.
-                let arg = self.normalize(arg); // 2.
+                let fn_expr = self.normalize(fn_expr)?; // 1.
+                let arg = self.normalize(arg)?; // 2.
 
                 match *fn_expr.inner {
-                    Value::Lam(_, ref body) => body.open(&arg),
-                    _ => Value::App(fn_expr.clone(), arg).into(),
+                    Value::Lam(_, ref body) => Ok(body.open(&arg)),
+                    _ => Ok(Value::App(fn_expr.clone(), arg).into()),
                 }
             },
         }
@@ -280,7 +286,7 @@ impl Context {
             //      Γ ⊢ (e:ρ) :↑ τ
             Term::Ann(ref expr, ref ty) => {
                 self.check(ty, &Value::Type.into())?; // 1.
-                let simp_ty = self.normalize(&ty); // 2.
+                let simp_ty = self.normalize(&ty)?; // 2.
                 self.check(expr, &simp_ty)?; // 3.
                 Ok(simp_ty)
             },
@@ -301,7 +307,7 @@ impl Context {
             //      Γ ⊢ λx:ρ.e :↑ Πx:τ₁.τ₂
             Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
-                let simp_param_ty = self.normalize(&param_ty); // 2.
+                let simp_param_ty = self.normalize(&param_ty)?; // 2.
                 let binder = Binder::Pi(simp_param_ty.clone());
                 let body_ty = self.extend(binder).infer(body_expr)?; // 3.
 
@@ -315,7 +321,7 @@ impl Context {
             //      Γ ⊢ Πx:ρ₁.ρ₂ :↑ Type
             Term::Pi(Named(_, ref param_ty), ref body_ty) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
-                let simp_param_ty = self.normalize(&param_ty); // 2.
+                let simp_param_ty = self.normalize(&param_ty)?; // 2.
                 let binder = Binder::Pi(simp_param_ty);
                 self.extend(binder).check(body_ty, &Value::Type.into())?; // 3.
                 Ok(Value::Type.into())
@@ -326,12 +332,9 @@ impl Context {
             //      Γ ⊢ x :↑ τ
             Term::Var(ref var) => match *var {
                 Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
-                Var::Bound(Named(_, index)) => match self.lookup_binder(index) {
-                    Some(binder) => match binder.ty() {
-                        Some(ty) => Ok(ty.clone()), // 1.
-                        None => Err(TypeError::TypeAnnotationsNeeded),
-                    },
-                    None => panic!("ICE: index {} out of bounds", index),
+                Var::Bound(Named(_, index)) => match self.lookup_binder(index)?.ty() {
+                    Some(ty) => Ok(ty.clone()), // 1.
+                    None => Err(TypeError::TypeAnnotationsNeeded),
                 },
             },
 
@@ -345,7 +348,7 @@ impl Context {
                 match *fn_type.inner {
                     Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
                         self.check(arg_expr, param_ty)?; // 2.
-                        let body_ty = ret_ty.open(&self.normalize(&arg_expr)); // 3.
+                        let body_ty = ret_ty.open(&self.normalize(&arg_expr)?); // 3.
                         Ok(body_ty)
                     },
                     // TODO: More error info
