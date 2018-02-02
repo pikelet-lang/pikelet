@@ -320,13 +320,13 @@ impl Context {
 
             //  1.  Γ ⊢ ρ :↓ Type
             //  2.  ρ ⇓ τ₁
-            //  3.  Γ,Πx:τ₁ ⊢ e :↑ τ₂
+            //  3.  Γ,λx:τ₁ ⊢ e :↑ τ₂
             // ─────────────────────────────── (INFER/LAM)
             //      Γ ⊢ λx:ρ.e :↑ Πx:τ₁.τ₂
             Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
                 self.check(param_ty, &Value::Type.into())?; // 1.
                 let simp_param_ty = self.normalize(&param_ty)?; // 2.
-                let binder = Binder::Pi(simp_param_ty.clone());
+                let binder = Binder::Lam(Some(simp_param_ty.clone()));
                 let body_ty = self.extend(binder).infer(body_expr)?; // 3.
 
                 Ok(Value::Pi(Named(param_name.clone(), simp_param_ty), body_ty).into())
