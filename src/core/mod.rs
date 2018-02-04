@@ -28,37 +28,28 @@ pub struct Definition {
     pub ann: Option<RcTerm>,
 }
 
-/// Terms
+/// The core term syntax
+//
+// e,τ ::= e:τ
+//       | Type
+//       | x
+//       | λx:τ₁.τ₂
+//       | Πx:τ₁.τ₂
+//       | τ₁ τ₂
+//
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     /// A term annotated with a type
-    ///
-    /// ```text
-    /// e : t
-    /// ```
     Ann(RcTerm, RcTerm),
     /// Type of types
     Type,
     /// A variable
     Var(Var),
     /// Lambda abstractions
-    ///
-    /// ```text
-    /// \x => t
-    /// \x : t => t
-    /// ```
     Lam(Named<Option<RcTerm>>, RcTerm),
-    /// Dependent function type
-    ///
-    /// ```text
-    /// (x : t) -> t
-    /// ```
+    /// Dependent function types
     Pi(Named<RcTerm>, RcTerm),
     /// Term application
-    ///
-    /// ```text
-    /// f x
-    /// ```
     App(RcTerm, RcTerm),
 }
 
@@ -77,6 +68,13 @@ impl fmt::Display for Term {
 }
 
 /// Normal forms
+//
+// v,ρ ::= Type
+//       | x
+//       | λx:ρ₁.ρ₂
+//       | Πx:ρ₁.ρ₂
+//       | ρ₁ ρ₂
+//
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// The type of types

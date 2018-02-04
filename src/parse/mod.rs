@@ -61,13 +61,54 @@ impl FromStr for Declaration {
 /// The AST of the concrete syntax
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
+    /// A term that is surrounded with parentheses
+    ///
+    /// ```text
+    /// (e)
+    /// ```
     Parens(Box<Term>),
+    /// A term annotated with a type
+    ///
+    /// ```text
+    /// e : t
+    /// ```
     Ann(Box<Term>, Box<Term>),
+    /// Type of types
+    ///
+    /// ```text
+    /// Type
+    /// ```
     Type,
+    /// Variables
+    ///
+    /// ```text
+    /// x
+    /// ```
     Var(String),
+    /// Lambda abstractions
+    ///
+    /// ```text
+    /// \x => t
+    /// \x : t1 => t2
+    /// ```
     Lam(Vec<(String, Option<Box<Term>>)>, Box<Term>),
+    /// Dependent function types
+    ///
+    /// ```text
+    /// (x : t1) -> t2
+    /// ```
     Pi(String, Box<Term>, Box<Term>),
+    /// Non-Dependent function types
+    ///
+    /// ```text
+    /// t1 -> t2
+    /// ```
     Arrow(Box<Term>, Box<Term>),
+    /// Term application
+    ///
+    /// ```text
+    /// e1 e2
+    /// ```
     App(Box<Term>, Box<Term>),
 }
 
