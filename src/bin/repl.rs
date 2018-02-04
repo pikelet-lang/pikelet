@@ -51,7 +51,7 @@ fn main() {
 fn run_repl(line: &str) -> Result<(), ReplError> {
     use lambdapi::check::Context;
     use lambdapi::pretty::{self, ToDoc};
-    use lambdapi::parse::ReplCommand;
+    use lambdapi::concrete::ReplCommand;
 
     match line.parse()? {
         ReplCommand::Help => {
@@ -66,7 +66,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
         },
 
         ReplCommand::Eval(parse_term) => {
-            let term = RcTerm::from_parse(&parse_term);
+            let term = RcTerm::from_concrete(&parse_term);
             let context = Context::new();
             let inferred = context.infer(&term)?;
             let evaluated = context.normalize(&term)?;
@@ -75,7 +75,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
             println!("{}", doc.pretty(80));
         },
         ReplCommand::TypeOf(parse_term) => {
-            let term = RcTerm::from_parse(&parse_term);
+            let term = RcTerm::from_concrete(&parse_term);
             let inferred = Context::new().infer(&term)?;
             let doc = inferred.to_doc(pretty::Options::default());
 

@@ -1,9 +1,9 @@
+//! The core syntax of the language
+
 use std::fmt;
 use std::rc::Rc;
 
-use parse::Declaration as ParseDeclaration;
-use parse::Module as ParseModule;
-use parse::Term as ParseTerm;
+use concrete;
 use pretty::{self, ToDoc};
 use var::{Debruijn, Name, Named, Var};
 
@@ -205,8 +205,11 @@ impl RcValue {
 
 // Conversions from the parse tree
 
-fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm) -> RcTerm {
-    let mut term = RcTerm::from_parse(body);
+fn lam_from_concrete(
+    params: &[(String, Option<Box<concrete::Term>>)],
+    body: &concrete::Term,
+) -> RcTerm {
+    let mut term = RcTerm::from_concrete(body);
 
     for &(ref name, ref ann) in params.iter().rev() {
         let name = Name::User(name.clone());
@@ -214,7 +217,7 @@ fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm)
         term = match *ann {
             None => Term::Lam(Named(name, None), term).into(),
             Some(ref ann) => {
-                let ann = RcTerm::from_parse(ann).into();
+                let ann = RcTerm::from_concrete(ann).into();
                 Term::Lam(Named(name, Some(ann)), term).into()
             },
         };
@@ -225,7 +228,7 @@ fn lam_from_parse(params: &[(String, Option<Box<ParseTerm>>)], body: &ParseTerm)
 
 impl Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
-    pub fn from_parse(module: &ParseModule) -> Module {
+    pub fn from_concrete(module: &concrete::Module) -> Module {
         use std::collections::BTreeMap;
         use std::collections::btree_map::Entry;
 
@@ -239,13 +242,13 @@ impl Module {
             match *declaration {
                 // We've enountered a claim! Let's try to add it to the claims
                 // that we've seen so far...
-                ParseDeclaration::Claim(ref name, ref term) => {
+                concrete::Declaration::Claim(ref name, ref term) => {
                     match claims.entry(name) {
                         // Oh no! We've already seen a claim for this name!
                         Entry::Occupied(_) => panic!(), // FIXME: Better error
                         // This name does not yet have a claim associated with it
                         Entry::Vacant(mut entry) => {
-                            let mut term = RcTerm::from_parse(term);
+                            let mut term = RcTerm::from_concrete(term);
 
                             for (level, definition) in definitions.iter().rev().enumerate() {
                                 term.close_at(
@@ -259,9 +262,9 @@ impl Module {
                     };
                 },
                 // We've encountered a definition. Let's desugar it!
-                ParseDeclaration::Definition(ref name, ref params, ref term) => {
+                concrete::Declaration::Definition(ref name, ref params, ref term) => {
                     let name = name.clone();
-                    let mut term = lam_from_parse(params, term);
+                    let mut term = lam_from_concrete(params, term);
                     let ann = claims.remove(&name);
 
                     for (level, definition) in definitions.iter().rev().enumerate() {
@@ -284,32 +287,38 @@ impl Module {
 }
 
 impl RcTerm {
-    /// Convert a parsed term into a core term
-    pub fn from_parse(term: &ParseTerm) -> RcTerm {
+    /// Convert a term in the concrete syntax into a core term
+    pub fn from_concrete(term: &concrete::Term) -> RcTerm {
         match *term {
-            ParseTerm::Parens(ref term) => RcTerm::from_parse(term),
-            ParseTerm::Ann(ref e, ref t) => {
-                Term::Ann(RcTerm::from_parse(e).into(), RcTerm::from_parse(t).into()).into()
+            concrete::Term::Parens(ref term) => RcTerm::from_concrete(term),
+            concrete::Term::Ann(ref expr, ref ty) => {
+                let expr = RcTerm::from_concrete(expr).into();
+                let ty = RcTerm::from_concrete(ty).into();
+
+                Term::Ann(expr, ty).into()
             },
-            ParseTerm::Type => Term::Type.into(),
-            ParseTerm::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
-            ParseTerm::Lam(ref params, ref body) => lam_from_parse(params, body),
-            ParseTerm::Pi(ref name, ref ann, ref body) => {
+            concrete::Term::Type => Term::Type.into(),
+            concrete::Term::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
+            concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
+            concrete::Term::Pi(ref name, ref ann, ref body) => {
                 let name = Name::User(name.clone());
-                let mut body = RcTerm::from_parse(body);
+                let mut body = RcTerm::from_concrete(body);
                 body.close(&name);
 
-                Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
+                Term::Pi(Named(name, RcTerm::from_concrete(ann).into()), body).into()
             },
-            ParseTerm::Arrow(ref ann, ref body) => {
+            concrete::Term::Arrow(ref ann, ref body) => {
                 let name = Name::Abstract;
-                let mut body = RcTerm::from_parse(body);
+                let mut body = RcTerm::from_concrete(body);
                 body.close(&name);
 
-                Term::Pi(Named(name, RcTerm::from_parse(ann).into()), body).into()
+                Term::Pi(Named(name, RcTerm::from_concrete(ann).into()), body).into()
             },
-            ParseTerm::App(ref f, ref arg) => {
-                Term::App(RcTerm::from_parse(f), RcTerm::from_parse(arg)).into()
+            concrete::Term::App(ref fn_expr, ref arg) => {
+                let fn_expr = RcTerm::from_concrete(fn_expr).into();
+                let arg = RcTerm::from_concrete(arg).into();
+
+                Term::App(fn_expr, arg).into()
             },
         }
     }

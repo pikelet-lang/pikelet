@@ -1,5 +1,6 @@
-use parse::{Declaration, Module, Term, ReplCommand};
 use lalrpop_util::ParseError;
+
+use concrete::{Declaration, Module, Term, ReplCommand};
 
 grammar();
 

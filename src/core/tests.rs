@@ -1,7 +1,7 @@
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
-    RcTerm::from_parse(&src.parse().unwrap())
+    RcTerm::from_concrete(&src.parse().unwrap())
 }
 
 mod alpha_eq {
@@ -66,12 +66,12 @@ mod alpha_eq {
     }
 }
 
-mod from_parse {
+mod from_concrete {
     use super::*;
 
     #[test]
     fn parse_prelude() {
-        Module::from_parse(&include_str!("../../prelude.lp").parse().unwrap());
+        Module::from_concrete(&include_str!("../../prelude.lp").parse().unwrap());
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
-    RcTerm::from_parse(&src.parse().unwrap())
+    RcTerm::from_concrete(&src.parse().unwrap())
 }
 
 mod normalize {
@@ -485,7 +485,7 @@ mod check_module {
 
     #[test]
     fn check_prelude() {
-        let module = Module::from_parse(&include_str!("../../prelude.lp").parse().unwrap());
+        let module = Module::from_concrete(&include_str!("../../prelude.lp").parse().unwrap());
 
         check_module(&module).unwrap();
     }
