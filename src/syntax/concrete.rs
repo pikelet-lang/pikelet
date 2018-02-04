@@ -92,7 +92,7 @@ pub enum Term {
     /// ```text
     /// (x : t1) -> t2
     /// ```
-    Pi(String, Box<Term>, Box<Term>),
+    Pi(Vec<String>, Box<Term>, Box<Term>),
     /// Non-Dependent function types
     ///
     /// ```text

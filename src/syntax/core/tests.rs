@@ -177,14 +177,6 @@ mod from_concrete {
     }
 
     #[test]
-    fn lam_multi() {
-        assert_eq!(
-            parse(r"\y (x : Type) z => x"),
-            parse(r"\y => \x : Type => \z => x"),
-        );
-    }
-
-    #[test]
     fn lam_lam_ann() {
         let x = Name::user("x");
         let y = Name::user("y");
@@ -334,11 +326,31 @@ mod from_concrete {
         );
     }
 
-    #[test]
-    fn id_ty_arr() {
-        assert_eq!(
-            parse(r"(a : Type) -> a -> a"),
-            parse(r"(a : Type) -> (x : a) -> a"),
-        )
+    mod sugar {
+        use super::*;
+
+        #[test]
+        fn lam_args() {
+            assert_eq!(
+                parse(r"\y (x : Type) z => x"),
+                parse(r"\y => \x : Type => \z => x"),
+            );
+        }
+
+        #[test]
+        fn pi_args() {
+            assert_eq!(
+                parse(r"(a : Type) -> (x y z : a) -> x"),
+                parse(r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
+            );
+        }
+
+        #[test]
+        fn arrow() {
+            assert_eq!(
+                parse(r"(a : Type) -> a -> a"),
+                parse(r"(a : Type) -> (x : a) -> a"),
+            )
+        }
     }
 }

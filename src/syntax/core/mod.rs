@@ -298,10 +298,24 @@ fn lam_from_concrete(
         term = match *ann {
             None => Term::Lam(Named(name, None), term).into(),
             Some(ref ann) => {
-                let ann = RcTerm::from_concrete(ann).into();
+                let ann = RcTerm::from_concrete(ann);
                 Term::Lam(Named(name, Some(ann)), term).into()
             },
         };
+    }
+
+    term
+}
+
+fn pi_from_concrete(param_names: &[String], ann: &concrete::Term, body: &concrete::Term) -> RcTerm {
+    let mut ann = RcTerm::from_concrete(ann);
+    let mut term = RcTerm::from_concrete(body);
+
+    for name in param_names.iter().rev() {
+        let name = Name::User(name.clone());
+        ann.close(&Name::Abstract);
+        term.close(&name);
+        term = Term::Pi(Named(name, ann.clone()), term).into();
     }
 
     term
@@ -381,13 +395,7 @@ impl RcTerm {
             concrete::Term::Universe => RcTerm::universe(),
             concrete::Term::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
             concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
-            concrete::Term::Pi(ref name, ref ann, ref body) => {
-                let name = Name::User(name.clone());
-                let mut body = RcTerm::from_concrete(body);
-                body.close(&name);
-
-                Term::Pi(Named(name, RcTerm::from_concrete(ann).into()), body).into()
-            },
+            concrete::Term::Pi(ref names, ref ann, ref body) => pi_from_concrete(names, ann, body),
             concrete::Term::Arrow(ref ann, ref body) => {
                 let name = Name::Abstract;
                 let mut body = RcTerm::from_concrete(body);
