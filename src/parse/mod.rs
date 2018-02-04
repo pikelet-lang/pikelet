@@ -62,9 +62,9 @@ impl FromStr for Declaration {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     Parens(Box<Term>),
-    Var(String),
-    Type,
     Ann(Box<Term>, Box<Term>),
+    Type,
+    Var(String),
     Lam(Vec<(String, Option<Box<Term>>)>, Box<Term>),
     Pi(String, Box<Term>, Box<Term>),
     Arrow(Box<Term>, Box<Term>),

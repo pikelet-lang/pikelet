@@ -152,6 +152,8 @@ impl RcTerm {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
             },
+            Term::Type => {},
+            Term::Var(ref mut var) => var.close_at(level, name),
             Term::Lam(Named(_, None), ref mut body) => body.close_at(level.succ(), name),
             Term::Lam(Named(_, Some(ref mut ty)), ref mut body) => {
                 ty.close_at(level, name);
@@ -161,8 +163,6 @@ impl RcTerm {
                 ty.close_at(level, name);
                 body.close_at(level.succ(), name);
             },
-            Term::Var(ref mut var) => var.close_at(level, name),
-            Term::Type => {},
             Term::App(ref mut f, ref mut x) => {
                 f.close_at(level, name);
                 x.close_at(level, name);
@@ -290,11 +290,11 @@ impl RcTerm {
     pub fn from_parse(term: &ParseTerm) -> RcTerm {
         match *term {
             ParseTerm::Parens(ref term) => RcTerm::from_parse(term),
-            ParseTerm::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
-            ParseTerm::Type => Term::Type.into(),
             ParseTerm::Ann(ref e, ref t) => {
                 Term::Ann(RcTerm::from_parse(e).into(), RcTerm::from_parse(t).into()).into()
             },
+            ParseTerm::Type => Term::Type.into(),
+            ParseTerm::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
             ParseTerm::Lam(ref params, ref body) => lam_from_parse(params, body),
             ParseTerm::Pi(ref name, ref ann, ref body) => {
                 let name = Name::User(name.clone());

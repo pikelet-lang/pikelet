@@ -313,6 +313,17 @@ impl Context {
             //  Γ ⊢ TYPE :↑ Type
             Term::Type => Ok(Value::Type.into()),
 
+            //  1.  x:τ ∈ Γ
+            // ──────────────────── (INFER/VAR)
+            //      Γ ⊢ x :↑ τ
+            Term::Var(ref var) => match *var {
+                Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
+                Var::Bound(Named(_, index)) => match self.lookup_binder(index)?.ty() {
+                    Some(ty) => Ok(ty.clone()), // 1.
+                    None => Err(TypeError::TypeAnnotationsNeeded),
+                },
+            },
+
             Term::Lam(Named(_, None), _) => {
                 // TODO: More error info
                 Err(TypeError::TypeAnnotationsNeeded)
@@ -343,17 +354,6 @@ impl Context {
                 let binder = Binder::Pi(simp_param_ty);
                 self.extend(binder).check(body_ty, &Value::Type.into())?; // 3.
                 Ok(Value::Type.into())
-            },
-
-            //  1.  x:τ ∈ Γ
-            // ──────────────────── (INFER/VAR)
-            //      Γ ⊢ x :↑ τ
-            Term::Var(ref var) => match *var {
-                Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
-                Var::Bound(Named(_, index)) => match self.lookup_binder(index)?.ty() {
-                    Some(ty) => Ok(ty.clone()), // 1.
-                    None => Err(TypeError::TypeAnnotationsNeeded),
-                },
             },
 
             //  1.  Γ ⊢ e₁ :↑ Πx:τ₁.τ₂
