@@ -23,9 +23,10 @@ mod normalize {
     fn ty() {
         let context = Context::new();
 
-        let ty: RcValue = Value::Universe.into();
-
-        assert_eq!(normalize(&context, &parse(r"Type")).unwrap(), ty);
+        assert_eq!(
+            normalize(&context, &parse(r"Type")).unwrap(),
+            RcValue::universe()
+        );
     }
 
     #[test]
@@ -33,12 +34,11 @@ mod normalize {
         let context = Context::new();
 
         let x = Name::user("x");
-        let ty: RcValue = Value::Universe.into();
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type => x")).unwrap(),
             Value::Lam(
-                Named(x.clone(), Some(ty)),
+                Named(x.clone(), Some(RcValue::universe())),
                 Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
         );
@@ -49,12 +49,11 @@ mod normalize {
         let context = Context::new();
 
         let x = Name::user("x");
-        let ty: RcValue = Value::Universe.into();
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type) -> x")).unwrap(),
             Value::Pi(
-                Named(x.clone(), ty),
+                Named(x.clone(), RcValue::universe()),
                 Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
             ).into(),
         );
@@ -66,15 +65,17 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty: RcValue = Value::Universe.into();
-        let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
+        let ty_arr: RcValue = Value::Pi(
+            Named(Name::Abstract, RcValue::universe()),
+            RcValue::universe(),
+        ).into();
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type -> Type => \y : Type => x y")).unwrap(),
             Value::Lam(
                 Named(x.clone(), Some(ty_arr)),
                 Value::Lam(
-                    Named(y.clone(), Some(ty)),
+                    Named(y.clone(), Some(RcValue::universe())),
                     Value::App(
                         Value::Var(Var::Bound(Named(x, Debruijn(1)))).into(),
                         Value::Var(Var::Bound(Named(y, Debruijn(0)))).into(),
@@ -90,15 +91,17 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty: RcValue = Value::Universe.into();
-        let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
+        let ty_arr: RcValue = Value::Pi(
+            Named(Name::Abstract, RcValue::universe()),
+            RcValue::universe(),
+        ).into();
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type -> Type) -> \y : Type => x y")).unwrap(),
             Value::Pi(
                 Named(x.clone(), ty_arr),
                 Value::Lam(
-                    Named(y.clone(), Some(ty)),
+                    Named(y.clone(), Some(RcValue::universe())),
                     Value::App(
                         Value::Var(Var::Bound(Named(x, Debruijn(1)))).into(),
                         Value::Var(Var::Bound(Named(y, Debruijn(0)))).into(),

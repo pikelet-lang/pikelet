@@ -128,7 +128,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // ─────────────────── (EVAL/TYPE)
         //  Γ ⊢ Type ⇓ Type
-        Term::Universe => Ok(Value::Universe.into()),
+        Term::Universe => Ok(RcValue::universe()),
 
         Term::Var(ref var) => match *var {
             Var::Free(ref name) => Err(InternalError::NormalizedUnboundVariable(name.clone())),
@@ -264,7 +264,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         // ───────────────────────────── (INFER/ANN)
         //      Γ ⊢ (e:ρ) ⇒ τ ⤳ v
         Term::Ann(ref expr, ref ty) => {
-            check(context, ty, &Value::Universe.into())?; // 1.
+            check(context, ty, &RcValue::universe())?; // 1.
             let simp_ty = normalize(context, &ty)?; // 2.
             let elab_expr = check(context, expr, &simp_ty)?; // 3.
             Ok((elab_expr, simp_ty))
@@ -272,7 +272,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
         // ─────────────────────────── (INFER/TYPE)
         //  Γ ⊢ Type ⇒ Type ⤳ Type
-        Term::Universe => Ok((Value::Universe.into(), Value::Universe.into())),
+        Term::Universe => Ok((RcValue::universe(), RcValue::universe())),
 
         Term::Var(ref var) => match *var {
             Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
@@ -306,7 +306,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         // ───────────────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂ ⤳ λx:τ.v
         Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
-            let elab_param_ty = check(context, param_ty, &Value::Universe.into())?; // 1.
+            let elab_param_ty = check(context, param_ty, &RcValue::universe())?; // 1.
             let simp_param_ty = normalize(context, &param_ty)?; // 2.
             let binder = Named(name.clone(), Binder::Lam(Some(simp_param_ty.clone())));
             let (elab_body_expr, body_ty) = infer(&context.extend(binder), body_expr)?; // 3.
@@ -323,14 +323,14 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         // ────────────────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Type ⤳ Πx:τ₁.τ₂
         Term::Pi(Named(ref name, ref param_ty), ref body_ty) => {
-            let elab_param_ty = check(context, param_ty, &Value::Universe.into())?; // 1.
+            let elab_param_ty = check(context, param_ty, &RcValue::universe())?; // 1.
             let simp_param_ty = normalize(context, &param_ty)?; // 2.
             let binder = Named(name.clone(), Binder::Pi(simp_param_ty));
-            let elab_body_ty = check(&context.extend(binder), body_ty, &Value::Universe.into())?; // 3.
+            let elab_body_ty = check(&context.extend(binder), body_ty, &RcValue::universe())?; // 3.
 
             Ok((
                 Value::Pi(Named(name.clone(), elab_param_ty), elab_body_ty).into(),
-                Value::Universe.into(),
+                RcValue::universe(),
             ))
         },
 

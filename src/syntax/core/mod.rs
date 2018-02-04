@@ -140,6 +140,18 @@ pub type Type = Value;
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
 
+impl RcTerm {
+    pub fn universe() -> RcTerm {
+        Term::Universe.into()
+    }
+}
+
+impl RcValue {
+    pub fn universe() -> RcValue {
+        Value::Universe.into()
+    }
+}
+
 /// A binder that introduces a variable into the context
 ///
 /// ```text
@@ -366,7 +378,7 @@ impl RcTerm {
 
                 Term::Ann(expr, ty).into()
             },
-            concrete::Term::Universe => Term::Universe.into(),
+            concrete::Term::Universe => RcTerm::universe(),
             concrete::Term::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
             concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
             concrete::Term::Pi(ref name, ref ann, ref body) => {
