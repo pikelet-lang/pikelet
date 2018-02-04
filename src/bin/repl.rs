@@ -4,9 +4,8 @@ extern crate rustyline;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-use lambdapi::parse::ParseError;
-use lambdapi::core::RcTerm;
-use lambdapi::check::{InternalError, TypeError};
+use lambdapi::semantics;
+use lambdapi::syntax::parse;
 
 const PROMPT: &str = "λΠ> ";
 const REPL_HISTORY_FILE: &str = "repl-history";
@@ -49,9 +48,10 @@ fn main() {
 }
 
 fn run_repl(line: &str) -> Result<(), ReplError> {
-    use lambdapi::check::Context;
-    use lambdapi::pretty::{self, ToDoc};
-    use lambdapi::concrete::ReplCommand;
+    use lambdapi::semantics;
+    use lambdapi::syntax::concrete::ReplCommand;
+    use lambdapi::syntax::core::{Context, RcTerm};
+    use lambdapi::syntax::pretty::{self, ToDoc};
 
     match line.parse()? {
         ReplCommand::Help => {
@@ -68,15 +68,16 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
         ReplCommand::Eval(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
             let context = Context::new();
-            let inferred = context.infer(&term)?;
-            let evaluated = context.normalize(&term)?;
+            let inferred = semantics::infer(&context, &term)?;
+            let evaluated = semantics::normalize(&context, &term)?;
             let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(80));
         },
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
-            let inferred = Context::new().infer(&term)?;
+            let context = Context::new();
+            let inferred = semantics::infer(&context, &term)?;
             let doc = inferred.to_doc(pretty::Options::default());
 
             println!("{}", doc.pretty(80));
@@ -90,25 +91,25 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
 }
 
 enum ReplError {
-    Parse(ParseError),
-    Type(TypeError),
+    Parse(parse::ParseError),
+    Type(semantics::TypeError),
     Quit,
 }
 
-impl From<ParseError> for ReplError {
-    fn from(src: ParseError) -> ReplError {
+impl From<parse::ParseError> for ReplError {
+    fn from(src: parse::ParseError) -> ReplError {
         ReplError::Parse(src)
     }
 }
 
-impl From<TypeError> for ReplError {
-    fn from(src: TypeError) -> ReplError {
+impl From<semantics::TypeError> for ReplError {
+    fn from(src: semantics::TypeError) -> ReplError {
         ReplError::Type(src)
     }
 }
 
-impl From<InternalError> for ReplError {
-    fn from(src: InternalError) -> ReplError {
+impl From<semantics::InternalError> for ReplError {
+    fn from(src: semantics::InternalError) -> ReplError {
         ReplError::Type(src.into())
     }
 }

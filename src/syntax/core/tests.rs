@@ -71,7 +71,7 @@ mod from_concrete {
 
     #[test]
     fn parse_prelude() {
-        Module::from_concrete(&include_str!("../../prelude.lp").parse().unwrap());
+        Module::from_concrete(&include_str!("../../../prelude.lp").parse().unwrap());
     }
 
     #[test]

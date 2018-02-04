@@ -1,11 +1,12 @@
 //! The core syntax of the language
 
+use rpds::List;
 use std::fmt;
 use std::rc::Rc;
 
-use concrete;
-use pretty::{self, ToDoc};
-use var::{Debruijn, Name, Named, Var};
+use syntax::concrete;
+use syntax::pretty::{self, ToDoc};
+use syntax::var::{Debruijn, Name, Named, Var};
 
 #[cfg(test)]
 mod tests;
@@ -139,6 +140,82 @@ pub type Type = Value;
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
 
+/// A binder that introduces a variable into the context
+///
+/// ```text
+/// b ::= λx:τ           1. lambda abstraction
+///     | Πx:τ           2. dependent function
+///     | let x:τ = v    3. let binding
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum Binder {
+    /// A type introduced after entering a lambda abstraction
+    Lam(Option<RcType>), // 1.
+    /// A type introduced after entering a pi type
+    Pi(RcType), // 2.
+    /// A value and type binding that was introduced by passing over a let binding
+    Let(RcValue, RcType), // 3.
+}
+
+impl Binder {
+    /// Return the type associated with a binder
+    pub fn ty(&self) -> Option<&RcType> {
+        match *self {
+            Binder::Lam(ref ty) => ty.as_ref(),
+            Binder::Pi(ref ty) | Binder::Let(_, ref ty) => Some(ty),
+        }
+    }
+}
+
+impl fmt::Display for Binder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
+}
+
+/// A list of binders that have been accumulated during typechecking
+///
+/// ```text
+/// Γ ::= ε           1. empty context
+///     | Γ,b         2. context extension
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub struct Context {
+    pub binders: List<Binder>,
+}
+
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
+}
+
+impl Context {
+    /// Create a new, empty context
+    pub fn new() -> Context {
+        Context {
+            binders: List::new(),
+        }
+    }
+
+    /// Extend the context with a binder
+    pub fn extend(&self, binder: Binder) -> Context {
+        Context {
+            binders: self.binders.push_front(binder),
+        }
+    }
+
+    /// Look up a binder based on the given Debruijn index, returning `None` if
+    /// the index is out of scope
+    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Binder> {
+        self.binders.iter().nth(index.0 as usize)
+    }
+}
+
 // Abstraction and instantiation
 
 impl RcTerm {
@@ -205,7 +282,7 @@ impl RcValue {
     }
 }
 
-// Conversions from the parse tree
+// Conversions from the concrete syntax
 
 fn lam_from_concrete(
     params: &[(String, Option<Box<concrete::Term>>)],

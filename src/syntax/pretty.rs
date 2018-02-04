@@ -1,8 +1,9 @@
+//! Pretty printing utilities
+
 extern crate pretty;
 
-use core::{RcTerm, RcValue, Term, Value};
-use check::{Binder, Context};
-use var::{Name, Named, Var};
+use syntax::core::{Binder, Context, RcTerm, RcValue, Term, Value};
+use syntax::var::{Name, Named, Var};
 
 use self::pretty::{BoxDoc, Doc};
 

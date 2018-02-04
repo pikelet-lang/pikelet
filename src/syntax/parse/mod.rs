@@ -1,9 +1,11 @@
+//! Parser utilities
+
 use std::str::FromStr;
 
-use concrete;
+use syntax::concrete;
 
 mod grammar {
-    include!(concat!(env!("OUT_DIR"), "/parse/grammar.rs"));
+    include!(concat!(env!("OUT_DIR"), "/syntax/parse/grammar.rs"));
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
