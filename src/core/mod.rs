@@ -29,14 +29,15 @@ pub struct Definition {
 }
 
 /// The core term syntax
-//
-// e,τ ::= e:τ
-//       | Type
-//       | x
-//       | λx:τ₁.τ₂
-//       | Πx:τ₁.τ₂
-//       | τ₁ τ₂
-//
+///
+/// ```text
+/// e,τ ::= e:τ
+///       | Type
+///       | x
+///       | λx:τ₁.τ₂
+///       | Πx:τ₁.τ₂
+///       | τ₁ τ₂
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     /// A term annotated with a type
@@ -68,13 +69,14 @@ impl fmt::Display for Term {
 }
 
 /// Normal forms
-//
-// v,ρ ::= Type
-//       | x
-//       | λx:ρ₁.ρ₂
-//       | Πx:ρ₁.ρ₂
-//       | ρ₁ ρ₂
-//
+///
+/// ```text
+/// v,ρ ::= Type
+///       | x
+///       | λx:ρ₁.ρ₂
+///       | Πx:ρ₁.ρ₂
+///       | ρ₁ ρ₂
+///```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// The type of types

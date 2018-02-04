@@ -88,11 +88,12 @@ impl From<InternalError> for TypeError {
 }
 
 /// A binder that introduces a variable into the context
-//
-// b ::= λx:τ           1. lambda abstraction
-//     | Πx:τ           2. dependent function
-//     | let x:τ = v    3. let binding
-//
+///
+/// ```text
+/// b ::= λx:τ           1. lambda abstraction
+///     | Πx:τ           2. dependent function
+///     | let x:τ = v    3. let binding
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Binder {
     /// A type introduced after entering a lambda abstraction
@@ -122,10 +123,13 @@ impl fmt::Display for Binder {
 }
 
 /// A list of binders that have been accumulated during typechecking
+///
+/// ```text
+/// Γ ::= ε           1. empty context
+///     | Γ,b         2. context extension
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Context {
-    // Γ ::= ε           1. empty context
-    //     | Γ,b         2. context extension
     pub binders: List<Binder>,
 }
 
@@ -163,9 +167,10 @@ impl Context {
     }
 
     /// Evaluates a core term to its normal form
-    //
-    // Γ ⊢ e ⇓ v
-    //
+    ///
+    /// ```text
+    /// Γ ⊢ e ⇓ v
+    /// ```
     pub fn normalize(&self, term: &RcTerm) -> Result<RcValue, InternalError> {
         match *term.inner {
             //  1.  Γ ⊢ e ⇓ v
@@ -255,9 +260,10 @@ impl Context {
     }
 
     /// Check that the given term has the expected type
-    //
-    // Γ ⊢ e :↓ τ
-    //
+    ///
+    /// ```text
+    /// Γ ⊢ e :↓ τ
+    /// ```
     pub fn check(&self, term: &RcTerm, expected: &RcType) -> Result<(), TypeError> {
         match *term.inner {
             //  1.  Γ,Πx:τ₁ ⊢ e :↓ τ₂
@@ -292,9 +298,10 @@ impl Context {
     }
 
     /// Infer the type of the given term
-    //
-    // Γ ⊢ e :↑ τ
-    //
+    ///
+    /// ```text
+    /// Γ ⊢ e :↑ τ
+    /// ```
     pub fn infer(&self, term: &RcTerm) -> Result<RcType, TypeError> {
         match *term.inner {
             //  1.  Γ ⊢ ρ₁ :↓ Type
