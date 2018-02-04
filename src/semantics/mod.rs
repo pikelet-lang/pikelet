@@ -18,14 +18,19 @@ mod tests;
 
 /// A typechecked and elaborated module
 pub struct CheckedModule {
+    /// The name of the module
     pub name: String,
+    /// The definitions contained in the module
     pub definitions: Vec<CheckedDefinition>,
 }
 
 /// A typechecked and elaborated definition
 pub struct CheckedDefinition {
+    /// The name of the definition
     pub name: String,
+    /// The elaborated value
     pub term: RcValue,
+    /// The type of the definition
     pub ann: RcType,
 }
 
