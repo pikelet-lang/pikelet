@@ -23,7 +23,7 @@ mod normalize {
     fn ty() {
         let context = Context::new();
 
-        let ty: RcValue = Value::Type.into();
+        let ty: RcValue = Value::Universe.into();
 
         assert_eq!(normalize(&context, &parse(r"Type")).unwrap(), ty);
     }
@@ -33,7 +33,7 @@ mod normalize {
         let context = Context::new();
 
         let x = Name::user("x");
-        let ty: RcValue = Value::Type.into();
+        let ty: RcValue = Value::Universe.into();
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type => x")).unwrap(),
@@ -49,7 +49,7 @@ mod normalize {
         let context = Context::new();
 
         let x = Name::user("x");
-        let ty: RcValue = Value::Type.into();
+        let ty: RcValue = Value::Universe.into();
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type) -> x")).unwrap(),
@@ -66,7 +66,7 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty: RcValue = Value::Type.into();
+        let ty: RcValue = Value::Universe.into();
         let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
         assert_eq!(
@@ -90,7 +90,7 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty: RcValue = Value::Type.into();
+        let ty: RcValue = Value::Universe.into();
         let ty_arr: RcValue = Value::Pi(Named(Name::Abstract, ty.clone()), ty.clone()).into();
 
         assert_eq!(

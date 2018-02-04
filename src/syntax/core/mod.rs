@@ -32,27 +32,27 @@ pub struct Definition {
 /// The core term syntax
 ///
 /// ```text
-/// e,τ ::= e:τ
-///       | Type
-///       | x
-///       | λx:τ₁.τ₂
-///       | Πx:τ₁.τ₂
-///       | τ₁ τ₂
+/// e,τ ::= e:τ         1. annotated terms
+///       | Type        2. universes
+///       | x           3. variables
+///       | λx:τ₁.τ₂    4. lambda abstractions
+///       | Πx:τ₁.τ₂    5. dependent function types
+///       | τ₁ τ₂       6. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(RcTerm, RcTerm),
-    /// Type of types
-    Type,
+    Ann(RcTerm, RcTerm), // 1.
+    /// Universes
+    Universe, // 2.
     /// A variable
-    Var(Var),
+    Var(Var), // 3.
     /// Lambda abstractions
-    Lam(Named<Option<RcTerm>>, RcTerm),
+    Lam(Named<Option<RcTerm>>, RcTerm), // 4.
     /// Dependent function types
-    Pi(Named<RcTerm>, RcTerm),
+    Pi(Named<RcTerm>, RcTerm), // 5.
     /// Term application
-    App(RcTerm, RcTerm),
+    App(RcTerm, RcTerm), // 6.
 }
 
 impl From<Var> for Term {
@@ -72,24 +72,24 @@ impl fmt::Display for Term {
 /// Normal forms
 ///
 /// ```text
-/// v,ρ ::= Type
-///       | x
-///       | λx:ρ₁.ρ₂
-///       | Πx:ρ₁.ρ₂
-///       | ρ₁ ρ₂
+/// v,ρ ::= Type        1. universes
+///       | x           2. variables
+///       | λx:ρ₁.ρ₂    3. lambda abstractions
+///       | Πx:ρ₁.ρ₂    4. dependent function types
+///       | ρ₁ ρ₂       5. term application
 ///```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    /// The type of types
-    Type,
+    /// Universes
+    Universe, // 1.
     /// Variables
-    Var(Var),
+    Var(Var), // 2.
     /// A lambda abstraction
-    Lam(Named<Option<RcValue>>, RcValue),
+    Lam(Named<Option<RcValue>>, RcValue), // 3.
     /// A pi type
-    Pi(Named<RcValue>, RcValue),
+    Pi(Named<RcValue>, RcValue), // 4.
     /// Term application
-    App(RcValue, RcValue),
+    App(RcValue, RcValue), // 5.
 }
 
 impl fmt::Display for Value {
@@ -229,7 +229,7 @@ impl RcTerm {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
             },
-            Term::Type => {},
+            Term::Universe => {},
             Term::Var(ref mut var) => var.close_at(level, name),
             Term::Lam(Named(_, None), ref mut body) => body.close_at(level.succ(), name),
             Term::Lam(Named(_, Some(ref mut ty)), ref mut body) => {
@@ -255,7 +255,7 @@ impl RcValue {
 
     pub fn open_at(&self, level: Debruijn, x: &RcValue) -> RcValue {
         match *self.inner {
-            Value::Type => self.clone(),
+            Value::Universe => self.clone(),
             Value::Var(ref var) => match var.open_at(level) {
                 true => x.clone(),
                 false => self.clone(),
@@ -376,7 +376,7 @@ impl RcTerm {
 
                 Term::Ann(expr, ty).into()
             },
-            concrete::Term::Type => Term::Type.into(),
+            concrete::Term::Universe => Term::Universe.into(),
             concrete::Term::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
             concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
             concrete::Term::Pi(ref name, ref ann, ref body) => {

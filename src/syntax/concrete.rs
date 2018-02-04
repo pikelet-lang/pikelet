@@ -73,7 +73,7 @@ pub enum Term {
     /// ```text
     /// Type
     /// ```
-    Type,
+    Universe,
     /// Variables
     ///
     /// ```text

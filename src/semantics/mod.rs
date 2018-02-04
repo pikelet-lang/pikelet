@@ -120,7 +120,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // ─────────────────── (EVAL/TYPE)
         //  Γ ⊢ Type ⇓ Type
-        Term::Type => Ok(Value::Type.into()),
+        Term::Universe => Ok(Value::Universe.into()),
 
         Term::Var(ref var) => match *var {
             Var::Free(ref name) => Err(InternalError::NormalizedUnboundVariable(name.clone())),
@@ -249,7 +249,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<RcType, TypeError> {
         // ───────────────────────── (INFER/ANN)
         //      Γ ⊢ (e:ρ) ⇒ τ
         Term::Ann(ref expr, ref ty) => {
-            check(context, ty, &Value::Type.into())?; // 1.
+            check(context, ty, &Value::Universe.into())?; // 1.
             let simp_ty = normalize(context, &ty)?; // 2.
             check(context, expr, &simp_ty)?; // 3.
             Ok(simp_ty)
@@ -257,7 +257,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<RcType, TypeError> {
 
         // ─────────────────── (INFER/TYPE)
         //  Γ ⊢ TYPE ⇒ Type
-        Term::Type => Ok(Value::Type.into()),
+        Term::Universe => Ok(Value::Universe.into()),
 
         //  1.  x:τ ∈ Γ
         // ──────────────────── (INFER/VAR)
@@ -281,7 +281,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<RcType, TypeError> {
         // ─────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂
         Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
-            check(context, param_ty, &Value::Type.into())?; // 1.
+            check(context, param_ty, &Value::Universe.into())?; // 1.
             let simp_param_ty = normalize(context, &param_ty)?; // 2.
             let binder = Named(name.clone(), Binder::Lam(Some(simp_param_ty.clone())));
             let body_ty = infer(&context.extend(binder), body_expr)?; // 3.
@@ -295,11 +295,11 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<RcType, TypeError> {
         // ────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Type
         Term::Pi(Named(ref name, ref param_ty), ref body_ty) => {
-            check(context, param_ty, &Value::Type.into())?; // 1.
+            check(context, param_ty, &Value::Universe.into())?; // 1.
             let simp_param_ty = normalize(context, &param_ty)?; // 2.
             let binder = Named(name.clone(), Binder::Pi(simp_param_ty));
-            check(&context.extend(binder), body_ty, &Value::Type.into())?; // 3.
-            Ok(Value::Type.into())
+            check(&context.extend(binder), body_ty, &Value::Universe.into())?; // 3.
+            Ok(Value::Universe.into())
         },
 
         //  1.  Γ ⊢ e₁ ⇒ Πx:τ₁.τ₂

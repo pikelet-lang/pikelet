@@ -96,7 +96,7 @@ AppTerm: Term = {
 
 AtomicTerm: Term = {
     "(" <Term> ")" => Term::Parens(Box::new(<>)),
-    "Type" => Term::Type,
+    "Type" => Term::Universe,
     Ident => Term::Var(<>),
 };
 

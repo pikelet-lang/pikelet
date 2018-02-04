@@ -95,7 +95,7 @@ pub fn pretty_ann<E: ToDoc, T: ToDoc>(context: Options, expr: &E, ty: &T) -> Sta
     )
 }
 
-pub fn pretty_ty() -> StaticDoc {
+pub fn pretty_universe() -> StaticDoc {
     Doc::text("Type")
 }
 
@@ -193,7 +193,7 @@ impl ToDoc for Term {
     fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
             Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
-            Term::Type => pretty_ty(),
+            Term::Universe => pretty_universe(),
             Term::Var(ref var) => pretty_var(context, var),
             Term::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
             Term::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
@@ -211,7 +211,7 @@ impl ToDoc for RcTerm {
 impl ToDoc for Value {
     fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
-            Value::Type => pretty_ty(),
+            Value::Universe => pretty_universe(),
             Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
             Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
             Value::Var(ref var) => pretty_var(context, var),
