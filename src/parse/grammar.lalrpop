@@ -69,15 +69,21 @@ PiTerm: Term = {
     // have to hack this in with a dyncamic check:
     <binder: AppTerm> "->" <body: LamTerm> =>? {
         match binder {
-            Term::Ann(name, ann) => match *name {
-                Term::Var(name) => Ok(Term::Pi(name, ann, Box::new(body))),
-                _ => Err(ParseError::User {
-                    error: "identifier expected in pi type", // TODO: better error!
-                }),
-            },
-            ann => Ok(Term::Arrow(Box::new(ann), Box::new(body)))
+            Term::Parens(term) => {
+                let term = *term; // HACK: see https://github.com/rust-lang/rust/issues/16223
+                match term {
+                    Term::Ann(name, ann) => match *name {
+                        Term::Var(name) => Ok(Term::Pi(name, ann, Box::new(body))),
+                        _ => Err(ParseError::User {
+                            error: "identifier expected in pi type", // TODO: better error!
+                        }),
+                    }
+                    ann => Ok(Term::Arrow(Box::new(Term::Parens(Box::new(ann))), Box::new(body))),
+                }
+            }
+            ann => Ok(Term::Arrow(Box::new(ann), Box::new(body))),
         }
-    }
+    },
 };
 
 AppTerm: Term = {
@@ -88,7 +94,7 @@ AppTerm: Term = {
 };
 
 AtomicTerm: Term = {
-    "(" <Term> ")",
+    "(" <Term> ")" => Term::Parens(Box::new(<>)),
     "Type" => Term::Type,
     Ident => Term::Var(<>),
 };

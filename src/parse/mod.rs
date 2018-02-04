@@ -61,6 +61,7 @@ impl FromStr for Declaration {
 /// The AST of the concrete syntax
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
+    Parens(Box<Term>),
     Var(String),
     Type,
     Ann(Box<Term>, Box<Term>),

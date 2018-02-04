@@ -289,6 +289,7 @@ impl RcTerm {
     /// Convert a parsed term into a core term
     pub fn from_parse(term: &ParseTerm) -> RcTerm {
         match *term {
+            ParseTerm::Parens(ref term) => RcTerm::from_parse(term),
             ParseTerm::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
             ParseTerm::Type => Term::Type.into(),
             ParseTerm::Ann(ref e, ref t) => {
