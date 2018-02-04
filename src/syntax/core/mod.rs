@@ -32,12 +32,12 @@ pub struct Definition {
 /// The core term syntax
 ///
 /// ```text
-/// e,τ ::= e:τ         1. annotated terms
+/// e,ρ ::= e:ρ         1. annotated terms
 ///       | Type        2. universes
 ///       | x           3. variables
-///       | λx:τ₁.τ₂    4. lambda abstractions
-///       | Πx:τ₁.τ₂    5. dependent function types
-///       | τ₁ τ₂       6. term application
+///       | λx:ρ₁.ρ₂    4. lambda abstractions
+///       | Πx:ρ₁.ρ₂    5. dependent function types
+///       | ρ₁ ρ₂       6. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
@@ -72,11 +72,11 @@ impl fmt::Display for Term {
 /// Normal forms
 ///
 /// ```text
-/// v,ρ ::= Type        1. universes
+/// v,τ ::= Type        1. universes
 ///       | x           2. variables
-///       | λx:ρ₁.ρ₂    3. lambda abstractions
-///       | Πx:ρ₁.ρ₂    4. dependent function types
-///       | ρ₁ ρ₂       5. term application
+///       | λx:τ₁.τ₂    3. lambda abstractions
+///       | Πx:τ₁.τ₂    4. dependent function types
+///       | τ₁ τ₂       5. term application
 ///```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -155,16 +155,6 @@ pub enum Binder {
     Pi(RcType), // 2.
     /// A value and type binding that was introduced by passing over a let binding
     Let(RcValue, RcType), // 3.
-}
-
-impl Binder {
-    /// Return the type associated with a binder
-    pub fn ty(&self) -> Option<&RcType> {
-        match *self {
-            Binder::Lam(ref ty) => ty.as_ref(),
-            Binder::Pi(ref ty) | Binder::Let(_, ref ty) => Some(ty),
-        }
-    }
 }
 
 impl fmt::Display for Binder {
