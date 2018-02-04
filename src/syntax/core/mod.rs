@@ -183,7 +183,7 @@ impl fmt::Display for Binder {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Context {
-    pub binders: List<Binder>,
+    pub binders: List<Named<Binder>>,
 }
 
 impl fmt::Display for Context {
@@ -203,7 +203,7 @@ impl Context {
     }
 
     /// Extend the context with a binder
-    pub fn extend(&self, binder: Binder) -> Context {
+    pub fn extend(&self, binder: Named<Binder>) -> Context {
         Context {
             binders: self.binders.push_front(binder),
         }
@@ -211,7 +211,7 @@ impl Context {
 
     /// Look up a binder based on the given Debruijn index, returning `None` if
     /// the index is out of scope
-    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Binder> {
+    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Named<Binder>> {
         self.binders.iter().nth(index.0 as usize)
     }
 }

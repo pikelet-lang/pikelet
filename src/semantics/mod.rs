@@ -24,12 +24,13 @@ pub struct CheckedDefinition {
 }
 
 fn lookup(context: &Context, index: Debruijn) -> Result<&Binder, InternalError> {
-    context
-        .lookup_binder(index)
-        .ok_or_else(|| InternalError::DeBruijnIndexOutOfScope {
+    match context.lookup_binder(index) {
+        Some(&Named(_, ref binder)) => Ok(binder),
+        None => Err(InternalError::DeBruijnIndexOutOfScope {
             index,
             context: context.clone(),
-        })
+        }),
+    }
 }
 
 /// Typecheck and elaborate a module
@@ -54,7 +55,10 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
         let term = normalize(&context, &definition.term)?;
         let name = definition.name.clone();
         // Add the definition to the context
-        context = context.extend(Binder::Let(term.clone(), ann.clone()));
+        context = context.extend(Named(
+            Name::user(name.clone()),
+            Binder::Let(term.clone(), ann.clone()),
+        ));
 
         definitions.push(CheckedDefinition { name, term, ann })
     }
@@ -144,7 +148,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ───────────────────────── (EVAL/LAM)
         //     Γ ⊢ λx.e ⇓ λx.v
         Term::Lam(Named(ref name, None), ref body_expr) => {
-            let binder = Binder::Lam(None);
+            let binder = Named(name.clone(), Binder::Lam(None));
             let body_expr = normalize(&context.extend(binder), body_expr)?; // 1.
 
             Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
@@ -156,7 +160,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         //      Γ ⊢ λx:ρ.e ⇓ λx:τ.v
         Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
             let param_ty = normalize(context, param_ty)?; // 1.
-            let binder = Binder::Lam(Some(param_ty.clone()));
+            let binder = Named(name.clone(), Binder::Lam(Some(param_ty.clone())));
             let body_expr = normalize(&context.extend(binder), body_expr)?; // 2.
 
             Ok(Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into())
@@ -168,7 +172,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇓ Πx:τ₁.τ₂
         Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
             let param_ty = normalize(context, param_ty)?; // 1.
-            let binder = Binder::Pi(param_ty.clone());
+            let binder = Named(name.clone(), Binder::Pi(param_ty.clone()));
             let body_expr = normalize(&context.extend(binder), body_expr)?; // 2.
 
             Ok(Value::Pi(Named(name.clone(), param_ty), body_expr).into())
@@ -205,8 +209,8 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<(), 
         // ─────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.e ⇐ Πx:τ₁.τ₂
         Term::Lam(Named(_, None), ref body_expr) => match *expected.inner {
-            Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
-                let binder = Binder::Pi(param_ty.clone());
+            Value::Pi(Named(ref name, ref param_ty), ref ret_ty) => {
+                let binder = Named(name.clone(), Binder::Pi(param_ty.clone()));
                 check(&context.extend(binder), body_expr, ret_ty) // 1.
             },
             _ => Err(TypeError::ExpectedFunction {
@@ -276,13 +280,13 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<RcType, TypeError> {
         //  3.  Γ,λx:τ₁ ⊢ e ⇒ τ₂
         // ─────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂
-        Term::Lam(Named(ref param_name, Some(ref param_ty)), ref body_expr) => {
+        Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
             check(context, param_ty, &Value::Type.into())?; // 1.
             let simp_param_ty = normalize(context, &param_ty)?; // 2.
-            let binder = Binder::Lam(Some(simp_param_ty.clone()));
+            let binder = Named(name.clone(), Binder::Lam(Some(simp_param_ty.clone())));
             let body_ty = infer(&context.extend(binder), body_expr)?; // 3.
 
-            Ok(Value::Pi(Named(param_name.clone(), simp_param_ty), body_ty).into())
+            Ok(Value::Pi(Named(name.clone(), simp_param_ty), body_ty).into())
         },
 
         //  1.  Γ ⊢ ρ₁ ⇐ Type
@@ -290,10 +294,10 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<RcType, TypeError> {
         //  3.  Γ,Πx:τ₁ ⊢ ρ₂ ⇐ Type
         // ────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Type
-        Term::Pi(Named(_, ref param_ty), ref body_ty) => {
+        Term::Pi(Named(ref name, ref param_ty), ref body_ty) => {
             check(context, param_ty, &Value::Type.into())?; // 1.
             let simp_param_ty = normalize(context, &param_ty)?; // 2.
-            let binder = Binder::Pi(simp_param_ty);
+            let binder = Named(name.clone(), Binder::Pi(simp_param_ty));
             check(&context.extend(binder), body_ty, &Value::Type.into())?; // 3.
             Ok(Value::Type.into())
         },
