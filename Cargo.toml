@@ -16,6 +16,7 @@ required-features = ["repl"]
 
 [dependencies]
 lalrpop-util = "0.14.0"
+lazy_static = "1.0"
 pretty = "0.3.2"
 regex = "0.2.0"
 rpds = "0.3.0"

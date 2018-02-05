@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use syntax::concrete;
 use syntax::pretty::{self, ToDoc};
-use syntax::var::{Debruijn, Named, Var};
+use syntax::var::{Debruijn, GenId, Named, Var};
 
 #[cfg(test)]
 mod tests;
@@ -16,6 +16,8 @@ mod tests;
 pub enum Name {
     /// Names originating from user input
     User(String),
+    /// A generated id
+    Gen(GenId),
     /// Abstract names, `_`
     ///
     /// These are generally used in non-dependent function types, ie:
@@ -39,8 +41,14 @@ pub enum Name {
 }
 
 impl Name {
+    /// Create a name from a human-readable string
     pub fn user<S: Into<String>>(name: S) -> Name {
         Name::User(name.into())
+    }
+
+    /// Generate a new, globally unique name
+    pub fn fresh() -> Name {
+        Name::Gen(GenId::fresh())
     }
 }
 
@@ -48,6 +56,7 @@ impl PartialEq for Name {
     fn eq(&self, other: &Name) -> bool {
         match (self, other) {
             (&Name::User(ref lhs), &Name::User(ref rhs)) => lhs == rhs,
+            (&Name::Gen(ref lhs), &Name::Gen(ref rhs)) => lhs == rhs,
             (&Name::Abstract, &Name::Abstract) | (_, _) => false,
         }
     }
@@ -57,6 +66,7 @@ impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Name::User(ref name) => write!(f, "{}", name),
+            Name::Gen(ref id) => write!(f, "{}", id),
             Name::Abstract => write!(f, "_"),
         }
     }
