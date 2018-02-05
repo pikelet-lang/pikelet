@@ -1,5 +1,3 @@
-use lalrpop_util::ParseError;
-
 use syntax::concrete::{Declaration, Module, Term, ReplCommand};
 
 grammar();
@@ -69,34 +67,7 @@ PiTerm: Term = {
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in by reparsing the binder:
     <binder: AppTerm> "->" <body: LamTerm> =>? {
-        fn param_names<L, T>(term: Term, names: &mut Vec<String>) -> Result<(), ParseError<L, T, &'static str>> {
-            match term {
-                Term::Var(name) => names.push(name),
-                Term::App(fn_expr, arg) => {
-                    param_names(*fn_expr, names)?;
-                    param_names(*arg, names)?;
-                },
-                _ => return Err(ParseError::User {
-                    error: "identifier expected in pi type", // TODO: better error!
-                }),
-            }
-            Ok(())
-        }
-
-        match binder {
-            Term::Parens(term) => {
-                let term = *term; // HACK: see https://github.com/rust-lang/rust/issues/16223
-                match term {
-                    Term::Ann(params, ann) => {
-                        let mut names = Vec::new();
-                        param_names(*params, &mut names)?;
-                        Ok(Term::Pi(names, ann, Box::new(body)))
-                    },
-                    ann => Ok(Term::Arrow(Box::new(Term::Parens(Box::new(ann))), Box::new(body))),
-                }
-            }
-            ann => Ok(Term::Arrow(Box::new(ann), Box::new(body))),
-        }
+        super::reparse_pi_type_hack(binder, body)
     },
 };
 
