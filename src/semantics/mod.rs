@@ -220,6 +220,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 /// ```
 pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcValue, TypeError> {
     match *term.inner {
+        // We infer the type of the argument (`τ₁`) of the lambda from the
+        // supplied pi type, then 'push' it into the elaborated term, along with
+        // the elaborated body (`v`).
+        //
         //  1.  Γ,Πx:τ₁ ⊢ e ⇐ τ₂ ⤳ v
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.e ⇐ Πx:τ₁.τ₂ ⤳ λx:τ₁.v
@@ -236,11 +240,20 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
             }),
         },
 
-        //  1.  Γ ⊢ e ⇒ τ ⤳ v
+        // Flip the direction of the type checker, comparing the type of the
+        // expected term for [alpha equivalence] with the inferred term.
+        //
+        //  1.  Γ ⊢ e₂ ⇒ τ ⤳ v
+        //  2.  e₁ ≡ e₂
         // ─────────────────────── (CHECK/INFER)
-        //      Γ ⊢ e ⇐ τ ⤳ v
+        //      Γ ⊢ e₁ ⇐ τ ⤳ v
+        //
+        // [alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
         _ => {
             let (elab_term, inferred_ty) = infer(context, term)?; // 1.
+
+            // Because we have invested lots of effort into setting up our
+            // locally nameless representation alpha equivalence is easy-peasy!
             match &inferred_ty == expected {
                 true => Ok(elab_term),
                 false => Err(TypeError::Mismatch {
@@ -275,8 +288,16 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             Ok((elab_expr, simp_ty))
         },
 
+        // FIXME: This axiom will lead to [Girard's paradox], meaning that we
+        // would be abe to construct a [program that loops forever] We should
+        // implement a universe hierarchy to resolve this, where `Type` is
+        // indexed by a level `i`.
+        //
         // ─────────────────────────── (INFER/TYPE)
         //  Γ ⊢ Type ⇒ Type ⤳ Type
+        //
+        // [Girard's paradox]: https://ncatlab.org/nlab/show/Burali-Forti%27s+paradox#GirardParadox
+        // [program that loops forever]: https://ncatlab.org/nlab/show/looping+combinator
         Term::Universe => Ok((RcValue::universe(), RcValue::universe())),
 
         Term::Var(ref var) => match *var {
