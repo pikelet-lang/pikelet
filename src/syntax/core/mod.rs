@@ -6,10 +6,61 @@ use std::rc::Rc;
 
 use syntax::concrete;
 use syntax::pretty::{self, ToDoc};
-use syntax::var::{Debruijn, Name, Named, Var};
+use syntax::var::{Debruijn, Named, Var};
 
 #[cfg(test)]
 mod tests;
+
+/// The name of a free variable
+#[derive(Debug, Clone)]
+pub enum Name {
+    /// Names originating from user input
+    User(String),
+    /// Abstract names, `_`
+    ///
+    /// These are generally used in non-dependent function types, ie:
+    ///
+    /// ```text
+    /// t1 -> t2 -> t3
+    /// ```
+    ///
+    /// will be stored as:
+    ///
+    /// ```text
+    /// (_ : t1) -> (_ : t2) -> t3
+    /// ```
+    ///
+    /// They should never actually appear as variables in terms.
+    ///
+    /// Comparing two abstract names will always return false because we cannot
+    /// be sure what they actually refer to. For example, in the type
+    /// shown above, `_` could refer to either `t1` or `t2`.
+    Abstract,
+}
+
+impl Name {
+    pub fn user<S: Into<String>>(name: S) -> Name {
+        Name::User(name.into())
+    }
+}
+
+impl PartialEq for Name {
+    fn eq(&self, other: &Name) -> bool {
+        match (self, other) {
+            (&Name::User(ref lhs), &Name::User(ref rhs)) => lhs == rhs,
+            (&Name::Abstract, &Name::Abstract) | (_, _) => false,
+        }
+    }
+}
+
+impl fmt::Display for Name {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Name::User(ref name) => write!(f, "{}", name),
+            Name::Abstract => write!(f, "_"),
+        }
+    }
+}
 
 /// A module definition
 pub struct Module {
@@ -46,17 +97,17 @@ pub enum Term {
     /// Universes
     Universe, // 2.
     /// A variable
-    Var(Var), // 3.
+    Var(Var<Name>), // 3.
     /// Lambda abstractions
-    Lam(Named<Option<RcTerm>>, RcTerm), // 4.
+    Lam(Named<Name, Option<RcTerm>>, RcTerm), // 4.
     /// Dependent function types
-    Pi(Named<RcTerm>, RcTerm), // 5.
+    Pi(Named<Name, RcTerm>, RcTerm), // 5.
     /// Term application
     App(RcTerm, RcTerm), // 6.
 }
 
-impl From<Var> for Term {
-    fn from(src: Var) -> Term {
+impl From<Var<Name>> for Term {
+    fn from(src: Var<Name>) -> Term {
         Term::Var(src)
     }
 }
@@ -83,11 +134,11 @@ pub enum Value {
     /// Universes
     Universe, // 1.
     /// Variables
-    Var(Var), // 2.
+    Var(Var<Name>), // 2.
     /// A lambda abstraction
-    Lam(Named<Option<RcValue>>, RcValue), // 3.
+    Lam(Named<Name, Option<RcValue>>, RcValue), // 3.
     /// A pi type
-    Pi(Named<RcValue>, RcValue), // 4.
+    Pi(Named<Name, RcValue>, RcValue), // 4.
     /// Term application
     App(RcValue, RcValue), // 5.
 }
@@ -185,7 +236,7 @@ impl fmt::Display for Binder {
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Context {
-    pub binders: List<Named<Binder>>,
+    pub binders: List<Named<Name, Binder>>,
 }
 
 impl fmt::Display for Context {
@@ -205,7 +256,7 @@ impl Context {
     }
 
     /// Extend the context with a binder
-    pub fn extend(&self, binder: Named<Binder>) -> Context {
+    pub fn extend(&self, binder: Named<Name, Binder>) -> Context {
         Context {
             binders: self.binders.push_front(binder),
         }
@@ -213,7 +264,7 @@ impl Context {
 
     /// Look up a binder based on the given Debruijn index, returning `None` if
     /// the index is out of scope
-    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Named<Binder>> {
+    pub fn lookup_binder(&self, index: Debruijn) -> Option<&Named<Name, Binder>> {
         self.binders.iter().nth(index.0 as usize)
     }
 }

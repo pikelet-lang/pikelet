@@ -10,8 +10,8 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 
-use syntax::core::{Binder, Context, Module, RcTerm, RcType, RcValue, Term, Value};
-use syntax::var::{Debruijn, Name, Named, Var};
+use syntax::core::{Binder, Context, Module, Name, RcTerm, RcType, RcValue, Term, Value};
+use syntax::var::{Debruijn, Named, Var};
 
 #[cfg(test)]
 mod tests;

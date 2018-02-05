@@ -38,65 +38,14 @@
 
 use std::fmt;
 
-/// The name of a free variable
-#[derive(Debug, Clone)]
-pub enum Name {
-    /// Names originating from user input
-    User(String),
-    /// Abstract names, `_`
-    ///
-    /// These are generally used in non-dependent function types, ie:
-    ///
-    /// ```text
-    /// t1 -> t2 -> t3
-    /// ```
-    ///
-    /// will be stored as:
-    ///
-    /// ```text
-    /// (_ : t1) -> (_ : t2) -> t3
-    /// ```
-    ///
-    /// They should never actually appear as variables in terms.
-    ///
-    /// Comparing two abstract names will always return false because we cannot
-    /// be sure what they actually refer to. For example, in the type
-    /// shown above, `_` could refer to either `t1` or `t2`.
-    Abstract,
-}
-
-impl Name {
-    pub fn user<S: Into<String>>(name: S) -> Name {
-        Name::User(name.into())
-    }
-}
-
-impl PartialEq for Name {
-    fn eq(&self, other: &Name) -> bool {
-        match (self, other) {
-            (&Name::User(ref lhs), &Name::User(ref rhs)) => lhs == rhs,
-            (&Name::Abstract, &Name::Abstract) | (_, _) => false,
-        }
-    }
-}
-
-impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Name::User(ref name) => write!(f, "{}", name),
-            Name::Abstract => write!(f, "_"),
-        }
-    }
-}
-
 /// A type annotated with a name for debugging purposes
 ///
 /// The name is ignored for equality comparisons
 #[derive(Debug, Clone)]
-pub struct Named<T>(pub Name, pub T);
+pub struct Named<N, T>(pub N, pub T);
 
-impl<T: PartialEq> PartialEq for Named<T> {
-    fn eq(&self, other: &Named<T>) -> bool {
+impl<N, T: PartialEq> PartialEq for Named<N, T> {
+    fn eq(&self, other: &Named<N, T>) -> bool {
         &self.1 == &other.1
     }
 }
@@ -139,14 +88,14 @@ impl fmt::Display for Debruijn {
 
 /// A variable that can either be free or bound
 #[derive(Debug, Clone, PartialEq)]
-pub enum Var {
+pub enum Var<N> {
     /// A free variable
-    Free(Name),
+    Free(N),
     /// A variable that is bound by a lambda or pi binder
-    Bound(Named<Debruijn>),
+    Bound(Named<N, Debruijn>),
 }
 
-impl fmt::Display for Var {
+impl<N: fmt::Display> fmt::Display for Var<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Var::Bound(Named(ref name, ref b)) if f.alternate() => write!(f, "{}#{}", name, b),

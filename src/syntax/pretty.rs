@@ -2,8 +2,8 @@
 
 extern crate pretty;
 
-use syntax::core::{Binder, Context, RcTerm, RcValue, Term, Value};
-use syntax::var::{Name, Named, Var};
+use syntax::core::{Binder, Context, Name, RcTerm, RcValue, Term, Value};
+use syntax::var::{Named, Var};
 
 use self::pretty::{BoxDoc, Doc};
 
@@ -99,7 +99,7 @@ pub fn pretty_universe() -> StaticDoc {
     Doc::text("Type")
 }
 
-pub fn pretty_var(context: Options, var: &Var) -> StaticDoc {
+pub fn pretty_var(context: Options, var: &Var<Name>) -> StaticDoc {
     match context.debug_indices {
         true => Doc::text(format!("{:#}", var)),
         false => Doc::as_string(var),
