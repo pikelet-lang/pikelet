@@ -168,6 +168,59 @@ mod infer {
     }
 
     #[test]
+    fn bound() {
+        let pi = Binder::Pi;
+        let tvar = |x| Term::Var(x).into();
+        let vvar = |x| Value::Var(x).into();
+        let bound = Var::Bound;
+        let di = Debruijn;
+
+        let a = || Name::user("a");
+        let x = || Name::user("x");
+
+        let context = Context::new()
+            .extend(Named(a(), pi(RcType::universe())))
+            .extend(Named(x(), pi(vvar(bound(Named(a(), di(0)))))));
+
+        assert_eq!(
+            infer(&context, &tvar(bound(Named(x(), di(0))))).unwrap().1,
+            vvar(bound(Named(a(), di(1)))),
+        );
+    }
+
+    #[test]
+    fn bound_deep() {
+        let bpi = Binder::Pi;
+        let tvar = |x| Term::Var(x).into();
+        let vvar = |x| Value::Var(x).into();
+        let bound = Var::Bound;
+        let di = Debruijn;
+
+        let a = || Name::user("a");
+        let x = || Name::user("x");
+        let y = || Name::user("y");
+
+        let context = Context::new()
+            .extend(Named(a(), bpi(RcType::universe())))
+            .extend(Named(x(), bpi(vvar(bound(Named(a(), di(0)))))))
+            .extend(Named(
+                y(),
+                bpi(Value::Pi(
+                    Named(Name::Abstract, vvar(bound(Named(x(), di(0))))),
+                    vvar(bound(Named(x(), di(1)))),
+                ).into()),
+            ));
+
+        assert_eq!(
+            infer(&context, &tvar(bound(Named(y(), di(0))))).unwrap().1,
+            Value::Pi(
+                Named(Name::Abstract, vvar(bound(Named(x(), di(1))))),
+                vvar(bound(Named(x(), di(2)))),
+            ).into(),
+        );
+    }
+
+    #[test]
     fn ty() {
         let context = Context::new();
 
