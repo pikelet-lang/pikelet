@@ -248,6 +248,10 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
         // ─────────────────────── (CHECK/INFER)
         //      Γ ⊢ e₁ ⇐ τ ⤳ v
         //
+        // NOTE: We could change 2. to check for subtyping instead of alpha
+        // equivalence. This could be useful for implementing a cumulative
+        // universe hierarchy.
+        //
         // [alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
         _ => {
             let (elab_term, inferred_ty) = infer(context, term)?; // 1.
