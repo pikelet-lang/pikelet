@@ -52,11 +52,11 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
     for definition in &module.definitions {
         let name = definition.name.clone();
         let (term, ann) = match definition.ann {
-            // We don't have a type annotation available to us! Instead we will attempt to infer it
-            // based on the body of the definition
+            // We don't have a type annotation available to us! Instead we will
+            // attempt to infer it based on the body of the definition
             None => infer(&context, &definition.term)?,
-            // We have a type annotation! Evaluate it to its normal form, then check that it matches
-            // the body of the definition
+            // We have a type annotation! Evaluate it to its normal form, then
+            // check that it matches the body of the definition
             Some(ref ann) => {
                 let ann = normalize(&context, &ann)?;
                 let elab_term = check(&context, &definition.term, &ann)?;
