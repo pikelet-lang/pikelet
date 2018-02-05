@@ -146,22 +146,6 @@ pub enum Var {
     Bound(Named<Debruijn>),
 }
 
-impl Var {
-    pub fn close_at(&mut self, level: Debruijn, name: &Name) {
-        *self = match *self {
-            Var::Free(ref n) if n == name => Var::Bound(Named(n.clone(), level)),
-            Var::Bound(_) | Var::Free(_) => return,
-        };
-    }
-
-    pub fn open_at(&self, level: Debruijn) -> bool {
-        match *self {
-            Var::Bound(Named(_, index)) if index == level => true,
-            Var::Bound(_) | Var::Free(_) => false,
-        }
-    }
-}
-
 impl fmt::Display for Var {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
