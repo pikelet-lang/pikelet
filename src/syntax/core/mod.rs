@@ -335,6 +335,7 @@ impl Module {
 
         for declaration in &module.declarations {
             match *declaration {
+                concrete::Declaration::Import(_, _, _) => unimplemented!("import declarations"),
                 // We've enountered a claim! Let's try to add it to the claims
                 // that we've seen so far...
                 concrete::Declaration::Claim(ref name, ref term) => {

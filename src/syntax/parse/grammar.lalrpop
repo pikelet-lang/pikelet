@@ -1,4 +1,4 @@
-use syntax::concrete::{Declaration, Module, Term, ReplCommand};
+use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};
 
 grammar();
 
@@ -21,12 +21,28 @@ pub Module: Module = {
 };
 
 pub Declaration: Declaration = {
+    "import" <name: Ident> <rename: ("as" <Ident>)?> <exposing: Exposing?> ";" => {
+        Declaration::Import(name, rename, exposing)
+    },
     <name: Ident> ":" <term: Term> ";" => {
         Declaration::Claim(name, term)
     },
     <name: Ident> <params: AtomicLamParam*> "=" <term: Term> ";" => {
         Declaration::Definition(name, params, term)
     },
+};
+
+Exposing : Exposing = {
+    "(" ".." ")" => Exposing::All,
+    "(" <names: (<ExposedIdent> ",")*> <last: ExposedIdent> => {
+        let mut names = names;
+        names.push(last);
+        Exposing::Exact(names)
+    }
+};
+
+ExposedIdent : (String, Option<String>) = {
+    <Ident> <("as" <Ident>)?>
 };
 
 pub Term: Term = {
