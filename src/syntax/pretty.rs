@@ -3,7 +3,7 @@
 extern crate pretty;
 
 use syntax::core::{Binder, Context, Name, RcTerm, RcValue, Term, Value};
-use syntax::var::{Named, Var};
+use syntax::var::Var;
 
 use self::pretty::{BoxDoc, Doc};
 
@@ -195,8 +195,18 @@ impl ToDoc for Term {
             Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
             Term::Universe => pretty_universe(),
             Term::Var(ref var) => pretty_var(context, var),
-            Term::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
-            Term::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
+            Term::Lam(ref lam) => pretty_lam(
+                context,
+                &lam.unsafe_param.0,
+                lam.unsafe_param.1.as_ref(),
+                &lam.unsafe_body,
+            ),
+            Term::Pi(ref pi) => pretty_pi(
+                context,
+                &pi.unsafe_param.0,
+                &pi.unsafe_param.1,
+                &pi.unsafe_body,
+            ),
             Term::App(ref f, ref a) => pretty_app(context, f, a),
         }
     }
@@ -212,8 +222,18 @@ impl ToDoc for Value {
     fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
             Value::Universe => pretty_universe(),
-            Value::Lam(Named(ref n, ref a), ref b) => pretty_lam(context, n, a.as_ref(), b),
-            Value::Pi(Named(ref n, ref a), ref b) => pretty_pi(context, n, a, b),
+            Value::Lam(ref lam) => pretty_lam(
+                context,
+                &lam.unsafe_param.0,
+                lam.unsafe_param.1.as_ref(),
+                &lam.unsafe_body,
+            ),
+            Value::Pi(ref pi) => pretty_pi(
+                context,
+                &pi.unsafe_param.0,
+                &pi.unsafe_param.1,
+                &pi.unsafe_body,
+            ),
             Value::Var(ref var) => pretty_var(context, var),
             Value::App(ref fn_term, ref arg_term) => pretty_app(context, fn_term, arg_term),
         }
@@ -226,57 +246,47 @@ impl ToDoc for RcValue {
     }
 }
 
-pub fn pretty_binder(context: Options, name: &Name, binder: &Binder) -> StaticDoc {
-    match *binder {
-        Binder::Lam(ref ann) => Doc::group(
-            Doc::text(r"\")
-                .append(pretty_name(context, name))
-                .append(match ann.as_ref() {
-                    Some(ann) => Doc::space()
-                        .append(Doc::text(":"))
-                        .append(Doc::space())
-                        .append(ann.to_doc(context.with_prec(Prec::PI)).group()),
-                    None => Doc::nil(),
-                }),
-        ),
-        Binder::Pi(ref ann) => Doc::group(
-            Doc::text("(")
-                .append(pretty_name(context, name))
-                .append(Doc::space())
-                .append(Doc::text(":"))
-                .append(Doc::space())
-                .append(ann.to_doc(context.with_prec(Prec::PI)))
-                .append(Doc::text(")")),
-        ),
-        Binder::Let(ref ann, ref value) => Doc::group(
-            Doc::text("let")
-                .append(Doc::space())
-                .append(pretty_name(context, name))
-                .append(Doc::space())
-                .append(Doc::text(":"))
-                .append(Doc::space())
-                .append(ann.to_doc(context.with_prec(Prec::PI)))
-                .append(Doc::space())
-                .append(Doc::text("="))
-                .append(Doc::space())
-                .append(value.to_doc(context.with_prec(Prec::PI))),
-        ),
-    }
-}
-
-impl ToDoc for Binder {
-    fn to_doc(&self, context: Options) -> StaticDoc {
-        pretty_binder(context, &Name::Abstract, self)
-    }
-}
-
 impl ToDoc for Context {
     fn to_doc(&self, context: Options) -> StaticDoc {
         Doc::text("[")
             .append(Doc::intersperse(
                 self.binders
                     .iter()
-                    .map(|&Named(ref name, ref binder)| pretty_binder(context, name, binder)),
+                    .map(|&(ref name, ref binder)| match *binder {
+                        Binder::Lam(ref ann) => Doc::group(
+                            Doc::text(r"\").append(pretty_name(context, name)).append(
+                                match ann.as_ref() {
+                                    Some(ann) => Doc::space()
+                                        .append(Doc::text(":"))
+                                        .append(Doc::space())
+                                        .append(ann.to_doc(context.with_prec(Prec::PI)).group()),
+                                    None => Doc::nil(),
+                                },
+                            ),
+                        ),
+                        Binder::Pi(ref ann) => Doc::group(
+                            Doc::text("(")
+                                .append(pretty_name(context, name))
+                                .append(Doc::space())
+                                .append(Doc::text(":"))
+                                .append(Doc::space())
+                                .append(ann.to_doc(context.with_prec(Prec::PI)))
+                                .append(Doc::text(")")),
+                        ),
+                        Binder::Let(ref ann, ref value) => Doc::group(
+                            Doc::text("let")
+                                .append(Doc::space())
+                                .append(pretty_name(context, name))
+                                .append(Doc::space())
+                                .append(Doc::text(":"))
+                                .append(Doc::space())
+                                .append(ann.to_doc(context.with_prec(Prec::PI)))
+                                .append(Doc::space())
+                                .append(Doc::text("="))
+                                .append(Doc::space())
+                                .append(value.to_doc(context.with_prec(Prec::PI))),
+                        ),
+                    }),
                 Doc::text(",").append(Doc::space()),
             ))
             .append(Doc::text("]"))

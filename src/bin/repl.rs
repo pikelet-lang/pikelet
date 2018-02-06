@@ -68,7 +68,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
         ReplCommand::Eval(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
             let context = Context::new();
-            let inferred = semantics::infer(&context, &term)?;
+            let (_, inferred) = semantics::infer(&context, &term)?;
             let evaluated = semantics::normalize(&context, &term)?;
             let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
@@ -77,7 +77,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
             let context = Context::new();
-            let inferred = semantics::infer(&context, &term)?;
+            let (_, inferred) = semantics::infer(&context, &term)?;
             let doc = inferred.to_doc(pretty::Options::default());
 
             println!("{}", doc.pretty(80));

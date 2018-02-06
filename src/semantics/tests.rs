@@ -14,8 +14,8 @@ mod normalize {
         let x = Name::user("x");
 
         assert_eq!(
-            normalize(&context, &parse(r"x")).unwrap(),
-            Value::Var(Var::Free(x)).into(),
+            normalize(&context, &parse(r"x")),
+            Err(InternalError::UndefinedName(x)),
         );
     }
 
@@ -37,10 +37,10 @@ mod normalize {
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type => x")).unwrap(),
-            Value::Lam(
+            Value::Lam(ValueLam::bind(
                 Named(x.clone(), Some(RcValue::universe())),
-                Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
-            ).into(),
+                Value::Var(Var::Free(x)).into(),
+            )).into(),
         );
     }
 
@@ -52,10 +52,10 @@ mod normalize {
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type) -> x")).unwrap(),
-            Value::Pi(
+            Value::Pi(ValuePi::bind(
                 Named(x.clone(), RcValue::universe()),
-                Value::Var(Var::Bound(Named(x, Debruijn(0)))).into(),
-            ).into(),
+                Value::Var(Var::Free(x)).into(),
+            )).into(),
         );
     }
 
@@ -65,23 +65,23 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty_arr: RcValue = Value::Pi(
+        let ty_arr: RcValue = Value::Pi(ValuePi::bind(
             Named(Name::Abstract, RcValue::universe()),
             RcValue::universe(),
-        ).into();
+        )).into();
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type -> Type => \y : Type => x y")).unwrap(),
-            Value::Lam(
+            Value::Lam(ValueLam::bind(
                 Named(x.clone(), Some(ty_arr)),
-                Value::Lam(
+                Value::Lam(ValueLam::bind(
                     Named(y.clone(), Some(RcValue::universe())),
                     Value::App(
-                        Value::Var(Var::Bound(Named(x, Debruijn(1)))).into(),
-                        Value::Var(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        Value::Var(Var::Free(x)).into(),
+                        Value::Var(Var::Free(y)).into(),
                     ).into(),
-                ).into(),
-            ).into(),
+                )).into(),
+            )).into(),
         );
     }
 
@@ -91,23 +91,67 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty_arr: RcValue = Value::Pi(
+        let ty_arr: RcValue = Value::Pi(ValuePi::bind(
             Named(Name::Abstract, RcValue::universe()),
             RcValue::universe(),
-        ).into();
+        )).into();
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type -> Type) -> \y : Type => x y")).unwrap(),
-            Value::Pi(
+            Value::Pi(ValuePi::bind(
                 Named(x.clone(), ty_arr),
-                Value::Lam(
+                Value::Lam(ValueLam::bind(
                     Named(y.clone(), Some(RcValue::universe())),
                     Value::App(
-                        Value::Var(Var::Bound(Named(x, Debruijn(1)))).into(),
-                        Value::Var(Var::Bound(Named(y, Debruijn(0)))).into(),
+                        Value::Var(Var::Free(x)).into(),
+                        Value::Var(Var::Free(y)).into(),
                     ).into(),
-                ).into(),
-            ).into(),
+                )).into(),
+            )).into(),
+        );
+    }
+
+    // Passing `Type` to the polymorphic identity function should yeild the type
+    // identity function
+    #[test]
+    fn id_app_ty() {
+        let context = Context::new();
+
+        let given_expr = r"(\a : Type => \x : a => x) Type";
+        let expected_expr = r"\x : Type => x";
+
+        assert_eq!(
+            normalize(&context, &parse(given_expr)).unwrap(),
+            normalize(&context, &parse(expected_expr)).unwrap(),
+        );
+    }
+
+    // Passing `Type` to the `Type` identity function should yeild `Type`
+    #[test]
+    fn id_app_ty_ty() {
+        let context = Context::new();
+
+        let given_expr = r"(\a : Type => \x : a => x) Type Type";
+        let expected_expr = r"Type";
+
+        assert_eq!(
+            normalize(&context, &parse(given_expr)).unwrap(),
+            normalize(&context, &parse(expected_expr)).unwrap(),
+        );
+    }
+
+    // Passing `Type -> Type` to the `Type` identity function should yeild
+    // `Type -> Type`
+    #[test]
+    fn id_app_ty_arr_ty() {
+        let context = Context::new();
+
+        let given_expr = r"(\a : Type => \x : a => x) Type (Type -> Type)";
+        let expected_expr = r"Type -> Type";
+
+        assert_eq!(
+            normalize(&context, &parse(given_expr)).unwrap(),
+            normalize(&context, &parse(expected_expr)).unwrap(),
         );
     }
 
@@ -163,60 +207,7 @@ mod infer {
 
         assert_eq!(
             infer(&context, &parse(given_expr)),
-            Err(TypeError::UnboundVariable(x)),
-        );
-    }
-
-    #[test]
-    fn bound() {
-        let pi = Binder::Pi;
-        let tvar = |x| Term::Var(x).into();
-        let vvar = |x| Value::Var(x).into();
-        let bound = Var::Bound;
-        let di = Debruijn;
-
-        let a = || Name::user("a");
-        let x = || Name::user("x");
-
-        let context = Context::new()
-            .extend(Named(a(), pi(RcType::universe())))
-            .extend(Named(x(), pi(vvar(bound(Named(a(), di(0)))))));
-
-        assert_eq!(
-            infer(&context, &tvar(bound(Named(x(), di(0))))).unwrap().1,
-            vvar(bound(Named(a(), di(1)))),
-        );
-    }
-
-    #[test]
-    fn bound_deep() {
-        let bpi = Binder::Pi;
-        let tvar = |x| Term::Var(x).into();
-        let vvar = |x| Value::Var(x).into();
-        let bound = Var::Bound;
-        let di = Debruijn;
-
-        let a = || Name::user("a");
-        let x = || Name::user("x");
-        let y = || Name::user("y");
-
-        let context = Context::new()
-            .extend(Named(a(), bpi(RcType::universe())))
-            .extend(Named(x(), bpi(vvar(bound(Named(a(), di(0)))))))
-            .extend(Named(
-                y(),
-                bpi(Value::Pi(
-                    Named(Name::Abstract, vvar(bound(Named(x(), di(0))))),
-                    vvar(bound(Named(x(), di(1)))),
-                ).into()),
-            ));
-
-        assert_eq!(
-            infer(&context, &tvar(bound(Named(y(), di(0))))).unwrap().1,
-            Value::Pi(
-                Named(Name::Abstract, vvar(bound(Named(x(), di(1))))),
-                vvar(bound(Named(x(), di(2)))),
-            ).into(),
+            Err(TypeError::UndefinedName(x)),
         );
     }
 
@@ -292,7 +283,10 @@ mod infer {
 
         assert_eq!(
             infer(&context, &parse(given_expr)),
-            Err(TypeError::IllegalApplication),
+            Err(TypeError::NotAFunctionType {
+                expr: RcTerm::universe(),
+                found: RcType::universe(),
+            }),
         )
     }
 
@@ -348,12 +342,41 @@ mod infer {
         );
     }
 
+    // Passing `Type` to the polymorphic identity function should yeild the type
+    // identity function
+    #[test]
+    fn id_app_ty() {
+        let context = Context::new();
+
+        let given_expr = r"(\a : Type => \x : a => x) Type";
+        let expected_expr = r"Type -> Type";
+
+        assert_eq!(
+            infer(&context, &parse(given_expr)).unwrap().1,
+            normalize(&context, &parse(expected_expr)).unwrap(),
+        );
+    }
+
+    // Passing `Type` to the `Type` identity function should yeild `Type`
+    #[test]
+    fn id_app_ty_ty() {
+        let context = Context::new();
+
+        let given_expr = r"(\a : Type => \x : a => x) Type Type";
+        let expected_expr = r"Type";
+
+        assert_eq!(
+            infer(&context, &parse(given_expr)).unwrap().1,
+            normalize(&context, &parse(expected_expr)).unwrap(),
+        );
+    }
+
     #[test]
     fn id_app_ty_arr_ty() {
         let context = Context::new();
 
         let given_expr = r"(\a : Type => \x : a => x) Type (Type -> Type)";
-        let expected_ty = r"Type -> Type";
+        let expected_ty = r"Type";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -366,7 +389,7 @@ mod infer {
         let context = Context::new();
 
         let given_expr = r"(\a : Type => \x : a => x) (Type -> Type) (\x : Type => Type)";
-        let expected_ty = r"\x : Type => Type";
+        let expected_ty = r"Type -> Type";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -425,10 +448,10 @@ mod infer {
 
         let given_expr = r"
             \(a : Type) (b : Type) (c : Type) =>
-                \(f : a -> b -> c) (x : a) (y : b) => f y x
+                \(f : a -> b -> c) (y : b) (x : a) => f x y
         ";
         let expected_ty = r"
-            (a : Type) -> (b : Type) -> (c : Type) -> (a -> b -> c) -> (b -> a -> c)
+            (a b c : Type) -> (a -> b -> c) -> (b -> a -> c)
         ";
 
         assert_eq!(

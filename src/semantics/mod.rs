@@ -10,7 +10,8 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 
-use syntax::core::{Binder, Context, Module, Name, RcTerm, RcType, RcValue, Term, Value};
+use syntax::core::{self, Binder, Context, Module, Name, RcTerm, RcType, RcValue, Term};
+use syntax::core::{Value, ValueLam, ValuePi};
 use syntax::var::{Debruijn, Named, Var};
 
 #[cfg(test)]
@@ -34,16 +35,6 @@ pub struct CheckedDefinition {
     pub ann: RcType,
 }
 
-fn lookup(context: &Context, index: Debruijn) -> Result<&Binder, InternalError> {
-    match context.lookup_binder(index) {
-        Some(&Named(_, ref binder)) => Ok(binder),
-        None => Err(InternalError::DeBruijnIndexOutOfScope {
-            index,
-            context: context.clone(),
-        }),
-    }
-}
-
 /// Typecheck and elaborate a module
 pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
     let mut context = Context::new();
@@ -65,10 +56,10 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
         };
 
         // Add the definition to the context
-        context = context.extend(Named(
+        context = context.extend(
             Name::user(name.clone()),
             Binder::Let(term.clone(), ann.clone()),
-        ));
+        );
 
         definitions.push(CheckedDefinition { name, term, ann })
     }
@@ -82,14 +73,17 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
 /// An internal error. These are bugs!
 #[derive(Debug, Clone, PartialEq)]
 pub enum InternalError {
-    NormalizedUnboundVariable(Name),
-    DeBruijnIndexOutOfScope { index: Debruijn, context: Context },
+    UnsubstitutedDebruijnIndex(Named<Name, Debruijn>),
+    UndefinedName(Name),
 }
 
 /// An error produced during typechecking
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
-    IllegalApplication,
+    NotAFunctionType {
+        expr: RcTerm,
+        found: RcType,
+    },
     TypeAnnotationsNeeded,
     ExpectedFunction {
         lam_expr: RcTerm,
@@ -100,7 +94,7 @@ pub enum TypeError {
         found: RcType,
         expected: RcType,
     },
-    UnboundVariable(Name),
+    UndefinedName(Name),
     Internal(InternalError),
 }
 
@@ -136,8 +130,11 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::Universe => Ok(RcValue::universe()),
 
         Term::Var(ref var) => match *var {
-            Var::Free(ref name) => Err(InternalError::NormalizedUnboundVariable(name.clone())),
-            Var::Bound(Named(_, index)) => match *lookup(context, index)? {
+            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex(index.clone())),
+            Var::Free(ref name) => match *context
+                .lookup_binder(name)
+                .ok_or_else(|| InternalError::UndefinedName(name.clone()))?
+            {
                 // Can't reduce further - we are in a pi or let binding
                 //
                 //  1.  λx:τ ∈ Γ
@@ -160,35 +157,36 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         //  1. Γ,λx ⊢ e ⇓ v
         // ───────────────────────── (EVAL/LAM)
         //     Γ ⊢ λx.e ⇓ λx.v
-        Term::Lam(Named(ref name, None), ref body_expr) => {
-            let binder = Named(name.clone(), Binder::Lam(None));
-            let body_expr = normalize(&context.extend(binder), body_expr)?; // 1.
-
-            Ok(Value::Lam(Named(name.clone(), None), body_expr).into())
-        },
-
-        //  1.  Γ ⊢ ρ ⇓ τ
-        //  2.  Γ,λx:τ ⊢ e ⇓ v
+        //
+        //  2.  Γ ⊢ ρ ⇓ τ
+        //  3.  Γ,λx:τ ⊢ e ⇓ v
         // ──────────────────────────────── (EVAL/LAM-ANN)
         //      Γ ⊢ λx:ρ.e ⇓ λx:τ.v
-        Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
-            let param_ty = normalize(context, param_ty)?; // 1.
-            let binder = Named(name.clone(), Binder::Lam(Some(param_ty.clone())));
-            let body_expr = normalize(&context.extend(binder), body_expr)?; // 2.
+        Term::Lam(ref lam) => {
+            let (Named(name, ann), body) = lam.clone().unbind();
 
-            Ok(Value::Lam(Named(name.clone(), Some(param_ty)), body_expr).into())
+            let ann = match ann {
+                None => None,
+                Some(ann) => Some(normalize(context, &ann)?), // 2.
+            };
+            let body_context = context.extend(name.clone(), Binder::Lam(ann.clone()));
+            let body = normalize(&body_context, &body)?; // 1,3.
+
+            Ok(Value::Lam(ValueLam::bind(Named(name.clone(), ann), body)).into())
         },
 
         //  1.  Γ ⊢ ρ₁ ⇓ τ₁
         //  2.  Γ,Πx:τ ⊢ ρ₂ ⇓ τ₂
         // ─────────────────────────────────── (EVAL/PI-ANN)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇓ Πx:τ₁.τ₂
-        Term::Pi(Named(ref name, ref param_ty), ref body_expr) => {
-            let param_ty = normalize(context, param_ty)?; // 1.
-            let binder = Named(name.clone(), Binder::Pi(param_ty.clone()));
-            let body_expr = normalize(&context.extend(binder), body_expr)?; // 2.
+        Term::Pi(ref pi) => {
+            let (Named(name, ann), body) = pi.clone().unbind();
 
-            Ok(Value::Pi(Named(name.clone(), param_ty), body_expr).into())
+            let ann = normalize(context, &ann)?; // 1.
+            let body_context = context.extend(name.clone(), Binder::Pi(ann.clone()));
+            let body = normalize(&body_context, &body)?; // 2.
+
+            Ok(Value::Pi(ValuePi::bind(Named(name.clone(), ann), body)).into())
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -203,7 +201,12 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let arg = normalize(context, arg)?; // 2.
 
             match *fn_expr.inner {
-                Value::Lam(_, ref body) => Ok(body.open(&arg)),
+                Value::Lam(ref lam) => {
+                    // FIXME: do a local unbind here
+                    let (Named(name, _), mut body) = lam.clone().unbind();
+                    body.subst(&name, &arg);
+                    Ok(body)
+                },
                 _ => Ok(Value::App(fn_expr.clone(), arg).into()),
             }
         },
@@ -219,7 +222,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 /// Γ ⊢ e ⇐ τ ⤳ v
 /// ```
 pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcValue, TypeError> {
-    match *term.inner {
+    match (&*term.inner, &*expected.inner) {
         // We infer the type of the argument (`τ₁`) of the lambda from the
         // supplied pi type, then 'push' it into the elaborated term, along with
         // the elaborated body (`v`).
@@ -227,46 +230,55 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
         //  1.  Γ,Πx:τ₁ ⊢ e ⇐ τ₂ ⤳ v
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.e ⇐ Πx:τ₁.τ₂ ⤳ λx:τ₁.v
-        Term::Lam(Named(ref lam_name, None), ref body_expr) => match *expected.inner {
-            Value::Pi(Named(ref pi_name, ref param_ty), ref ret_ty) => {
-                let binder = Named(pi_name.clone(), Binder::Pi(param_ty.clone()));
-                let elab_body = check(&context.extend(binder), body_expr, ret_ty)?; // 1.
+        (&Term::Lam(ref lam), &Value::Pi(ref pi)) => match core::unbind2(lam.clone(), pi.clone()) {
+            (Named(lam_name, None), lam_body, Named(pi_name, pi_ann), pi_body) => {
+                let body_context = context.extend(pi_name, Binder::Pi(pi_ann.clone()));
+                let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
-                Ok(Value::Lam(Named(lam_name.clone(), Some(param_ty.clone())), elab_body).into())
+                let elab_term =
+                    Value::Lam(ValueLam::bind(Named(lam_name, Some(pi_ann)), elab_lam_body)).into();
+
+                return Ok(elab_term);
             },
-            _ => Err(TypeError::ExpectedFunction {
+            // TODO: We might want to optimise for this case, rather than
+            // falling through to `infer` and reunbinding at INFER/LAM
+            // (Named(lam_name, Some(lam_ann)), lam_body, Named(pi_name, pi_ann), pi_body) => {},
+            _ => {},
+        },
+        (&Term::Lam(_), _) => {
+            return Err(TypeError::ExpectedFunction {
                 lam_expr: term.clone(),
                 expected: expected.clone(),
-            }),
+            });
         },
+        _ => {},
+    }
 
-        // Flip the direction of the type checker, comparing the type of the
-        // expected term for [alpha equivalence] with the inferred term.
-        //
-        //  1.  Γ ⊢ e₂ ⇒ τ ⤳ v
-        //  2.  e₁ ≡ e₂
-        // ─────────────────────── (CHECK/INFER)
-        //      Γ ⊢ e₁ ⇐ τ ⤳ v
-        //
-        // NOTE: We could change 2. to check for subtyping instead of alpha
-        // equivalence. This could be useful for implementing a cumulative
-        // universe hierarchy.
-        //
-        // [alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
-        _ => {
-            let (elab_term, inferred_ty) = infer(context, term)?; // 1.
+    // Flip the direction of the type checker, comparing the type of the
+    // expected term for [alpha equivalence] with the inferred term.
+    //
+    //  1.  Γ ⊢ e₂ ⇒ τ ⤳ v
+    //  2.  e₁ ≡ e₂
+    // ─────────────────────── (CHECK/INFER)
+    //      Γ ⊢ e₁ ⇐ τ ⤳ v
+    //
+    // NOTE: We could change 2. to check for subtyping instead of alpha
+    // equivalence. This could be useful for implementing a cumulative
+    // universe hierarchy.
+    //
+    // [alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
 
-            // Because we have invested lots of effort into setting up our
-            // locally nameless representation alpha equivalence is easy-peasy!
-            match &inferred_ty == expected {
-                true => Ok(elab_term),
-                false => Err(TypeError::Mismatch {
-                    expr: term.clone(),
-                    found: inferred_ty,
-                    expected: expected.clone(),
-                }),
-            }
-        },
+    let (elab_term, inferred_ty) = infer(context, term)?; // 1.
+
+    // Because we have invested lots of effort into setting up our
+    // locally nameless representation alpha equivalence is easy-peasy!
+    match &inferred_ty == expected {
+        true => Ok(elab_term),
+        false => Err(TypeError::Mismatch {
+            expr: term.clone(),
+            found: inferred_ty,
+            expected: expected.clone(),
+        }),
     }
 }
 
@@ -305,8 +317,13 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         Term::Universe => Ok((RcValue::universe(), RcValue::universe())),
 
         Term::Var(ref var) => match *var {
-            Var::Free(ref name) => Err(TypeError::UnboundVariable(name.clone())),
-            Var::Bound(Named(_, index)) => match *lookup(context, index)? {
+            Var::Bound(ref index) => {
+                Err(InternalError::UnsubstitutedDebruijnIndex(index.clone()).into())
+            },
+            Var::Free(ref name) => match *context
+                .lookup_binder(name)
+                .ok_or_else(|| TypeError::UndefinedName(name.clone()))?
+            {
                 //  1.  λx:τ ∈ Γ
                 // ─────────────────────── (INFER/VAR-LAM)
                 //      Γ ⊢ x ⇒ τ ⤳ x
@@ -325,26 +342,29 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             },
         },
 
-        Term::Lam(Named(_, None), _) => {
-            // TODO: More error info
-            Err(TypeError::TypeAnnotationsNeeded)
-        },
-
         //  1.  Γ ⊢ ρ ⇐ Type ⤳ τ
         //  2.  ρ ⇓ τ₁
         //  3.  Γ,λx:τ₁ ⊢ e ⇒ τ₂ ⤳ v
         // ───────────────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂ ⤳ λx:τ.v
-        Term::Lam(Named(ref name, Some(ref param_ty)), ref body_expr) => {
-            let elab_param_ty = check(context, param_ty, &RcValue::universe())?; // 1.
-            let simp_param_ty = normalize(context, &param_ty)?; // 2.
-            let binder = Named(name.clone(), Binder::Lam(Some(simp_param_ty.clone())));
-            let (elab_body_expr, body_ty) = infer(&context.extend(binder), body_expr)?; // 3.
+        Term::Lam(ref lam) => {
+            let (Named(name, ann), body) = lam.clone().unbind();
 
-            Ok((
-                Value::Lam(Named(name.clone(), Some(elab_param_ty)), elab_body_expr).into(),
-                Value::Pi(Named(name.clone(), simp_param_ty), body_ty).into(),
-            ))
+            match ann {
+                // TODO: More error info
+                None => Err(TypeError::TypeAnnotationsNeeded),
+                Some(ann) => {
+                    let elab_ann = check(context, &ann, &RcValue::universe())?; // 1.
+                    let simp_ann = normalize(context, &ann)?; // 2.
+                    let binder = Binder::Lam(Some(simp_ann.clone()));
+                    let body_context = context.extend(name.clone(), binder);
+                    let (elab_body, body_ty) = infer(&body_context, &body)?; // 3.
+
+                    let elab_lam = ValueLam::bind(Named(name.clone(), Some(elab_ann)), elab_body);
+                    let pi_ty = ValuePi::bind(Named(name.clone(), simp_ann), body_ty);
+                    Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
+                },
+            }
         },
 
         //  1.  Γ ⊢ ρ₁ ⇐ Type ⤳ τ₁
@@ -352,16 +372,16 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         //  3.  Γ,Πx:τ₁' ⊢ ρ₂ ⇐ Type ⤳ τ₂
         // ────────────────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Type ⤳ Πx:τ₁.τ₂
-        Term::Pi(Named(ref name, ref param_ty), ref body_ty) => {
-            let elab_param_ty = check(context, param_ty, &RcValue::universe())?; // 1.
-            let simp_param_ty = normalize(context, &param_ty)?; // 2.
-            let binder = Named(name.clone(), Binder::Pi(simp_param_ty));
-            let elab_body_ty = check(&context.extend(binder), body_ty, &RcValue::universe())?; // 3.
+        Term::Pi(ref pi) => {
+            let (Named(name, ann), body) = pi.clone().unbind();
 
-            Ok((
-                Value::Pi(Named(name.clone(), elab_param_ty), elab_body_ty).into(),
-                RcValue::universe(),
-            ))
+            let elab_ann = check(context, &ann, &RcValue::universe())?; // 1.
+            let simp_ann = normalize(context, &ann)?; // 2.
+            let body_context = context.extend(name.clone(), Binder::Pi(simp_ann));
+            let elab_body = check(&body_context, &body, &RcValue::universe())?; // 3.
+
+            let elab_pi = ValuePi::bind(Named(name.clone(), elab_ann), elab_body);
+            Ok((Value::Pi(elab_pi).into(), RcValue::universe()))
         },
 
         //  1.  Γ ⊢ e₁ ⇒ Πx:τ₁.τ₂ ⤳ v₁
@@ -371,14 +391,21 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         //      Γ ⊢ e₁ e₂ ⇒ τ₃ ⤳ v₁ v₂
         Term::App(ref fn_expr, ref arg_expr) => {
             let (elab_fn_expr, fn_type) = infer(context, fn_expr)?; // 1.
+
             match *fn_type.inner {
-                Value::Pi(Named(_, ref param_ty), ref ret_ty) => {
-                    let elab_arg_expr = check(context, arg_expr, param_ty)?; // 2.
-                    let body_ty = ret_ty.open(&normalize(context, &arg_expr)?); // 3.
-                    Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), body_ty))
+                Value::Pi(ref pi) => {
+                    let (Named(name, pi_ann), mut pi_body) = pi.clone().unbind();
+
+                    let elab_arg_expr = check(context, arg_expr, &pi_ann)?; // 2.
+                    let simp_arg_expr = normalize(context, &arg_expr)?; // 3.
+                    pi_body.subst(&name, &simp_arg_expr);
+
+                    Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
-                // TODO: More error info
-                _ => Err(TypeError::IllegalApplication),
+                _ => Err(TypeError::NotAFunctionType {
+                    expr: fn_expr.clone(),
+                    found: fn_type.clone(),
+                }),
             }
         },
     }
