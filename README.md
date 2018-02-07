@@ -30,22 +30,25 @@ $ cargo run --features=repl
 - [ ] review `core::{Term, Value}`
   - What about `CheckedTerm`s? `ElaboratedTerm`s?
   - Why is there an `Option<Value>` on `Value::Lam`?
+- [ ] property based testing - see “Effect-Driven QuickChecking of Compilers”
+      [[VIDEO](https://www.youtube.com/watch?v=_KrZzaShDew)]
+      [[PAPER](http://janmidtgaard.dk/papers/Midtgaard-al%3AICFP17-full.pdf)]
 
 ## References
 
 - Charguéraud, Arthur (2011). “The Locally Nameless Representation”.
   In _Journal of Automated Reasoning (JAR)_.
-  [[URL]](http://www.chargueraud.org/softs/ln/)
-  [[PDF]](http://www.chargueraud.org/research/2009/ln/main.pdf)
+  [[SITE]](http://www.chargueraud.org/softs/ln/)
+  [[PAPER]](http://www.chargueraud.org/research/2009/ln/main.pdf)
 - Christiansen, David Raymond (2013). “Bidirectional Typing Rules: A Tutorial”.
-  [[PDF]](http://www.davidchristiansen.dk/tutorials/bidirectional.pdf)
+  [[PAPER]](http://www.davidchristiansen.dk/tutorials/bidirectional.pdf)
 - Löh, Andres, McBride, Conor and Swierstra, Wouter (2009). “A tutorial
   implementation of a dependently typed lambda calculus”.
-  [[URL]](https://www.andres-loeh.de/LambdaPi/)
-  [[PDF]](https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf)
+  [[SITE]](https://www.andres-loeh.de/LambdaPi/)
+  [[PAPER]](https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf)
 - Norell, Ulf (2007). “Towards a practical programming language based on
   dependent type theory”.
-  [[PDF]](http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf)
+  [[PAPER]](http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf)
 
 ## Acknowledgments
 
