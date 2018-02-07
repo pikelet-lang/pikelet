@@ -3,7 +3,22 @@
 A Rust implementation of [_A Tutorial Implementation of a Dependently Typed
 Lambda Calculus_](https://www.andres-loeh.de/LambdaPi/).
 
-![🦔](https://i.imgur.com/oTgv3vN.jpg)
+## Todo
+
+- [ ] fix typechecking at the module level
+- [ ] ensure substitution points match the typing judgements
+- [ ] document challenges with name binding
+- [ ] should elaboration normalize as well?
+- [ ] performance tuning, and profiling
+- [ ] settle on a logging strategy for judgements
+- [ ] Agda-style pi type suger: `(A : Type) (C : A -> Type) (x y : A) -> Eq A x y -> C x -> C y`
+- [ ] automate name binding boilerplate to get it out of `syntax::core`
+- [ ] have prettier, more useful errors than relying on `fmt::Debug`
+- [ ] implement universe levels
+- [ ] implement holes
+- [ ] review `core::{Term, Value}`
+  - What about `CheckedTerm`s? `ElaboratedTerm`s?
+  - Why is there an `Option<Value>` on `Value::Lam`?
 
 ## References
 
