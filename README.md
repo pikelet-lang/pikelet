@@ -3,6 +3,15 @@
 A Rust implementation of [_A Tutorial Implementation of a Dependently Typed
 Lambda Calculus_](https://www.andres-loeh.de/LambdaPi/).
 
+To run the REPL:
+
+```
+$ cargo run --features=repl
+λΠ> (\(a : Type) (x : a) => x) Type (Type -> Type)
+($9 : Type) -> Type : Type
+λΠ>
+```
+
 ## Todo
 
 - [ ] fix typechecking at the module level
