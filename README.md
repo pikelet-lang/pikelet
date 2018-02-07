@@ -1,7 +1,9 @@
 # LambdaPi
 
 A Rust implementation of [_A Tutorial Implementation of a Dependently Typed
-Lambda Calculus_](https://www.andres-loeh.de/LambdaPi/).
+Lambda Calculus_](lambdapi).
+
+[lambdapi]: https://www.andres-loeh.de/LambdaPi/
 
 To run the REPL:
 
@@ -44,3 +46,12 @@ $ cargo run --features=repl
 - Norell, Ulf (2007). “Towards a practical programming language based on
   dependent type theory”.
   [[PDF]](http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf)
+
+## Acknowledgments
+
+[![YesLogic Logo][yeslogic-logo]][yeslogic]
+
+This work was done with the generous support of [YesLogic][yeslogic].
+
+[yeslogic]: http://yeslogic.com/
+[yeslogic-logo]: assets/yeslogic-logo.png
