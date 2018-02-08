@@ -67,17 +67,26 @@ impl fmt::Display for GenId {
 ///
 /// The name is ignored for equality comparisons
 #[derive(Debug, Clone, Eq)]
-pub struct Named<N, T>(pub N, pub T);
+pub struct Named<N, T> {
+    pub name: N,
+    pub inner: T,
+}
+
+impl<N, T> Named<N, T> {
+    pub fn new(name: N, inner: T) -> Named<N, T> {
+        Named { name, inner }
+    }
+}
 
 impl<N, T: PartialEq> PartialEq for Named<N, T> {
     fn eq(&self, other: &Named<N, T>) -> bool {
-        &self.1 == &other.1
+        &self.inner == &other.inner
     }
 }
 
 impl<N, T: Hash> Hash for Named<N, T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.1.hash(state);
+        self.inner.hash(state);
     }
 }
 
@@ -129,8 +138,8 @@ pub enum Var<N> {
 impl<N: fmt::Display> fmt::Display for Var<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Var::Bound(Named(ref name, ref b)) if f.alternate() => write!(f, "{}@{}", name, b),
-            Var::Bound(Named(ref name, _)) | Var::Free(ref name) => write!(f, "{}", name),
+            Var::Bound(ref bound) if f.alternate() => write!(f, "{}@{}", bound.name, bound.inner),
+            Var::Bound(Named { ref name, .. }) | Var::Free(ref name) => write!(f, "{}", name),
         }
     }
 }

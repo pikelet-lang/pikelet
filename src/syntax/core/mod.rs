@@ -33,13 +33,13 @@ impl Name {
 
     /// Generate a new, globally unique name
     pub fn fresh<S: Into<String>>(name: Option<S>) -> Name {
-        Name::Gen(Named(name.map(S::into), GenId::fresh()))
+        Name::Gen(Named::new(name.map(S::into), GenId::fresh()))
     }
 
     pub fn name(&self) -> Option<&str> {
         match *self {
-            Name::User(ref name) | Name::Gen(Named(Some(ref name), _)) => Some(name),
-            Name::Gen(Named(None, _)) => None,
+            Name::User(ref name) => Some(name),
+            Name::Gen(Named { ref name, .. }) => name.as_ref().map(String::as_str),
         }
     }
 }
@@ -48,8 +48,10 @@ impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Name::User(ref name) => write!(f, "{}", name),
-            Name::Gen(Named(None, ref id)) => write!(f, "{}", id),
-            Name::Gen(Named(Some(ref name), ref id)) => write!(f, "{}{}", name, id),
+            Name::Gen(ref gen) => match gen.name {
+                None => write!(f, "{}", gen.inner),
+                Some(ref name) => write!(f, "{}{}", name, gen.inner),
+            },
         }
     }
 }
@@ -309,10 +311,10 @@ fn lam_from_concrete(
     for &(ref name, ref ann) in params.iter().rev() {
         let name = Name::User(name.clone());
         term = match *ann {
-            None => Term::Lam(TermLam::bind(Named(name, None), term)).into(),
+            None => Term::Lam(TermLam::bind(Named::new(name, None), term)).into(),
             Some(ref ann) => {
                 let ann = RcTerm::from_concrete(ann);
-                Term::Lam(TermLam::bind(Named(name, Some(ann)), term)).into()
+                Term::Lam(TermLam::bind(Named::new(name, Some(ann)), term)).into()
             },
         };
     }
@@ -327,7 +329,7 @@ fn pi_from_concrete(param_names: &[String], ann: &concrete::Term, body: &concret
     for name in param_names.iter().rev() {
         // This could be wrong... :/
         term = Term::Pi(TermPi::bind(
-            Named(Name::User(name.clone()), ann.clone()),
+            Named::new(Name::User(name.clone()), ann.clone()),
             term,
         )).into();
     }
@@ -412,7 +414,7 @@ impl RcTerm {
             concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
             concrete::Term::Pi(ref names, ref ann, ref body) => pi_from_concrete(names, ann, body),
             concrete::Term::Arrow(ref ann, ref body) => Term::Pi(TermPi::bind(
-                Named(Name::fresh(None::<&str>), RcTerm::from_concrete(ann).into()),
+                Named::new(Name::fresh(None::<&str>), RcTerm::from_concrete(ann).into()),
                 RcTerm::from_concrete(body),
             )).into(),
             concrete::Term::App(ref fn_expr, ref arg) => {

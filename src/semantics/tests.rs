@@ -38,7 +38,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"\x : Type => x")).unwrap(),
             Value::Lam(ValueLam::bind(
-                Named(x.clone(), Some(RcValue::universe())),
+                Named::new(x.clone(), Some(RcValue::universe())),
                 Value::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -53,7 +53,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"(x : Type) -> x")).unwrap(),
             Value::Pi(ValuePi::bind(
-                Named(x.clone(), RcValue::universe()),
+                Named::new(x.clone(), RcValue::universe()),
                 Value::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -66,16 +66,16 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(ValuePi::bind(
-            Named(Name::user("_"), RcValue::universe()),
+            Named::new(Name::user("_"), RcValue::universe()),
             RcValue::universe(),
         )).into();
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type -> Type => \y : Type => x y")).unwrap(),
             Value::Lam(ValueLam::bind(
-                Named(x.clone(), Some(ty_arr)),
+                Named::new(x.clone(), Some(ty_arr)),
                 Value::Lam(ValueLam::bind(
-                    Named(y.clone(), Some(RcValue::universe())),
+                    Named::new(y.clone(), Some(RcValue::universe())),
                     Value::App(
                         Value::Var(Var::Free(x)).into(),
                         Value::Var(Var::Free(y)).into(),
@@ -92,16 +92,16 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(ValuePi::bind(
-            Named(Name::user("_"), RcValue::universe()),
+            Named::new(Name::user("_"), RcValue::universe()),
             RcValue::universe(),
         )).into();
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type -> Type) -> \y : Type => x y")).unwrap(),
             Value::Pi(ValuePi::bind(
-                Named(x.clone(), ty_arr),
+                Named::new(x.clone(), ty_arr),
                 Value::Lam(ValueLam::bind(
-                    Named(y.clone(), Some(RcValue::universe())),
+                    Named::new(y.clone(), Some(RcValue::universe())),
                     Value::App(
                         Value::Var(Var::Free(x)).into(),
                         Value::Var(Var::Free(y)).into(),

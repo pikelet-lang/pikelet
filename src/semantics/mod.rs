@@ -163,16 +163,16 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ──────────────────────────────── (EVAL/LAM-ANN)
         //      Γ ⊢ λx:ρ.e ⇓ λx:τ.v
         Term::Lam(ref lam) => {
-            let (Named(name, ann), body) = lam.clone().unbind();
+            let (param, body) = lam.clone().unbind();
 
-            let ann = match ann {
+            let ann = match param.inner {
                 None => None,
                 Some(ann) => Some(normalize(context, &ann)?), // 2.
             };
-            let body_context = context.extend(name.clone(), Binder::Lam(ann.clone()));
+            let body_context = context.extend(param.name.clone(), Binder::Lam(ann.clone()));
             let body = normalize(&body_context, &body)?; // 1,3.
 
-            Ok(Value::Lam(ValueLam::bind(Named(name.clone(), ann), body)).into())
+            Ok(Value::Lam(ValueLam::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
         //  1.  Γ ⊢ ρ₁ ⇓ τ₁
@@ -180,13 +180,13 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ─────────────────────────────────── (EVAL/PI-ANN)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇓ Πx:τ₁.τ₂
         Term::Pi(ref pi) => {
-            let (Named(name, ann), body) = pi.clone().unbind();
+            let (param, body) = pi.clone().unbind();
 
-            let ann = normalize(context, &ann)?; // 1.
-            let body_context = context.extend(name.clone(), Binder::Pi(ann.clone()));
+            let ann = normalize(context, &param.inner)?; // 1.
+            let body_context = context.extend(param.name.clone(), Binder::Pi(ann.clone()));
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Value::Pi(ValuePi::bind(Named(name.clone(), ann), body)).into())
+            Ok(Value::Pi(ValuePi::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -203,8 +203,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             match *fn_expr.inner {
                 Value::Lam(ref lam) => {
                     // FIXME: do a local unbind here
-                    let (Named(name, _), mut body) = lam.clone().unbind();
-                    body.subst(&name, &arg);
+                    let (param, mut body) = lam.clone().unbind();
+                    body.subst(&param.name, &arg);
                     Ok(body)
                 },
                 _ => Ok(Value::App(fn_expr.clone(), arg).into()),
@@ -230,20 +230,24 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
         //  1.  Γ,Πx:τ₁ ⊢ e ⇐ τ₂ ⤳ v
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.e ⇐ Πx:τ₁.τ₂ ⤳ λx:τ₁.v
-        (&Term::Lam(ref lam), &Value::Pi(ref pi)) => match core::unbind2(lam.clone(), pi.clone()) {
-            (Named(lam_name, None), lam_body, Named(pi_name, pi_ann), pi_body) => {
-                let body_context = context.extend(pi_name, Binder::Pi(pi_ann.clone()));
+        (&Term::Lam(ref lam), &Value::Pi(ref pi)) => {
+            let (lam_param, lam_body, pi_param, pi_body) = core::unbind2(lam.clone(), pi.clone());
+
+            if lam_param.inner.is_none() {
+                let body_context =
+                    context.extend(pi_param.name, Binder::Pi(pi_param.inner.clone()));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
-                let elab_term =
-                    Value::Lam(ValueLam::bind(Named(lam_name, Some(pi_ann)), elab_lam_body)).into();
+                let elab_term = Value::Lam(ValueLam::bind(
+                    Named::new(lam_param.name, Some(pi_param.inner)),
+                    elab_lam_body,
+                )).into();
 
                 return Ok(elab_term);
-            },
+            }
+
             // TODO: We might want to optimise for this case, rather than
             // falling through to `infer` and reunbinding at INFER/LAM
-            // (Named(lam_name, Some(lam_ann)), lam_body, Named(pi_name, pi_ann), pi_body) => {},
-            _ => {},
         },
         (&Term::Lam(_), _) => {
             return Err(TypeError::ExpectedFunction {
@@ -348,20 +352,21 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         // ───────────────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂ ⤳ λx:τ.v
         Term::Lam(ref lam) => {
-            let (Named(name, ann), body) = lam.clone().unbind();
+            let (param, body) = lam.clone().unbind();
 
-            match ann {
+            match param.inner {
                 // TODO: More error info
                 None => Err(TypeError::TypeAnnotationsNeeded),
                 Some(ann) => {
                     let elab_ann = check(context, &ann, &RcValue::universe())?; // 1.
                     let simp_ann = normalize(context, &ann)?; // 2.
                     let binder = Binder::Lam(Some(simp_ann.clone()));
-                    let body_context = context.extend(name.clone(), binder);
+                    let body_context = context.extend(param.name.clone(), binder);
                     let (elab_body, body_ty) = infer(&body_context, &body)?; // 3.
 
-                    let elab_lam = ValueLam::bind(Named(name.clone(), Some(elab_ann)), elab_body);
-                    let pi_ty = ValuePi::bind(Named(name.clone(), simp_ann), body_ty);
+                    let elab_lam =
+                        ValueLam::bind(Named::new(param.name.clone(), Some(elab_ann)), elab_body);
+                    let pi_ty = ValuePi::bind(Named::new(param.name.clone(), simp_ann), body_ty);
                     Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
                 },
             }
@@ -373,14 +378,14 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         // ────────────────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Type ⤳ Πx:τ₁.τ₂
         Term::Pi(ref pi) => {
-            let (Named(name, ann), body) = pi.clone().unbind();
+            let (param, body) = pi.clone().unbind();
 
-            let elab_ann = check(context, &ann, &RcValue::universe())?; // 1.
-            let simp_ann = normalize(context, &ann)?; // 2.
-            let body_context = context.extend(name.clone(), Binder::Pi(simp_ann));
+            let elab_ann = check(context, &param.inner, &RcValue::universe())?; // 1.
+            let simp_ann = normalize(context, &param.inner)?; // 2.
+            let body_context = context.extend(param.name.clone(), Binder::Pi(simp_ann));
             let elab_body = check(&body_context, &body, &RcValue::universe())?; // 3.
 
-            let elab_pi = ValuePi::bind(Named(name.clone(), elab_ann), elab_body);
+            let elab_pi = ValuePi::bind(Named::new(param.name.clone(), elab_ann), elab_body);
             Ok((Value::Pi(elab_pi).into(), RcValue::universe()))
         },
 
@@ -394,11 +399,11 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
             match *fn_type.inner {
                 Value::Pi(ref pi) => {
-                    let (Named(name, pi_ann), mut pi_body) = pi.clone().unbind();
+                    let (pi_param, mut pi_body) = pi.clone().unbind();
 
-                    let elab_arg_expr = check(context, arg_expr, &pi_ann)?; // 2.
+                    let elab_arg_expr = check(context, arg_expr, &pi_param.inner)?; // 2.
                     let simp_arg_expr = normalize(context, &arg_expr)?; // 3.
-                    pi_body.subst(&name, &simp_arg_expr);
+                    pi_body.subst(&pi_param.name, &simp_arg_expr);
 
                     Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
