@@ -25,7 +25,7 @@ mod normalize {
 
         assert_eq!(
             normalize(&context, &parse(r"Type")).unwrap(),
-            RcValue::universe()
+            Value::Universe(Level::ZERO).into()
         );
     }
 
@@ -38,7 +38,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"\x : Type => x")).unwrap(),
             Value::Lam(ValueLam::bind(
-                Named::new(x.clone(), Some(RcValue::universe())),
+                Named::new(x.clone(), Some(Value::Universe(Level::ZERO).into())),
                 Value::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -53,7 +53,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"(x : Type) -> x")).unwrap(),
             Value::Pi(ValuePi::bind(
-                Named::new(x.clone(), RcValue::universe()),
+                Named::new(x.clone(), Value::Universe(Level::ZERO).into()),
                 Value::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -66,16 +66,16 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(ValuePi::bind(
-            Named::new(Name::user("_"), RcValue::universe()),
-            RcValue::universe(),
+            Named::new(Name::user("_"), Value::Universe(Level::ZERO).into()),
+            Value::Universe(Level::ZERO).into(),
         )).into();
 
         assert_eq!(
-            normalize(&context, &parse(r"\x : Type -> Type => \y : Type => x y")).unwrap(),
+            normalize(&context, &parse(r"\(x : Type -> Type) (y : Type) => x y")).unwrap(),
             Value::Lam(ValueLam::bind(
                 Named::new(x.clone(), Some(ty_arr)),
                 Value::Lam(ValueLam::bind(
-                    Named::new(y.clone(), Some(RcValue::universe())),
+                    Named::new(y.clone(), Some(Value::Universe(Level::ZERO).into())),
                     Value::App(
                         Value::Var(Var::Free(x)).into(),
                         Value::Var(Var::Free(y)).into(),
@@ -92,8 +92,8 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(ValuePi::bind(
-            Named::new(Name::user("_"), RcValue::universe()),
-            RcValue::universe(),
+            Named::new(Name::user("_"), Value::Universe(Level::ZERO).into()),
+            Value::Universe(Level::ZERO).into(),
         )).into();
 
         assert_eq!(
@@ -101,7 +101,7 @@ mod normalize {
             Value::Pi(ValuePi::bind(
                 Named::new(x.clone(), ty_arr),
                 Value::Lam(ValueLam::bind(
-                    Named::new(y.clone(), Some(RcValue::universe())),
+                    Named::new(y.clone(), Some(Value::Universe(Level::ZERO).into())),
                     Value::App(
                         Value::Var(Var::Free(x)).into(),
                         Value::Var(Var::Free(y)).into(),
@@ -117,7 +117,7 @@ mod normalize {
     fn id_app_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) Type";
+        let given_expr = r"(\(a : Type) (x : a) => x) Type";
         let expected_expr = r"\x : Type => x";
 
         assert_eq!(
@@ -131,7 +131,7 @@ mod normalize {
     fn id_app_ty_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) Type Type";
+        let given_expr = r"(\(a : Type) (x : a) => x) Type Type";
         let expected_expr = r"Type";
 
         assert_eq!(
@@ -146,7 +146,7 @@ mod normalize {
     fn id_app_ty_arr_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) Type (Type -> Type)";
+        let given_expr = r"(\(a : Type) (x : a) => x) Type (Type -> Type)";
         let expected_expr = r"Type -> Type";
 
         assert_eq!(
@@ -161,11 +161,11 @@ mod normalize {
         let context = Context::new();
 
         let given_expr = r"
-            (\a : Type => \x : a => x)
+            (\(a : Type) (x : a) => x)
                 ((a : Type) -> a -> a)
-                (\a : Type => \x : a => x)
+                (\(a : Type) (x : a) => x)
         ";
-        let expected_expr = r"\a : Type => \x : a => x";
+        let expected_expr = r"\(a : Type) (x : a) => x";
 
         assert_eq!(
             normalize(&context, &parse(given_expr)).unwrap(),
@@ -180,13 +180,13 @@ mod normalize {
         let context = Context::new();
 
         let given_expr = r"
-            (\a : Type => \b : Type => \x : a => \y : b => x)
+            (\(a : Type) (b : Type) (x : a) (y : b) => x)
                 ((a : Type) -> a -> a)
                 Type
-                (\a : Type => \x : a => x)
+                (\(a : Type) (x : a) => x)
                 Type
         ";
-        let expected_expr = r"\a : Type => \x : a => x";
+        let expected_expr = r"\(a : Type) (x : a) => x";
 
         assert_eq!(
             normalize(&context, &parse(given_expr)).unwrap(),
@@ -216,7 +216,20 @@ mod infer {
         let context = Context::new();
 
         let given_expr = r"Type";
-        let expected_ty = r"Type";
+        let expected_ty = r"Type 1";
+
+        assert_eq!(
+            infer(&context, &parse(given_expr)).unwrap().1,
+            normalize(&context, &parse(expected_ty)).unwrap(),
+        );
+    }
+
+    #[test]
+    fn ty_levels() {
+        let context = Context::new();
+
+        let given_expr = r"Type 0 : Type 1 : Type 2 : Type 3"; //... Type ∞       ...+:｡(ﾉ･ω･)ﾉﾞ
+        let expected_ty = r"Type 1";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -266,8 +279,8 @@ mod infer {
     fn app() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => a) Type";
-        let expected_ty = r"Type";
+        let given_expr = r"(\a : Type 1 => a) Type";
+        let expected_ty = r"Type 1";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -284,8 +297,8 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::NotAFunctionType {
-                expr: RcTerm::universe(),
-                found: RcType::universe(),
+                expr: Term::Universe(Level::ZERO).into(),
+                found: Value::Universe(Level::ZERO.succ()).into(),
             }),
         )
     }
@@ -308,7 +321,7 @@ mod infer {
         let context = Context::new();
 
         let given_expr = r"(a : Type) -> a";
-        let expected_ty = r"Type";
+        let expected_ty = r"Type 1";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -320,7 +333,7 @@ mod infer {
     fn id() {
         let context = Context::new();
 
-        let given_expr = r"\a : Type => \x : a => x";
+        let given_expr = r"\(a : Type) (x : a) => x";
         let expected_ty = r"(a : Type) -> a -> a";
 
         assert_eq!(
@@ -333,7 +346,7 @@ mod infer {
     fn id_ann() {
         let context = Context::new();
 
-        let given_expr = r"(\a => \x : a => x) : (A : Type) -> A -> A";
+        let given_expr = r"(\a (x : a) => x) : (A : Type) -> A -> A";
         let expected_ty = r"(a : Type) -> a -> a";
 
         assert_eq!(
@@ -348,7 +361,7 @@ mod infer {
     fn id_app_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) Type";
+        let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
         let expected_expr = r"Type -> Type";
 
         assert_eq!(
@@ -362,8 +375,8 @@ mod infer {
     fn id_app_ty_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) Type Type";
-        let expected_expr = r"Type";
+        let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
+        let expected_expr = r"Type 1";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -375,8 +388,8 @@ mod infer {
     fn id_app_ty_arr_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) Type (Type -> Type)";
-        let expected_ty = r"Type";
+        let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
+        let expected_ty = r"Type 1";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -388,7 +401,7 @@ mod infer {
     fn id_app_arr_pi_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\a : Type => \x : a => x) (Type -> Type) (\x : Type => Type)";
+        let given_expr = r"(\(a : Type 1) (x : a) => x) (Type -> Type) (\x : Type => x)";
         let expected_ty = r"Type -> Type";
 
         assert_eq!(
@@ -401,14 +414,8 @@ mod infer {
     fn apply() {
         let context = Context::new();
 
-        let given_expr = r"
-            \a : Type => \b : Type =>
-                \f : (a -> b) => \x : a => f x
-        ";
-        let expected_ty = r"
-            (a : Type) -> (b : Type) ->
-                (a -> b) -> a -> b
-        ";
+        let given_expr = r"\(a : Type) (b : Type) (f : a -> b) (x : a) => f x";
+        let expected_ty = r"(a b : Type) -> (a -> b) -> a -> b";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -420,8 +427,8 @@ mod infer {
     fn const_() {
         let context = Context::new();
 
-        let given_expr = r"\a : Type => \b : Type => \x : a => \y : b => x";
-        let expected_ty = r"(a : Type) -> (b : Type) -> a -> b -> a";
+        let given_expr = r"\(a : Type) (b : Type) (x : a) (y : b) => x";
+        let expected_ty = r"(a b : Type) -> a -> b -> a";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -433,8 +440,8 @@ mod infer {
     fn const_flipped() {
         let context = Context::new();
 
-        let given_expr = r"\a : Type => \b : Type => \x : a => \y : b => y";
-        let expected_ty = r"(a : Type) -> (b : Type) -> a -> b -> b";
+        let given_expr = r"\(a : Type) (b : Type) (x : a) (y : b) => y";
+        let expected_ty = r"(a b : Type) -> a -> b -> b";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -465,12 +472,11 @@ mod infer {
         let context = Context::new();
 
         let given_expr = r"
-            \a : Type => \b : Type => \c : Type =>
-                \f : (b -> c) => \g : (a -> b) => \x : a =>
-                    f (g x)
+            \(a : Type) (b : Type) (c : Type) =>
+                \(f : b -> c) (g : a -> b) (x : a) => f (g x)
         ";
         let expected_ty = r"
-            (a : Type) -> (b : Type) -> (c : Type) ->
+            (a b c : Type) ->
                 (b -> c) -> (a -> b) -> (a -> c)
         ";
 
@@ -487,8 +493,8 @@ mod infer {
         fn and() {
             let context = Context::new();
 
-            let given_expr = r"\p : Type => \q : Type => (c : Type) -> (p -> q -> c) -> c";
-            let expected_ty = r"Type -> Type -> Type";
+            let given_expr = r"\(p : Type) (q : Type) => (c : Type) -> (p -> q -> c) -> c";
+            let expected_ty = r"Type -> Type -> Type 1";
 
             assert_eq!(
                 infer(&context, &parse(given_expr)).unwrap().1,
@@ -520,8 +526,8 @@ mod infer {
             let context = Context::new();
 
             let given_expr = r"
-                \p : Type => \q : Type => \pq : (c : Type) -> (p -> q -> c) -> c =>
-                    pq p (\x => \y => x)
+                \(p : Type) (q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
+                    pq p (\x y => x)
             ";
             let expected_ty = r"
                 (p : Type) -> (q : Type) ->
@@ -539,12 +545,11 @@ mod infer {
             let context = Context::new();
 
             let given_expr = r"
-                \p : Type => \q : Type => \pq : (c : Type) -> (p -> q -> c) -> c =>
-                    pq q (\x => \y => y)
+                \(p : Type) (q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
+                    pq q (\x y => y)
             ";
             let expected_ty = r"
-                (p : Type) -> (q : Type) ->
-                    ((c : Type) -> (p -> q -> c) -> c) -> q
+                (p q : Type) -> ((c : Type) -> (p -> q -> c) -> c) -> q
             ";
 
             assert_eq!(

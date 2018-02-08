@@ -89,14 +89,25 @@ mod from_concrete {
 
     #[test]
     fn ty() {
-        assert_eq!(parse(r"Type"), RcTerm::universe());
+        assert_eq!(parse(r"Type"), Term::Universe(Level::ZERO).into());
+    }
+
+    #[test]
+    fn ty_level() {
+        assert_eq!(
+            parse(r"Type 2"),
+            Term::Universe(Level::ZERO.succ().succ()).into()
+        );
     }
 
     #[test]
     fn ann() {
         assert_eq!(
             parse(r"Type : Type"),
-            Term::Ann(RcTerm::universe(), RcTerm::universe()).into(),
+            Term::Ann(
+                Term::Universe(Level::ZERO).into(),
+                Term::Universe(Level::ZERO).into()
+            ).into(),
         );
     }
 
@@ -105,8 +116,11 @@ mod from_concrete {
         assert_eq!(
             parse(r"Type : Type : Type"),
             Term::Ann(
-                Term::Ann(RcTerm::universe(), RcTerm::universe()).into(),
-                RcTerm::universe(),
+                Term::Universe(Level::ZERO).into(),
+                Term::Ann(
+                    Term::Universe(Level::ZERO).into(),
+                    Term::Universe(Level::ZERO).into()
+                ).into(),
             ).into(),
         );
     }
@@ -116,8 +130,11 @@ mod from_concrete {
         assert_eq!(
             parse(r"Type : (Type : Type)"),
             Term::Ann(
-                RcTerm::universe(),
-                Term::Ann(RcTerm::universe(), RcTerm::universe()).into(),
+                Term::Universe(Level::ZERO).into(),
+                Term::Ann(
+                    Term::Universe(Level::ZERO).into(),
+                    Term::Universe(Level::ZERO).into()
+                ).into(),
             ).into(),
         );
     }
@@ -127,8 +144,14 @@ mod from_concrete {
         assert_eq!(
             parse(r"(Type : Type) : (Type : Type)"),
             Term::Ann(
-                Term::Ann(RcTerm::universe(), RcTerm::universe()).into(),
-                Term::Ann(RcTerm::universe(), RcTerm::universe()).into(),
+                Term::Ann(
+                    Term::Universe(Level::ZERO).into(),
+                    Term::Universe(Level::ZERO).into()
+                ).into(),
+                Term::Ann(
+                    Term::Universe(Level::ZERO).into(),
+                    Term::Universe(Level::ZERO).into()
+                ).into(),
             ).into(),
         );
     }
@@ -144,8 +167,8 @@ mod from_concrete {
                     x.clone(),
                     Some(
                         Term::Pi(TermPi::bind(
-                            Named::new(Name::user("_"), RcTerm::universe()),
-                            RcTerm::universe(),
+                            Named::new(Name::user("_"), Term::Universe(Level::ZERO).into()),
+                            Term::Universe(Level::ZERO).into(),
                         )).into()
                     ),
                 ),
@@ -184,9 +207,9 @@ mod from_concrete {
         assert_eq!(
             parse(r"\x : Type => \y : Type => x"),
             Term::Lam(TermLam::bind(
-                Named::new(x.clone(), Some(RcTerm::universe())),
+                Named::new(x.clone(), Some(Term::Universe(Level::ZERO).into())),
                 Term::Lam(TermLam::bind(
-                    Named::new(y, Some(RcTerm::universe())),
+                    Named::new(y, Some(Term::Universe(Level::ZERO).into())),
                     Term::Var(Var::Free(x)).into(),
                 )).into(),
             )).into(),
@@ -198,8 +221,8 @@ mod from_concrete {
         assert_eq!(
             parse(r"Type -> Type"),
             Term::Pi(TermPi::bind(
-                Named::new(Name::user("_"), RcTerm::universe()),
-                RcTerm::universe(),
+                Named::new(Name::user("_"), Term::Universe(Level::ZERO).into()),
+                Term::Universe(Level::ZERO).into(),
             )).into(),
         );
     }
@@ -214,8 +237,8 @@ mod from_concrete {
                 Named::new(
                     x.clone(),
                     Term::Pi(TermPi::bind(
-                        Named::new(Name::user("_"), RcTerm::universe()),
-                        RcTerm::universe(),
+                        Named::new(Name::user("_"), Term::Universe(Level::ZERO).into()),
+                        Term::Universe(Level::ZERO).into(),
                     )).into(),
                 ),
                 Term::Var(Var::Free(x)).into(),
@@ -229,11 +252,11 @@ mod from_concrete {
         let y = Name::user("y");
 
         assert_eq!(
-            parse(r"(x : Type) -> (y : Type) -> x"),
+            parse(r"(x y : Type) -> x"),
             Term::Pi(TermPi::bind(
-                Named::new(x.clone(), RcTerm::universe()),
+                Named::new(x.clone(), Term::Universe(Level::ZERO).into()),
                 Term::Pi(TermPi::bind(
-                    Named::new(y, RcTerm::universe()),
+                    Named::new(y, Term::Universe(Level::ZERO).into()),
                     Term::Var(Var::Free(x)).into(),
                 )).into(),
             )).into(),
@@ -247,7 +270,7 @@ mod from_concrete {
         assert_eq!(
             parse(r"(x : Type) -> x -> x"),
             Term::Pi(TermPi::bind(
-                Named::new(x.clone(), RcTerm::universe()),
+                Named::new(x.clone(), Term::Universe(Level::ZERO).into()),
                 Term::Pi(TermPi::bind(
                     Named::new(Name::user("_"), Term::Var(Var::Free(x.clone())).into(),),
                     Term::Var(Var::Free(x)).into(),
@@ -262,19 +285,19 @@ mod from_concrete {
         let y = Name::user("y");
 
         assert_eq!(
-            parse(r"\x : (Type -> Type) => \y : Type => x y"),
+            parse(r"\(x : Type -> Type) (y : Type) => x y"),
             Term::Lam(TermLam::bind(
                 Named::new(
                     x.clone(),
                     Some(
                         Term::Pi(TermPi::bind(
-                            Named::new(Name::user("_"), RcTerm::universe()),
-                            RcTerm::universe(),
+                            Named::new(Name::user("_"), Term::Universe(Level::ZERO).into()),
+                            Term::Universe(Level::ZERO).into(),
                         )).into(),
                     ),
                 ),
                 Term::Lam(TermLam::bind(
-                    Named::new(y.clone(), Some(RcTerm::universe())),
+                    Named::new(y.clone(), Some(Term::Universe(Level::ZERO).into())),
                     Term::App(
                         Term::Var(Var::Free(x)).into(),
                         Term::Var(Var::Free(y)).into(),
@@ -290,9 +313,9 @@ mod from_concrete {
         let a = Name::user("a");
 
         assert_eq!(
-            parse(r"\a : Type => \x : a => x"),
+            parse(r"\(a : Type) (x : a) => x"),
             Term::Lam(TermLam::bind(
-                Named::new(a.clone(), Some(RcTerm::universe())),
+                Named::new(a.clone(), Some(Term::Universe(Level::ZERO).into())),
                 Term::Lam(TermLam::bind(
                     Named::new(x.clone(), Some(Term::Var(Var::Free(a)).into()),),
                     Term::Var(Var::Free(x)).into(),
@@ -308,7 +331,7 @@ mod from_concrete {
         assert_eq!(
             parse(r"(a : Type) -> a -> a"),
             Term::Pi(TermPi::bind(
-                Named::new(a.clone(), RcTerm::universe()),
+                Named::new(a.clone(), Term::Universe(Level::ZERO).into()),
                 Term::Pi(TermPi::bind(
                     Named::new(Name::user("_"), Term::Var(Var::Free(a.clone())).into(),),
                     Term::Var(Var::Free(a)).into(),

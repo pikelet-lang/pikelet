@@ -47,7 +47,7 @@ ExposedIdent : (String, Option<String>) = {
 
 pub Term: Term = {
     LamTerm,
-    <x: Term> ":" <t: LamTerm> => {
+    <x: LamTerm> ":" <t: Term> => {
         Term::Ann(Box::new(x), Box::new(t))
     },
 };
@@ -85,6 +85,9 @@ PiTerm: Term = {
     <binder: AppTerm> "->" <body: LamTerm> =>? {
         super::reparse_pi_type_hack(binder, body)
     },
+    "Type" <level: r"[0-9]+"> => {
+        Term::Universe(Some(level.parse().unwrap()))
+    },
 };
 
 AppTerm: Term = {
@@ -96,7 +99,7 @@ AppTerm: Term = {
 
 AtomicTerm: Term = {
     "(" <Term> ")" => Term::Parens(Box::new(<>)),
-    "Type" => Term::Universe,
+    "Type" => Term::Universe(None),
     Ident => Term::Var(<>),
 };
 

@@ -10,7 +10,7 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 
-use syntax::core::{self, Binder, Context, Module, Name, RcTerm, RcType, RcValue, Term};
+use syntax::core::{self, Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term};
 use syntax::core::{Value, ValueLam, ValuePi};
 use syntax::var::{Debruijn, Named, Var};
 
@@ -94,6 +94,7 @@ pub enum TypeError {
         found: RcType,
         expected: RcType,
     },
+    ExpectedUniverse(RcType),
     UndefinedName(Name),
     Internal(InternalError),
 }
@@ -127,7 +128,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // ─────────────────── (EVAL/TYPE)
         //  Γ ⊢ Type ⇓ Type
-        Term::Universe => Ok(RcValue::universe()),
+        Term::Universe(level) => Ok(Value::Universe(level).into()),
 
         Term::Var(ref var) => match *var {
             Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex(index.clone())),
@@ -295,30 +296,35 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
 /// Γ ⊢ e ⇒ τ ⤳ v
 /// ```
 pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), TypeError> {
+    use std::cmp;
+
+    fn infer_universe(context: &Context, term: &RcTerm) -> Result<(RcValue, Level), TypeError> {
+        let (elab, ty) = infer(context, term)?;
+        match *ty.inner {
+            Value::Universe(level) => Ok((elab, level)),
+            _ => Err(TypeError::ExpectedUniverse(ty)),
+        }
+    }
+
     match *term.inner {
-        //  1.  Γ ⊢ ρ ⇐ Type ⤳ τ
+        //  1.  Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
         //  2.  ρ ⇓ τ
         //  3.  Γ ⊢ e ⇐ τ ⤳ v
         // ───────────────────────────── (INFER/ANN)
         //      Γ ⊢ (e:ρ) ⇒ τ ⤳ v
         Term::Ann(ref expr, ref ty) => {
-            check(context, ty, &RcValue::universe())?; // 1.
+            infer_universe(context, ty)?; // 1.
             let simp_ty = normalize(context, &ty)?; // 2.
             let elab_expr = check(context, expr, &simp_ty)?; // 3.
             Ok((elab_expr, simp_ty))
         },
 
-        // FIXME: This axiom will lead to [Girard's paradox], meaning that we
-        // would be abe to construct a [program that loops forever] We should
-        // implement a universe hierarchy to resolve this, where `Type` is
-        // indexed by a level `i`.
-        //
-        // ─────────────────────────── (INFER/TYPE)
-        //  Γ ⊢ Type ⇒ Type ⤳ Type
-        //
-        // [Girard's paradox]: https://ncatlab.org/nlab/show/Burali-Forti%27s+paradox#GirardParadox
-        // [program that loops forever]: https://ncatlab.org/nlab/show/looping+combinator
-        Term::Universe => Ok((RcValue::universe(), RcValue::universe())),
+        // ───────────────────────────────── (INFER/TYPE)
+        //  Γ ⊢ Typeᵢ ⇒ Typeᵢ₊₁ ⤳ Typeᵢ
+        Term::Universe(level) => Ok((
+            Value::Universe(level).into(),
+            Value::Universe(level.succ()).into(),
+        )),
 
         Term::Var(ref var) => match *var {
             Var::Bound(ref index) => {
@@ -346,7 +352,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             },
         },
 
-        //  1.  Γ ⊢ ρ ⇐ Type ⤳ τ
+        //  1.  Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
         //  2.  ρ ⇓ τ₁
         //  3.  Γ,λx:τ₁ ⊢ e ⇒ τ₂ ⤳ v
         // ───────────────────────────────────────── (INFER/LAM)
@@ -358,35 +364,40 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 // TODO: More error info
                 None => Err(TypeError::TypeAnnotationsNeeded),
                 Some(ann) => {
-                    let elab_ann = check(context, &ann, &RcValue::universe())?; // 1.
+                    let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
                     let simp_ann = normalize(context, &ann)?; // 2.
                     let binder = Binder::Lam(Some(simp_ann.clone()));
                     let body_context = context.extend(param.name.clone(), binder);
                     let (elab_body, body_ty) = infer(&body_context, &body)?; // 3.
 
-                    let elab_lam =
-                        ValueLam::bind(Named::new(param.name.clone(), Some(elab_ann)), elab_body);
+                    let elab_param = Named::new(param.name.clone(), Some(elab_ann));
+                    let elab_lam = ValueLam::bind(elab_param, elab_body);
                     let pi_ty = ValuePi::bind(Named::new(param.name.clone(), simp_ann), body_ty);
+
                     Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
                 },
             }
         },
 
-        //  1.  Γ ⊢ ρ₁ ⇐ Type ⤳ τ₁
+        //  1.  Γ ⊢ ρ₁ ⇒ Typeᵢ ⤳ τ₁
         //  2.  ρ₁ ⇓ τ₁'
-        //  3.  Γ,Πx:τ₁' ⊢ ρ₂ ⇐ Type ⤳ τ₂
+        //  3.  Γ,Πx:τ₁' ⊢ ρ₂ ⇐ Typeⱼ ⤳ τ₂
+        //  4.  k = max(i, j)
         // ────────────────────────────────────────── (INFER/PI)
-        //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Type ⤳ Πx:τ₁.τ₂
+        //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Typeₖ ⤳ Πx:τ₁.τ₂
         Term::Pi(ref pi) => {
             let (param, body) = pi.clone().unbind();
 
-            let elab_ann = check(context, &param.inner, &RcValue::universe())?; // 1.
+            let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
             let simp_ann = normalize(context, &param.inner)?; // 2.
             let body_context = context.extend(param.name.clone(), Binder::Pi(simp_ann));
-            let elab_body = check(&body_context, &body, &RcValue::universe())?; // 3.
+            let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
-            let elab_pi = ValuePi::bind(Named::new(param.name.clone(), elab_ann), elab_body);
-            Ok((Value::Pi(elab_pi).into(), RcValue::universe()))
+            let elab_param = Named::new(param.name.clone(), elab_ann);
+            let elab_pi = ValuePi::bind(elab_param, elab_body);
+            let level = cmp::max(level_ann, level_body); // 4.
+
+            Ok((Value::Pi(elab_pi).into(), Value::Universe(level).into()))
         },
 
         //  1.  Γ ⊢ e₁ ⇒ Πx:τ₁.τ₂ ⤳ v₁

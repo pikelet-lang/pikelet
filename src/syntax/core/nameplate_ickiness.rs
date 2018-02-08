@@ -118,7 +118,7 @@ impl RcTerm {
                 ty.close_at(level, name);
                 return;
             },
-            Term::Universe => return,
+            Term::Universe(_) => return,
             Term::Var(Var::Free(ref n)) if n == name => {
                 Term::Var(Var::Bound(Named::new(n.clone(), level))).into()
             },
@@ -156,7 +156,7 @@ impl RcTerm {
 
                 Term::App(expr.clone(), ty.clone()).into()
             },
-            Term::Universe => self.clone(),
+            Term::Universe(_) => self.clone(),
             Term::Var(Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
             Term::Var(Var::Bound(_)) | Term::Var(Var::Free(_)) => self.clone(),
             Term::Lam(ref lam) => {
@@ -196,7 +196,7 @@ impl RcTerm {
                 ty.subst(name, x);
                 return;
             },
-            Term::Universe => return,
+            Term::Universe(_) => return,
             Term::Var(Var::Free(ref n)) if n == name => x.clone(),
             Term::Var(Var::Free(_)) | Term::Var(Var::Bound(_)) => return,
             Term::Lam(ref mut lam) => {
@@ -228,7 +228,7 @@ impl RcValue {
 
     pub fn close_at(&mut self, level: Debruijn, name: &Name) {
         *self = match *Rc::make_mut(&mut self.inner) {
-            Value::Universe => return,
+            Value::Universe(_) => return,
             Value::Var(Var::Free(ref n)) if n == name => {
                 Value::Var(Var::Bound(Named::new(n.clone(), level))).into()
             },
@@ -260,7 +260,7 @@ impl RcValue {
 
     pub fn open_at(&self, level: Debruijn, x: &RcValue) -> RcValue {
         match *self.inner {
-            Value::Universe => self.clone(),
+            Value::Universe(_) => self.clone(),
             Value::Var(Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
             Value::Var(Var::Bound(_)) | Value::Var(Var::Free(_)) => self.clone(),
             Value::Lam(ref lam) => {
@@ -295,7 +295,7 @@ impl RcValue {
 
     pub fn subst(&mut self, name: &Name, x: &RcValue) {
         *self = match *Rc::make_mut(&mut self.inner) {
-            Value::Universe => return,
+            Value::Universe(_) => return,
             Value::Var(Var::Free(ref n)) if n == name => x.clone(),
             Value::Var(Var::Free(_)) | Value::Var(Var::Bound(_)) => return,
             Value::Lam(ref mut lam) => {

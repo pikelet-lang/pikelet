@@ -113,7 +113,7 @@ pub enum Term {
     /// ```text
     /// Type
     /// ```
-    Universe,
+    Universe(Option<u32>),
     /// Variables
     ///
     /// ```text

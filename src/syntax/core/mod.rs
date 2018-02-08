@@ -56,6 +56,24 @@ impl fmt::Display for Name {
     }
 }
 
+/// A universe level
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Level(pub u32);
+
+impl Level {
+    pub const ZERO: Level = Level(0);
+
+    pub fn succ(self) -> Level {
+        Level(self.0 + 1)
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// A module definition
 pub struct Module {
     /// The name of the module
@@ -78,7 +96,7 @@ pub struct Definition {
 ///
 /// ```text
 /// e,ρ ::= e:ρ         1. annotated terms
-///       | Type        2. universes
+///       | Typeᵢ       2. universes
 ///       | x           3. variables
 ///       | λx:ρ₁.ρ₂    4. lambda abstractions
 ///       | Πx:ρ₁.ρ₂    5. dependent function types
@@ -89,7 +107,7 @@ pub enum Term {
     /// A term annotated with a type
     Ann(RcTerm, RcTerm), // 1.
     /// Universes
-    Universe, // 2.
+    Universe(Level), // 2.
     /// A variable
     Var(Var<Name>), // 3.
     /// Lambda abstractions
@@ -131,7 +149,7 @@ pub struct TermPi {
 /// Normal forms
 ///
 /// ```text
-/// v,τ ::= Type        1. universes
+/// v,τ ::= Typeᵢ       1. universes
 ///       | x           2. variables
 ///       | λx:τ₁.τ₂    3. lambda abstractions
 ///       | Πx:τ₁.τ₂    4. dependent function types
@@ -140,7 +158,7 @@ pub struct TermPi {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Universes
-    Universe, // 1.
+    Universe(Level), // 1.
     /// Variables
     Var(Var<Name>), // 2.
     /// A lambda abstraction
@@ -212,18 +230,6 @@ pub type Type = Value;
 
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
-
-impl RcTerm {
-    pub fn universe() -> RcTerm {
-        Term::Universe.into()
-    }
-}
-
-impl RcValue {
-    pub fn universe() -> RcValue {
-        Value::Universe.into()
-    }
-}
 
 /// A binder that introduces a variable into the context
 ///
@@ -409,7 +415,8 @@ impl RcTerm {
 
                 Term::Ann(expr, ty).into()
             },
-            concrete::Term::Universe => RcTerm::universe(),
+            concrete::Term::Universe(None) => Term::Universe(Level::ZERO).into(),
+            concrete::Term::Universe(Some(level)) => Term::Universe(Level(level)).into(),
             concrete::Term::Var(ref x) => Term::Var(Var::Free(Name::User(x.clone()))).into(),
             concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
             concrete::Term::Pi(ref names, ref ann, ref body) => pi_from_concrete(names, ann, body),

@@ -2,7 +2,7 @@
 
 extern crate pretty;
 
-use syntax::core::{Binder, Context, Name, RcTerm, RcValue, Term, Value};
+use syntax::core::{Binder, Context, Level, Name, RcTerm, RcValue, Term, Value};
 use syntax::var::Var;
 
 use self::pretty::{BoxDoc, Doc};
@@ -95,8 +95,15 @@ pub fn pretty_ann<E: ToDoc, T: ToDoc>(context: Options, expr: &E, ty: &T) -> Sta
     )
 }
 
-pub fn pretty_universe() -> StaticDoc {
-    Doc::text("Type")
+pub fn pretty_universe(context: Options, level: Level) -> StaticDoc {
+    if level == Level(0) {
+        Doc::text("Type")
+    } else {
+        parens_if(
+            Prec::APP < context.prec,
+            Doc::text(format!("Type {}", level)),
+        )
+    }
 }
 
 pub fn pretty_var(context: Options, var: &Var<Name>) -> StaticDoc {
@@ -195,7 +202,7 @@ impl ToDoc for Term {
     fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
             Term::Ann(ref expr, ref ty) => pretty_ann(context, expr, ty),
-            Term::Universe => pretty_universe(),
+            Term::Universe(level) => pretty_universe(context, level),
             Term::Var(ref var) => pretty_var(context, var),
             Term::Lam(ref lam) => pretty_lam(
                 context,
@@ -223,7 +230,7 @@ impl ToDoc for RcTerm {
 impl ToDoc for Value {
     fn to_doc(&self, context: Options) -> StaticDoc {
         match *self {
-            Value::Universe => pretty_universe(),
+            Value::Universe(level) => pretty_universe(context, level),
             Value::Lam(ref lam) => pretty_lam(
                 context,
                 &lam.unsafe_param.name,

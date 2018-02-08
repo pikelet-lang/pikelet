@@ -25,7 +25,7 @@ $ cargo run --features=repl
 - [ ] Agda-style pi type suger: `(A : Type) (C : A -> Type) (x y : A) -> Eq A x y -> C x -> C y`
 - [ ] automate name binding boilerplate to get it out of `syntax::core`
 - [ ] have prettier, more useful errors than relying on `fmt::Debug`
-- [ ] implement universe levels
+- [x] implement universe levels
 - [ ] implement holes
 - [ ] review `core::{Term, Value}`
   - What about `CheckedTerm`s? `ElaboratedTerm`s?
