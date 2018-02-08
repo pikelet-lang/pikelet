@@ -37,9 +37,10 @@
 //!     - [Github](https://github.com/plclub/metalib)
 
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 /// A generated id
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenId(u32);
 
 impl GenId {
@@ -65,12 +66,18 @@ impl fmt::Display for GenId {
 /// A type annotated with a name for debugging purposes
 ///
 /// The name is ignored for equality comparisons
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Named<N, T>(pub N, pub T);
 
 impl<N, T: PartialEq> PartialEq for Named<N, T> {
     fn eq(&self, other: &Named<N, T>) -> bool {
         &self.1 == &other.1
+    }
+}
+
+impl<N, T: Hash> Hash for Named<N, T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.1.hash(state);
     }
 }
 
@@ -122,7 +129,7 @@ pub enum Var<N> {
 impl<N: fmt::Display> fmt::Display for Var<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Var::Bound(Named(ref name, ref b)) if f.alternate() => write!(f, "{}#{}", name, b),
+            Var::Bound(Named(ref name, ref b)) if f.alternate() => write!(f, "{}@{}", name, b),
             Var::Bound(Named(ref name, _)) | Var::Free(ref name) => write!(f, "{}", name),
         }
     }

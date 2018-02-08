@@ -107,6 +107,7 @@ pub fn pretty_var(context: Options, var: &Var<Name>) -> StaticDoc {
 }
 
 pub fn pretty_name(context: Options, name: &Name) -> StaticDoc {
+    // FIXME: pretty names
     match context.debug_indices {
         true => Doc::text(format!("{:#}", name)),
         false => Doc::as_string(name),
@@ -149,17 +150,18 @@ pub fn pretty_pi<A: ToDoc, B: ToDoc>(
 ) -> StaticDoc {
     parens_if(
         Prec::PI < context.prec,
-        if name == &Name::Abstract {
-            Doc::group(
-                ann.to_doc(context.with_prec(Prec::APP))
-                    .append(Doc::space())
-                    .append(Doc::text("->")),
-            ).append(Doc::group(
-                Doc::space()
-                    .append(body.to_doc(context.with_prec(Prec::NO_WRAP)))
-                    .nest(context.indent_width as usize),
-            ))
-        } else {
+        // FIXME: print arrows
+        // if body.is_closed() {
+        //     Doc::group(
+        //         ann.to_doc(context.with_prec(Prec::APP))
+        //             .append(Doc::space())
+        //             .append(Doc::text("->")),
+        //     ).append(Doc::group(
+        //         Doc::space()
+        //             .append(body.to_doc(context.with_prec(Prec::NO_WRAP)))
+        //             .nest(context.indent_width as usize),
+        //     ))
+        // } else {
             Doc::group(
                 Doc::text("(")
                     .append(Doc::as_string(name))
@@ -175,7 +177,7 @@ pub fn pretty_pi<A: ToDoc, B: ToDoc>(
                     .append(body.to_doc(context.with_prec(Prec::NO_WRAP)))
                     .nest(context.indent_width as usize),
             ))
-        },
+        // },
     )
 }
 

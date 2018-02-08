@@ -144,7 +144,7 @@ mod from_concrete {
                     x.clone(),
                     Some(
                         Term::Pi(TermPi::bind(
-                            Named(Name::Abstract, RcTerm::universe()),
+                            Named(Name::user("_"), RcTerm::universe()),
                             RcTerm::universe(),
                         )).into()
                     ),
@@ -198,7 +198,7 @@ mod from_concrete {
         assert_eq!(
             parse(r"Type -> Type"),
             Term::Pi(TermPi::bind(
-                Named(Name::Abstract, RcTerm::universe()),
+                Named(Name::user("_"), RcTerm::universe()),
                 RcTerm::universe(),
             )).into(),
         );
@@ -214,7 +214,7 @@ mod from_concrete {
                 Named(
                     x.clone(),
                     Term::Pi(TermPi::bind(
-                        Named(Name::Abstract, RcTerm::universe()),
+                        Named(Name::user("_"), RcTerm::universe()),
                         RcTerm::universe(),
                     )).into(),
                 ),
@@ -249,7 +249,7 @@ mod from_concrete {
             Term::Pi(TermPi::bind(
                 Named(x.clone(), RcTerm::universe()),
                 Term::Pi(TermPi::bind(
-                    Named(Name::Abstract, Term::Var(Var::Free(x.clone())).into(),),
+                    Named(Name::user("_"), Term::Var(Var::Free(x.clone())).into(),),
                     Term::Var(Var::Free(x)).into(),
                 )).into(),
             )).into(),
@@ -268,7 +268,7 @@ mod from_concrete {
                     x.clone(),
                     Some(
                         Term::Pi(TermPi::bind(
-                            Named(Name::Abstract, RcTerm::universe()),
+                            Named(Name::user("_"), RcTerm::universe()),
                             RcTerm::universe(),
                         )).into(),
                     ),
@@ -310,7 +310,7 @@ mod from_concrete {
             Term::Pi(TermPi::bind(
                 Named(a.clone(), RcTerm::universe()),
                 Term::Pi(TermPi::bind(
-                    Named(Name::Abstract, Term::Var(Var::Free(a.clone())).into(),),
+                    Named(Name::user("_"), Term::Var(Var::Free(a.clone())).into(),),
                     Term::Var(Var::Free(a)).into(),
                 )).into(),
             )).into(),

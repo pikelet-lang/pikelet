@@ -17,32 +17,12 @@ pub use self::nameplate_ickiness::unbind2;
 mod tests;
 
 /// The name of a free variable
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Name {
     /// Names originating from user input
     User(String),
     /// A generated id with an optional string that may have come from user input
     Gen(Named<Option<String>, GenId>),
-    /// Abstract names, `_`
-    ///
-    /// These are generally used in non-dependent function types, ie:
-    ///
-    /// ```text
-    /// t1 -> t2 -> t3
-    /// ```
-    ///
-    /// will be stored as:
-    ///
-    /// ```text
-    /// (_ : t1) -> (_ : t2) -> t3
-    /// ```
-    ///
-    /// They should never actually appear as variables in terms.
-    ///
-    /// Comparing two abstract names will always return false because we cannot
-    /// be sure what they actually refer to. For example, in the type
-    /// shown above, `_` could refer to either `t1` or `t2`.
-    Abstract,
 }
 
 impl Name {
@@ -59,17 +39,7 @@ impl Name {
     pub fn name(&self) -> Option<&str> {
         match *self {
             Name::User(ref name) | Name::Gen(Named(Some(ref name), _)) => Some(name),
-            Name::Gen(Named(None, _)) | Name::Abstract => None,
-        }
-    }
-}
-
-impl PartialEq for Name {
-    fn eq(&self, other: &Name) -> bool {
-        match (self, other) {
-            (&Name::User(ref lhs), &Name::User(ref rhs)) => lhs == rhs,
-            (&Name::Gen(ref lhs), &Name::Gen(ref rhs)) => lhs == rhs,
-            (&Name::Abstract, &Name::Abstract) | (_, _) => false,
+            Name::Gen(Named(None, _)) => None,
         }
     }
 }
@@ -80,7 +50,6 @@ impl fmt::Display for Name {
             Name::User(ref name) => write!(f, "{}", name),
             Name::Gen(Named(None, ref id)) => write!(f, "{}", id),
             Name::Gen(Named(Some(ref name), ref id)) => write!(f, "{}{}", name, id),
-            Name::Abstract => write!(f, "_"),
         }
     }
 }
@@ -443,7 +412,7 @@ impl RcTerm {
             concrete::Term::Lam(ref params, ref body) => lam_from_concrete(params, body),
             concrete::Term::Pi(ref names, ref ann, ref body) => pi_from_concrete(names, ann, body),
             concrete::Term::Arrow(ref ann, ref body) => Term::Pi(TermPi::bind(
-                Named(Name::Abstract, RcTerm::from_concrete(ann).into()),
+                Named(Name::fresh(None::<&str>), RcTerm::from_concrete(ann).into()),
                 RcTerm::from_concrete(body),
             )).into(),
             concrete::Term::App(ref fn_expr, ref arg) => {

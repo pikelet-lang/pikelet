@@ -66,7 +66,7 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(ValuePi::bind(
-            Named(Name::Abstract, RcValue::universe()),
+            Named(Name::user("_"), RcValue::universe()),
             RcValue::universe(),
         )).into();
 
@@ -92,7 +92,7 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(ValuePi::bind(
-            Named(Name::Abstract, RcValue::universe()),
+            Named(Name::user("_"), RcValue::universe()),
             RcValue::universe(),
         )).into();
 
