@@ -73,7 +73,7 @@ pub enum Declaration {
     /// foo = some-body
     /// foo x (y : some-type) = some-body
     /// ```
-    Definition(String, Vec<(String, Option<Box<Term>>)>, Term),
+    Definition(String, Vec<(Vec<String>, Option<Box<Term>>)>, Term),
 }
 
 /// A list of the definitions imported from a module
@@ -127,8 +127,9 @@ pub enum Term {
     /// \x y => t
     /// \x : t1 => t2
     /// \(x : t1) y (z : t2) => t3
+    /// \(x y : t1) => t3
     /// ```
-    Lam(Vec<(String, Option<Box<Term>>)>, Box<Term>),
+    Lam(Vec<(Vec<String>, Option<Box<Term>>)>, Box<Term>),
     /// Dependent function types
     ///
     /// ```text

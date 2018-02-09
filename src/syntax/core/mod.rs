@@ -309,20 +309,22 @@ impl fmt::Debug for Context {
 // Conversions from the concrete syntax
 
 fn lam_from_concrete(
-    params: &[(String, Option<Box<concrete::Term>>)],
+    params: &[(Vec<String>, Option<Box<concrete::Term>>)],
     body: &concrete::Term,
 ) -> RcTerm {
     let mut term = RcTerm::from_concrete(body);
 
-    for &(ref name, ref ann) in params.iter().rev() {
-        let name = Name::User(name.clone());
-        term = match *ann {
-            None => Term::Lam(TermLam::bind(Named::new(name, None), term)).into(),
-            Some(ref ann) => {
-                let ann = RcTerm::from_concrete(ann);
-                Term::Lam(TermLam::bind(Named::new(name, Some(ann)), term)).into()
-            },
-        };
+    for &(ref names, ref ann) in params.iter().rev() {
+        for name in names.iter().rev() {
+            let name = Name::User(name.clone());
+            term = match *ann {
+                None => Term::Lam(TermLam::bind(Named::new(name, None), term)).into(),
+                Some(ref ann) => {
+                    let ann = RcTerm::from_concrete(ann);
+                    Term::Lam(TermLam::bind(Named::new(name, Some(ann)), term)).into()
+                },
+            };
+        }
     }
 
     term

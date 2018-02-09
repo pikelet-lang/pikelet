@@ -205,7 +205,7 @@ mod from_concrete {
         let y = Name::user("y");
 
         assert_eq!(
-            parse(r"\x : Type => \y : Type => x"),
+            parse(r"\(x y : Type) => x"),
             Term::Lam(TermLam::bind(
                 Named::new(x.clone(), Some(Term::Universe(Level::ZERO).into())),
                 Term::Lam(TermLam::bind(
@@ -346,8 +346,16 @@ mod from_concrete {
         #[test]
         fn lam_args() {
             assert_eq!(
-                parse(r"\y (x : Type) z => x"),
-                parse(r"\y => \x : Type => \z => x"),
+                parse(r"\x (y : Type) z => x"),
+                parse(r"\x => \y : Type => \z => x"),
+            );
+        }
+
+        #[test]
+        fn lam_args_multi() {
+            assert_eq!(
+                parse(r"\(x : Type) (y : Type) z => x"),
+                parse(r"\(x y : Type) z => x"),
             );
         }
 

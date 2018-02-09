@@ -52,15 +52,10 @@ pub Term: Term = {
     },
 };
 
-AtomicLamParam: (String, Option<Box<Term>>) = {
-    <name: Ident> => (name, None),
-    "(" <name: Ident> ":" <ann: PiTerm> ")" => (name, Some(Box::new(ann))),
-};
-
 LamTerm: Term = {
     PiTerm,
     r"\\" <name: Ident> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
-        Term::Lam(vec![(name, Some(Box::new(ann)))], Box::new(body))
+        Term::Lam(vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
     },
     r"\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
         Term::Lam(params, Box::new(body))
@@ -101,6 +96,11 @@ AtomicTerm: Term = {
     "(" <Term> ")" => Term::Parens(Box::new(<>)),
     "Type" => Term::Universe(None),
     Ident => Term::Var(<>),
+};
+
+AtomicLamParam: (Vec<String>, Option<Box<Term>>) = {
+    <name: Ident> => (vec![name], None),
+    "(" <names: Ident+> ":" <ann: PiTerm> ")" => (names, Some(Box::new(ann))),
 };
 
 Ident: String = {

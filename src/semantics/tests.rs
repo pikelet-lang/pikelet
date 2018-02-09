@@ -180,7 +180,7 @@ mod normalize {
         let context = Context::new();
 
         let given_expr = r"
-            (\(a : Type) (b : Type) (x : a) (y : b) => x)
+            (\(a b : Type) (x : a) (y : b) => x)
                 ((a : Type) -> a -> a)
                 Type
                 (\(a : Type) (x : a) => x)
@@ -401,7 +401,7 @@ mod infer {
     fn id_app_arr_pi_ty() {
         let context = Context::new();
 
-        let given_expr = r"(\(a : Type 1) (x : a) => x) (Type -> Type) (\x : Type => x)";
+        let given_expr = r"(\(a : Type 1) (x : a) => x) (Type -> Type) (\x => x)";
         let expected_ty = r"Type -> Type";
 
         assert_eq!(
@@ -414,7 +414,7 @@ mod infer {
     fn apply() {
         let context = Context::new();
 
-        let given_expr = r"\(a : Type) (b : Type) (f : a -> b) (x : a) => f x";
+        let given_expr = r"\(a b : Type) (f : a -> b) (x : a) => f x";
         let expected_ty = r"(a b : Type) -> (a -> b) -> a -> b";
 
         assert_eq!(
@@ -427,7 +427,7 @@ mod infer {
     fn const_() {
         let context = Context::new();
 
-        let given_expr = r"\(a : Type) (b : Type) (x : a) (y : b) => x";
+        let given_expr = r"\(a b : Type) (x : a) (y : b) => x";
         let expected_ty = r"(a b : Type) -> a -> b -> a";
 
         assert_eq!(
@@ -440,7 +440,7 @@ mod infer {
     fn const_flipped() {
         let context = Context::new();
 
-        let given_expr = r"\(a : Type) (b : Type) (x : a) (y : b) => y";
+        let given_expr = r"\(a b : Type) (x : a) (y : b) => y";
         let expected_ty = r"(a b : Type) -> a -> b -> b";
 
         assert_eq!(
@@ -453,13 +453,8 @@ mod infer {
     fn flip() {
         let context = Context::new();
 
-        let given_expr = r"
-            \(a : Type) (b : Type) (c : Type) =>
-                \(f : a -> b -> c) (y : b) (x : a) => f x y
-        ";
-        let expected_ty = r"
-            (a b c : Type) -> (a -> b -> c) -> (b -> a -> c)
-        ";
+        let given_expr = r"\(a b c : Type) (f : a -> b -> c) (y : b) (x : a) => f x y";
+        let expected_ty = r"(a b c : Type) -> (a -> b -> c) -> (b -> a -> c)";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -471,14 +466,8 @@ mod infer {
     fn compose() {
         let context = Context::new();
 
-        let given_expr = r"
-            \(a : Type) (b : Type) (c : Type) =>
-                \(f : b -> c) (g : a -> b) (x : a) => f (g x)
-        ";
-        let expected_ty = r"
-            (a b c : Type) ->
-                (b -> c) -> (a -> b) -> (a -> c)
-        ";
+        let given_expr = r"\(a b c : Type) (f : b -> c) (g : a -> b) (x : a) => f (g x)";
+        let expected_ty = r"(a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c)";
 
         assert_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
@@ -493,7 +482,7 @@ mod infer {
         fn and() {
             let context = Context::new();
 
-            let given_expr = r"\(p : Type) (q : Type) => (c : Type) -> (p -> q -> c) -> c";
+            let given_expr = r"\(p q : Type) => (c : Type) -> (p -> q -> c) -> c";
             let expected_ty = r"Type -> Type -> Type 1";
 
             assert_eq!(
@@ -507,11 +496,11 @@ mod infer {
             let context = Context::new();
 
             let given_expr = r"
-                \p : Type => \q : Type => \x : p => \y : q =>
+                \(p q : Type) (x : p) (y : q) =>
                     \c : Type => \f : (p -> q -> c) => f x y
             ";
             let expected_ty = r"
-                (p : Type) -> (q : Type) -> p -> q ->
+                (p q : Type) -> p -> q ->
                     ((c : Type) -> (p -> q -> c) -> c)
             ";
 
@@ -526,11 +515,11 @@ mod infer {
             let context = Context::new();
 
             let given_expr = r"
-                \(p : Type) (q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
+                \(p q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
                     pq p (\x y => x)
             ";
             let expected_ty = r"
-                (p : Type) -> (q : Type) ->
+                (p q : Type) ->
                     ((c : Type) -> (p -> q -> c) -> c) -> p
             ";
 
@@ -545,7 +534,7 @@ mod infer {
             let context = Context::new();
 
             let given_expr = r"
-                \(p : Type) (q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
+                \(p q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
                     pq q (\x y => y)
             ";
             let expected_ty = r"
