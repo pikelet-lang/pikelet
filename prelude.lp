@@ -14,10 +14,10 @@ flip : (a b c : Type) -> (a -> b -> c) -> (b -> a -> c);
 flip a b c f x y = f y x;
 
 
-void : Type;
+void : Type 1;
 void = (a : Type) -> a;
 
-unit : Type;
+unit : Type 1;
 unit = (a : Type) -> a -> a;
 
 unit-intro : unit;
@@ -27,7 +27,7 @@ unit-elim : (a : Type) -> unit -> a -> a;
 unit-elim a f x = f a x;
 
 
-and : Type -> Type -> Type;
+and : Type -> Type -> Type 1;
 and p q = (c : Type) -> (p -> q -> c) -> c;
 
 and-intro : (p q : Type) -> p -> q -> and p q;
@@ -40,7 +40,7 @@ and-elim-right : (p q : Type) -> and p q -> q;
 and-elim-right p q (pq : and p q) = pq p (flip const);
 
 
-or : Type -> Type -> Type;
+or : Type -> Type -> Type 1;
 or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
 
 or-intro-left : (p q : Type) -> p -> or p q;
