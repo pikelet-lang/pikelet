@@ -2,6 +2,7 @@
 
 extern crate pretty;
 
+use syntax::core::{Definition, Module};
 use syntax::core::{Binder, Context, Level, Name, RcTerm, RcValue, Term, Value};
 use syntax::var::Var;
 
@@ -299,5 +300,46 @@ impl ToDoc for Context {
                 Doc::text(",").append(Doc::space()),
             ))
             .append(Doc::text("]"))
+    }
+}
+
+impl ToDoc for Definition {
+    fn to_doc(&self, context: Options) -> StaticDoc {
+        match self.ann {
+            None => Doc::nil(),
+            Some(ref ann) => Doc::group(
+                Doc::as_string(&self.name)
+                    .append(Doc::space())
+                    .append(Doc::text(":"))
+                    .append(Doc::space())
+                    .append(ann.to_doc(context.with_prec(Prec::NO_WRAP)))
+                    .append(Doc::text(";")),
+            ).append(Doc::newline()),
+        }.append(Doc::group(
+            Doc::as_string(&self.name)
+                .append(Doc::space())
+                .append(Doc::text("="))
+                .append(Doc::space())
+                .append(self.term.to_doc(context.with_prec(Prec::NO_WRAP)))
+                .append(Doc::text(";")),
+        ))
+    }
+}
+
+impl ToDoc for Module {
+    fn to_doc(&self, context: Options) -> StaticDoc {
+        Doc::group(
+            Doc::text("module")
+                .append(Doc::space())
+                .append(Doc::as_string(&self.name))
+                .append(Doc::text(";")),
+        ).append(Doc::newline())
+            .append(Doc::newline())
+            .append(Doc::intersperse(
+                self.definitions
+                    .iter()
+                    .map(|definition| definition.to_doc(context.with_prec(Prec::NO_WRAP))),
+                Doc::newline().append(Doc::newline()),
+            ))
     }
 }

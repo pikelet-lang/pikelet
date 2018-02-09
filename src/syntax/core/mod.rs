@@ -82,6 +82,14 @@ pub struct Module {
     pub definitions: Vec<Definition>,
 }
 
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
+}
+
 /// Top level definitions
 pub struct Definition {
     /// The name of the declaration
@@ -90,6 +98,14 @@ pub struct Definition {
     pub term: RcTerm,
     /// An optional type annotation to aid in type inference
     pub ann: Option<RcTerm>,
+}
+
+impl fmt::Display for Definition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(80), f)
+    }
 }
 
 /// The core term syntax
