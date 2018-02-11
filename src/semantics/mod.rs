@@ -131,12 +131,18 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::Universe(level) => Ok(Value::Universe(level).into()),
 
         Term::Var(ref var) => match *var {
+            // We should always be substituting bound variables with fresh
+            // variables when entering scopes using `unbind`, so if we've
+            // encountered one here this is definitely a bug!
             Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex(index.clone())),
             Var::Free(ref name) => match *context
                 .lookup_binder(name)
                 .ok_or_else(|| InternalError::UndefinedName(name.clone()))?
             {
-                // Can't reduce further - we are in a pi or let binding
+                // Can't reduce further - we are in a pi or let binding!
+                // We'll have to hope that these are substituted away later,
+                // either in EVAL/APP or INFER/APP. For now we just forward the
+                // variable name onward:
                 //
                 //  1.  λx:τ ∈ Γ
                 // ───────────────────── (EVAL/VAR-LAM)
@@ -298,6 +304,12 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
 pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), TypeError> {
     use std::cmp;
 
+    /// Ensures that the given term is a universe, returning the level of that
+    /// universe and its elaborated form.
+    ///
+    /// ```text
+    /// Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
+    /// ```
     fn infer_universe(context: &Context, term: &RcTerm) -> Result<(RcValue, Level), TypeError> {
         let (elab, ty) = infer(context, term)?;
         match *ty.inner {
@@ -327,6 +339,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         )),
 
         Term::Var(ref var) => match *var {
+            // We should always be substituting bound variables with fresh
+            // variables when entering scopes using `unbind`, so if we've
+            // encountered one here this is definitely a bug!
             Var::Bound(ref index) => {
                 Err(InternalError::UnsubstitutedDebruijnIndex(index.clone()).into())
             },
