@@ -4,7 +4,7 @@ use syntax::concrete::{Declaration, Exposing, LamParams, Module, PiParams, Term}
 
 use super::{Options, StaticDoc, ToDoc};
 
-impl<A> ToDoc for Module<A> {
+impl ToDoc for Module {
     fn to_doc(&self, options: Options) -> StaticDoc {
         Doc::group(
             Doc::text("module")
@@ -22,7 +22,7 @@ impl<A> ToDoc for Module<A> {
     }
 }
 
-impl<A> ToDoc for Declaration<A> {
+impl ToDoc for Declaration {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
             Declaration::Import {
@@ -64,7 +64,7 @@ impl<A> ToDoc for Declaration<A> {
     }
 }
 
-impl<A> ToDoc for Exposing<A> {
+impl ToDoc for Exposing {
     fn to_doc(&self, _: Options) -> StaticDoc {
         match *self {
             Exposing::All(_) => Doc::text("(..)"),
@@ -86,7 +86,7 @@ impl<A> ToDoc for Exposing<A> {
     }
 }
 
-impl<A> ToDoc for Term<A> {
+impl ToDoc for Term {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
             Term::Parens(_, ref term) => Doc::text("(")
@@ -129,7 +129,7 @@ impl<A> ToDoc for Term<A> {
     }
 }
 
-fn pretty_lam_params<S>(options: Options, params: &LamParams<S>) -> StaticDoc {
+fn pretty_lam_params(options: Options, params: &LamParams) -> StaticDoc {
     Doc::intersperse(
         params.iter().map(|&(ref names, ref ann)| match *ann {
             None if names.len() == 1 => Doc::as_string(&names[0].1),
@@ -149,7 +149,7 @@ fn pretty_lam_params<S>(options: Options, params: &LamParams<S>) -> StaticDoc {
     )
 }
 
-fn pretty_pi_params<S>(options: Options, &(ref names, ref ann): &PiParams<S>) -> StaticDoc {
+fn pretty_pi_params(options: Options, &(ref names, ref ann): &PiParams) -> StaticDoc {
     Doc::text("(")
         .append(Doc::intersperse(
             names.iter().map(|name| Doc::as_string(&name.1)),

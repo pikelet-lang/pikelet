@@ -4,13 +4,13 @@ use source::pos::Span;
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
-pub enum ReplCommand<S> {
+pub enum ReplCommand {
     /// Evaluate a term
     ///
     /// ```text
     /// <term>
     /// ```
-    Eval(Box<Term<S>>),
+    Eval(Box<Term>),
     /// Print some help on the REPL
     ///
     /// ```text
@@ -34,7 +34,7 @@ pub enum ReplCommand<S> {
     /// :t <term>
     /// :type <term>
     /// ```
-    TypeOf(Box<Term<S>>),
+    TypeOf(Box<Term>),
 }
 
 /// A module definition:
@@ -45,16 +45,16 @@ pub enum ReplCommand<S> {
 /// <declarations>
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct Module<S> {
+pub struct Module {
     /// The name of the module
-    pub name: (S, String),
+    pub name: (Span, String),
     /// The declarations contained in the module
-    pub declarations: Vec<Declaration<S>>,
+    pub declarations: Vec<Declaration>,
 }
 
 /// Top level declarations
 #[derive(Debug, Clone, PartialEq)]
-pub enum Declaration<S> {
+pub enum Declaration {
     /// Imports a module into the current scope
     ///
     /// ```text
@@ -63,17 +63,17 @@ pub enum Declaration<S> {
     /// import foo as my-foo (..);
     /// ```
     Import {
-        span: S,
-        name: (S, String),
-        rename: Option<(S, String)>,
-        exposing: Option<Exposing<S>>,
+        span: Span,
+        name: (Span, String),
+        rename: Option<(Span, String)>,
+        exposing: Option<Exposing>,
     },
     /// Claims that a term abides by the given type
     ///
     /// ```text
     /// foo : some-type
     /// ```
-    Claim { name: (S, String), ann: Term<S> },
+    Claim { name: (Span, String), ann: Term },
     /// Declares the body of a term
     ///
     /// ```text
@@ -81,66 +81,68 @@ pub enum Declaration<S> {
     /// foo x (y : some-type) = some-body
     /// ```
     Definition {
-        name: (S, String),
-        params: LamParams<S>,
-        body: Term<S>,
+        name: (Span, String),
+        params: LamParams,
+        body: Term,
     },
 }
 
-impl Declaration<Span> {
+impl Declaration {
     pub fn span(&self) -> Span {
         match *self {
             Declaration::Import { span, .. } => span,
             Declaration::Claim { ref name, ref ann } => name.0.to(ann.span()),
-            Declaration::Definition { ref name, ref body, .. } => name.0.to(body.span()),
+            Declaration::Definition {
+                ref name, ref body, ..
+            } => name.0.to(body.span()),
         }
     }
 }
 
 /// A list of the definitions imported from a module
 #[derive(Debug, Clone, PartialEq)]
-pub enum Exposing<S> {
+pub enum Exposing {
     /// Import all the definitions in the module into the current scope
     ///
     /// ```text
     /// (..)
     /// ```
-    All(S),
+    All(Span),
     /// Import an exact set of definitions into the current scope
     ///
     /// ```text
     /// (foo, bar as baz)
     /// ```
-    Exact(S, Vec<((S, String), Option<(S, String)>)>),
+    Exact(Span, Vec<((Span, String), Option<(Span, String)>)>),
 }
 
 /// Terms
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term<S> {
+pub enum Term {
     /// A term that is surrounded with parentheses
     ///
     /// ```text
     /// (e)
     /// ```
-    Parens(S, Box<Term<S>>),
+    Parens(Span, Box<Term>),
     /// A term annotated with a type
     ///
     /// ```text
     /// e : t
     /// ```
-    Ann(Box<Term<S>>, Box<Term<S>>),
+    Ann(Box<Term>, Box<Term>),
     /// Type of types
     ///
     /// ```text
     /// Type
     /// ```
-    Universe(S, Option<u32>),
+    Universe(Span, Option<u32>),
     /// Variables
     ///
     /// ```text
     /// x
     /// ```
-    Var(S, String),
+    Var(Span, String),
     /// Lambda abstractions
     ///
     /// ```text
@@ -150,29 +152,29 @@ pub enum Term<S> {
     /// \(x : t1) y (z : t2) => t3
     /// \(x y : t1) => t3
     /// ```
-    Lam(S, LamParams<S>, Box<Term<S>>),
+    Lam(Span, LamParams, Box<Term>),
     /// Dependent function types
     ///
     /// ```text
     /// (x : t1) -> t2
     /// (x y : t1) -> t2
     /// ```
-    Pi(S, PiParams<S>, Box<Term<S>>),
+    Pi(Span, PiParams, Box<Term>),
     /// Non-Dependent function types
     ///
     /// ```text
     /// t1 -> t2
     /// ```
-    Arrow(Box<Term<S>>, Box<Term<S>>),
+    Arrow(Box<Term>, Box<Term>),
     /// Term application
     ///
     /// ```text
     /// e1 e2
     /// ```
-    App(Box<Term<S>>, Box<Term<S>>),
+    App(Box<Term>, Box<Term>),
 }
 
-impl Term<Span> {
+impl Term {
     pub fn span(&self) -> Span {
         match *self {
             Term::Parens(span, _)
@@ -188,7 +190,7 @@ impl Term<Span> {
 }
 
 /// The parameters to a lambda abstraction
-pub type LamParams<S> = Vec<(Vec<(S, String)>, Option<Box<Term<S>>>)>;
+pub type LamParams = Vec<(Vec<(Span, String)>, Option<Box<Term>>)>;
 
 /// The parameters to a dependent function type
-pub type PiParams<S> = (Vec<(S, String)>, Box<Term<S>>);
+pub type PiParams = (Vec<(Span, String)>, Box<Term>);

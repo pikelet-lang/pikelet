@@ -42,7 +42,7 @@ extern {
     }
 }
 
-pub ReplCommand: ReplCommand<Span> = {
+pub ReplCommand: ReplCommand = {
     => ReplCommand::NoOp,
     <term: Term> => ReplCommand::Eval(Box::new(term)),
     <command: "REPL command"> =>? match command {
@@ -60,13 +60,13 @@ pub ReplCommand: ReplCommand<Span> = {
     },
 };
 
-pub Module: Module<Span> = {
+pub Module: Module = {
     "module" <name: SpannedIdent> ";" <declarations: Declaration*> => {
         Module { name, declarations }
     },
 };
 
-pub Declaration: Declaration<Span> = {
+pub Declaration: Declaration = {
     <lo: @L> "import" <name: SpannedIdent> <rename: ("as" <SpannedIdent>)?>
         <exposing: Exposing?> <hi: @R> ";" =>
     {
@@ -80,7 +80,7 @@ pub Declaration: Declaration<Span> = {
     },
 };
 
-Exposing : Exposing<Span> = {
+Exposing : Exposing = {
     <lo: @L> "(" ".." ")" <hi: @R> => Exposing::All(Span::new(lo, hi)),
     <lo: @L> "(" <names: (<ExposedIdent> ",")*> <last: ExposedIdent> <hi: @R> => {
         let mut names = names;
@@ -93,14 +93,14 @@ ExposedIdent : ((Span, String), Option<(Span, String)>) = {
     <SpannedIdent> <("as" <SpannedIdent>)?>
 };
 
-pub Term: Term<Span> = {
+pub Term: Term = {
     LamTerm,
     <x: LamTerm> ":" <t: Term> => {
         Term::Ann(Box::new(x), Box::new(t))
     },
 };
 
-LamTerm: Term<Span> = {
+LamTerm: Term = {
     PiTerm,
     <lo: @L> "\\" <name: SpannedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> <hi: @R> => {
         Term::Lam(Span::new(lo, hi), vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
@@ -110,7 +110,7 @@ LamTerm: Term<Span> = {
     },
 };
 
-PiTerm: Term<Span> = {
+PiTerm: Term = {
     AppTerm,
     // Naively we would want to write the following rules:
     //
@@ -133,20 +133,20 @@ PiTerm: Term<Span> = {
     },
 };
 
-AppTerm: Term<Span> = {
+AppTerm: Term = {
     AtomicTerm,
     <f: AppTerm> <arg: AtomicTerm> => {
         Term::App(Box::new(f), Box::new(arg))
     },
 };
 
-AtomicTerm: Term<Span> = {
+AtomicTerm: Term = {
     <lo: @L> "(" <term: Term> ")" <hi: @R> => Term::Parens(Span::new(lo, hi), Box::new(term)),
     <lo: @L> "Type" <hi: @R> => Term::Universe(Span::new(lo, hi), None),
     <lo: @L> <ident: Ident> <hi: @R> => Term::Var(Span::new(lo, hi), ident),
 };
 
-AtomicLamParam: (Vec<(Span, String)>, Option<Box<Term<Span>>>) = {
+AtomicLamParam: (Vec<(Span, String)>, Option<Box<Term>>) = {
     <name: SpannedIdent> => (vec![name], None),
     "(" <names: SpannedIdent+> ":" <ann: PiTerm> ")" => (names, Some(Box::new(ann))),
 };

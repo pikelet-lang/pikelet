@@ -1,12 +1,14 @@
+use source::pos::Span;
+
 use syntax::concrete;
 use syntax::core;
 use syntax::var::{Debruijn, Named, Var};
 
 use super::FromConcrete;
 
-fn lam_from_concrete<S>(
-    params: &[(Vec<(S, String)>, Option<Box<concrete::Term<S>>>)],
-    body: &concrete::Term<S>,
+fn lam_from_concrete(
+    params: &[(Vec<(Span, String)>, Option<Box<concrete::Term>>)],
+    body: &concrete::Term,
 ) -> core::RcTerm {
     let mut term = core::RcTerm::from_concrete(body);
 
@@ -26,10 +28,10 @@ fn lam_from_concrete<S>(
     term
 }
 
-fn pi_from_concrete<S>(
-    param_names: &[(S, String)],
-    ann: &concrete::Term<S>,
-    body: &concrete::Term<S>,
+fn pi_from_concrete(
+    param_names: &[(Span, String)],
+    ann: &concrete::Term,
+    body: &concrete::Term,
 ) -> core::RcTerm {
     let ann = core::RcTerm::from_concrete(ann);
     let mut term = core::RcTerm::from_concrete(body);
@@ -45,9 +47,9 @@ fn pi_from_concrete<S>(
     term
 }
 
-impl<'a, S> FromConcrete<&'a concrete::Module<S>> for core::Module {
+impl<'a> FromConcrete<&'a concrete::Module> for core::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
-    fn from_concrete(module: &'a concrete::Module<S>) -> core::Module {
+    fn from_concrete(module: &'a concrete::Module) -> core::Module {
         use std::collections::BTreeMap;
         use std::collections::btree_map::Entry;
 
@@ -114,9 +116,9 @@ impl<'a, S> FromConcrete<&'a concrete::Module<S>> for core::Module {
     }
 }
 
-impl<'a, S> FromConcrete<&'a concrete::Term<S>> for core::RcTerm {
+impl<'a> FromConcrete<&'a concrete::Term> for core::RcTerm {
     /// Convert a term in the concrete syntax into a core term
-    fn from_concrete(term: &'a concrete::Term<S>) -> core::RcTerm {
+    fn from_concrete(term: &'a concrete::Term) -> core::RcTerm {
         match *term {
             concrete::Term::Parens(_, ref term) => core::RcTerm::from_concrete(term),
             concrete::Term::Ann(ref expr, ref ty) => {
