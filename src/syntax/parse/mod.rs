@@ -1,14 +1,14 @@
 //! Parser utilities
 
 use lalrpop_util::ParseError as LalrpopError;
-use source::pos::Span;
+use source::pos::{BytePos, Span};
 use std::fmt;
 use std::str::FromStr;
 
 use syntax::concrete;
-use syntax::parse::lexer::{Lexer, Token};
+use syntax::parse::lexer::Lexer;
 
-pub use syntax::parse::lexer::Error as LexerError;
+pub use syntax::parse::lexer::{LexerError, Token};
 
 mod lexer;
 
@@ -16,26 +16,88 @@ mod grammar {
     include!(concat!(env!("OUT_DIR"), "/syntax/parse/grammar.rs"));
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Fail, Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
-    Lexer(LexerError),
-    IdentifierExpectedInPiType,
-    UnknownReplCommand(String),
-    Other(String),
+    #[fail(display = "{}", _0)]
+    Lexer(#[cause] LexerError),
+    #[fail(display = "An identifier was expected when parsing a pi type at byte range {}.", span)]
+    IdentifierExpectedInPiType { span: Span },
+    #[fail(display = "Unknown repl command `{}` found at byte range {}.", command, span)]
+    UnknownReplCommand { span: Span, command: String },
+    #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
+    UnexpectedEof { expected: ExpectedTokens },
+    #[fail(display = "Unexpected token {}, found at byte range {}, expected one of: {}.", token,
+           span, expected)]
+    UnexpectedToken {
+        span: Span,
+        token: Token<String>,
+        expected: ExpectedTokens,
+    },
+    #[fail(display = "Extra token {} found at byte range {}", token, span)]
+    ExtraToken { span: Span, token: Token<String> },
 }
 
-impl From<lexer::Error> for ParseError {
-    fn from(src: lexer::Error) -> ParseError {
+impl ParseError {
+    pub fn span(&self) -> Span {
+        match *self {
+            ParseError::Lexer(ref err) => err.span(),
+            ParseError::IdentifierExpectedInPiType { span }
+            | ParseError::UnknownReplCommand { span, .. }
+            | ParseError::UnexpectedToken { span, .. }
+            | ParseError::ExtraToken { span, .. } => span,
+            ParseError::UnexpectedEof { .. } => Span::start(),
+        }
+    }
+}
+
+impl From<LexerError> for ParseError {
+    fn from(src: LexerError) -> ParseError {
         ParseError::Lexer(src)
     }
 }
 
-impl<L: fmt::Debug, T: fmt::Debug> From<LalrpopError<L, T, ParseError>> for ParseError {
-    fn from(src: LalrpopError<L, T, ParseError>) -> ParseError {
+impl<T: Into<Token<String>>> From<LalrpopError<BytePos, T, ParseError>> for ParseError {
+    fn from(src: LalrpopError<BytePos, T, ParseError>) -> ParseError {
         match src {
             LalrpopError::User { error } => error,
-            _ => ParseError::Other(format!("{:?}", src)),
+            LalrpopError::InvalidToken { .. } => unreachable!(),
+            LalrpopError::UnrecognizedToken {
+                token: None,
+                expected,
+            } => ParseError::UnexpectedEof {
+                expected: ExpectedTokens(expected),
+            },
+            LalrpopError::UnrecognizedToken {
+                token: Some((lo, token, hi)),
+                expected,
+            } => ParseError::UnexpectedToken {
+                span: Span::new(lo, hi),
+                token: token.into(),
+                expected: ExpectedTokens(expected),
+            },
+            LalrpopError::ExtraToken {
+                token: (lo, token, hi),
+            } => ParseError::ExtraToken {
+                span: Span::new(lo, hi),
+                token: token.into(),
+            },
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpectedTokens(pub Vec<String>);
+
+impl fmt::Display for ExpectedTokens {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, token) in self.0.iter().enumerate() {
+            match i {
+                0 => write!(f, "{}", token)?,
+                i if i < self.0.len() - 1 => write!(f, ", {}", token)?,
+                _ => write!(f, ", or {}", token)?,
+            }
+        }
+        Ok(())
     }
 }
 
@@ -95,9 +157,9 @@ fn reparse_pi_type_hack<L, T>(
                 param_names(*fn_expr, names)?;
                 param_names(*arg, names)?;
             },
-            _ => {
+            term => {
                 return Err(LalrpopError::User {
-                    error: ParseError::IdentifierExpectedInPiType, // TODO: better error!
+                    error: ParseError::IdentifierExpectedInPiType { span: term.span() }, // TODO: better error!
                 });
             },
         }
@@ -133,6 +195,11 @@ mod tests {
     fn pi_bad_ident() {
         let parse_result = concrete::Term::from_str("((x : Type) : Type) -> Type");
 
-        assert_eq!(parse_result, Err(ParseError::IdentifierExpectedInPiType),);
+        assert_eq!(
+            parse_result,
+            Err(ParseError::IdentifierExpectedInPiType {
+                span: Span::new(BytePos(1), BytePos(11)),
+            })
+        );
     }
 }

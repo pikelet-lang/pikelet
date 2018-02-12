@@ -22,7 +22,7 @@ fn main() {
 
                 match run_repl(&line) {
                     Ok(()) => {},
-                    Err(ReplError::Parse(err)) => println!("parse error: {}", err.0),
+                    Err(ReplError::Parse(err)) => println!("parse error: {}", err),
                     Err(ReplError::Type(err)) => println!("type error: {:?}", err),
                     Err(ReplError::Quit) => {
                         println!("Bye bye");

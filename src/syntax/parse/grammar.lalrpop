@@ -9,9 +9,9 @@ extern {
     type Location = BytePos;
     type Error = ParseError;
 
-    enum Token<'src> {
+    enum Token<&'src str> {
         // Data
-        "identitfier" => Token::Ident(<&'src str>),
+        "identifier" => Token::Ident(<&'src str>),
         "doc comment" => Token::DocComment(<&'src str>),
         "REPL command" => Token::ReplCommand(<&'src str>),
         "decimal literal" => Token::DecLiteral(<u64>),
@@ -45,18 +45,22 @@ extern {
 pub ReplCommand: ReplCommand = {
     => ReplCommand::NoOp,
     <term: Term> => ReplCommand::Eval(Box::new(term)),
-    <command: "REPL command"> =>? match command {
+    <lo: @L> <command: "REPL command"> <hi: @R> =>? match command {
         ":?" | ":h" | ":help" => Ok(ReplCommand::Help),
         ":q" | ":quit" => Ok(ReplCommand::Quit),
-        _ => Err(LalrpopError::User {
-            error: ParseError::UnknownReplCommand(String::from(command)),
-        }),
+        command => {
+            let span = Span::new(lo, hi);
+            let command = String::from(command);
+            Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
+        },
     },
-    <command: "REPL command"> <term: Term> =>? match command {
+    <lo: @L> <command: "REPL command"> <hi: @R> <term: Term> =>? match command {
         ":t" | ":type" => Ok(ReplCommand::TypeOf(Box::new(term))),
-        _ => Err(LalrpopError::User {
-            error: ParseError::UnknownReplCommand(String::from(command)),
-        }),
+        command => {
+            let span = Span::new(lo, hi);
+            let command = String::from(command);
+            Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
+        },
     },
 };
 
@@ -156,5 +160,5 @@ SpannedIdent: (Span, String) = {
 };
 
 Ident: String = {
-    "identitfier" => String::from(<>),
+    "identifier" => String::from(<>),
 };

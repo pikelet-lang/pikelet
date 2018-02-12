@@ -20,6 +20,7 @@ name = "repl"
 required-features = ["repl"]
 
 [dependencies]
+failure = "0.1.1"
 lalrpop-util = "0.14.0"
 lazy_static = "1.0"
 pretty = "0.3.2"

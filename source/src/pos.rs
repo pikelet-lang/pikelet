@@ -168,6 +168,12 @@ impl fmt::Debug for BytePos {
     }
 }
 
+impl fmt::Display for BytePos {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 /// A unicode character offset in a source file
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CharPos(pub usize);
@@ -206,6 +212,12 @@ impl fmt::Debug for CharPos {
         write!(f, "CharPos(")?;
         self.0.fmt(f)?;
         write!(f, ")")
+    }
+}
+
+impl fmt::Display for CharPos {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -248,6 +260,35 @@ impl Span {
         Span {
             lo: BytePos(0),
             hi: BytePos(0),
+        }
+    }
+
+    /// Create a span over the given character
+    ///
+    ///
+    /// ```rust
+    /// use source::pos::{BytePos, Span};
+    ///
+    /// let span = Span::from_char_utf8(BytePos(3), 'A');
+    /// assert_eq!(span.lo(), BytePos(3));
+    /// assert_eq!(span.hi(), BytePos(4));
+    ///
+    /// let span = Span::from_char_utf8(BytePos(3), 'ß');
+    /// assert_eq!(span.lo(), BytePos(3));
+    /// assert_eq!(span.hi(), BytePos(5));
+    ///
+    /// let span = Span::from_char_utf8(BytePos(3), 'ℝ');
+    /// assert_eq!(span.lo(), BytePos(3));
+    /// assert_eq!(span.hi(), BytePos(6));
+    ///
+    /// let span = Span::from_char_utf8(BytePos(3), '💣');
+    /// assert_eq!(span.lo(), BytePos(3));
+    /// assert_eq!(span.hi(), BytePos(7));
+    /// ```
+    pub fn from_char_utf8(lo: BytePos, ch: char) -> Span {
+        Span {
+            lo,
+            hi: lo.map(|x| x + ch.len_utf8()),
         }
     }
 
@@ -375,5 +416,14 @@ impl Span {
     /// ```
     pub fn until(self, end: Span) -> Span {
         Span::new(self.lo(), end.lo())
+    }
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.lo.fmt(f)?;
+        write!(f, "..")?;
+        self.hi.fmt(f)?;
+        Ok(())
     }
 }
