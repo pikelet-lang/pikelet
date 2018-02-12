@@ -52,6 +52,7 @@ fn run_repl(line: &str) -> Result<(), ReplError> {
     use lambdapi::syntax::concrete::ReplCommand;
     use lambdapi::syntax::core::{Context, RcTerm};
     use lambdapi::syntax::pretty::{self, ToDoc};
+    use lambdapi::syntax::translation::FromConcrete;
 
     match line.parse()? {
         ReplCommand::Help => {

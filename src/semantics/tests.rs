@@ -1,3 +1,5 @@
+use syntax::translation::FromConcrete;
+
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
