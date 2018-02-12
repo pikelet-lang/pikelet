@@ -68,7 +68,7 @@ pub type StaticDoc = Doc<'static, BoxDoc<'static>>;
 
 /// Convert a datatype to a pretty-printable document
 pub trait ToDoc {
-    fn to_doc(&self, context: Options) -> StaticDoc;
+    fn to_doc(&self, options: Options) -> StaticDoc;
 }
 
 fn parens_if(should_wrap: bool, inner: StaticDoc) -> StaticDoc {
