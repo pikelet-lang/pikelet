@@ -6,6 +6,7 @@ extern crate pretty;
 #[macro_use]
 extern crate pretty_assertions;
 extern crate rpds;
+extern crate source;
 
 pub mod semantics;
 pub mod syntax;
