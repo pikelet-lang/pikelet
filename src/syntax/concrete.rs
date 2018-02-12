@@ -2,13 +2,13 @@
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
-pub enum ReplCommand {
+pub enum ReplCommand<S> {
     /// Evaluate a term
     ///
     /// ```text
     /// <term>
     /// ```
-    Eval(Box<Term>),
+    Eval(Box<Term<S>>),
     /// Print some help on the REPL
     ///
     /// ```text
@@ -32,7 +32,7 @@ pub enum ReplCommand {
     /// :t <term>
     /// :type <term>
     /// ```
-    TypeOf(Box<Term>),
+    TypeOf(Box<Term<S>>),
 }
 
 /// A module definition:
@@ -43,16 +43,16 @@ pub enum ReplCommand {
 /// <declarations>
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub struct Module {
+pub struct Module<S> {
     /// The name of the module
-    pub name: String,
+    pub name: (S, String),
     /// The declarations contained in the module
-    pub declarations: Vec<Declaration>,
+    pub declarations: Vec<Declaration<S>>,
 }
 
 /// Top level declarations
 #[derive(Debug, Clone, PartialEq)]
-pub enum Declaration {
+pub enum Declaration<S> {
     /// Imports a module into the current scope
     ///
     /// ```text
@@ -60,66 +60,80 @@ pub enum Declaration {
     /// import foo as my-foo;
     /// import foo as my-foo (..);
     /// ```
-    Import(String, Option<String>, Option<Exposing>),
+    Import {
+        span: S,
+        name: (S, String),
+        rename: Option<(S, String)>,
+        exposing: Option<Exposing<S>>,
+    },
     /// Claims that a term abides by the given type
     ///
     /// ```text
     /// foo : some-type
     /// ```
-    Claim(String, Term),
+    Claim {
+        span: S,
+        name: (S, String),
+        ann: Term<S>,
+    },
     /// Declares the body of a term
     ///
     /// ```text
     /// foo = some-body
     /// foo x (y : some-type) = some-body
     /// ```
-    Definition(String, Vec<(Vec<String>, Option<Box<Term>>)>, Term),
+    Definition {
+        span: S,
+        name: (S, String),
+        params: LamParams<S>,
+        body: Term<S>,
+    },
 }
 
 /// A list of the definitions imported from a module
 #[derive(Debug, Clone, PartialEq)]
-pub enum Exposing {
+pub enum Exposing<S> {
     /// Import all the definitions in the module into the current scope
     ///
     /// ```text
     /// (..)
     /// ```
-    All,
+    All(S),
     /// Import an exact set of definitions into the current scope
     ///
     /// ```text
     /// (foo, bar as baz)
     /// ```
-    Exact(Vec<(String, Option<String>)>),
+    Exact(S, Vec<((S, String), Option<(S, String)>)>),
 }
 
 /// Terms
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term {
+pub enum Term<S> {
     /// A term that is surrounded with parentheses
     ///
     /// ```text
     /// (e)
     /// ```
-    Parens(Box<Term>),
+    Parens(S, Box<Term<S>>),
     /// A term annotated with a type
     ///
     /// ```text
     /// e : t
     /// ```
-    Ann(Box<Term>, Box<Term>),
+    Ann(S, Box<Term<S>>, Box<Term<S>>),
     /// Type of types
     ///
     /// ```text
     /// Type
     /// ```
-    Universe(Option<u32>),
+    Universe(S, Option<u32>),
     /// Variables
     ///
     /// ```text
     /// x
     /// ```
-    Var(String),
+    Var(S, String),
     /// Lambda abstractions
     ///
     /// ```text
@@ -129,24 +143,30 @@ pub enum Term {
     /// \(x : t1) y (z : t2) => t3
     /// \(x y : t1) => t3
     /// ```
-    Lam(Vec<(Vec<String>, Option<Box<Term>>)>, Box<Term>),
+    Lam(S, LamParams<S>, Box<Term<S>>),
     /// Dependent function types
     ///
     /// ```text
     /// (x : t1) -> t2
     /// (x y : t1) -> t2
     /// ```
-    Pi(Vec<String>, Box<Term>, Box<Term>),
+    Pi(S, PiParams<S>, Box<Term<S>>),
     /// Non-Dependent function types
     ///
     /// ```text
     /// t1 -> t2
     /// ```
-    Arrow(Box<Term>, Box<Term>),
+    Arrow(S, Box<Term<S>>, Box<Term<S>>),
     /// Term application
     ///
     /// ```text
     /// e1 e2
     /// ```
-    App(Box<Term>, Box<Term>),
+    App(S, Box<Term<S>>, Box<Term<S>>),
 }
+
+/// The parameters to a lambda abstraction
+pub type LamParams<S> = Vec<(Vec<(S, String)>, Option<Box<Term<S>>>)>;
+
+/// The parameters to a dependent function type
+pub type PiParams<S> = (Vec<(S, String)>, Box<Term<S>>);

@@ -1,12 +1,12 @@
 //! Parser utilities
 
+use lalrpop_util::ParseError as LalrpopError;
+use source::pos::Span;
 use std::fmt;
 use std::str::FromStr;
 
 use syntax::concrete;
 use syntax::parse::lexer::{Lexer, Token};
-
-use lalrpop_util::ParseError as LalrpopError;
 
 pub use syntax::parse::lexer::Error as LexerError;
 
@@ -39,37 +39,37 @@ impl<L: fmt::Debug, T: fmt::Debug> From<LalrpopError<L, T, ParseError>> for Pars
     }
 }
 
-impl FromStr for concrete::ReplCommand {
+impl FromStr for concrete::ReplCommand<Span> {
     type Err = ParseError;
 
-    fn from_str(src: &str) -> Result<concrete::ReplCommand, ParseError> {
+    fn from_str(src: &str) -> Result<concrete::ReplCommand<Span>, ParseError> {
         grammar::parse_ReplCommand(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
             .map_err(ParseError::from)
     }
 }
 
-impl FromStr for concrete::Module {
+impl FromStr for concrete::Module<Span> {
     type Err = ParseError;
 
-    fn from_str(src: &str) -> Result<concrete::Module, ParseError> {
+    fn from_str(src: &str) -> Result<concrete::Module<Span>, ParseError> {
         grammar::parse_Module(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
             .map_err(ParseError::from)
     }
 }
 
-impl FromStr for concrete::Declaration {
+impl FromStr for concrete::Declaration<Span> {
     type Err = ParseError;
 
-    fn from_str(src: &str) -> Result<concrete::Declaration, ParseError> {
+    fn from_str(src: &str) -> Result<concrete::Declaration<Span>, ParseError> {
         grammar::parse_Declaration(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
             .map_err(ParseError::from)
     }
 }
 
-impl FromStr for concrete::Term {
+impl FromStr for concrete::Term<Span> {
     type Err = ParseError;
 
-    fn from_str(src: &str) -> Result<concrete::Term, ParseError> {
+    fn from_str(src: &str) -> Result<concrete::Term<Span>, ParseError> {
         grammar::parse_Term(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
             .map_err(ParseError::from)
     }
@@ -79,18 +79,19 @@ impl FromStr for concrete::Term {
 /// a body. See the comments on the `PiTerm` rule in the `grammer.lalrpop` for
 /// more information.
 fn reparse_pi_type_hack<L, T>(
-    binder: concrete::Term,
-    body: concrete::Term,
-) -> Result<concrete::Term, LalrpopError<L, T, ParseError>> {
+    span: Span,
+    binder: concrete::Term<Span>,
+    body: concrete::Term<Span>,
+) -> Result<concrete::Term<Span>, LalrpopError<L, T, ParseError>> {
     use syntax::concrete::Term;
 
     fn param_names<L, T>(
-        term: Term,
-        names: &mut Vec<String>,
+        term: Term<Span>,
+        names: &mut Vec<(Span, String)>,
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match term {
-            Term::Var(name) => names.push(name),
-            Term::App(fn_expr, arg) => {
+            Term::Var(span, name) => names.push((span, name)),
+            Term::App(_, fn_expr, arg) => {
                 param_names(*fn_expr, names)?;
                 param_names(*arg, names)?;
             },
@@ -104,18 +105,21 @@ fn reparse_pi_type_hack<L, T>(
     }
 
     match binder {
-        Term::Parens(term) => {
+        Term::Parens(paren_span, term) => {
             let term = *term; // HACK: see https://github.com/rust-lang/rust/issues/16223
             match term {
-                Term::Ann(params, ann) => {
+                Term::Ann(_, params, ann) => {
                     let mut names = Vec::new();
                     param_names(*params, &mut names)?;
-                    Ok(Term::Pi(names, ann, body.into()))
+                    Ok(Term::Pi(span, (names, ann), body.into()))
                 },
-                ann => Ok(Term::Arrow(Term::Parens(ann.into()).into(), body.into())),
+                ann => {
+                    let parens = Term::Parens(paren_span, ann.into()).into();
+                    Ok(Term::Arrow(span, parens, body.into()))
+                },
             }
         },
-        ann => Ok(Term::Arrow(ann.into(), body.into())),
+        ann => Ok(Term::Arrow(span, ann.into(), body.into())),
     }
 }
 
