@@ -67,14 +67,16 @@ pub Module: Module<Span> = {
 };
 
 pub Declaration: Declaration<Span> = {
-    <lo: @L> "import" <name: SpannedIdent> <rename: ("as" <SpannedIdent>)?> <exposing: Exposing?> <hi: @R> ";" => {
+    <lo: @L> "import" <name: SpannedIdent> <rename: ("as" <SpannedIdent>)?>
+        <exposing: Exposing?> <hi: @R> ";" =>
+    {
         Declaration::Import { span: Span::new(lo, hi), name, rename, exposing }
     },
-    <lo: @L> <name: SpannedIdent> ":" <ann: Term> <hi: @R> ";" => {
-        Declaration::Claim { span: Span::new(lo, hi), name, ann }
+    <name: SpannedIdent> ":" <ann: Term> ";" => {
+        Declaration::Claim { name, ann }
     },
-    <lo: @L> <name: SpannedIdent> <params: AtomicLamParam*> "=" <body: Term> <hi: @R> ";" => {
-        Declaration::Definition { span: Span::new(lo, hi), name, params, body }
+    <name: SpannedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
+        Declaration::Definition { name, params, body }
     },
 };
 
@@ -93,8 +95,8 @@ ExposedIdent : ((Span, String), Option<(Span, String)>) = {
 
 pub Term: Term<Span> = {
     LamTerm,
-    <lo: @L> <x: LamTerm> ":" <t: Term> <hi: @R> => {
-        Term::Ann(Span::new(lo, hi), Box::new(x), Box::new(t))
+    <x: LamTerm> ":" <t: Term> => {
+        Term::Ann(Box::new(x), Box::new(t))
     },
 };
 
@@ -133,8 +135,8 @@ PiTerm: Term<Span> = {
 
 AppTerm: Term<Span> = {
     AtomicTerm,
-    <lo: @L> <f: AppTerm> <arg: AtomicTerm> <hi: @R> => {
-        Term::App(Span::new(lo, hi), Box::new(f), Box::new(arg))
+    <f: AppTerm> <arg: AtomicTerm> => {
+        Term::App(Box::new(f), Box::new(arg))
     },
 };
 

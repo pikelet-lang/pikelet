@@ -119,7 +119,7 @@ impl<'a, S> FromConcrete<&'a concrete::Term<S>> for core::RcTerm {
     fn from_concrete(term: &'a concrete::Term<S>) -> core::RcTerm {
         match *term {
             concrete::Term::Parens(_, ref term) => core::RcTerm::from_concrete(term),
-            concrete::Term::Ann(_, ref expr, ref ty) => {
+            concrete::Term::Ann(ref expr, ref ty) => {
                 let expr = core::RcTerm::from_concrete(expr).into();
                 let ty = core::RcTerm::from_concrete(ty).into();
 
@@ -138,14 +138,14 @@ impl<'a, S> FromConcrete<&'a concrete::Term<S>> for core::RcTerm {
             concrete::Term::Pi(_, (ref names, ref ann), ref body) => {
                 pi_from_concrete(names, ann, body)
             },
-            concrete::Term::Arrow(_, ref ann, ref body) => {
+            concrete::Term::Arrow(ref ann, ref body) => {
                 let name = core::Name::fresh(None::<&str>);
                 let ann = core::RcTerm::from_concrete(ann);
                 let body = core::RcTerm::from_concrete(body);
 
                 core::Term::Pi(core::TermPi::bind(Named::new(name, ann), body)).into()
             },
-            concrete::Term::App(_, ref fn_expr, ref arg) => {
+            concrete::Term::App(ref fn_expr, ref arg) => {
                 let fn_expr = core::RcTerm::from_concrete(fn_expr);
                 let arg = core::RcTerm::from_concrete(arg);
 

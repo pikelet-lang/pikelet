@@ -92,7 +92,7 @@ impl<A> ToDoc for Term<A> {
             Term::Parens(_, ref term) => Doc::text("(")
                 .append(term.to_doc(options))
                 .append(Doc::text(")")),
-            Term::Ann(_, ref term, ref ty) => term.to_doc(options)
+            Term::Ann(ref term, ref ty) => term.to_doc(options)
                 .append(Doc::space())
                 .append(Doc::text(":"))
                 .append(Doc::space())
@@ -116,12 +116,12 @@ impl<A> ToDoc for Term<A> {
                 .append(Doc::text("->"))
                 .append(Doc::space())
                 .append(body.to_doc(options)),
-            Term::Arrow(_, ref ann, ref body) => ann.to_doc(options)
+            Term::Arrow(ref ann, ref body) => ann.to_doc(options)
                 .append(Doc::space())
                 .append(Doc::text("->"))
                 .append(Doc::space())
                 .append(body.to_doc(options)),
-            Term::App(_, ref fn_term, ref arg) => fn_term
+            Term::App(ref fn_term, ref arg) => fn_term
                 .to_doc(options)
                 .append(Doc::space())
                 .append(arg.to_doc(options)),

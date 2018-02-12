@@ -91,7 +91,7 @@ fn reparse_pi_type_hack<L, T>(
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match term {
             Term::Var(span, name) => names.push((span, name)),
-            Term::App(_, fn_expr, arg) => {
+            Term::App(fn_expr, arg) => {
                 param_names(*fn_expr, names)?;
                 param_names(*arg, names)?;
             },
@@ -108,18 +108,18 @@ fn reparse_pi_type_hack<L, T>(
         Term::Parens(paren_span, term) => {
             let term = *term; // HACK: see https://github.com/rust-lang/rust/issues/16223
             match term {
-                Term::Ann(_, params, ann) => {
+                Term::Ann(params, ann) => {
                     let mut names = Vec::new();
                     param_names(*params, &mut names)?;
                     Ok(Term::Pi(span, (names, ann), body.into()))
                 },
                 ann => {
                     let parens = Term::Parens(paren_span, ann.into()).into();
-                    Ok(Term::Arrow(span, parens, body.into()))
+                    Ok(Term::Arrow(parens, body.into()))
                 },
             }
         },
-        ann => Ok(Term::Arrow(span, ann.into(), body.into())),
+        ann => Ok(Term::Arrow(ann.into(), body.into())),
     }
 }
 

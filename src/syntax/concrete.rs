@@ -1,5 +1,7 @@
 //! The concrete syntax of the language
 
+use source::pos::Span;
+
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
 pub enum ReplCommand<S> {
@@ -71,11 +73,7 @@ pub enum Declaration<S> {
     /// ```text
     /// foo : some-type
     /// ```
-    Claim {
-        span: S,
-        name: (S, String),
-        ann: Term<S>,
-    },
+    Claim { name: (S, String), ann: Term<S> },
     /// Declares the body of a term
     ///
     /// ```text
@@ -83,11 +81,20 @@ pub enum Declaration<S> {
     /// foo x (y : some-type) = some-body
     /// ```
     Definition {
-        span: S,
         name: (S, String),
         params: LamParams<S>,
         body: Term<S>,
     },
+}
+
+impl Declaration<Span> {
+    pub fn span(&self) -> Span {
+        match *self {
+            Declaration::Import { span, .. } => span,
+            Declaration::Claim { ref name, ref ann } => name.0.to(ann.span()),
+            Declaration::Definition { ref name, ref body, .. } => name.0.to(body.span()),
+        }
+    }
 }
 
 /// A list of the definitions imported from a module
@@ -121,7 +128,7 @@ pub enum Term<S> {
     /// ```text
     /// e : t
     /// ```
-    Ann(S, Box<Term<S>>, Box<Term<S>>),
+    Ann(Box<Term<S>>, Box<Term<S>>),
     /// Type of types
     ///
     /// ```text
@@ -156,13 +163,28 @@ pub enum Term<S> {
     /// ```text
     /// t1 -> t2
     /// ```
-    Arrow(S, Box<Term<S>>, Box<Term<S>>),
+    Arrow(Box<Term<S>>, Box<Term<S>>),
     /// Term application
     ///
     /// ```text
     /// e1 e2
     /// ```
-    App(S, Box<Term<S>>, Box<Term<S>>),
+    App(Box<Term<S>>, Box<Term<S>>),
+}
+
+impl Term<Span> {
+    pub fn span(&self) -> Span {
+        match *self {
+            Term::Parens(span, _)
+            | Term::Universe(span, _)
+            | Term::Var(span, _)
+            | Term::Lam(span, _, _)
+            | Term::Pi(span, _, _) => span,
+            Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
+            Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
+            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
+        }
+    }
 }
 
 /// The parameters to a lambda abstraction
