@@ -11,7 +11,7 @@ pub enum ReplCommand {
     /// <term>
     /// ```
     Eval(Box<Term>),
-    /// Print some help on the REPL
+    /// Print some help about using the REPL
     ///
     /// ```text
     /// :?
