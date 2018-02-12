@@ -1,3 +1,5 @@
+//! Pretty printing for the concrete syntax
+
 use pretty::Doc;
 
 use syntax::concrete::{Declaration, Exposing, LamParams, Module, PiParams, Term};

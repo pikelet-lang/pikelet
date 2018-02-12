@@ -1,3 +1,5 @@
+//! Pretty printing for the core syntax
+
 use pretty::Doc;
 
 use syntax::core::{Definition, Module};
