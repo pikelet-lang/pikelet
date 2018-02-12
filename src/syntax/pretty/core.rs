@@ -83,34 +83,21 @@ pub fn pretty_pi<A: ToDoc, B: ToDoc>(
 ) -> StaticDoc {
     parens_if(
         Prec::PI < options.prec,
-        // FIXME: print arrows
-        // if body.is_closed() {
-        //     Doc::group(
-        //         ann.to_doc(options.with_prec(Prec::APP))
-        //             .append(Doc::space())
-        //             .append(Doc::text("->")),
-        //     ).append(Doc::group(
-        //         Doc::space()
-        //             .append(body.to_doc(options.with_prec(Prec::NO_WRAP)))
-        //             .nest(options.indent_width as usize),
-        //     ))
-        // } else {
-            Doc::group(
-                Doc::text("(")
-                    .append(Doc::as_string(name))
-                    .append(Doc::space())
-                    .append(Doc::text(":"))
-                    .append(Doc::space())
-                    .append(ann.to_doc(options.with_prec(Prec::PI)))
-                    .append(Doc::text(")"))
-                    .append(Doc::space())
-                    .append(Doc::text("->")),
-            ).append(Doc::group(
-                Doc::space()
-                    .append(body.to_doc(options.with_prec(Prec::NO_WRAP)))
-                    .nest(options.indent_width as usize),
-            ))
-        // },
+        Doc::group(
+            Doc::text("(")
+                .append(Doc::as_string(name))
+                .append(Doc::space())
+                .append(Doc::text(":"))
+                .append(Doc::space())
+                .append(ann.to_doc(options.with_prec(Prec::PI)))
+                .append(Doc::text(")"))
+                .append(Doc::space())
+                .append(Doc::text("->")),
+        ).append(Doc::group(
+            Doc::space()
+                .append(body.to_doc(options.with_prec(Prec::NO_WRAP)))
+                .nest(options.indent_width as usize),
+        )),
     )
 }
 
