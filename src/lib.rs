@@ -7,6 +7,7 @@ extern crate pretty;
 extern crate pretty_assertions;
 extern crate rpds;
 extern crate source;
+extern crate unicode_xid;
 
 pub mod semantics;
 pub mod syntax;
