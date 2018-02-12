@@ -1,38 +1,81 @@
 # LambdaPi
 
-A Rust implementation of [_A Tutorial Implementation of a Dependently Typed
-Lambda Calculus_](lambdapi).
+An implementation of a small dependently typed lambda calculus in Rust. This
+project is intended as an explaratory exercise, and as a basis for more fully
+featured dependently typed languages in Rust.
+
+The type system was originally inspired by the one presented in [_A Tutorial
+Implementation of a Dependently Typed Lambda Calculus_](lambdapi), but it has
+since divered in a number of ways.
 
 [lambdapi]: https://www.andres-loeh.de/LambdaPi/
 
-To run the REPL:
+## Why dependent types?
 
+You may have noticed in languages like Haskell that there seems to be an uncanny
+similarity between the way one works with terms (ie. expressions), and the way
+one works with types:
+
+```hs
+id :: forall a. a -> a
+id x = x
+
+test = id 1
+
+type Id (a :: Type) = a
+type Test = Id Int
 ```
-$ cargo run --features=repl
-λΠ> (\(a : Type) (x : a) => x) Type (Type -> Type)
-($9 : Type) -> Type : Type
-λΠ>
+
+Dependent type systems elevate types to being _first class_ entities in a
+programming language by eliminating the distinction between terms and types,
+putting them all in the same syntax. This means that we can reuse the same
+programming techniques both at the type and value level:
+
+```idris
+id : {a : Type} -> a -> a
+id x = x
+
+test1 = id 1 : Int
+test2 = id Int : Type
 ```
 
-## Todo
+Notice that type aliases just become regular old value definitions!
 
-- [ ] fix typechecking at the module level
-- [ ] ensure substitution points match the typing judgements
-- [ ] document challenges with name binding
-- [ ] should elaboration normalize as well?
-- [ ] performance tuning, and profiling
-- [ ] settle on a logging strategy for judgements
-- [ ] Agda-style pi type suger: `(A : Type) (C : A -> Type) (x y : A) -> Eq A x y -> C x -> C y`
-- [ ] automate name binding boilerplate to get it out of `syntax::core`
-- [ ] have prettier, more useful errors than relying on `fmt::Debug`
-- [x] implement universe levels
-- [ ] implement holes
-- [ ] review `core::{Term, Value}`
-  - What about `CheckedTerm`s? `ElaboratedTerm`s?
-  - Why is there an `Option<Value>` on `Value::Lam`?
-- [ ] property based testing - see “Effect-Driven QuickChecking of Compilers”
-      [[VIDEO](https://www.youtube.com/watch?v=_KrZzaShDew)]
-      [[PAPER](http://janmidtgaard.dk/papers/Midtgaard-al%3AICFP17-full.pdf)]
+## Roadmap
+
+- [ ] dependent record types
+- [ ] implement module imports
+- [ ] `let` and `where` bindings
+- [ ] layout based syntax
+- [ ] improve UX
+  - [ ] pretty error messages
+    - [ ] underlined source code snippets
+    - [ ] type diffs
+  - [ ] prettier pretty printing
+    - [ ] rename ugly genvars!
+    - [ ] use non-dependant arrows when possible
+- [ ] universe hierarchy
+  - [x] stratified - _this is actually very annoying to use_
+  - [ ] cumulative?
+    - [twitter thread](https://twitter.com/brendanzab/status/962681577120587776)
+    - [blog post by Conor McBride](https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/)
+- [ ] more fully featured elaborator
+  - [ ] holes, ie. `_` and `?hole`
+  - [ ] implicit arguments, ie. `{a : Type}`
+  - [ ] instance arguments, ie. `[eq : EQ a]`
+- [ ] clean up and document internals
+  - [ ] document challenges with name binding
+  - [ ] ensure substitution points match the typing judgements
+  - [ ] fix typechecking at the module level
+  - [ ] settle on a logging strategy for judgements
+  - [ ] automate name binding boilerplate to get it out of `syntax::core`
+  - [ ] review `core::{Term, Value}`
+    - What about `CheckedTerm`s? `ElaboratedTerm`s?
+    - Why is there an `Option<Value>` on `Value::Lam`?
+  - [ ] performance tuning, and profiling
+  - [ ] property based testing - see “Effect-Driven QuickChecking of Compilers”
+        [[VIDEO](https://www.youtube.com/watch?v=_KrZzaShDew)]
+        [[PAPER](http://janmidtgaard.dk/papers/Midtgaard-al%3AICFP17-full.pdf)]
 
 ## References
 
