@@ -13,11 +13,11 @@ members = [
 ]
 
 [features]
-bin = ["rustyline", "structopt"]
+cli = ["rustyline", "structopt"]
 
 [[bin]]
 name = "lambdapi"
-required-features = ["bin"]
+required-features = ["cli"]
 
 [dependencies]
 failure = "0.1.1"
