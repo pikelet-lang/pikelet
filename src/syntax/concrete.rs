@@ -88,6 +88,7 @@ pub enum Declaration {
 }
 
 impl Declaration {
+    /// Return the span of source code that this declaration originated from
     pub fn span(&self) -> Span {
         match *self {
             Declaration::Import { span, .. } => span,
@@ -175,6 +176,7 @@ pub enum Term {
 }
 
 impl Term {
+    /// Return the span of source code that this term originated from
     pub fn span(&self) -> Span {
         match *self {
             Term::Parens(span, _) | Term::Universe(span, _) | Term::Var(span, _) => span,

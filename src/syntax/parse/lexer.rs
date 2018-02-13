@@ -32,6 +32,7 @@ pub enum LexerError {
 }
 
 impl LexerError {
+    /// Return the span of source code that this error originated from
     pub fn span(&self) -> Span {
         match *self {
             LexerError::UnexpectedCharacter { start, found } => Span::from_char_utf8(start, found),

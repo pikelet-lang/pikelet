@@ -41,6 +41,7 @@ pub enum ParseError {
 }
 
 impl ParseError {
+    /// Return the span of source code that this error originated from
     pub fn span(&self) -> Span {
         match *self {
             ParseError::Lexer(ref err) => err.span(),
