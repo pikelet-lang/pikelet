@@ -47,8 +47,8 @@ pub ReplCommand: ReplCommand = {
     => ReplCommand::NoOp,
     <term: Term> => ReplCommand::Eval(Box::new(term)),
     <lo: @L> <command: "REPL command"> <hi: @R> =>? match command {
-        ":?" | ":h" | ":help" => Ok(ReplCommand::Help),
-        ":q" | ":quit" => Ok(ReplCommand::Quit),
+        "?" | "h" | "help" => Ok(ReplCommand::Help),
+        "q" | "quit" => Ok(ReplCommand::Quit),
         command => {
             let span = Span::new(lo, hi);
             let command = String::from(command);
@@ -56,7 +56,7 @@ pub ReplCommand: ReplCommand = {
         },
     },
     <lo: @L> <command: "REPL command"> <hi: @R> <term: Term> =>? match command {
-        ":t" | ":type" => Ok(ReplCommand::TypeOf(Box::new(term))),
+        "t" | "type" => Ok(ReplCommand::TypeOf(Box::new(term))),
         command => {
             let span = Span::new(lo, hi);
             let command = String::from(command);

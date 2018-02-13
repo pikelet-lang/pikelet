@@ -25,7 +25,7 @@ pub enum ParseError {
     #[fail(display = "An integer literal {} was too large for the target type at byte range {}.",
            value, span)]
     IntegerLiteralOverflow { span: Span, value: u64 },
-    #[fail(display = "Unknown repl command `{}` found at byte range {}.", command, span)]
+    #[fail(display = "Unknown repl command `:{}` found at byte range {}.", command, span)]
     UnknownReplCommand { span: Span, command: String },
     #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
     UnexpectedEof { expected: ExpectedTokens },

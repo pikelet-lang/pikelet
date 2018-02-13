@@ -401,7 +401,7 @@ mod from_concrete {
                 Term::Pi(TermPi::bind(
                     Named::new(x.clone(), Term::Universe(Level::ZERO).into()),
                     Term::Pi(TermPi::bind(
-                        Named::new(Name::user("_"), Term::Var(Var::Free(x.clone())).into(),),
+                        Named::new(Name::user("_"), Term::Var(Var::Free(x.clone())).into()),
                         Term::Var(Var::Free(x)).into(),
                     )).into(),
                 )).into(),
@@ -446,7 +446,7 @@ mod from_concrete {
                 Term::Lam(TermLam::bind(
                     Named::new(a.clone(), Some(Term::Universe(Level::ZERO).into())),
                     Term::Lam(TermLam::bind(
-                        Named::new(x.clone(), Some(Term::Var(Var::Free(a)).into()),),
+                        Named::new(x.clone(), Some(Term::Var(Var::Free(a)).into())),
                         Term::Var(Var::Free(x)).into(),
                     )).into(),
                 )).into(),
@@ -462,7 +462,7 @@ mod from_concrete {
                 Term::Pi(TermPi::bind(
                     Named::new(a.clone(), Term::Universe(Level::ZERO).into()),
                     Term::Pi(TermPi::bind(
-                        Named::new(Name::user("_"), Term::Var(Var::Free(a.clone())).into(),),
+                        Named::new(Name::user("_"), Term::Var(Var::Free(a.clone())).into()),
                         Term::Var(Var::Free(a)).into(),
                     )).into(),
                 )).into(),
