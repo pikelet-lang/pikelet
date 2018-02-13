@@ -1,3 +1,6 @@
+//! The REPL (Read-Eval-Print-Loop)
+
+use failure::Error;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::path::PathBuf;
@@ -6,7 +9,7 @@ use semantics;
 use syntax::parse;
 
 #[derive(Debug, StructOpt)]
-pub struct ReplOpts {
+pub struct Opts {
     /// The prompt to display before expressions
     #[structopt(long = "prompt", default_value = "λΠ> ")]
     pub prompt: String,
@@ -20,13 +23,13 @@ pub struct ReplOpts {
     pub files: Vec<PathBuf>,
 }
 
-pub fn run(opts: ReplOpts) {
+pub fn run(opts: Opts) -> Result<(), Error> {
     // TODO: Load files
 
     let mut rl = Editor::<()>::new();
 
     if let Some(ref history_file) = opts.history_file {
-        if let Err(_) = rl.load_history(&history_file) {}
+        rl.load_history(&history_file)?;
     }
 
     println!(
@@ -44,24 +47,18 @@ pub fn run(opts: ReplOpts) {
                     rl.add_history_entry(&line);
                 }
 
-                match step_repl(&line) {
-                    Ok(()) => {},
-                    Err(ReplError::Parse(err)) => println!("parse error: {}", err),
-                    Err(ReplError::Type(err)) => println!("type error: {:?}", err),
-                    Err(ReplError::Quit) => {
-                        println!("Bye bye");
-                        break;
-                    },
+                match eval_print(&line) {
+                    Ok(ControlFlow::Continue) => {},
+                    Ok(ControlFlow::Break) => break,
+                    Err(EvalPrintError::Parse(err)) => println!("parse error: {}", err),
+                    Err(EvalPrintError::Type(err)) => println!("type error: {:?}", err),
                 }
             },
             Err(err) => match err {
                 ReadlineError::Interrupted => println!("Interrupt"),
-                ReadlineError::Eof => {
-                    println!("Bye bye");
-                    break;
-                },
+                ReadlineError::Eof => break,
                 err => {
-                    println!("Error: {:?}", err);
+                    println!("readline error: {:?}", err);
                     break;
                 },
             },
@@ -69,11 +66,15 @@ pub fn run(opts: ReplOpts) {
     }
 
     if let Some(ref history_file) = opts.history_file {
-        rl.save_history(history_file).unwrap();
+        rl.save_history(history_file)?;
     }
+
+    println!("Bye bye");
+
+    Ok(())
 }
 
-fn step_repl(line: &str) -> Result<(), ReplError> {
+fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
     use semantics;
     use syntax::concrete::ReplCommand;
     use syntax::core::{Context, RcTerm};
@@ -111,32 +112,37 @@ fn step_repl(line: &str) -> Result<(), ReplError> {
         },
 
         ReplCommand::NoOp => {},
-        ReplCommand::Quit => return Err(ReplError::Quit),
+        ReplCommand::Quit => return Ok(ControlFlow::Break),
     }
 
-    Ok(())
+    Ok(ControlFlow::Continue)
 }
 
-enum ReplError {
+#[derive(Copy, Clone)]
+enum ControlFlow {
+    Break,
+    Continue,
+}
+
+enum EvalPrintError {
     Parse(parse::ParseError),
     Type(semantics::TypeError),
-    Quit,
 }
 
-impl From<parse::ParseError> for ReplError {
-    fn from(src: parse::ParseError) -> ReplError {
-        ReplError::Parse(src)
+impl From<parse::ParseError> for EvalPrintError {
+    fn from(src: parse::ParseError) -> EvalPrintError {
+        EvalPrintError::Parse(src)
     }
 }
 
-impl From<semantics::TypeError> for ReplError {
-    fn from(src: semantics::TypeError) -> ReplError {
-        ReplError::Type(src)
+impl From<semantics::TypeError> for EvalPrintError {
+    fn from(src: semantics::TypeError) -> EvalPrintError {
+        EvalPrintError::Type(src)
     }
 }
 
-impl From<semantics::InternalError> for ReplError {
-    fn from(src: semantics::InternalError) -> ReplError {
-        ReplError::Type(src.into())
+impl From<semantics::InternalError> for EvalPrintError {
+    fn from(src: semantics::InternalError) -> EvalPrintError {
+        EvalPrintError::Type(src.into())
     }
 }

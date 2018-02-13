@@ -1,3 +1,5 @@
+use failure::Error;
+
 pub mod check;
 pub mod repl;
 
@@ -14,14 +16,14 @@ pub struct Opts {
 pub enum Command {
     /// Check the that the given files type check
     #[structopt(name = "check")]
-    Check(check::CheckOpts),
+    Check(check::Opts),
 
     /// A REPL for running expressions
     #[structopt(name = "repl")]
-    Repl(repl::ReplOpts),
+    Repl(repl::Opts),
 }
 
-pub fn run(opts: Opts) {
+pub fn run(opts: Opts) -> Result<(), Error> {
     match opts.command {
         Command::Check(check_opts) => check::run(check_opts),
         Command::Repl(repl_opts) => repl::run(repl_opts),
