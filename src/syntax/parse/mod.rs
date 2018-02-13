@@ -22,6 +22,9 @@ pub enum ParseError {
     Lexer(#[cause] LexerError),
     #[fail(display = "An identifier was expected when parsing a pi type at byte range {}.", span)]
     IdentifierExpectedInPiType { span: Span },
+    #[fail(display = "An integer literal {} was too large for the target type at byte range {}.",
+           value, span)]
+    IntegerLiteralOverflow { span: Span, value: u64 },
     #[fail(display = "Unknown repl command `{}` found at byte range {}.", command, span)]
     UnknownReplCommand { span: Span, command: String },
     #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
@@ -42,6 +45,7 @@ impl ParseError {
         match *self {
             ParseError::Lexer(ref err) => err.span(),
             ParseError::IdentifierExpectedInPiType { span }
+            | ParseError::IntegerLiteralOverflow { span, .. }
             | ParseError::UnknownReplCommand { span, .. }
             | ParseError::UnexpectedToken { span, .. }
             | ParseError::ExtraToken { span, .. } => span,

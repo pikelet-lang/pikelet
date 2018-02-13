@@ -1,4 +1,5 @@
 use source::pos::{BytePos, Span};
+use std::u32;
 
 use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
@@ -132,7 +133,7 @@ PiTerm: Term = {
     <lo: @L> <binder: AppTerm> "->" <body: LamTerm> <hi: @R> =>? {
         super::reparse_pi_type_hack(Span::new(lo, hi), binder, body)
     },
-    <lo: @L> "Type" <level: "decimal literal"> <hi: @R> => {
+    <lo: @L> "Type" <level: U32Literal> <hi: @R> => {
         Term::Universe(Span::new(lo, hi), Some(level as u32))
     },
 };
@@ -161,4 +162,14 @@ SpannedIdent: (Span, String) = {
 
 Ident: String = {
     "identifier" => String::from(<>),
+};
+
+U32Literal : u32 = {
+    <lo: @L> <value: "decimal literal"> <hi: @R> =>? if value > u32::MAX as u64 {
+        Err(LalrpopError::User {
+            error: ParseError::IntegerLiteralOverflow { span: Span::new(lo, hi), value },
+        })
+    } else {
+        Ok(value as u32)
+    },
 };
