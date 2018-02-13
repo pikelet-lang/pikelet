@@ -173,7 +173,7 @@ fn reparse_pi_type_hack<L, T>(
                 Term::Ann(params, ann) => {
                     let mut names = Vec::new();
                     param_names(*params, &mut names)?;
-                    Ok(Term::Pi(span, (names, ann), body.into()))
+                    Ok(Term::Pi(span.lo(), (names, ann), body.into()))
                 },
                 ann => {
                     let parens = Term::Parens(paren_span, ann.into()).into();

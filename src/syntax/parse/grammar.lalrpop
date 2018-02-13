@@ -106,11 +106,11 @@ pub Term: Term = {
 
 LamTerm: Term = {
     PiTerm,
-    <lo: @L> "\\" <name: SpannedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> <hi: @R> => {
-        Term::Lam(Span::new(lo, hi), vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
+    <lo: @L> "\\" <name: SpannedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
+        Term::Lam(lo, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
     },
-    <lo: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> <hi: @R> => {
-        Term::Lam(Span::new(lo, hi), params, Box::new(body))
+    <lo: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
+        Term::Lam(lo, params, Box::new(body))
     },
 };
 

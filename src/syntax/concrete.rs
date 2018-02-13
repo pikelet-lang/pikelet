@@ -1,6 +1,6 @@
 //! The concrete syntax of the language
 
-use source::pos::Span;
+use source::pos::{BytePos, Span};
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
@@ -152,14 +152,14 @@ pub enum Term {
     /// \(x : t1) y (z : t2) => t3
     /// \(x y : t1) => t3
     /// ```
-    Lam(Span, LamParams, Box<Term>),
+    Lam(BytePos, LamParams, Box<Term>),
     /// Dependent function types
     ///
     /// ```text
     /// (x : t1) -> t2
     /// (x y : t1) -> t2
     /// ```
-    Pi(Span, PiParams, Box<Term>),
+    Pi(BytePos, PiParams, Box<Term>),
     /// Non-Dependent function types
     ///
     /// ```text
@@ -177,11 +177,10 @@ pub enum Term {
 impl Term {
     pub fn span(&self) -> Span {
         match *self {
-            Term::Parens(span, _)
-            | Term::Universe(span, _)
-            | Term::Var(span, _)
-            | Term::Lam(span, _, _)
-            | Term::Pi(span, _, _) => span,
+            Term::Parens(span, _) | Term::Universe(span, _) | Term::Var(span, _) => span,
+            Term::Lam(start, _, ref body) | Term::Pi(start, _, ref body) => {
+                Span::new(start, body.span().hi())
+            },
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
