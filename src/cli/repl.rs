@@ -4,6 +4,7 @@ use failure::Error;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::path::PathBuf;
+use term_size;
 
 use semantics;
 use syntax::parse;
@@ -86,16 +87,15 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 }
 
 fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
-    use semantics;
     use syntax::concrete::ReplCommand;
     use syntax::core::{Context, RcTerm};
     use syntax::pretty::{self, ToDoc};
     use syntax::translation::FromConcrete;
 
-    fn terminal_width() -> usize {
-        use terminal_size::{terminal_size, Width};
+    const FALLBACK_WIDTH: usize = 80;
 
-        terminal_size().map_or(80, |(Width(width), _)| width as usize)
+    fn term_width() -> usize {
+        term_size::dimensions().map_or(FALLBACK_WIDTH, |(width, _)| width)
     }
 
     match line.parse()? {
@@ -110,7 +110,7 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
             let evaluated = semantics::normalize(&context, &term)?;
             let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
-            println!("{}", doc.pretty(terminal_width()));
+            println!("{}", doc.pretty(term_width()));
         },
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
@@ -118,7 +118,7 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
             let (_, inferred) = semantics::infer(&context, &term)?;
             let doc = inferred.to_doc(pretty::Options::default());
 
-            println!("{}", doc.pretty(terminal_width()));
+            println!("{}", doc.pretty(term_width()));
         },
 
         ReplCommand::NoOp => {},

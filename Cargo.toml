@@ -16,7 +16,7 @@ members = [
 cli = [
     "rustyline",
     "structopt",
-    "terminal_size",
+    "term_size",
 ]
 
 [[bin]]
@@ -33,7 +33,7 @@ rpds = "0.3.0"
 rustyline = { version = "1.0.0", optional = true }
 source = { path = "./source" }
 structopt = { version = "0.2.2", optional = true }
-terminal_size = { version = "0.1.7", optional = true }
+term_size = { version = "0.3.0", optional = true }
 unicode-xid = "0.1.0"
 
 [build-dependencies]

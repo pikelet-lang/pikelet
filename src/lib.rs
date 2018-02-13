@@ -20,7 +20,7 @@ extern crate rustyline;
 #[macro_use]
 extern crate structopt;
 #[cfg(feature = "cli")]
-extern crate terminal_size;
+extern crate term_size;
 
 #[cfg(feature = "cli")]
 pub mod cli;
