@@ -92,6 +92,12 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
     use syntax::pretty::{self, ToDoc};
     use syntax::translation::FromConcrete;
 
+    fn terminal_width() -> usize {
+        use terminal_size::{terminal_size, Width};
+
+        terminal_size().map_or(80, |(Width(width), _)| width as usize)
+    }
+
     match line.parse()? {
         ReplCommand::Help => for line in HELP_TEXT {
             println!("{}", line);
@@ -104,7 +110,7 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
             let evaluated = semantics::normalize(&context, &term)?;
             let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
-            println!("{}", doc.pretty(80));
+            println!("{}", doc.pretty(terminal_width()));
         },
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
@@ -112,7 +118,7 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
             let (_, inferred) = semantics::infer(&context, &term)?;
             let doc = inferred.to_doc(pretty::Options::default());
 
-            println!("{}", doc.pretty(80));
+            println!("{}", doc.pretty(terminal_width()));
         },
 
         ReplCommand::NoOp => {},
