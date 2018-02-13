@@ -11,48 +11,68 @@ use structopt::StructOpt;
 use lambdapi::semantics;
 use lambdapi::syntax::parse;
 
-const PROMPT: &str = "λΠ> ";
-const REPL_HISTORY_FILE: &str = "repl-history";
+// TODO: test using https://github.com/killercup/assert_cli
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "lambdapi")]
-enum Opt {
-    /// Check the that the give files type check
+#[derive(Debug, StructOpt)]
+struct Opts {
+    #[structopt(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, StructOpt)]
+enum Command {
+    /// Check the that the given files type check
     #[structopt(name = "check")]
-    Check {
-        /// Files to check
-        #[structopt(name = "FILE", parse(from_os_str))]
-        files: Vec<PathBuf>,
-    },
+    Check(CheckOpts),
 
     /// A REPL for running expressions
     #[structopt(name = "repl")]
-    Repl {
-        /// Files to preload into the REPL
-        #[structopt(name = "FILE", parse(from_os_str))]
-        files: Vec<PathBuf>,
-    },
+    Repl(ReplOpts),
+}
+
+#[derive(Debug, StructOpt)]
+struct CheckOpts {
+    /// Files to check
+    #[structopt(name = "FILE", parse(from_os_str))]
+    files: Vec<PathBuf>,
+}
+
+#[derive(Debug, StructOpt)]
+struct ReplOpts {
+    /// The prompt to display before expressions
+    #[structopt(long = "prompt", default_value = "λΠ> ")]
+    prompt: String,
+
+    /// The history file to record previous commands to (blank to disable)
+    #[structopt(long = "history-file", parse(from_os_str), default_value = "repl-history")]
+    history_file: Option<PathBuf>,
+
+    /// Files to preload into the REPL
+    #[structopt(name = "FILE", parse(from_os_str))]
+    files: Vec<PathBuf>,
 }
 
 fn main() {
-    match Opt::from_args() {
-        Opt::Check { files } => run_check(files),
-        Opt::Repl { files } => run_repl(files),
+    let opts = Opts::from_args();
+
+    match opts.command {
+        Command::Check(check_opts) => run_check(check_opts),
+        Command::Repl(repl_opts) => run_repl(repl_opts),
     }
 }
 
-fn run_check(_files: Vec<PathBuf>) {
-    // TODO: Load files
-
+fn run_check(_check_opts: CheckOpts) {
     unimplemented!()
 }
 
-fn run_repl(_files: Vec<PathBuf>) {
+fn run_repl(opts: ReplOpts) {
     // TODO: Load files
 
     let mut rl = Editor::<()>::new();
 
-    if let Err(_) = rl.load_history(REPL_HISTORY_FILE) {}
+    if let Some(ref history_file) = opts.history_file {
+        if let Err(_) = rl.load_history(&history_file) {}
+    }
 
     println!(
         "{}, version {} (:? for help, :q to quit)",
@@ -60,10 +80,14 @@ fn run_repl(_files: Vec<PathBuf>) {
         env!("CARGO_PKG_VERSION"),
     );
 
+    // TODO: Load files
+
     loop {
-        match rl.readline(PROMPT) {
+        match rl.readline(&opts.prompt) {
             Ok(line) => {
-                rl.add_history_entry(&line);
+                if let Some(_) = opts.history_file {
+                    rl.add_history_entry(&line);
+                }
 
                 match step_repl(&line) {
                     Ok(()) => {},
@@ -89,7 +113,9 @@ fn run_repl(_files: Vec<PathBuf>) {
         }
     }
 
-    rl.save_history(REPL_HISTORY_FILE).unwrap();
+    if let Some(ref history_file) = opts.history_file {
+        rl.save_history(history_file).unwrap();
+    }
 }
 
 fn step_repl(line: &str) -> Result<(), ReplError> {
