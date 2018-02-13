@@ -15,6 +15,12 @@ fn main() {
 
     if let Err(_) = rl.load_history(REPL_HISTORY_FILE) {}
 
+    println!(
+        "{}, version {} (:? for help, :q to quit)",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION"),
+    );
+
     loop {
         match rl.readline(PROMPT) {
             Ok(line) => {
