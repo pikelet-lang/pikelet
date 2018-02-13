@@ -6,7 +6,7 @@ featured dependently typed languages in Rust.
 
 The type system was originally inspired by the one presented in [_A Tutorial
 Implementation of a Dependently Typed Lambda Calculus_](lambdapi), but it has
-since divered in a number of ways.
+since diverged from it in a number of ways, so perhaps a rename is in order!
 
 [lambdapi]: https://www.andres-loeh.de/LambdaPi/
 
