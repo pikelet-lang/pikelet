@@ -8,11 +8,15 @@ use pos::Span;
 /// A severity level for diagnostic messages
 #[derive(Copy, PartialEq, Clone, Hash, Debug)]
 pub enum Level {
-    /// Internal compiler errors - these are bugs!
+    /// Internal errors - these are bugs!
     Bug,
+    /// An error.
     Error,
+    /// A warning.
     Warning,
+    /// A note.
     Note,
+    /// A help message.
     Help,
 }
 
@@ -68,4 +72,56 @@ pub struct SpanLabel {
     pub style: LabelStyle,
     /// What label should we attach to this span (if any)?
     pub label: Option<String>,
+}
+
+/// Represents a diagnostic message and associated child messages.
+#[derive(Clone, Debug)]
+pub struct Diagnostic {
+    level: Level,
+    message: String,
+    span: Option<Span>,
+    children: Vec<Diagnostic>,
+}
+
+impl Diagnostic {
+    /// Create a new diagnostic with the given `level` and `message`.
+    pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
+        Diagnostic {
+            level: level,
+            message: message.into(),
+            span: None,
+            children: vec![],
+        }
+    }
+
+    /// Create a new diagnostic with the given `level` and `message` pointing to
+    /// the given `span`.
+    pub fn spanned<T: Into<String>>(span: Span, level: Level, message: T) -> Diagnostic {
+        Diagnostic {
+            level: level,
+            message: message.into(),
+            span: Some(span),
+            children: vec![],
+        }
+    }
+
+    /// Returns the diagnostic `level` for `self`.
+    pub fn level(&self) -> Level {
+        self.level
+    }
+
+    /// Returns the diagnostic `message` for `self`.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Returns the diagnostic `span` for `self`.
+    pub fn span(&self) -> Option<Span> {
+        self.span
+    }
+
+    /// Returns the child diagnostics for `self`.
+    pub fn children(&self) -> &[Diagnostic] {
+        &self.children
+    }
 }
