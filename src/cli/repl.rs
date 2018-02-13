@@ -23,6 +23,17 @@ pub struct Opts {
     pub files: Vec<PathBuf>,
 }
 
+const HELP_TEXT: &[&str] = &[
+    "",
+    "Command       Arguments   Purpose",
+    "",
+    "<expr>                    evaluate a term",
+    ":? :h :help               display this help text",
+    ":q :quit                  quit the repl",
+    ":t :type      <expr>      infer the type of an expression",
+    "",
+];
+
 pub fn run(opts: Opts) -> Result<(), Error> {
     // TODO: Load files
 
@@ -82,15 +93,8 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
     use syntax::translation::FromConcrete;
 
     match line.parse()? {
-        ReplCommand::Help => {
-            println!("");
-            println!("Command       Arguments   Purpose");
-            println!("");
-            println!("<expr>                    evaluate a term");
-            println!(":? :h :help               display this help text");
-            println!(":q :quit                  quit the repl");
-            println!(":t :type      <expr>      infer the type of an expression");
-            println!("");
+        ReplCommand::Help => for line in HELP_TEXT {
+            println!("{}", line);
         },
 
         ReplCommand::Eval(parse_term) => {
