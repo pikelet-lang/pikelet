@@ -13,11 +13,11 @@ members = [
 ]
 
 [features]
-repl = ["rustyline"]
+bin = ["rustyline", "structopt"]
 
 [[bin]]
-name = "repl"
-required-features = ["repl"]
+name = "lambdapi"
+required-features = ["bin"]
 
 [dependencies]
 failure = "0.1.1"
@@ -28,6 +28,7 @@ regex = "0.2.0"
 rpds = "0.3.0"
 rustyline = { version = "1.0.0", optional = true }
 source = { path = "./source" }
+structopt = { version = "0.2.2", optional = true }
 unicode-xid = "0.0.4"
 
 [build-dependencies]
