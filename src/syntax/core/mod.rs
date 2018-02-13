@@ -133,12 +133,6 @@ pub enum Term {
     App(RcTerm, RcTerm), // 6.
 }
 
-impl From<Var<Name>> for Term {
-    fn from(src: Var<Name>) -> Term {
-        Term::Var(src)
-    }
-}
-
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
