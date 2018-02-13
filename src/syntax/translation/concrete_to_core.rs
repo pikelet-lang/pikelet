@@ -6,6 +6,17 @@ use syntax::var::{Debruijn, Named, Var};
 
 use super::FromConcrete;
 
+/// Convert a sugary lambda from something like:
+///
+/// ```text
+/// \(a b : t1) c (d : t2) => t3
+/// ```
+///
+/// To a bunch of nested lambdas like:
+///
+/// ```text
+/// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
+/// ```
 fn lam_from_concrete(
     params: &[(Vec<(Span, String)>, Option<Box<concrete::Term>>)],
     body: &concrete::Term,
@@ -28,6 +39,17 @@ fn lam_from_concrete(
     term
 }
 
+/// Convert a sugary pi type from something like:
+///
+/// ```text
+/// (a b : t1) -> t3
+/// ```
+///
+/// To a bunch of nested pi types like:
+///
+/// ```text
+/// (a : t1) -> (b : t1) -> t3
+/// ```
 fn pi_from_concrete(
     param_names: &[(Span, String)],
     ann: &concrete::Term,
