@@ -3,6 +3,7 @@
 use rpds::List;
 use std::fmt;
 use std::rc::Rc;
+use std::usize;
 
 use syntax::pretty::{self, ToDoc};
 use syntax::var::{Debruijn, GenId, Named, Var};
@@ -85,7 +86,7 @@ impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(80), f)
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
 }
 
@@ -103,7 +104,7 @@ impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(80), f)
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
 }
 
@@ -137,7 +138,7 @@ impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(80), f)
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
 }
 
@@ -182,7 +183,7 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(80), f)
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
 }
 
@@ -295,7 +296,7 @@ impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(80), f)
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
 }
 

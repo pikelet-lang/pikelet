@@ -91,15 +91,15 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 }
 
 fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
+    use std::usize;
+
     use syntax::concrete::ReplCommand;
     use syntax::core::{Context, RcTerm};
     use syntax::pretty::{self, ToDoc};
     use syntax::translation::FromConcrete;
 
-    const FALLBACK_WIDTH: usize = 80;
-
-    fn term_width() -> usize {
-        term_size::dimensions().map_or(FALLBACK_WIDTH, |(width, _)| width)
+    fn term_width() -> Option<usize> {
+        term_size::dimensions().map(|(width, _)| width)
     }
 
     let (repl_command, parse_errors) = parse::repl_command(line);
@@ -119,7 +119,7 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
             let evaluated = semantics::normalize(&context, &term)?;
             let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
-            println!("{}", doc.pretty(term_width()));
+            println!("{}", doc.pretty(term_width().unwrap_or(usize::MAX)));
         },
         ReplCommand::TypeOf(parse_term) => {
             let term = RcTerm::from_concrete(&parse_term);
@@ -127,7 +127,7 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
             let (_, inferred) = semantics::infer(&context, &term)?;
             let doc = inferred.to_doc(pretty::Options::default());
 
-            println!("{}", doc.pretty(term_width()));
+            println!("{}", doc.pretty(term_width().unwrap_or(usize::MAX)));
         },
 
         ReplCommand::NoOp => {},

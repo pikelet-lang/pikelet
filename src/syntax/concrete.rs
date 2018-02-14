@@ -1,6 +1,10 @@
 //! The concrete syntax of the language
 
 use source::pos::{BytePos, Span};
+use std::fmt;
+use std::usize;
+
+use syntax::pretty::{self, ToDoc};
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
@@ -50,6 +54,14 @@ pub struct Module {
     pub name: (Span, String),
     /// The declarations contained in the module
     pub declarations: Vec<Declaration>,
+}
+
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
 }
 
 /// Top level declarations
@@ -105,6 +117,14 @@ impl Declaration {
     }
 }
 
+impl fmt::Display for Declaration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
+}
+
 /// A list of the definitions imported from a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Exposing {
@@ -124,6 +144,14 @@ pub enum Exposing {
     ///
     /// This is used for error recovery
     Error(Span),
+}
+
+impl fmt::Display for Exposing {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
 }
 
 /// Terms
@@ -203,6 +231,14 @@ impl Term {
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
         }
+    }
+}
+
+impl fmt::Display for Term {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
 }
 
