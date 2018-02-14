@@ -1,6 +1,7 @@
 use failure::Error;
 use std::path::PathBuf;
 
+/// Options for the `check` subcommand
 #[derive(Debug, StructOpt)]
 pub struct Opts {
     /// Files to check
@@ -8,6 +9,7 @@ pub struct Opts {
     pub files: Vec<PathBuf>,
 }
 
+/// Run the `check` subcommand with the given options
 pub fn run(_check_opts: Opts) -> Result<(), Error> {
     unimplemented!()
 }

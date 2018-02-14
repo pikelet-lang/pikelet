@@ -15,6 +15,8 @@ pub mod semantics;
 pub mod syntax;
 
 #[cfg(feature = "cli")]
+extern crate isatty;
+#[cfg(feature = "cli")]
 extern crate rustyline;
 #[cfg(feature = "cli")]
 #[macro_use]

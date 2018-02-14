@@ -9,6 +9,7 @@ use term_size;
 use semantics;
 use syntax::parse;
 
+/// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
 pub struct Opts {
     /// The prompt to display before expressions
@@ -35,6 +36,7 @@ const HELP_TEXT: &[&str] = &[
     "",
 ];
 
+/// Run the `repl` subcommand with the given options
 pub fn run(opts: Opts) -> Result<(), Error> {
     // TODO: Load files
 
