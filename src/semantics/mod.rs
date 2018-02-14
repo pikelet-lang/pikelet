@@ -10,6 +10,8 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 
+use source::pos::Span;
+
 use syntax::core::{self, Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term};
 use syntax::core::{Value, ValueLam, ValuePi};
 use syntax::var::{Debruijn, Named, Var};
@@ -73,30 +75,67 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
 /// An internal error. These are bugs!
 #[derive(Debug, Clone, PartialEq)]
 pub enum InternalError {
-    UnsubstitutedDebruijnIndex(Named<Name, Debruijn>),
-    UndefinedName(Name),
+    UnsubstitutedDebruijnIndex {
+        span: Span,
+        index: Named<Name, Debruijn>,
+    },
+    UndefinedName {
+        span: Span,
+        name: Name,
+    },
+}
+
+impl InternalError {
+    pub fn span(&self) -> Span {
+        match *self {
+            InternalError::UnsubstitutedDebruijnIndex { span, .. }
+            | InternalError::UndefinedName { span, .. } => span,
+        }
+    }
 }
 
 /// An error produced during typechecking
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
     NotAFunctionType {
-        expr: RcTerm,
+        span: Span,
         found: RcType,
     },
-    TypeAnnotationsNeeded,
-    ExpectedFunction {
-        lam_expr: RcTerm,
+    TypeAnnotationsNeeded {
+        span: Span,
+    },
+    UnexpectedFunction {
+        span: Span,
         expected: RcType,
     },
     Mismatch {
-        expr: RcTerm,
+        span: Span,
         found: RcType,
         expected: RcType,
     },
-    ExpectedUniverse(RcType),
-    UndefinedName(Name),
+    ExpectedUniverse {
+        span: Span,
+        found: RcType,
+    },
+    UndefinedName {
+        span: Span,
+        name: Name,
+    },
     Internal(InternalError),
+}
+
+impl TypeError {
+    pub fn span(&self) -> Span {
+        match *self {
+            TypeError::NotAFunctionType { span, .. }
+            | TypeError::TypeAnnotationsNeeded { span, .. }
+            | TypeError::UnexpectedFunction { span, .. }
+            | TypeError::Mismatch { span, .. }
+            | TypeError::ExpectedUniverse { span, .. }
+            | TypeError::UndefinedName { span, .. } => span,
+            TypeError::Internal(ref err) => err.span(),
+        }
+    }
 }
 
 impl From<InternalError> for TypeError {
@@ -134,11 +173,16 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex(index.clone())),
-            Var::Free(ref name) => match *context
-                .lookup_binder(name)
-                .ok_or_else(|| InternalError::UndefinedName(name.clone()))?
-            {
+            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
+                span: Span::start(), // TODO
+                index: index.clone(),
+            }),
+            Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
+                InternalError::UndefinedName {
+                    span: Span::start(), // TODO
+                    name: name.clone(),
+                }
+            })? {
                 // Can't reduce further - we are in a pi or let binding!
                 // We'll have to hope that these are substituted away later,
                 // either in EVAL/APP or INFER/APP. For now we just forward the
@@ -257,8 +301,8 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
             // falling through to `infer` and reunbinding at INFER/LAM
         },
         (&Term::Lam(_), _) => {
-            return Err(TypeError::ExpectedFunction {
-                lam_expr: term.clone(),
+            return Err(TypeError::UnexpectedFunction {
+                span: Span::start(), // TODO: term.span(),
                 expected: expected.clone(),
             });
         },
@@ -286,7 +330,7 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
     match &inferred_ty == expected {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
-            expr: term.clone(),
+            span: Span::start(), // TODO: term.span().
             found: inferred_ty,
             expected: expected.clone(),
         }),
@@ -314,7 +358,10 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         let (elab, ty) = infer(context, term)?;
         match *ty.inner {
             Value::Universe(level) => Ok((elab, level)),
-            _ => Err(TypeError::ExpectedUniverse(ty)),
+            _ => Err(TypeError::ExpectedUniverse {
+                span: Span::start(), // TODO: term.span().
+                found: ty,
+            }),
         }
     }
 
@@ -343,12 +390,17 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => {
-                Err(InternalError::UnsubstitutedDebruijnIndex(index.clone()).into())
+                Err(InternalError::UnsubstitutedDebruijnIndex {
+                    span: Span::start(), // TODO: term.span().
+                    index: index.clone(),
+                }.into())
             },
-            Var::Free(ref name) => match *context
-                .lookup_binder(name)
-                .ok_or_else(|| TypeError::UndefinedName(name.clone()))?
-            {
+            Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
+                TypeError::UndefinedName {
+                    span: Span::start(), // TODO: term.span().
+                    name: name.clone(),
+                }
+            })? {
                 //  1.  λx:τ ∈ Γ
                 // ─────────────────────── (INFER/VAR-LAM)
                 //      Γ ⊢ x ⇒ τ ⤳ x
@@ -359,7 +411,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 Binder::Lam(Some(ref ty)) | Binder::Pi(ref ty) => {
                     Ok((Value::Var(var.clone()).into(), ty.clone()))
                 },
-                Binder::Lam(None) => Err(TypeError::TypeAnnotationsNeeded),
+                Binder::Lam(None) => Err(TypeError::TypeAnnotationsNeeded {
+                    span: Span::start(), // TODO: binder.span().
+                }),
                 //  1.  let x:τ = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
                 //      Γ ⊢ x ⇒ τ ⤳ v
@@ -377,7 +431,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
             match param.inner {
                 // TODO: More error info
-                None => Err(TypeError::TypeAnnotationsNeeded),
+                None => Err(TypeError::TypeAnnotationsNeeded {
+                    span: Span::start(), // TODO: param.span().
+                }),
                 Some(ann) => {
                     let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
                     let simp_ann = normalize(context, &ann)?; // 2.
@@ -434,7 +490,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
                 _ => Err(TypeError::NotAFunctionType {
-                    expr: fn_expr.clone(),
+                    span: Span::start(), // TODO: fn_expr.span().
                     found: fn_type.clone(),
                 }),
             }

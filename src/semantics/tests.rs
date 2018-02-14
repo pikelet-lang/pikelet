@@ -21,7 +21,10 @@ mod normalize {
 
         assert_eq!(
             normalize(&context, &parse(r"x")),
-            Err(InternalError::UndefinedName(x)),
+            Err(InternalError::UndefinedName {
+                span: Span::start(),
+                name: x,
+            }),
         );
     }
 
@@ -213,7 +216,10 @@ mod infer {
 
         assert_eq!(
             infer(&context, &parse(given_expr)),
-            Err(TypeError::UndefinedName(x)),
+            Err(TypeError::UndefinedName {
+                span: Span::start(),
+                name: x,
+            }),
         );
     }
 
@@ -276,7 +282,7 @@ mod infer {
         let given_expr = r"(\a => a) : Type";
 
         match infer(&context, &parse(given_expr)) {
-            Err(TypeError::ExpectedFunction { .. }) => {},
+            Err(TypeError::UnexpectedFunction { .. }) => {},
             other => panic!("unexpected result: {:#?}", other),
         }
     }
@@ -303,7 +309,7 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::NotAFunctionType {
-                expr: Term::Universe(Level::ZERO).into(),
+                span: Span::start(),
                 found: Value::Universe(Level::ZERO.succ()).into(),
             }),
         )
