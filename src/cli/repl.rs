@@ -64,7 +64,9 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                 match eval_print(&line) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
-                    Err(EvalPrintError::Parse(err)) => println!("parse error: {}", err),
+                    Err(EvalPrintError::Parse(errs)) => for err in errs {
+                        println!("parse error: {}", err);
+                    },
                     Err(EvalPrintError::Type(err)) => println!("type error: {:?}", err),
                 }
             },
@@ -100,7 +102,12 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
         term_size::dimensions().map_or(FALLBACK_WIDTH, |(width, _)| width)
     }
 
-    match line.parse()? {
+    let (repl_command, parse_errors) = parse::repl_command(line);
+    if !parse_errors.is_empty() {
+        return Err(EvalPrintError::Parse(parse_errors));
+    }
+
+    match repl_command {
         ReplCommand::Help => for line in HELP_TEXT {
             println!("{}", line);
         },
@@ -137,12 +144,18 @@ enum ControlFlow {
 }
 
 enum EvalPrintError {
-    Parse(parse::ParseError),
+    Parse(Vec<parse::ParseError>),
     Type(semantics::TypeError),
 }
 
 impl From<parse::ParseError> for EvalPrintError {
     fn from(src: parse::ParseError) -> EvalPrintError {
+        EvalPrintError::Parse(vec![src])
+    }
+}
+
+impl From<Vec<parse::ParseError>> for EvalPrintError {
+    fn from(src: Vec<parse::ParseError>) -> EvalPrintError {
         EvalPrintError::Parse(src)
     }
 }

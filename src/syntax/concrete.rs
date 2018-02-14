@@ -85,6 +85,10 @@ pub enum Declaration {
         params: LamParams,
         body: Term,
     },
+    /// Declarations that could not be correctly parsed
+    ///
+    /// This is used for error recovery
+    Error(Span),
 }
 
 impl Declaration {
@@ -96,6 +100,7 @@ impl Declaration {
             Declaration::Definition {
                 ref name, ref body, ..
             } => name.0.to(body.span()),
+            Declaration::Error(span) => span,
         }
     }
 }
@@ -115,6 +120,10 @@ pub enum Exposing {
     /// (foo, bar as baz)
     /// ```
     Exact(Span, Vec<((Span, String), Option<(Span, String)>)>),
+    /// Exposing declarations that could not be correctly parsed
+    ///
+    /// This is used for error recovery
+    Error(Span),
 }
 
 /// Terms
@@ -173,13 +182,20 @@ pub enum Term {
     /// e1 e2
     /// ```
     App(Box<Term>, Box<Term>),
+    /// Terms that could not be correctly parsed
+    ///
+    /// This is used for error recovery
+    Error(Span),
 }
 
 impl Term {
     /// Return the span of source code that this term originated from
     pub fn span(&self) -> Span {
         match *self {
-            Term::Parens(span, _) | Term::Universe(span, _) | Term::Var(span, _) => span,
+            Term::Parens(span, _)
+            | Term::Universe(span, _)
+            | Term::Var(span, _)
+            | Term::Error(span) => span,
             Term::Lam(start, _, ref body) | Term::Pi(start, _, ref body) => {
                 Span::new(start, body.span().hi())
             },

@@ -4,7 +4,6 @@ use lalrpop_util::ParseError as LalrpopError;
 use source::pos::{BytePos, RawIndex, Span};
 use source::reporting::Diagnostic;
 use std::fmt;
-use std::str::FromStr;
 
 use syntax::concrete;
 use syntax::parse::lexer::Lexer;
@@ -14,39 +13,49 @@ pub use syntax::parse::lexer::{LexerError, Token};
 mod grammar;
 mod lexer;
 
-impl FromStr for concrete::ReplCommand {
-    type Err = ParseError;
+// TODO: make these wrappers cleaner
 
-    fn from_str(src: &str) -> Result<concrete::ReplCommand, ParseError> {
-        grammar::parse_ReplCommand(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
+pub fn repl_command<'err, 'src>(src: &'src str) -> (concrete::ReplCommand, Vec<ParseError>) {
+    let mut errors = Vec::new();
+    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_ReplCommand(&mut errors, src, lexer) {
+        Ok(value) => (value, errors),
+        Err(_) => unimplemented!(),
     }
 }
 
-impl FromStr for concrete::Module {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::Module, ParseError> {
-        grammar::parse_Module(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
+pub fn module<'err, 'src>(src: &'src str) -> (concrete::Module, Vec<ParseError>) {
+    let mut errors = Vec::new();
+    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_Module(&mut errors, src, lexer) {
+        Ok(value) => (value, errors),
+        Err(_) => unimplemented!(),
     }
 }
 
-impl FromStr for concrete::Declaration {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::Declaration, ParseError> {
-        grammar::parse_Declaration(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
+pub fn declaration<'err, 'src>(src: &'src str) -> (concrete::Declaration, Vec<ParseError>) {
+    let mut errors = Vec::new();
+    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_Declaration(&mut errors, src, lexer) {
+        Ok(value) => (value, errors),
+        Err(err) => {
+            let src_span = Span::new(BytePos(0), BytePos(src.len() as RawIndex));
+            errors.push(ParseError::from_lalrpop(src, err));
+            (concrete::Declaration::Error(src_span), errors)
+        },
     }
 }
 
-impl FromStr for concrete::Term {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::Term, ParseError> {
-        grammar::parse_Term(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
+pub fn term<'err, 'src>(src: &'src str) -> (concrete::Term, Vec<ParseError>) {
+    let mut errors = Vec::new();
+    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_Term(&mut errors, src, lexer) {
+        Ok(value) => (value, errors),
+        Err(err) => {
+            let src_span = Span::new(BytePos(0), BytePos(src.len() as RawIndex));
+            errors.push(ParseError::from_lalrpop(src, err));
+            (concrete::Term::Error(src_span), errors)
+        },
     }
 }
 
@@ -177,19 +186,22 @@ impl fmt::Display for ExpectedTokens {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
 
     #[test]
     fn pi_bad_ident() {
-        let parse_result = concrete::Term::from_str("((x : Type) : Type) -> Type");
+        let parse_result = term("((x : Type) : Type) -> Type");
 
         assert_eq!(
             parse_result,
-            Err(ParseError::IdentifierExpectedInPiType {
-                span: Span::new(BytePos(1), BytePos(11)),
-            })
+            (
+                concrete::Term::Error(Span::new(BytePos(0), BytePos(27))),
+                vec![
+                    ParseError::IdentifierExpectedInPiType {
+                        span: Span::new(BytePos(1), BytePos(11)),
+                    },
+                ],
+            )
         );
     }
 }

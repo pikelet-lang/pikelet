@@ -1,9 +1,13 @@
+use syntax::parse;
 use syntax::translation::FromConcrete;
 
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
-    RcTerm::from_concrete(&src.parse().unwrap())
+    let (concrete_term, errors) = parse::term(&src);
+    assert!(errors.is_empty());
+
+    RcTerm::from_concrete(&concrete_term)
 }
 
 mod alpha_eq {

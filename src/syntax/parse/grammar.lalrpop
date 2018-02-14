@@ -4,7 +4,7 @@ use std::u32;
 use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
-grammar<'src>();
+grammar<'err, 'src>(errors: &'err mut Vec<ParseError>, src: &'src str);
 
 extern {
     type Location = BytePos;
@@ -83,6 +83,10 @@ pub Declaration: Declaration = {
     <name: SpannedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
         Declaration::Definition { name, params, body }
     },
+    <lo: @L> <recovered: !> <hi: @R> ";" => {
+        errors.push(ParseError::from_lalrpop(src, recovered.error));
+        Declaration::Error(Span::new(lo, hi))
+    }
 };
 
 Exposing : Exposing = {
@@ -91,7 +95,11 @@ Exposing : Exposing = {
         let mut names = names;
         names.push(last);
         Exposing::Exact(Span::new(lo, hi), names)
-    }
+    },
+    <lo: @L> <recovered: !> <hi: @R> => {
+        errors.push(ParseError::from_lalrpop(src, recovered.error));
+        Exposing::Error(Span::new(lo, hi))
+    },
 };
 
 ExposedIdent : ((Span, String), Option<(Span, String)>) = {
@@ -149,6 +157,10 @@ AtomicTerm: Term = {
     <lo: @L> "(" <term: Term> ")" <hi: @R> => Term::Parens(Span::new(lo, hi), Box::new(term)),
     <lo: @L> "Type" <hi: @R> => Term::Universe(Span::new(lo, hi), None),
     <lo: @L> <ident: Ident> <hi: @R> => Term::Var(Span::new(lo, hi), ident),
+    <lo: @L> <recovered: !> <hi: @R> => {
+        errors.push(ParseError::from_lalrpop(src, recovered.error));
+        Term::Error(Span::new(lo, hi))
+    }
 };
 
 AtomicLamParam: (Vec<(Span, String)>, Option<Box<Term>>) = {

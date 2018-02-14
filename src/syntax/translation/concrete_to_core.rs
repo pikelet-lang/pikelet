@@ -125,6 +125,7 @@ impl<'a> FromConcrete<&'a concrete::Module> for core::Module {
 
                     definitions.push(core::Definition { name, term, ann });
                 },
+                concrete::Declaration::Error(_) => unimplemented!("error recovery"),
             }
         }
 
@@ -175,16 +176,22 @@ impl<'a> FromConcrete<&'a concrete::Term> for core::RcTerm {
 
                 core::Term::App(fn_expr, arg).into()
             },
+            concrete::Term::Error(_) => unimplemented!("error recovery"),
         }
     }
 }
 
 #[cfg(test)]
 mod from_concrete {
+    use syntax::parse;
+
     use super::*;
 
     fn parse(src: &str) -> core::RcTerm {
-        core::RcTerm::from_concrete(&src.parse().unwrap())
+        let (concrete_term, errors) = parse::term(&src);
+        assert!(errors.is_empty());
+
+        core::RcTerm::from_concrete(&concrete_term)
     }
 
     mod module {
@@ -194,7 +201,12 @@ mod from_concrete {
 
         #[test]
         fn parse_prelude() {
-            Module::from_concrete(&include_str!("../../../prelude.lp").parse().unwrap());
+            let src = include_str!("../../../prelude.lp");
+
+            let (concrete_module, errors) = parse::module(&src);
+            assert!(errors.is_empty());
+
+            Module::from_concrete(&concrete_module);
         }
     }
 

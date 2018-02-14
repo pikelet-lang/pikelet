@@ -62,6 +62,7 @@ impl ToDoc for Declaration {
                 .append(Doc::text("="))
                 .append(Doc::space())
                 .append(body.to_doc(options).nest(options.indent_width as usize)),
+            Declaration::Error(_) => Doc::text("<error>"),
         }.append(Doc::text(";"))
     }
 }
@@ -84,6 +85,7 @@ impl ToDoc for Exposing {
                 }),
                 Doc::text(",").append(Doc::space()),
             ),
+            Exposing::Error(_) => Doc::text("<error>"),
         }
     }
 }
@@ -127,6 +129,7 @@ impl ToDoc for Term {
                 .to_doc(options)
                 .append(Doc::space())
                 .append(arg.to_doc(options)),
+            Term::Error(_) => Doc::text("<error>"),
         }
     }
 }

@@ -1,9 +1,13 @@
 use syntax::translation::FromConcrete;
+use syntax::parse;
 
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
-    RcTerm::from_concrete(&src.parse().unwrap())
+    let (concrete_term, errors) = parse::term(&src);
+    assert!(errors.is_empty());
+
+    RcTerm::from_concrete(&concrete_term)
 }
 
 mod normalize {
@@ -556,8 +560,12 @@ mod check_module {
 
     #[test]
     fn check_prelude() {
-        let module = Module::from_concrete(&include_str!("../../prelude.lp").parse().unwrap());
+        let src = include_str!("../../prelude.lp");
 
+        let (concrete_module, errors) = parse::module(&src);
+        assert!(errors.is_empty());
+
+        let module = Module::from_concrete(&concrete_module);
         check_module(&module).unwrap();
     }
 }
