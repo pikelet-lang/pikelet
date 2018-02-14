@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::{fmt, io};
 use std::path::PathBuf;
 
-use pos::{BytePos, ColumnIndex, LineIndex};
+use pos::{BytePos, ColumnIndex, LineIndex, RawIndex};
 
 #[derive(Clone, Debug)]
 pub enum FileName {
@@ -46,7 +46,7 @@ impl Source {
                 .inspect(|_| end_offset.0 += 1)
                 .enumerate()
                 .filter(|&(_, b)| b == b'\n')
-                .map(|(i, _)| BytePos(i + 1)); // index of first char in the line
+                .map(|(i, _)| BytePos(i as RawIndex + 1)); // index of first char in the line
 
             iter::once(BytePos(0)).chain(input_indices).collect()
         };
@@ -101,7 +101,7 @@ impl Source {
     /// assert_eq!(source.line_offset(LineIndex(6)), None);
     /// ```
     pub fn line_offset(&self, index: LineIndex) -> Option<BytePos> {
-        self.line_offsets.get(index.0).cloned()
+        self.line_offsets.get(index.0 as usize).cloned()
     }
 
     /// Returns the line and column location of `byte`
@@ -151,11 +151,11 @@ impl Source {
     /// ```
     pub fn line_index(&self, absolute_offset: BytePos) -> Option<LineIndex> {
         if absolute_offset <= self.end_offset {
-            let num_lines = self.line_offsets.len();
+            let num_lines = self.line_offsets.len() as RawIndex;
 
             Some(LineIndex(
                 (0..num_lines)
-                    .filter(|&i| self.line_offsets[i] > absolute_offset)
+                    .filter(|&i| self.line_offsets[i as usize] > absolute_offset)
                     .map(|i| i - 1)
                     .next()
                     .unwrap_or(num_lines - 1),

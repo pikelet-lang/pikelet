@@ -2,7 +2,7 @@ use source::pos::Span;
 use std::fmt;
 use std::str::CharIndices;
 
-use source::pos::BytePos;
+use source::pos::{BytePos, RawIndex};
 use unicode_xid::UnicodeXID;
 
 fn is_symbol(ch: char) -> bool {
@@ -154,7 +154,8 @@ impl<'src> Lexer<'src> {
 
     /// Return the next character in the source string
     fn lookahead(&self) -> Option<(BytePos, char)> {
-        self.lookahead.map(|(index, ch)| (BytePos(index), ch))
+        self.lookahead
+            .map(|(index, ch)| (BytePos(index as RawIndex), ch))
     }
 
     /// Bump the current position in the source string by one character,
@@ -167,7 +168,7 @@ impl<'src> Lexer<'src> {
 
     /// Return a slice of the source string
     fn slice(&self, start: BytePos, end: BytePos) -> &'src str {
-        &self.src[start.0..end.0]
+        &self.src[(start.0 as usize)..(end.0 as usize)]
     }
 
     // /// Test a predicate againt the next character in the source
@@ -203,7 +204,7 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        let eof = BytePos(self.src.len());
+        let eof = BytePos(self.src.len() as RawIndex);
         (eof, self.slice(start, eof))
     }
 
@@ -313,8 +314,8 @@ mod tests {
         ($src:expr, $($span:expr => $token:expr,)*) => {{
             let lexed_tokens: Vec<_> = Lexer::new($src).collect();
             let expected_tokens = vec![$({
-                let start = BytePos($span.find("~").unwrap());
-                let end = BytePos($span.rfind("~").unwrap() + 1);
+                let start = BytePos($span.find("~").unwrap() as RawIndex);
+                let end = BytePos($span.rfind("~").unwrap() as RawIndex + 1);
                 Ok((start, $token, end))
             }),*];
 

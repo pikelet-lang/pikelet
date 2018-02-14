@@ -3,9 +3,13 @@
 use std::{cmp, fmt};
 use std::ops::{Add, Sub};
 
+/// The raw, untyped index. We use a 32-bit integer here for space efficiency,
+/// assuming we won't be working with sources larger than 4GB.
+pub type RawIndex = u32;
+
 /// A zero-indexed line offest into a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct LineIndex(pub usize);
+pub struct LineIndex(pub RawIndex);
 
 impl LineIndex {
     /// The 1-indexed line number. Useful for pretty printing source locations.
@@ -21,7 +25,7 @@ impl LineIndex {
     }
 
     /// Apply the function `f` to the underlying index and return the wrapped result
-    pub fn map<F: FnMut(usize) -> usize>(self, mut f: F) -> LineIndex {
+    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> LineIndex {
         LineIndex(f(self.0))
     }
 }
@@ -42,11 +46,11 @@ impl fmt::Debug for LineIndex {
 
 /// A 1-indexed line number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct LineNumber(pub usize);
+pub struct LineNumber(pub RawIndex);
 
 impl LineNumber {
     /// Apply the function `f` to the underlying number and return the wrapped result
-    pub fn map<F: FnMut(usize) -> usize>(self, mut f: F) -> LineNumber {
+    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> LineNumber {
         LineNumber(f(self.0))
     }
 }
@@ -67,7 +71,7 @@ impl fmt::Display for LineNumber {
 
 /// A zero-indexed column offest into a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ColumnIndex(pub usize);
+pub struct ColumnIndex(pub RawIndex);
 
 impl ColumnIndex {
     /// The 1-indexed column number. Useful for pretty printing source locations.
@@ -83,7 +87,7 @@ impl ColumnIndex {
     }
 
     /// Apply the function `f` to the underlying index and return the wrapped result
-    pub fn map<F: FnMut(usize) -> usize>(self, mut f: F) -> ColumnIndex {
+    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> ColumnIndex {
         ColumnIndex(f(self.0))
     }
 }
@@ -104,11 +108,11 @@ impl fmt::Debug for ColumnIndex {
 
 /// A 1-indexed column number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ColumnNumber(pub usize);
+pub struct ColumnNumber(pub RawIndex);
 
 impl ColumnNumber {
     /// Apply the function `f` to the underlying number and return the wrapped result
-    pub fn map<F: FnMut(usize) -> usize>(self, mut f: F) -> ColumnNumber {
+    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> ColumnNumber {
         ColumnNumber(f(self.0))
     }
 }
@@ -129,11 +133,11 @@ impl fmt::Display for ColumnNumber {
 
 /// A byte offset in a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct BytePos(pub usize);
+pub struct BytePos(pub RawIndex);
 
 impl BytePos {
     /// Apply the function `f` to the underlying position and return the wrapped result
-    pub fn map<F: FnMut(usize) -> usize>(self, mut f: F) -> BytePos {
+    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> BytePos {
         BytePos(f(self.0))
     }
 }
@@ -176,11 +180,11 @@ impl fmt::Display for BytePos {
 
 /// A unicode character offset in a source file
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct CharPos(pub usize);
+pub struct CharPos(pub RawIndex);
 
 impl CharPos {
     /// Apply the function `f` to the underlying position and return the wrapped result
-    pub fn map<F: FnMut(usize) -> usize>(self, mut f: F) -> CharPos {
+    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> CharPos {
         CharPos(f(self.0))
     }
 }
@@ -288,7 +292,7 @@ impl Span {
     pub fn from_char_utf8(lo: BytePos, ch: char) -> Span {
         Span {
             lo,
-            hi: lo.map(|x| x + ch.len_utf8()),
+            hi: lo.map(|x| x + ch.len_utf8() as u32),
         }
     }
 
