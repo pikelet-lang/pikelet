@@ -24,7 +24,7 @@ impl fmt::Display for FileName {
 }
 
 /// Some source code
-pub struct Source {
+pub struct File {
     /// The name of the file that the source came from
     name: FileName,
     /// The complete source code
@@ -35,9 +35,9 @@ pub struct Source {
     end_offset: BytePos,
 }
 
-impl Source {
+impl File {
     /// Construct a new sorce code, creating an index of line start locations
-    pub fn new(name: FileName, src: String) -> Source {
+    pub fn new(name: FileName, src: String) -> File {
         use std::iter;
 
         let mut end_offset = BytePos(0);
@@ -51,7 +51,7 @@ impl Source {
             iter::once(BytePos(0)).chain(input_indices).collect()
         };
 
-        Source {
+        File {
             name,
             src,
             line_offsets,
@@ -60,15 +60,15 @@ impl Source {
     }
 
     /// Read some source code from a file
-    pub fn from_file(name: PathBuf) -> io::Result<Source> {
-        use std::fs::File;
+    pub fn from_file(name: PathBuf) -> io::Result<File> {
+        use std::fs::File as FsFile;
         use std::io::Read;
 
-        let mut file = File::open(&name)?;
+        let mut file = FsFile::open(&name)?;
         let mut src = String::new();
         file.read_to_string(&mut src)?;
 
-        Ok(Source::new(FileName::Real(name), src))
+        Ok(File::new(FileName::Real(name), src))
     }
 
     /// The name of the file that the source came from
@@ -84,10 +84,10 @@ impl Source {
     /// Returns the byte offset to the start of `line`
     ///
     /// ```rust
-    /// use source::file::{FileName, Source};
+    /// use source::file::{FileName, File};
     /// use source::pos::{BytePos, LineIndex};
     ///
-    /// let source = Source::new(
+    /// let source = File::new(
     ///     FileName::Virtual("test".into()),
     ///     "hello!\nhowdy\n\nhi萤\nbloop\n".to_owned(),
     /// );
@@ -107,10 +107,10 @@ impl Source {
     /// Returns the line and column location of `byte`
     ///
     /// ```rust
-    /// use source::file::{FileName, Source};
+    /// use source::file::{FileName, File};
     /// use source::pos::{BytePos, ColumnIndex, LineIndex};
     ///
-    /// let source = Source::new(
+    /// let source = File::new(
     ///     FileName::Virtual("test".into()),
     ///     "hello!\nhowdy\n\nhi萤\nbloop\n".to_owned(),
     /// );
@@ -133,10 +133,10 @@ impl Source {
     /// Returns the line index that the byte offset points to
     ///
     /// ```rust
-    /// use source::file::{FileName, Source};
+    /// use source::file::{FileName, File};
     /// use source::pos::{BytePos, LineIndex};
     ///
-    /// let source = Source::new(
+    /// let source = File::new(
     ///     FileName::Virtual("test".into()),
     ///     "hello!\nhowdy\n\nhi萤\nbloop\n".to_owned(),
     /// );
