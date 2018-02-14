@@ -11,10 +11,43 @@ use syntax::parse::lexer::Lexer;
 
 pub use syntax::parse::lexer::{LexerError, Token};
 
+mod grammar;
 mod lexer;
 
-mod grammar {
-    include!(concat!(env!("OUT_DIR"), "/syntax/parse/grammar.rs"));
+impl FromStr for concrete::ReplCommand {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<concrete::ReplCommand, ParseError> {
+        grammar::parse_ReplCommand(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
+            .map_err(|err| ParseError::from_lalrpop(src, err))
+    }
+}
+
+impl FromStr for concrete::Module {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<concrete::Module, ParseError> {
+        grammar::parse_Module(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
+            .map_err(|err| ParseError::from_lalrpop(src, err))
+    }
+}
+
+impl FromStr for concrete::Declaration {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<concrete::Declaration, ParseError> {
+        grammar::parse_Declaration(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
+            .map_err(|err| ParseError::from_lalrpop(src, err))
+    }
+}
+
+impl FromStr for concrete::Term {
+    type Err = ParseError;
+
+    fn from_str(src: &str) -> Result<concrete::Term, ParseError> {
+        grammar::parse_Term(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
+            .map_err(|err| ParseError::from_lalrpop(src, err))
+    }
 }
 
 #[derive(Fail, Debug, Clone, PartialEq, Eq)]
@@ -58,6 +91,7 @@ impl ParseError {
         }
     }
 
+    /// Flatten away an LALRPOP error, leaving the inner `ParseError` behind
     fn from_lalrpop<T>(src: &str, err: LalrpopError<BytePos, T, ParseError>) -> ParseError
     where
         T: Into<Token<String>>,
@@ -138,90 +172,6 @@ impl fmt::Display for ExpectedTokens {
             }
         }
         Ok(())
-    }
-}
-
-impl FromStr for concrete::ReplCommand {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::ReplCommand, ParseError> {
-        grammar::parse_ReplCommand(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
-    }
-}
-
-impl FromStr for concrete::Module {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::Module, ParseError> {
-        grammar::parse_Module(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
-    }
-}
-
-impl FromStr for concrete::Declaration {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::Declaration, ParseError> {
-        grammar::parse_Declaration(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
-    }
-}
-
-impl FromStr for concrete::Term {
-    type Err = ParseError;
-
-    fn from_str(src: &str) -> Result<concrete::Term, ParseError> {
-        grammar::parse_Term(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(|err| ParseError::from_lalrpop(src, err))
-    }
-}
-
-/// This is an ugly hack that cobbles together a pi type from a binder term and
-/// a body. See the comments on the `PiTerm` rule in the `grammer.lalrpop` for
-/// more information.
-fn reparse_pi_type_hack<L, T>(
-    span: Span,
-    binder: concrete::Term,
-    body: concrete::Term,
-) -> Result<concrete::Term, LalrpopError<L, T, ParseError>> {
-    use syntax::concrete::Term;
-
-    fn param_names<L, T>(
-        term: Term,
-        names: &mut Vec<(Span, String)>,
-    ) -> Result<(), LalrpopError<L, T, ParseError>> {
-        match term {
-            Term::Var(span, name) => names.push((span, name)),
-            Term::App(fn_expr, arg) => {
-                param_names(*fn_expr, names)?;
-                param_names(*arg, names)?;
-            },
-            term => {
-                return Err(LalrpopError::User {
-                    error: ParseError::IdentifierExpectedInPiType { span: term.span() }, // TODO: better error!
-                });
-            },
-        }
-        Ok(())
-    }
-
-    match binder {
-        Term::Parens(paren_span, term) => {
-            let term = *term; // HACK: see https://github.com/rust-lang/rust/issues/16223
-            match term {
-                Term::Ann(params, ann) => {
-                    let mut names = Vec::new();
-                    param_names(*params, &mut names)?;
-                    Ok(Term::Pi(span.lo(), (names, ann), body.into()))
-                },
-                ann => {
-                    let parens = Term::Parens(paren_span, ann.into()).into();
-                    Ok(Term::Arrow(parens, body.into()))
-                },
-            }
-        },
-        ann => Ok(Term::Arrow(ann.into(), body.into())),
     }
 }
 

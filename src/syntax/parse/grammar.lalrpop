@@ -131,7 +131,7 @@ PiTerm: Term = {
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in by reparsing the binder:
     <lo: @L> <binder: AppTerm> "->" <body: LamTerm> <hi: @R> =>? {
-        super::reparse_pi_type_hack(Span::new(lo, hi), binder, body)
+        reparse_pi_type_hack(Span::new(lo, hi), binder, body)
     },
     <lo: @L> "Type" <level: U32Literal> <hi: @R> => {
         Term::Universe(Span::new(lo, hi), Some(level as u32))
