@@ -7,7 +7,7 @@ use pos::Span;
 
 /// A severity level for diagnostic messages
 #[derive(Copy, PartialEq, Clone, Hash, Debug)]
-pub enum Level {
+pub enum Severity {
     /// Internal errors - these are bugs!
     Bug,
     /// An error.
@@ -20,31 +20,31 @@ pub enum Level {
     Help,
 }
 
-impl fmt::Display for Level {
+impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_str().fmt(f)
     }
 }
 
-impl Level {
-    /// Return the termcolor to use when rendering messages of this diagnostic level
+impl Severity {
+    /// Return the termcolor to use when rendering messages of this diagnostic severity
     pub fn color(self) -> Color {
         match self {
-            Level::Bug | Level::Error => Color::Red,
-            Level::Warning => Color::Yellow,
-            Level::Note => Color::Green,
-            Level::Help => Color::Cyan,
+            Severity::Bug | Severity::Error => Color::Red,
+            Severity::Warning => Color::Yellow,
+            Severity::Note => Color::Green,
+            Severity::Help => Color::Cyan,
         }
     }
 
-    /// A string that explains this diagnostic level
+    /// A string that explains this diagnostic severity
     pub fn to_str(self) -> &'static str {
         match self {
-            Level::Bug => "error: internal compiler error",
-            Level::Error => "error",
-            Level::Warning => "warning",
-            Level::Note => "note",
-            Level::Help => "help",
+            Severity::Bug => "error: internal compiler error",
+            Severity::Error => "error",
+            Severity::Warning => "warning",
+            Severity::Note => "note",
+            Severity::Help => "help",
         }
     }
 }
@@ -77,37 +77,37 @@ pub struct SpanLabel {
 /// Represents a diagnostic message and associated child messages.
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
-    level: Level,
+    severity: Severity,
     message: String,
     span: Option<Span>,
     children: Vec<Diagnostic>,
 }
 
 impl Diagnostic {
-    /// Create a new diagnostic with the given `level` and `message`.
-    pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
+    /// Create a new diagnostic with the given `severity` and `message`.
+    pub fn new<T: Into<String>>(severity: Severity, message: T) -> Diagnostic {
         Diagnostic {
-            level: level,
+            severity: severity,
             message: message.into(),
             span: None,
             children: vec![],
         }
     }
 
-    /// Create a new diagnostic with the given `level` and `message` pointing to
+    /// Create a new diagnostic with the given `severity` and `message` pointing to
     /// the given `span`.
-    pub fn spanned<T: Into<String>>(span: Span, level: Level, message: T) -> Diagnostic {
+    pub fn spanned<T: Into<String>>(span: Span, severity: Severity, message: T) -> Diagnostic {
         Diagnostic {
-            level: level,
+            severity: severity,
             message: message.into(),
             span: Some(span),
             children: vec![],
         }
     }
 
-    /// Returns the diagnostic `level` for `self`.
-    pub fn level(&self) -> Level {
-        self.level
+    /// Returns the diagnostic `severity` for `self`.
+    pub fn severity(&self) -> Severity {
+        self.severity
     }
 
     /// Returns the diagnostic `message` for `self`.

@@ -1,7 +1,8 @@
 //! Parser utilities
 
 use lalrpop_util::ParseError as LalrpopError;
-use source::pos::{BytePos, Span};
+use source::pos::{BytePos, RawIndex, Span};
+use source::reporting::Diagnostic;
 use std::fmt;
 use std::str::FromStr;
 
@@ -27,8 +28,11 @@ pub enum ParseError {
     IntegerLiteralOverflow { span: Span, value: u64 },
     #[fail(display = "Unknown repl command `:{}` found at byte range {}.", command, span)]
     UnknownReplCommand { span: Span, command: String },
-    #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
-    UnexpectedEof { expected: ExpectedTokens },
+    #[fail(display = "Unexpected EOF at byte pos {}, expected one of: {}.", end, expected)]
+    UnexpectedEof {
+        end: BytePos,
+        expected: ExpectedTokens,
+    },
     #[fail(display = "Unexpected token {}, found at byte range {}, expected one of: {}.", token,
            span, expected)]
     UnexpectedToken {
@@ -50,26 +54,22 @@ impl ParseError {
             | ParseError::UnknownReplCommand { span, .. }
             | ParseError::UnexpectedToken { span, .. }
             | ParseError::ExtraToken { span, .. } => span,
-            ParseError::UnexpectedEof { .. } => Span::start(),
+            ParseError::UnexpectedEof { end, .. } => Span::new(end, end),
         }
     }
-}
 
-impl From<LexerError> for ParseError {
-    fn from(src: LexerError) -> ParseError {
-        ParseError::Lexer(src)
-    }
-}
-
-impl<T: Into<Token<String>>> From<LalrpopError<BytePos, T, ParseError>> for ParseError {
-    fn from(src: LalrpopError<BytePos, T, ParseError>) -> ParseError {
-        match src {
+    fn from_lalrpop<T>(src: &str, err: LalrpopError<BytePos, T, ParseError>) -> ParseError
+    where
+        T: Into<Token<String>>,
+    {
+        match err {
             LalrpopError::User { error } => error,
             LalrpopError::InvalidToken { .. } => unreachable!(),
             LalrpopError::UnrecognizedToken {
                 token: None,
                 expected,
             } => ParseError::UnexpectedEof {
+                end: BytePos(src.len() as RawIndex),
                 expected: ExpectedTokens(expected),
             },
             LalrpopError::UnrecognizedToken {
@@ -87,6 +87,41 @@ impl<T: Into<Token<String>>> From<LalrpopError<BytePos, T, ParseError>> for Pars
                 token: token.into(),
             },
         }
+    }
+
+    /// Convert the error into a diagnostic message
+    pub fn to_diagnostic(&self) -> Diagnostic {
+        use source::reporting::Severity;
+
+        let message = match *self {
+            ParseError::Lexer(LexerError::UnexpectedCharacter { found, .. }) => {
+                format!("unexpected character {:?}", found)
+            },
+            ParseError::IdentifierExpectedInPiType { .. } => {
+                format!("identifier expected when parsing pi type")
+            },
+            ParseError::IntegerLiteralOverflow { .. } => format!("integer literal overflow"),
+            ParseError::UnknownReplCommand { ref command, .. } => {
+                format!("unknown repl command {}", command)
+            },
+            ParseError::UnexpectedToken {
+                ref token,
+                ref expected,
+                ..
+            } => format!("unexpected token {}, expected one of {}", token, expected),
+            ParseError::UnexpectedEof { ref expected, .. } => {
+                format!("unexpected EOF, expected one of {}", expected)
+            },
+            ParseError::ExtraToken { ref token, .. } => format!("extra token {}", token),
+        };
+
+        Diagnostic::spanned(self.span(), Severity::Error, message)
+    }
+}
+
+impl From<LexerError> for ParseError {
+    fn from(src: LexerError) -> ParseError {
+        ParseError::Lexer(src)
     }
 }
 
@@ -111,7 +146,7 @@ impl FromStr for concrete::ReplCommand {
 
     fn from_str(src: &str) -> Result<concrete::ReplCommand, ParseError> {
         grammar::parse_ReplCommand(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(ParseError::from)
+            .map_err(|err| ParseError::from_lalrpop(src, err))
     }
 }
 
@@ -120,7 +155,7 @@ impl FromStr for concrete::Module {
 
     fn from_str(src: &str) -> Result<concrete::Module, ParseError> {
         grammar::parse_Module(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(ParseError::from)
+            .map_err(|err| ParseError::from_lalrpop(src, err))
     }
 }
 
@@ -129,7 +164,7 @@ impl FromStr for concrete::Declaration {
 
     fn from_str(src: &str) -> Result<concrete::Declaration, ParseError> {
         grammar::parse_Declaration(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(ParseError::from)
+            .map_err(|err| ParseError::from_lalrpop(src, err))
     }
 }
 
@@ -138,7 +173,7 @@ impl FromStr for concrete::Term {
 
     fn from_str(src: &str) -> Result<concrete::Term, ParseError> {
         grammar::parse_Term(Lexer::new(src).map(|x| x.map_err(ParseError::from)))
-            .map_err(ParseError::from)
+            .map_err(|err| ParseError::from_lalrpop(src, err))
     }
 }
 
