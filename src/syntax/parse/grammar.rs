@@ -45,3 +45,13 @@ fn reparse_pi_type_hack<L, T>(
         ann => Ok(Term::Arrow(ann.into(), body.into())),
     }
 }
+
+fn u32_literal<L, T>(span: Span, value: u64) -> Result<u32, LalrpopError<L, T, ParseError>> {
+    if value <= u32::MAX as u64 {
+        Ok(value as u32)
+    } else {
+        Err(LalrpopError::User {
+            error: ParseError::IntegerLiteralOverflow { span, value },
+        })
+    }
+}

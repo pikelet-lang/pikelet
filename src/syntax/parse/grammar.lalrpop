@@ -177,11 +177,7 @@ Ident: String = {
 };
 
 U32Literal : u32 = {
-    <lo: @L> <value: "decimal literal"> <hi: @R> =>? if value > u32::MAX as u64 {
-        Err(LalrpopError::User {
-            error: ParseError::IntegerLiteralOverflow { span: Span::new(lo, hi), value },
-        })
-    } else {
-        Ok(value as u32)
+    <lo: @L> <value: "decimal literal"> <hi: @R> =>? {
+        u32_literal(Span::new(lo, hi), value)
     },
 };
