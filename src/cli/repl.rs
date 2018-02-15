@@ -65,9 +65,9 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        println!("parse error: {}", err);
+                        println!("{}", err);
                     },
-                    Err(EvalPrintError::Type(err)) => println!("type error: {:?}", err),
+                    Err(EvalPrintError::Type(err)) => println!("{}", err),
                 }
             },
             Err(err) => match err {

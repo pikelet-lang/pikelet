@@ -11,6 +11,7 @@
 //! through the type checker clear and relatively easy to reason about.
 
 use source::pos::Span;
+use std::fmt;
 
 use syntax::core::{self, Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term};
 use syntax::core::{Value, ValueLam, ValuePi};
@@ -73,7 +74,7 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
 }
 
 /// An internal error. These are bugs!
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
     UnsubstitutedDebruijnIndex {
         span: Span,
@@ -94,6 +95,21 @@ impl InternalError {
     }
 }
 
+impl fmt::Display for InternalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            InternalError::UnsubstitutedDebruijnIndex { span, ref index } => write!(
+                f,
+                "Undefined name `{}{}`, at byte range {}.",
+                index.name, index.inner, span
+            ),
+            InternalError::UndefinedName { span, ref name } => {
+                write!(f, "Undefined name `{}`, at byte range {}.", name, span)
+            },
+        }
+    }
+}
+
 /// An error produced during typechecking
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeError {
@@ -104,13 +120,13 @@ pub enum TypeError {
     TypeAnnotationsNeeded {
         span: Span,
     },
-    UnexpectedFunction {
-        span: Span,
-        expected: RcType,
-    },
     Mismatch {
         span: Span,
         found: RcType,
+        expected: RcType,
+    },
+    UnexpectedFunction {
+        span: Span,
         expected: RcType,
     },
     ExpectedUniverse {
@@ -141,6 +157,44 @@ impl TypeError {
 impl From<InternalError> for TypeError {
     fn from(src: InternalError) -> TypeError {
         TypeError::Internal(src)
+    }
+}
+
+impl fmt::Display for TypeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TypeError::NotAFunctionType { span, ref found } => write!(
+                f,
+                "Applied an argument to a non-function type `{}`, at byte range {}.",
+                found, span
+            ),
+            TypeError::TypeAnnotationsNeeded { span } => {
+                write!(f, "Type annotations needed, at byte range {}.", span)
+            },
+            TypeError::Mismatch {
+                span,
+                ref found,
+                ref expected,
+            } => write!(
+                f,
+                "Type mismatch: found `{}` but `{}` was expected, at byte range {}.",
+                found, expected, span
+            ),
+            TypeError::UnexpectedFunction { span, ref expected } => write!(
+                f,
+                "Found a function but expected `{}`, at byte range {}.",
+                expected, span
+            ),
+            TypeError::ExpectedUniverse { span, ref found } => write!(
+                f,
+                "Found `{}` but a universe was expected, at byte range {}.",
+                found, span
+            ),
+            TypeError::UndefinedName { span, ref name } => {
+                write!(f, "Undefined name `{}`, at byte range {}.", name, span)
+            },
+            TypeError::Internal(ref err) => write!(f, "Internal error - this is a bug! {}", err),
+        }
     }
 }
 
