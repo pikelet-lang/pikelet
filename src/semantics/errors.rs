@@ -1,6 +1,7 @@
 //! Errors that might be produced during semantic analysis
 
 use source::pos::Span;
+use source::reporting::Diagnostic;
 use std::fmt;
 
 use syntax::core::{Name, RcType};
@@ -85,6 +86,39 @@ impl TypeError {
             TypeError::Internal(ref err) => err.span(),
         }
     }
+
+    /// Convert the error into a diagnostic message
+    pub fn to_diagnostic(&self) -> Diagnostic {
+        use source::reporting::Severity;
+
+        // TODO: add contextual labels to underlines
+
+        let message = match *self {
+            TypeError::Internal(ref err) => format!("internal error - this is a bug! {}", err),
+            TypeError::NotAFunctionType { ref found, .. } => format!(
+                "applied an argument to a term that was not a function - found type `{}`",
+                found,
+            ),
+            TypeError::TypeAnnotationsNeeded { .. } => format!("type annotations needed"),
+            TypeError::UnexpectedFunction { ref expected, .. } => format!(
+                "found a function but expected a term of type `{}`",
+                expected
+            ),
+            TypeError::Mismatch {
+                ref found,
+                ref expected,
+                ..
+            } => format!(
+                "found a term of type `{}`, but expected a term of type `{}`",
+                found, expected,
+            ),
+            TypeError::ExpectedUniverse { ref found, .. } => {
+                format!("expected type, found value `{}`", found)
+            },
+            TypeError::UndefinedName { ref name, .. } => format!("cannot find `{}` in scope", name),
+        };
+        Diagnostic::spanned(self.span(), Severity::Error, message)
+    }
 }
 
 impl From<InternalError> for TypeError {
@@ -99,7 +133,7 @@ impl fmt::Display for TypeError {
             TypeError::NotAFunctionType { span, ref found } => write!(
                 f,
                 "Applied an argument to a non-function type `{}`, at byte range {}.",
-                found, span
+                found, span,
             ),
             TypeError::TypeAnnotationsNeeded { span } => {
                 write!(f, "Type annotations needed, at byte range {}.", span)
@@ -111,17 +145,17 @@ impl fmt::Display for TypeError {
             } => write!(
                 f,
                 "Type mismatch: found `{}` but `{}` was expected, at byte range {}.",
-                found, expected, span
+                found, expected, span,
             ),
             TypeError::UnexpectedFunction { span, ref expected } => write!(
                 f,
                 "Found a function but expected `{}`, at byte range {}.",
-                expected, span
+                expected, span,
             ),
             TypeError::ExpectedUniverse { span, ref found } => write!(
                 f,
                 "Found `{}` but a universe was expected, at byte range {}.",
-                found, span
+                found, span,
             ),
             TypeError::UndefinedName { span, ref name } => {
                 write!(f, "Undefined name `{}`, at byte range {}.", name, span)
