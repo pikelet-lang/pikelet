@@ -1,7 +1,7 @@
 //! Errors that might be produced during semantic analysis
 
 use source::pos::Span;
-use source::reporting::Diagnostic;
+use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 
 use syntax::core::{Name, RcType};
@@ -32,13 +32,11 @@ impl InternalError {
 impl fmt::Display for InternalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InternalError::UnsubstitutedDebruijnIndex { span, ref index } => write!(
-                f,
-                "Undefined name `{}{}`, at byte range {}.",
-                index.name, index.inner, span
-            ),
-            InternalError::UndefinedName { span, ref name } => {
-                write!(f, "Undefined name `{}`, at byte range {}.", name, span)
+            InternalError::UnsubstitutedDebruijnIndex { ref index, .. } => {
+                write!(f, "Undefined name `{}{}`.", index.name, index.inner)
+            },
+            InternalError::UndefinedName { ref name, .. } => {
+                write!(f, "Undefined name `{}`.", name)
             },
         }
     }
@@ -89,35 +87,94 @@ impl TypeError {
 
     /// Convert the error into a diagnostic message
     pub fn to_diagnostic(&self) -> Diagnostic {
-        use source::reporting::Severity;
-
-        // TODO: add contextual labels to underlines
-
-        let message = match *self {
-            TypeError::Internal(ref err) => format!("internal error - this is a bug! {}", err),
-            TypeError::NotAFunctionType { ref found, .. } => format!(
-                "applied an argument to a term that was not a function - found type `{}`",
-                found,
-            ),
-            TypeError::TypeAnnotationsNeeded { .. } => format!("type annotations needed"),
-            TypeError::UnexpectedFunction { ref expected, .. } => format!(
-                "found a function but expected a term of type `{}`",
-                expected
-            ),
+        match *self {
+            TypeError::Internal(ref err) => Diagnostic {
+                severity: Severity::Error,
+                message: format!("{}", err),
+                spans: vec![
+                    SpanLabel {
+                        label: None, // TODO
+                        style: UnderlineStyle::Primary,
+                        span: err.span(),
+                    },
+                ],
+            },
+            TypeError::NotAFunctionType { span, ref found } => Diagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "applied an argument to a term that was not a function - found type `{}`",
+                    found,
+                ),
+                spans: vec![
+                    SpanLabel {
+                        label: None, // TODO
+                        style: UnderlineStyle::Primary,
+                        span,
+                    },
+                ],
+            },
+            TypeError::TypeAnnotationsNeeded { span } => Diagnostic {
+                severity: Severity::Error,
+                message: format!("type annotations needed"),
+                spans: vec![
+                    SpanLabel {
+                        label: None, // TODO
+                        style: UnderlineStyle::Primary,
+                        span,
+                    },
+                ],
+            },
+            TypeError::UnexpectedFunction {
+                span, ref expected, ..
+            } => Diagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "found a function but expected a term of type `{}`",
+                    expected
+                ),
+                spans: vec![
+                    SpanLabel {
+                        label: None, // TODO
+                        style: UnderlineStyle::Primary,
+                        span,
+                    },
+                ],
+            },
             TypeError::Mismatch {
+                span,
                 ref found,
                 ref expected,
-                ..
-            } => format!(
-                "found a term of type `{}`, but expected a term of type `{}`",
-                found, expected,
-            ),
-            TypeError::ExpectedUniverse { ref found, .. } => {
-                format!("expected type, found value `{}`", found)
+            } => Diagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "found a term of type `{}`, but expected a term of type `{}`",
+                    found, expected,
+                ),
+                spans: vec![
+                    SpanLabel {
+                        label: None, // TODO
+                        style: UnderlineStyle::Primary,
+                        span,
+                    },
+                ],
             },
-            TypeError::UndefinedName { ref name, .. } => format!("cannot find `{}` in scope", name),
-        };
-        Diagnostic::spanned(self.span(), Severity::Error, message)
+            TypeError::ExpectedUniverse { ref found, .. } => Diagnostic {
+                severity: Severity::Error,
+                message: format!("expected type, found value `{}`", found),
+                spans: vec![],
+            },
+            TypeError::UndefinedName { ref name, span } => Diagnostic {
+                severity: Severity::Error,
+                message: format!("cannot find `{}` in scope", name),
+                spans: vec![
+                    SpanLabel {
+                        label: Some("not found in this scope".into()),
+                        style: UnderlineStyle::Primary,
+                        span,
+                    },
+                ],
+            },
+        }
     }
 }
 
@@ -130,36 +187,26 @@ impl From<InternalError> for TypeError {
 impl fmt::Display for TypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TypeError::NotAFunctionType { span, ref found } => write!(
-                f,
-                "Applied an argument to a non-function type `{}`, at byte range {}.",
-                found, span,
-            ),
-            TypeError::TypeAnnotationsNeeded { span } => {
-                write!(f, "Type annotations needed, at byte range {}.", span)
+            TypeError::NotAFunctionType { ref found, .. } => {
+                write!(f, "Applied an argument to a non-function type `{}`", found,)
             },
+            TypeError::TypeAnnotationsNeeded { .. } => write!(f, "Type annotations needed"),
             TypeError::Mismatch {
-                span,
                 ref found,
                 ref expected,
+                ..
             } => write!(
                 f,
-                "Type mismatch: found `{}` but `{}` was expected, at byte range {}.",
-                found, expected, span,
+                "Type mismatch: found `{}` but `{}` was expected",
+                found, expected,
             ),
-            TypeError::UnexpectedFunction { span, ref expected } => write!(
-                f,
-                "Found a function but expected `{}`, at byte range {}.",
-                expected, span,
-            ),
-            TypeError::ExpectedUniverse { span, ref found } => write!(
-                f,
-                "Found `{}` but a universe was expected, at byte range {}.",
-                found, span,
-            ),
-            TypeError::UndefinedName { span, ref name } => {
-                write!(f, "Undefined name `{}`, at byte range {}.", name, span)
+            TypeError::UnexpectedFunction { ref expected, .. } => {
+                write!(f, "Found a function but expected `{}`", expected,)
             },
+            TypeError::ExpectedUniverse { ref found, .. } => {
+                write!(f, "Found `{}` but a universe was expected", found,)
+            },
+            TypeError::UndefinedName { ref name, .. } => write!(f, "Undefined name `{}`", name),
             TypeError::Internal(ref err) => write!(f, "Internal error - this is a bug! {}", err),
         }
     }

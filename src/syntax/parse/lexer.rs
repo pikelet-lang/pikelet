@@ -1,4 +1,5 @@
 use source::pos::Span;
+use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 use std::str::CharIndices;
 
@@ -36,6 +37,22 @@ impl LexerError {
     pub fn span(&self) -> Span {
         match *self {
             LexerError::UnexpectedCharacter { start, found } => Span::from_char_utf8(start, found),
+        }
+    }
+
+    pub fn to_diagnostic(&self) -> Diagnostic {
+        match *self {
+            LexerError::UnexpectedCharacter { start, found } => Diagnostic {
+                severity: Severity::Error,
+                message: format!("unexpected character {:?}", found),
+                spans: vec![
+                    SpanLabel {
+                        label: None, // TODO
+                        style: UnderlineStyle::Primary,
+                        span: Span::from_char_utf8(start, found),
+                    },
+                ],
+            },
         }
     }
 }
