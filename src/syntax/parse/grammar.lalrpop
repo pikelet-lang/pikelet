@@ -84,7 +84,7 @@ pub Declaration: Declaration = {
         Declaration::Definition { name, params, body }
     },
     <lo: @L> <recovered: !> <hi: @R> ";" => {
-        errors.push(ParseError::from_lalrpop(src, recovered.error));
+        errors.push(super::errors::from_lalrpop(src, recovered.error));
         Declaration::Error(Span::new(lo, hi))
     }
 };
@@ -97,7 +97,7 @@ Exposing : Exposing = {
         Exposing::Exact(Span::new(lo, hi), names)
     },
     <lo: @L> <recovered: !> <hi: @R> => {
-        errors.push(ParseError::from_lalrpop(src, recovered.error));
+        errors.push(super::errors::from_lalrpop(src, recovered.error));
         Exposing::Error(Span::new(lo, hi))
     },
 };
@@ -158,7 +158,7 @@ AtomicTerm: Term = {
     <lo: @L> "Type" <hi: @R> => Term::Universe(Span::new(lo, hi), None),
     <lo: @L> <ident: Ident> <hi: @R> => Term::Var(Span::new(lo, hi), ident),
     <lo: @L> <recovered: !> <hi: @R> => {
-        errors.push(ParseError::from_lalrpop(src, recovered.error));
+        errors.push(super::errors::from_lalrpop(src, recovered.error));
         Term::Error(Span::new(lo, hi))
     }
 };
