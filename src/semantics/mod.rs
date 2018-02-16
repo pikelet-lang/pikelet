@@ -110,7 +110,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             }),
             Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
                 InternalError::UndefinedName {
-                    span: Span::start(), // TODO
+                    var_span: Span::start(), // TODO
                     name: name.clone(),
                 }
             })? {
@@ -328,7 +328,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             },
             Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
                 TypeError::UndefinedName {
-                    span: Span::start(), // TODO: term.span().
+                    var_span: Span::start(), // TODO: term.span().
                     name: name.clone(),
                 }
             })? {
@@ -421,7 +421,8 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
                 _ => Err(TypeError::NotAFunctionType {
-                    span: Span::start(), // TODO: fn_expr.span().
+                    fn_span: Span::start(),  // TODO: fn_expr.span().
+                    arg_span: Span::start(), // TODO: arg_expr.span().
                     found: fn_type.clone(),
                 }),
             }

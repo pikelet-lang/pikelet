@@ -22,7 +22,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"x")),
             Err(InternalError::UndefinedName {
-                span: Span::start(),
+                var_span: Span::start(),
                 name: x,
             }),
         );
@@ -217,7 +217,7 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::UndefinedName {
-                span: Span::start(),
+                var_span: Span::start(),
                 name: x,
             }),
         );
@@ -309,7 +309,8 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::NotAFunctionType {
-                span: Span::start(),
+                fn_span: Span::start(),
+                arg_span: Span::start(),
                 found: Value::Universe(Level::ZERO.succ()).into(),
             }),
         )
