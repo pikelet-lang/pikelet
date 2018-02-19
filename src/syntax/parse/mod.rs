@@ -15,9 +15,7 @@ pub use self::errors::{ExpectedTokens, ParseError};
 
 // TODO: DRY up these wrappers...
 
-pub fn repl_command<'err, 'src>(
-    src: &'src str,
-) -> (Option<concrete::ReplCommand>, Vec<ParseError>) {
+pub fn repl_command<'src>(src: &'src str) -> (Option<concrete::ReplCommand>, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
     match grammar::parse_ReplCommand(&mut errors, src, lexer) {
@@ -29,7 +27,7 @@ pub fn repl_command<'err, 'src>(
     }
 }
 
-pub fn module<'err, 'src>(src: &'src str) -> (Option<concrete::Module>, Vec<ParseError>) {
+pub fn module<'src>(src: &'src str) -> (Option<concrete::Module>, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
     match grammar::parse_Module(&mut errors, src, lexer) {
@@ -41,7 +39,7 @@ pub fn module<'err, 'src>(src: &'src str) -> (Option<concrete::Module>, Vec<Pars
     }
 }
 
-pub fn term<'err, 'src>(src: &'src str) -> (concrete::Term, Vec<ParseError>) {
+pub fn term<'src>(src: &'src str) -> (concrete::Term, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
     match grammar::parse_Term(&mut errors, src, lexer) {
