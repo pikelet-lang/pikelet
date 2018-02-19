@@ -23,11 +23,6 @@ impl LineIndex {
     pub fn number(self) -> LineNumber {
         LineNumber(self.0 + 1)
     }
-
-    /// Apply the function `f` to the underlying index and return the wrapped result
-    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> LineIndex {
-        LineIndex(f(self.0))
-    }
 }
 
 impl Default for LineIndex {
@@ -47,13 +42,6 @@ impl fmt::Debug for LineIndex {
 /// A 1-indexed line number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LineNumber(pub RawIndex);
-
-impl LineNumber {
-    /// Apply the function `f` to the underlying number and return the wrapped result
-    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> LineNumber {
-        LineNumber(f(self.0))
-    }
-}
 
 impl fmt::Debug for LineNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -85,11 +73,6 @@ impl ColumnIndex {
     pub fn number(self) -> ColumnNumber {
         ColumnNumber(self.0 + 1)
     }
-
-    /// Apply the function `f` to the underlying index and return the wrapped result
-    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> ColumnIndex {
-        ColumnIndex(f(self.0))
-    }
 }
 
 impl Default for ColumnIndex {
@@ -110,13 +93,6 @@ impl fmt::Debug for ColumnIndex {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ColumnNumber(pub RawIndex);
 
-impl ColumnNumber {
-    /// Apply the function `f` to the underlying number and return the wrapped result
-    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> ColumnNumber {
-        ColumnNumber(f(self.0))
-    }
-}
-
 impl fmt::Debug for ColumnNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ColumnNumber(")?;
@@ -134,13 +110,6 @@ impl fmt::Display for ColumnNumber {
 /// A byte offset in a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct BytePos(pub RawIndex);
-
-impl BytePos {
-    /// Apply the function `f` to the underlying position and return the wrapped result
-    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> BytePos {
-        BytePos(f(self.0))
-    }
-}
 
 impl Default for BytePos {
     fn default() -> BytePos {
@@ -181,13 +150,6 @@ impl fmt::Display for BytePos {
 /// A unicode character offset in a source file
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CharPos(pub RawIndex);
-
-impl CharPos {
-    /// Apply the function `f` to the underlying position and return the wrapped result
-    pub fn map<F: FnMut(RawIndex) -> RawIndex>(self, mut f: F) -> CharPos {
-        CharPos(f(self.0))
-    }
-}
 
 impl Default for CharPos {
     fn default() -> CharPos {
@@ -292,7 +254,7 @@ impl Span {
     pub fn from_char_utf8(lo: BytePos, ch: char) -> Span {
         Span {
             lo,
-            hi: lo.map(|x| x + ch.len_utf8() as u32),
+            hi: lo + BytePos(ch.len_utf8() as RawIndex),
         }
     }
 

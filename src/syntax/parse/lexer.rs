@@ -227,9 +227,8 @@ impl<'src> Lexer<'src> {
 
     /// Consume a REPL command
     fn repl_command(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
-        let (end, command) = self.take_while(start.map(|x| x + 1), |ch| {
-            is_ident_continue(ch) || ch == '?'
-        });
+        let (end, command) =
+            self.take_while(start + BytePos(1), |ch| is_ident_continue(ch) || ch == '?');
 
         if command.is_empty() {
             (start, Token::Colon, end)
@@ -240,7 +239,7 @@ impl<'src> Lexer<'src> {
 
     /// Consume a doc comment
     fn doc_comment(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
-        let (end, mut comment) = self.take_until(start.map(|x| x + 3), |ch| ch == '\n');
+        let (end, mut comment) = self.take_until(start + BytePos(3), |ch| ch == '\n');
 
         // Skip preceding space
         if comment.starts_with(' ') {
@@ -280,7 +279,7 @@ impl<'src> Iterator for Lexer<'src> {
 
     fn next(&mut self) -> Option<Result<(BytePos, Token<&'src str>, BytePos), LexerError>> {
         while let Some((start, ch)) = self.bump() {
-            let end = start.map(|x| x + 1);
+            let end = start + BytePos(1);
 
             return Some(match ch {
                 ch if is_symbol(ch) => {
