@@ -1,5 +1,5 @@
 use lalrpop_util::ParseError as LalrpopError;
-use source::pos::{BytePos, RawIndex, Span};
+use source::pos::{BytePos, RawPos, Span};
 use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 
@@ -44,7 +44,7 @@ where
             token: None,
             expected,
         } => ParseError::UnexpectedEof {
-            end: BytePos(src.len() as RawIndex),
+            end: BytePos(src.len() as RawPos),
             expected: ExpectedTokens(expected),
         },
         LalrpopError::UnrecognizedToken {

@@ -1,7 +1,7 @@
 //! Parser utilities
 
 use lalrpop_util::ParseError as LalrpopError;
-use source::pos::{BytePos, RawIndex, Span};
+use source::pos::{BytePos, RawPos, Span};
 
 use syntax::concrete;
 use syntax::parse::lexer::Lexer;
@@ -47,7 +47,7 @@ pub fn term<'err, 'src>(src: &'src str) -> (concrete::Term, Vec<ParseError>) {
     match grammar::parse_Term(&mut errors, src, lexer) {
         Ok(value) => (value, errors),
         Err(err) => {
-            let src_span = Span::new(BytePos(0), BytePos(src.len() as RawIndex));
+            let src_span = Span::new(BytePos(0), BytePos(src.len() as RawPos));
             errors.push(errors::from_lalrpop(src, err));
             (concrete::Term::Error(src_span), errors)
         },

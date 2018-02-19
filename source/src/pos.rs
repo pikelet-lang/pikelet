@@ -1,15 +1,18 @@
 //! Wrapper types that specify positions in a source file
 
 use std::{cmp, fmt};
-use std::ops::{Add, Sub};
+use std::ops::{Add, AddAssign, Neg, Sub};
 
-/// The raw, untyped index. We use a 32-bit integer here for space efficiency,
+/// The raw, untyped position. We use a 32-bit integer here for space efficiency,
 /// assuming we won't be working with sources larger than 4GB.
-pub type RawIndex = u32;
+pub type RawPos = u32;
+
+/// The raw, untyped offset.
+pub type RawOffset = i64;
 
 /// A zero-indexed line offest into a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct LineIndex(pub RawIndex);
+pub struct LineIndex(pub RawPos);
 
 impl LineIndex {
     /// The 1-indexed line number. Useful for pretty printing source locations.
@@ -41,7 +44,7 @@ impl fmt::Debug for LineIndex {
 
 /// A 1-indexed line number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct LineNumber(pub RawIndex);
+pub struct LineNumber(pub RawPos);
 
 impl fmt::Debug for LineNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -59,7 +62,7 @@ impl fmt::Display for LineNumber {
 
 /// A zero-indexed column offest into a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ColumnIndex(pub RawIndex);
+pub struct ColumnIndex(pub RawPos);
 
 impl ColumnIndex {
     /// The 1-indexed column number. Useful for pretty printing source locations.
@@ -91,7 +94,7 @@ impl fmt::Debug for ColumnIndex {
 
 /// A 1-indexed column number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ColumnNumber(pub RawIndex);
+pub struct ColumnNumber(pub RawPos);
 
 impl fmt::Debug for ColumnNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -107,29 +110,13 @@ impl fmt::Display for ColumnNumber {
     }
 }
 
-/// A byte offset in a source file
+/// A byte position in a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct BytePos(pub RawIndex);
+pub struct BytePos(pub RawPos);
 
 impl Default for BytePos {
     fn default() -> BytePos {
         BytePos(0)
-    }
-}
-
-impl Add for BytePos {
-    type Output = BytePos;
-
-    fn add(self, rhs: BytePos) -> BytePos {
-        BytePos(self.0 + rhs.0)
-    }
-}
-
-impl Sub for BytePos {
-    type Output = BytePos;
-
-    fn sub(self, rhs: BytePos) -> BytePos {
-        BytePos(self.0 - rhs.0)
     }
 }
 
@@ -147,43 +134,101 @@ impl fmt::Display for BytePos {
     }
 }
 
-/// A unicode character offset in a source file
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct CharPos(pub RawIndex);
+/// A byte offset in a source file
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ByteOffset(pub RawOffset);
 
-impl Default for CharPos {
-    fn default() -> CharPos {
-        CharPos(0)
+impl ByteOffset {
+    /// Create a byte offset from a UTF8-encoded character
+    ///
+    /// ```rust
+    /// use source::pos::ByteOffset;
+    ///
+    /// assert_eq!(ByteOffset::from_char_utf8('A').0, 1);
+    /// assert_eq!(ByteOffset::from_char_utf8('ß').0, 2);
+    /// assert_eq!(ByteOffset::from_char_utf8('ℝ').0, 3);
+    /// assert_eq!(ByteOffset::from_char_utf8('💣').0, 4);
+    /// ```
+    pub fn from_char_utf8(ch: char) -> ByteOffset {
+        ByteOffset(ch.len_utf8() as RawOffset)
+    }
+
+    /// Create a byte offset from a UTF- encoded string
+    ///
+    /// ```rust
+    /// use source::pos::ByteOffset;
+    ///
+    /// assert_eq!(ByteOffset::from_str("A").0, 1);
+    /// assert_eq!(ByteOffset::from_str("ß").0, 2);
+    /// assert_eq!(ByteOffset::from_str("ℝ").0, 3);
+    /// assert_eq!(ByteOffset::from_str("💣").0, 4);
+    /// ```
+    pub fn from_str(value: &str) -> ByteOffset {
+        ByteOffset(value.len() as RawOffset)
     }
 }
 
-impl Add for CharPos {
-    type Output = CharPos;
-
-    fn add(self, rhs: CharPos) -> CharPos {
-        CharPos(self.0 + rhs.0)
+impl Default for ByteOffset {
+    fn default() -> ByteOffset {
+        ByteOffset(0)
     }
 }
 
-impl Sub for CharPos {
-    type Output = CharPos;
-
-    fn sub(self, rhs: CharPos) -> CharPos {
-        CharPos(self.0 - rhs.0)
-    }
-}
-
-impl fmt::Debug for CharPos {
+impl fmt::Debug for ByteOffset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "CharPos(")?;
+        write!(f, "ByteOffset(")?;
         self.0.fmt(f)?;
         write!(f, ")")
     }
 }
 
-impl fmt::Display for CharPos {
+impl fmt::Display for ByteOffset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl Add<ByteOffset> for BytePos {
+    type Output = BytePos;
+
+    fn add(self, rhs: ByteOffset) -> BytePos {
+        BytePos((self.0 as RawOffset + rhs.0) as RawPos)
+    }
+}
+
+impl AddAssign<ByteOffset> for BytePos {
+    fn add_assign(&mut self, rhs: ByteOffset) {
+        *self = *self + rhs;
+    }
+}
+
+impl Neg for ByteOffset {
+    type Output = ByteOffset;
+
+    fn neg(self) -> ByteOffset {
+        ByteOffset(-self.0)
+    }
+}
+
+impl Add<ByteOffset> for ByteOffset {
+    type Output = ByteOffset;
+
+    fn add(self, rhs: ByteOffset) -> ByteOffset {
+        ByteOffset(self.0 + rhs.0)
+    }
+}
+
+impl AddAssign<ByteOffset> for ByteOffset {
+    fn add_assign(&mut self, rhs: ByteOffset) {
+        self.0 += rhs.0;
+    }
+}
+
+impl Sub for BytePos {
+    type Output = ByteOffset;
+
+    fn sub(self, rhs: BytePos) -> ByteOffset {
+        ByteOffset(self.0 as RawOffset - rhs.0 as RawOffset)
     }
 }
 
@@ -222,39 +267,15 @@ impl Span {
         }
     }
 
+    /// Create a new span from a byte start and an offset
+    pub fn from_offset(lo: BytePos, off: ByteOffset) -> Span {
+        Span::new(lo, lo + off)
+    }
+
     pub fn start() -> Span {
         Span {
             lo: BytePos(0),
             hi: BytePos(0),
-        }
-    }
-
-    /// Create a span over the given character
-    ///
-    ///
-    /// ```rust
-    /// use source::pos::{BytePos, Span};
-    ///
-    /// let span = Span::from_char_utf8(BytePos(3), 'A');
-    /// assert_eq!(span.lo(), BytePos(3));
-    /// assert_eq!(span.hi(), BytePos(4));
-    ///
-    /// let span = Span::from_char_utf8(BytePos(3), 'ß');
-    /// assert_eq!(span.lo(), BytePos(3));
-    /// assert_eq!(span.hi(), BytePos(5));
-    ///
-    /// let span = Span::from_char_utf8(BytePos(3), 'ℝ');
-    /// assert_eq!(span.lo(), BytePos(3));
-    /// assert_eq!(span.hi(), BytePos(6));
-    ///
-    /// let span = Span::from_char_utf8(BytePos(3), '💣');
-    /// assert_eq!(span.lo(), BytePos(3));
-    /// assert_eq!(span.hi(), BytePos(7));
-    /// ```
-    pub fn from_char_utf8(lo: BytePos, ch: char) -> Span {
-        Span {
-            lo,
-            hi: lo + BytePos(ch.len_utf8() as RawIndex),
         }
     }
 
@@ -294,18 +315,6 @@ impl Span {
     /// ```
     pub fn with_hi(self, hi: BytePos) -> Span {
         Span::new(self.lo(), hi)
-    }
-
-    /// Returns a new span representing just the end-point of this span
-    ///
-    /// ```rust
-    /// use source::pos::{BytePos, Span};
-    ///
-    /// let span = Span::new(BytePos(3), BytePos(6));
-    /// assert_eq!(span.end_point(), Span::new(BytePos(5), BytePos(6)))
-    /// ```
-    pub fn end_point(self) -> Span {
-        self.with_lo(cmp::max(self.hi() - BytePos(1), self.lo()))
     }
 
     /// Return true if `self` fully encloses `other`.

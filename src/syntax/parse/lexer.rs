@@ -3,7 +3,7 @@ use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 use std::str::CharIndices;
 
-use source::pos::{BytePos, RawIndex};
+use source::pos::{ByteOffset, BytePos, RawPos};
 use unicode_xid::UnicodeXID;
 
 fn is_symbol(ch: char) -> bool {
@@ -36,7 +36,9 @@ impl LexerError {
     /// Return the span of source code that this error originated from
     pub fn span(&self) -> Span {
         match *self {
-            LexerError::UnexpectedCharacter { start, found } => Span::from_char_utf8(start, found),
+            LexerError::UnexpectedCharacter { start, found } => {
+                Span::from_offset(start, ByteOffset::from_char_utf8(found))
+            },
         }
     }
 
@@ -49,7 +51,7 @@ impl LexerError {
                     SpanLabel {
                         label: None, // TODO
                         style: UnderlineStyle::Primary,
-                        span: Span::from_char_utf8(start, found),
+                        span: Span::from_offset(start, ByteOffset::from_char_utf8(found)),
                     },
                 ],
             },
@@ -172,7 +174,7 @@ impl<'src> Lexer<'src> {
     /// Return the next character in the source string
     fn lookahead(&self) -> Option<(BytePos, char)> {
         self.lookahead
-            .map(|(index, ch)| (BytePos(index as RawIndex), ch))
+            .map(|(index, ch)| (BytePos(index as RawPos), ch))
     }
 
     /// Bump the current position in the source string by one character,
@@ -221,14 +223,15 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        let eof = BytePos(self.src.len() as RawIndex);
+        let eof = BytePos(self.src.len() as RawPos);
         (eof, self.slice(start, eof))
     }
 
     /// Consume a REPL command
     fn repl_command(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
-        let (end, command) =
-            self.take_while(start + BytePos(1), |ch| is_ident_continue(ch) || ch == '?');
+        let (end, command) = self.take_while(start + ByteOffset::from_str(":"), |ch| {
+            is_ident_continue(ch) || ch == '?'
+        });
 
         if command.is_empty() {
             (start, Token::Colon, end)
@@ -239,7 +242,8 @@ impl<'src> Lexer<'src> {
 
     /// Consume a doc comment
     fn doc_comment(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
-        let (end, mut comment) = self.take_until(start + BytePos(3), |ch| ch == '\n');
+        let (end, mut comment) =
+            self.take_until(start + ByteOffset::from_str("|||"), |ch| ch == '\n');
 
         // Skip preceding space
         if comment.starts_with(' ') {
@@ -279,7 +283,7 @@ impl<'src> Iterator for Lexer<'src> {
 
     fn next(&mut self) -> Option<Result<(BytePos, Token<&'src str>, BytePos), LexerError>> {
         while let Some((start, ch)) = self.bump() {
-            let end = start + BytePos(1);
+            let end = start + ByteOffset::from_char_utf8(ch);
 
             return Some(match ch {
                 ch if is_symbol(ch) => {
@@ -330,8 +334,8 @@ mod tests {
         ($src:expr, $($span:expr => $token:expr,)*) => {{
             let lexed_tokens: Vec<_> = Lexer::new($src).collect();
             let expected_tokens = vec![$({
-                let start = BytePos($span.find("~").unwrap() as RawIndex);
-                let end = BytePos($span.rfind("~").unwrap() as RawIndex + 1);
+                let start = BytePos($span.find("~").unwrap() as RawPos);
+                let end = BytePos($span.rfind("~").unwrap() as RawPos + 1);
                 Ok((start, $token, end))
             }),*];
 

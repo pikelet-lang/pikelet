@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::{fmt, io};
 use std::path::PathBuf;
 
-use pos::{BytePos, ColumnIndex, LineIndex, RawIndex};
+use pos::{BytePos, ColumnIndex, LineIndex, RawPos};
 
 #[derive(Clone, Debug)]
 pub enum FileName {
@@ -46,7 +46,7 @@ impl File {
                 .inspect(|_| end_offset.0 += 1)
                 .enumerate()
                 .filter(|&(_, b)| b == b'\n')
-                .map(|(i, _)| BytePos(i as RawIndex + 1)); // index of first char in the line
+                .map(|(i, _)| BytePos(i as RawPos + 1)); // index of first char in the line
 
             iter::once(BytePos(0)).chain(input_indices).collect()
         };
@@ -125,8 +125,12 @@ impl File {
     /// ```
     pub fn location(&self, absolute_offset: BytePos) -> Option<(LineIndex, ColumnIndex)> {
         self.line_index(absolute_offset).and_then(|line_index| {
-            self.line_offset(line_index)
-                .map(|line_offset| (line_index, ColumnIndex((absolute_offset - line_offset).0)))
+            self.line_offset(line_index).map(|line_offset| {
+                (
+                    line_index,
+                    ColumnIndex((absolute_offset - line_offset).0 as RawPos),
+                )
+            })
         })
     }
 
@@ -151,7 +155,7 @@ impl File {
     /// ```
     pub fn line_index(&self, absolute_offset: BytePos) -> Option<LineIndex> {
         if absolute_offset <= self.end_offset {
-            let num_lines = self.line_offsets.len() as RawIndex;
+            let num_lines = self.line_offsets.len() as RawPos;
 
             Some(LineIndex(
                 (0..num_lines)
