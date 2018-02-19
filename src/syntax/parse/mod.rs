@@ -15,33 +15,28 @@ pub use self::errors::{ExpectedTokens, ParseError};
 
 // TODO: DRY up these wrappers...
 
-pub fn repl_command<'err, 'src>(src: &'src str) -> (concrete::ReplCommand, Vec<ParseError>) {
+pub fn repl_command<'err, 'src>(
+    src: &'src str,
+) -> (Option<concrete::ReplCommand>, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
     match grammar::parse_ReplCommand(&mut errors, src, lexer) {
-        Ok(value) => (value, errors),
-        Err(_) => unimplemented!(),
+        Ok(value) => (Some(value), errors),
+        Err(err) => {
+            errors.push(errors::from_lalrpop(src, err));
+            (None, errors)
+        },
     }
 }
 
-pub fn module<'err, 'src>(src: &'src str) -> (concrete::Module, Vec<ParseError>) {
+pub fn module<'err, 'src>(src: &'src str) -> (Option<concrete::Module>, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
     match grammar::parse_Module(&mut errors, src, lexer) {
-        Ok(value) => (value, errors),
-        Err(_) => unimplemented!(),
-    }
-}
-
-pub fn declaration<'err, 'src>(src: &'src str) -> (concrete::Declaration, Vec<ParseError>) {
-    let mut errors = Vec::new();
-    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_Declaration(&mut errors, src, lexer) {
-        Ok(value) => (value, errors),
+        Ok(value) => (Some(value), errors),
         Err(err) => {
-            let src_span = Span::new(BytePos(0), BytePos(src.len() as RawIndex));
             errors.push(errors::from_lalrpop(src, err));
-            (concrete::Declaration::Error(src_span), errors)
+            (None, errors)
         },
     }
 }

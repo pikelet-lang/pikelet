@@ -206,7 +206,7 @@ mod from_concrete {
             let (concrete_module, errors) = parse::module(&src);
             assert!(errors.is_empty());
 
-            Module::from_concrete(&concrete_module);
+            Module::from_concrete(&concrete_module.unwrap());
         }
     }
 

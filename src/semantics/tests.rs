@@ -572,7 +572,7 @@ mod check_module {
         let (concrete_module, errors) = parse::module(&src);
         assert!(errors.is_empty());
 
-        let module = Module::from_concrete(&concrete_module);
+        let module = Module::from_concrete(&concrete_module.unwrap());
         check_module(&module).unwrap();
     }
 }
