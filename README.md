@@ -1,4 +1,4 @@
-# LambdaPi
+# Pikelet 🥞
 
 An implementation of a small dependently typed lambda calculus in Rust. This
 project is intended as an explaratory exercise, and as a basis for more fully

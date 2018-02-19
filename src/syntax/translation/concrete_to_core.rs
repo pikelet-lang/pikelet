@@ -201,7 +201,7 @@ mod from_concrete {
 
         #[test]
         fn parse_prelude() {
-            let src = include_str!("../../../prelude.lp");
+            let src = include_str!("../../../prelude.pi");
 
             let (concrete_module, errors) = parse::module(&src);
             assert!(errors.is_empty());

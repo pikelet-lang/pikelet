@@ -13,7 +13,7 @@ use syntax::parse;
 #[derive(Debug, StructOpt)]
 pub struct Opts {
     /// The prompt to display before expressions
-    #[structopt(long = "prompt", default_value = "λΠ> ")]
+    #[structopt(long = "prompt", default_value = "> ")]
     pub prompt: String,
 
     /// The history file to record previous commands to (blank to disable)

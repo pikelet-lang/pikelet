@@ -1,10 +1,10 @@
 [package]
-name = "lambdapi"
+name = "pikelet"
 version = "0.1.0"
 readme = "README.md"
 license = "Apache-2.0"
 authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
-description = "An implementation of the LambdaPi type system in Rust"
+description = "An implementation of a small dependently typed lambda calculus in Rust."
 publish = false
 
 [workspace]
@@ -21,7 +21,7 @@ cli = [
 ]
 
 [[bin]]
-name = "lambdapi"
+name = "pikelet"
 required-features = ["cli"]
 
 [dependencies]

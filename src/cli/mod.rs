@@ -7,7 +7,7 @@ pub mod repl;
 // TODO: test using https://github.com/killercup/assert_cli
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "lambdapi")]
+#[structopt(name = "pikelet")]
 pub struct Opts {
     /// Configure coloring of output
     #[structopt(long = "color", parse(try_from_str), default_value = "auto",
