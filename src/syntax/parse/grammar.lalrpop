@@ -1,20 +1,21 @@
+use source::FileMap;
 use source::pos::{BytePos, Span};
 use std::u32;
 
 use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
-grammar<'err, 'src>(errors: &'err mut Vec<ParseError>, src: &'src str);
+grammar<'err, 'input>(errors: &'err mut Vec<ParseError>, filemap: &'input FileMap);
 
 extern {
     type Location = BytePos;
     type Error = ParseError;
 
-    enum Token<&'src str> {
+    enum Token<&'input str> {
         // Data
-        "identifier" => Token::Ident(<&'src str>),
-        "doc comment" => Token::DocComment(<&'src str>),
-        "REPL command" => Token::ReplCommand(<&'src str>),
+        "identifier" => Token::Ident(<&'input str>),
+        "doc comment" => Token::DocComment(<&'input str>),
+        "REPL command" => Token::ReplCommand(<&'input str>),
         "decimal literal" => Token::DecLiteral(<u64>),
 
         // Keywords
@@ -84,7 +85,7 @@ pub Declaration: Declaration = {
         Declaration::Definition { name, params, body }
     },
     <lo: @L> <recovered: !> <hi: @R> ";" => {
-        errors.push(super::errors::from_lalrpop(src, recovered.error));
+        errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Declaration::Error(Span::new(lo, hi))
     }
 };
@@ -97,7 +98,7 @@ Exposing : Exposing = {
         Exposing::Exact(Span::new(lo, hi), names)
     },
     <lo: @L> <recovered: !> <hi: @R> => {
-        errors.push(super::errors::from_lalrpop(src, recovered.error));
+        errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Exposing::Error(Span::new(lo, hi))
     },
 };
@@ -158,7 +159,7 @@ AtomicTerm: Term = {
     <lo: @L> "Type" <hi: @R> => Term::Universe(Span::new(lo, hi), None),
     <lo: @L> <ident: Ident> <hi: @R> => Term::Var(Span::new(lo, hi), ident),
     <lo: @L> <recovered: !> <hi: @R> => {
-        errors.push(super::errors::from_lalrpop(src, recovered.error));
+        errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Term::Error(Span::new(lo, hi))
     }
 };

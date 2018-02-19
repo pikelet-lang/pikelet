@@ -1,8 +1,15 @@
 //! Utilities for working with source code and printing nicely formatted
 //! diagnostic information like warnings and errors.
 
-extern crate termcolor;
+#[macro_use]
+extern crate failure;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 
-pub mod file;
+mod codemap;
+mod filemap;
 pub mod pos;
-pub mod reporting;
+
+pub use self::codemap::CodeMap;
+pub use self::filemap::{FileMap, FileName};

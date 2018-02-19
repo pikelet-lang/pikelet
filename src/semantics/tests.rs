@@ -1,10 +1,14 @@
+use source::{CodeMap, FileName};
+
 use syntax::translation::FromConcrete;
 use syntax::parse;
 
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
-    let (concrete_term, errors) = parse::term(&src);
+    let mut codemap = CodeMap::new();
+    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+    let (concrete_term, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
     RcTerm::from_concrete(&concrete_term)
@@ -22,7 +26,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"x")),
             Err(InternalError::UndefinedName {
-                var_span: Span::start(),
+                var_span: Span::none(),
                 name: x,
             }),
         );
@@ -217,7 +221,7 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::UndefinedName {
-                var_span: Span::start(),
+                var_span: Span::none(),
                 name: x,
             }),
         );
@@ -309,8 +313,8 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::NotAFunctionType {
-                fn_span: Span::start(),
-                arg_span: Span::start(),
+                fn_span: Span::none(),
+                arg_span: Span::none(),
                 found: Value::Universe(Level::ZERO.succ()).into(),
             }),
         )
@@ -569,7 +573,10 @@ mod check_module {
     fn check_prelude() {
         let src = include_str!("../../prelude.pi");
 
-        let (concrete_module, errors) = parse::module(&src);
+        let mut codemap = CodeMap::new();
+        let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+        let (concrete_module, errors) = parse::module(&filemap);
         assert!(errors.is_empty());
 
         let module = Module::from_concrete(&concrete_module.unwrap());

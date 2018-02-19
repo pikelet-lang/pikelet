@@ -3,6 +3,8 @@
 use failure::Error;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use source::{CodeMap, FileMap, FileName};
+use source_reporting;
 use std::path::PathBuf;
 use term_size;
 
@@ -41,6 +43,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     // TODO: Load files
 
     let mut rl = Editor::<()>::new();
+    let mut codemap = CodeMap::new();
 
     if let Some(ref history_file) = opts.history_file {
         rl.load_history(&history_file)?;
@@ -61,13 +64,16 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                     rl.add_history_entry(&line);
                 }
 
-                match eval_print(&line) {
+                let filename = FileName::virtual_("repl");
+                match eval_print(&codemap.add_filemap(filename, line)) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        println!("{}", err);
+                        source_reporting::emit(&codemap, &err.to_diagnostic());
                     },
-                    Err(EvalPrintError::Type(err)) => println!("{}", err),
+                    Err(EvalPrintError::Type(err)) => {
+                        source_reporting::emit(&codemap, &err.to_diagnostic());
+                    },
                 }
             },
             Err(err) => match err {
@@ -90,7 +96,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
+fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use std::usize;
 
     use syntax::concrete::ReplCommand;
@@ -102,12 +108,12 @@ fn eval_print(line: &str) -> Result<ControlFlow, EvalPrintError> {
         term_size::dimensions().map(|(width, _)| width)
     }
 
-    let (repl_command, parse_errors) = parse::repl_command(line);
+    let (repl_command, parse_errors) = parse::repl_command(filemap);
     if !parse_errors.is_empty() {
         return Err(EvalPrintError::Parse(parse_errors));
     }
 
-    match repl_command {
+    match repl_command.unwrap() {
         ReplCommand::Help => for line in HELP_TEXT {
             println!("{}", line);
         },

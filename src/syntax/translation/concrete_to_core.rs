@@ -183,12 +183,17 @@ impl<'a> FromConcrete<&'a concrete::Term> for core::RcTerm {
 
 #[cfg(test)]
 mod from_concrete {
+    use source::{CodeMap, FileName};
+
     use syntax::parse;
 
     use super::*;
 
     fn parse(src: &str) -> core::RcTerm {
-        let (concrete_term, errors) = parse::term(&src);
+        let mut codemap = CodeMap::new();
+        let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+        let (concrete_term, errors) = parse::term(&filemap);
         assert!(errors.is_empty());
 
         core::RcTerm::from_concrete(&concrete_term)
@@ -203,7 +208,10 @@ mod from_concrete {
         fn parse_prelude() {
             let src = include_str!("../../../prelude.pi");
 
-            let (concrete_module, errors) = parse::module(&src);
+            let mut codemap = CodeMap::new();
+            let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+            let (concrete_module, errors) = parse::module(&filemap);
             assert!(errors.is_empty());
 
             Module::from_concrete(&concrete_module.unwrap());

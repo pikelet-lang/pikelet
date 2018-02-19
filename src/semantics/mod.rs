@@ -105,12 +105,12 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
-                span: Span::start(), // TODO
+                span: Span::none(), // TODO
                 index: index.clone(),
             }),
             Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
                 InternalError::UndefinedName {
-                    var_span: Span::start(), // TODO
+                    var_span: Span::none(), // TODO
                     name: name.clone(),
                 }
             })? {
@@ -233,7 +233,7 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
         },
         (&Term::Lam(_), _) => {
             return Err(TypeError::UnexpectedFunction {
-                span: Span::start(), // TODO: term.span(),
+                span: Span::none(), // TODO: term.span(),
                 expected: expected.clone(),
             });
         },
@@ -261,7 +261,7 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
     match &inferred_ty == expected {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
-            span: Span::start(), // TODO: term.span().
+            span: Span::none(), // TODO: term.span().
             found: inferred_ty,
             expected: expected.clone(),
         }),
@@ -290,7 +290,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         match *ty.inner {
             Value::Universe(level) => Ok((elab, level)),
             _ => Err(TypeError::ExpectedUniverse {
-                span: Span::start(), // TODO: term.span().
+                span: Span::none(), // TODO: term.span().
                 found: ty,
             }),
         }
@@ -322,13 +322,13 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => {
                 Err(InternalError::UnsubstitutedDebruijnIndex {
-                    span: Span::start(), // TODO: term.span().
+                    span: Span::none(), // TODO: term.span().
                     index: index.clone(),
                 }.into())
             },
             Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
                 TypeError::UndefinedName {
-                    var_span: Span::start(), // TODO: term.span().
+                    var_span: Span::none(), // TODO: term.span().
                     name: name.clone(),
                 }
             })? {
@@ -343,7 +343,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::Var(var.clone()).into(), ty.clone()))
                 },
                 Binder::Lam(None) => Err(TypeError::TypeAnnotationsNeeded {
-                    span: Span::start(), // TODO: binder.span().
+                    span: Span::none(), // TODO: binder.span().
                 }),
                 //  1.  let x:τ = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
@@ -363,7 +363,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             match param.inner {
                 // TODO: More error info
                 None => Err(TypeError::TypeAnnotationsNeeded {
-                    span: Span::start(), // TODO: param.span().
+                    span: Span::none(), // TODO: param.span().
                 }),
                 Some(ann) => {
                     let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
@@ -421,8 +421,8 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
                 _ => Err(TypeError::NotAFunctionType {
-                    fn_span: Span::start(),  // TODO: fn_expr.span().
-                    arg_span: Span::start(), // TODO: arg_expr.span().
+                    fn_span: Span::none(),  // TODO: fn_expr.span().
+                    arg_span: Span::none(), // TODO: arg_expr.span().
                     found: fn_type.clone(),
                 }),
             }

@@ -20,11 +20,16 @@ impl LineIndex {
     /// ```rust
     /// use source::pos::{LineIndex, LineNumber};
     ///
-    /// assert_eq!(LineIndex(0).number(), LineNumber(1));
-    /// assert_eq!(LineIndex(3).number(), LineNumber(4));
+    /// assert_eq!(format!("{}", LineIndex(0).number()), "1");
+    /// assert_eq!(format!("{}", LineIndex(3).number()), "4");
     /// ```
     pub fn number(self) -> LineNumber {
         LineNumber(self.0 + 1)
+    }
+
+    /// Convert the index into a `usize`, for use in array indexing
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -44,7 +49,7 @@ impl fmt::Debug for LineIndex {
 
 /// A 1-indexed line number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct LineNumber(pub RawPos);
+pub struct LineNumber(RawPos);
 
 impl fmt::Debug for LineNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,11 +75,16 @@ impl ColumnIndex {
     /// ```rust
     /// use source::pos::{ColumnIndex, ColumnNumber};
     ///
-    /// assert_eq!(ColumnIndex(0).number(), ColumnNumber(1));
-    /// assert_eq!(ColumnIndex(3).number(), ColumnNumber(4));
+    /// assert_eq!(format!("{}", ColumnIndex(0).number()), "1");
+    /// assert_eq!(format!("{}", ColumnIndex(3).number()), "4");
     /// ```
     pub fn number(self) -> ColumnNumber {
         ColumnNumber(self.0 + 1)
+    }
+
+    /// Convert the index into a `usize`, for use in array indexing
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -94,7 +104,7 @@ impl fmt::Debug for ColumnIndex {
 
 /// A 1-indexed column number. Useful for pretty printing source locations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ColumnNumber(pub RawPos);
+pub struct ColumnNumber(RawPos);
 
 impl fmt::Debug for ColumnNumber {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -113,6 +123,18 @@ impl fmt::Display for ColumnNumber {
 /// A byte position in a source file
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct BytePos(pub RawPos);
+
+impl BytePos {
+    /// A byte position that will never point to a valid file
+    pub fn none() -> BytePos {
+        BytePos(0)
+    }
+
+    /// Convert the position into a `usize`, for use in array indexing
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
+    }
+}
 
 impl Default for BytePos {
     fn default() -> BytePos {
@@ -144,10 +166,10 @@ impl ByteOffset {
     /// ```rust
     /// use source::pos::ByteOffset;
     ///
-    /// assert_eq!(ByteOffset::from_char_utf8('A').0, 1);
-    /// assert_eq!(ByteOffset::from_char_utf8('ß').0, 2);
-    /// assert_eq!(ByteOffset::from_char_utf8('ℝ').0, 3);
-    /// assert_eq!(ByteOffset::from_char_utf8('💣').0, 4);
+    /// assert_eq!(ByteOffset::from_char_utf8('A').to_usize(), 1);
+    /// assert_eq!(ByteOffset::from_char_utf8('ß').to_usize(), 2);
+    /// assert_eq!(ByteOffset::from_char_utf8('ℝ').to_usize(), 3);
+    /// assert_eq!(ByteOffset::from_char_utf8('💣').to_usize(), 4);
     /// ```
     pub fn from_char_utf8(ch: char) -> ByteOffset {
         ByteOffset(ch.len_utf8() as RawOffset)
@@ -158,13 +180,18 @@ impl ByteOffset {
     /// ```rust
     /// use source::pos::ByteOffset;
     ///
-    /// assert_eq!(ByteOffset::from_str("A").0, 1);
-    /// assert_eq!(ByteOffset::from_str("ß").0, 2);
-    /// assert_eq!(ByteOffset::from_str("ℝ").0, 3);
-    /// assert_eq!(ByteOffset::from_str("💣").0, 4);
+    /// assert_eq!(ByteOffset::from_str("A").to_usize(), 1);
+    /// assert_eq!(ByteOffset::from_str("ß").to_usize(), 2);
+    /// assert_eq!(ByteOffset::from_str("ℝ").to_usize(), 3);
+    /// assert_eq!(ByteOffset::from_str("💣").to_usize(), 4);
     /// ```
     pub fn from_str(value: &str) -> ByteOffset {
         ByteOffset(value.len() as RawOffset)
+    }
+
+    /// Convert the offset into a `usize`, for use in array indexing
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -272,10 +299,21 @@ impl Span {
         Span::new(lo, lo + off)
     }
 
-    pub fn start() -> Span {
+    /// A span that will never point to a valid byte range
+    pub fn none() -> Span {
         Span {
-            lo: BytePos(0),
-            hi: BytePos(0),
+            lo: BytePos::none(),
+            hi: BytePos::none(),
+        }
+    }
+
+    /// Makes a span from offsets relative to the start of this span.
+    pub fn subspan(&self, begin: ByteOffset, end: ByteOffset) -> Span {
+        assert!(end >= begin);
+        assert!(self.lo() + end <= self.hi());
+        Span {
+            lo: self.lo() + begin,
+            hi: self.lo() + end,
         }
     }
 
@@ -397,6 +435,8 @@ impl Span {
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.lo.fmt(f)?;
+        write!(f, "..")?;
+        write!(f, "..")?;
         write!(f, "..")?;
         self.hi.fmt(f)?;
         Ok(())

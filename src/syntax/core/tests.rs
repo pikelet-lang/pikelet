@@ -1,10 +1,15 @@
+use source::{CodeMap, FileName};
+
 use syntax::parse;
 use syntax::translation::FromConcrete;
 
 use super::*;
 
 fn parse(src: &str) -> RcTerm {
-    let (concrete_term, errors) = parse::term(&src);
+    let mut codemap = CodeMap::new();
+    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+    let (concrete_term, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
     RcTerm::from_concrete(&concrete_term)

@@ -10,6 +10,7 @@ publish = false
 [workspace]
 members = [
     "source",
+    "source-reporting",
 ]
 
 [features]
@@ -31,7 +32,8 @@ lazy_static = "1.0"
 pretty = "0.3.2"
 regex = "0.2.0"
 rpds = "0.3.0"
-source = { path = "./source" }
+source = { path = "./source", version = "0.1.0" }
+source-reporting = { path = "./source-reporting", version = "0.1.0" }
 unicode-xid = "0.1.0"
 
 # cli dependencies

@@ -1,9 +1,10 @@
+use source::FileMap;
 use source::pos::Span;
-use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
+use source_reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 use std::str::CharIndices;
 
-use source::pos::{ByteOffset, BytePos, RawPos};
+use source::pos::{ByteOffset, BytePos, RawOffset};
 use unicode_xid::UnicodeXID;
 
 fn is_symbol(ch: char) -> bool {
@@ -122,8 +123,8 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
     }
 }
 
-impl<'src> From<Token<&'src str>> for Token<String> {
-    fn from(src: Token<&'src str>) -> Token<String> {
+impl<'input> From<Token<&'input str>> for Token<String> {
+    fn from(src: Token<&'input str>) -> Token<String> {
         match src {
             Token::Ident(name) => Token::Ident(String::from(name)),
             Token::DocComment(comment) => Token::DocComment(String::from(comment)),
@@ -153,19 +154,19 @@ impl<'src> From<Token<&'src str>> for Token<String> {
 
 /// An iterator over a source string that yeilds `Token`s for subsequent use by
 /// the parser
-pub struct Lexer<'src> {
-    src: &'src str,
-    chars: CharIndices<'src>,
+pub struct Lexer<'input> {
+    filemap: &'input FileMap,
+    chars: CharIndices<'input>,
     lookahead: Option<(usize, char)>,
 }
 
-impl<'src> Lexer<'src> {
+impl<'input> Lexer<'input> {
     /// Create a new lexer from the source string
-    pub fn new(src: &'src str) -> Self {
-        let mut chars = src.char_indices();
+    pub fn new(filemap: &'input FileMap) -> Self {
+        let mut chars = filemap.src().char_indices();
 
         Lexer {
-            src,
+            filemap,
             lookahead: chars.next(),
             chars,
         }
@@ -173,8 +174,11 @@ impl<'src> Lexer<'src> {
 
     /// Return the next character in the source string
     fn lookahead(&self) -> Option<(BytePos, char)> {
-        self.lookahead
-            .map(|(index, ch)| (BytePos(index as RawPos), ch))
+        self.lookahead.map(|(index, ch)| {
+            let off = ByteOffset(index as RawOffset);
+            let pos = self.filemap.span().lo() + off;
+            (pos, ch)
+        })
     }
 
     /// Bump the current position in the source string by one character,
@@ -186,8 +190,8 @@ impl<'src> Lexer<'src> {
     }
 
     /// Return a slice of the source string
-    fn slice(&self, start: BytePos, end: BytePos) -> &'src str {
-        &self.src[(start.0 as usize)..(end.0 as usize)]
+    fn slice(&self, start: BytePos, end: BytePos) -> &'input str {
+        &self.filemap.src_slice(Span::new(start, end)).unwrap()
     }
 
     // /// Test a predicate againt the next character in the source
@@ -201,7 +205,7 @@ impl<'src> Lexer<'src> {
     /// Consume characters while the predicate matches for the current
     /// character, then return the consumed slice and the end byte
     /// position.
-    fn take_while<F>(&mut self, start: BytePos, mut keep_going: F) -> (BytePos, &'src str)
+    fn take_while<F>(&mut self, start: BytePos, mut keep_going: F) -> (BytePos, &'input str)
     where
         F: FnMut(char) -> bool,
     {
@@ -211,7 +215,7 @@ impl<'src> Lexer<'src> {
     /// Consume characters until the predicate matches for the next character
     /// in the lookahead, then return the consumed slice and the end byte
     /// position.
-    fn take_until<F>(&mut self, start: BytePos, mut terminate: F) -> (BytePos, &'src str)
+    fn take_until<F>(&mut self, start: BytePos, mut terminate: F) -> (BytePos, &'input str)
     where
         F: FnMut(char) -> bool,
     {
@@ -223,12 +227,12 @@ impl<'src> Lexer<'src> {
             }
         }
 
-        let eof = BytePos(self.src.len() as RawPos);
+        let eof = self.filemap.span().hi();
         (eof, self.slice(start, eof))
     }
 
     /// Consume a REPL command
-    fn repl_command(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
+    fn repl_command(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
         let (end, command) = self.take_while(start + ByteOffset::from_str(":"), |ch| {
             is_ident_continue(ch) || ch == '?'
         });
@@ -241,7 +245,7 @@ impl<'src> Lexer<'src> {
     }
 
     /// Consume a doc comment
-    fn doc_comment(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
+    fn doc_comment(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
         let (end, mut comment) =
             self.take_until(start + ByteOffset::from_str("|||"), |ch| ch == '\n');
 
@@ -254,7 +258,7 @@ impl<'src> Lexer<'src> {
     }
 
     /// Consume an identifier token
-    fn ident(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
+    fn ident(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
         let (end, ident) = self.take_while(start, is_ident_continue);
 
         let token = match ident {
@@ -269,7 +273,7 @@ impl<'src> Lexer<'src> {
     }
 
     /// Consume a decimal literal token
-    fn dec_literal(&mut self, start: BytePos) -> (BytePos, Token<&'src str>, BytePos) {
+    fn dec_literal(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
         let (end, src) = self.take_while(start, is_dec_digit);
 
         let int = u64::from_str_radix(src, 10).unwrap();
@@ -278,10 +282,10 @@ impl<'src> Lexer<'src> {
     }
 }
 
-impl<'src> Iterator for Lexer<'src> {
-    type Item = Result<(BytePos, Token<&'src str>, BytePos), LexerError>;
+impl<'input> Iterator for Lexer<'input> {
+    type Item = Result<(BytePos, Token<&'input str>, BytePos), LexerError>;
 
-    fn next(&mut self) -> Option<Result<(BytePos, Token<&'src str>, BytePos), LexerError>> {
+    fn next(&mut self) -> Option<Result<(BytePos, Token<&'input str>, BytePos), LexerError>> {
         while let Some((start, ch)) = self.bump() {
             let end = start + ByteOffset::from_char_utf8(ch);
 
@@ -325,6 +329,9 @@ impl<'src> Iterator for Lexer<'src> {
 
 #[cfg(test)]
 mod tests {
+    use source::{CodeMap, FileName};
+    use source::pos::RawPos;
+
     use super::*;
 
     /// A handy macro to give us a nice syntax for declaring test cases
@@ -332,10 +339,13 @@ mod tests {
     /// This was inspired by the tests in the LALRPOP lexer
     macro_rules! test {
         ($src:expr, $($span:expr => $token:expr,)*) => {{
-            let lexed_tokens: Vec<_> = Lexer::new($src).collect();
+            let mut codemap = CodeMap::new();
+            let filemap = codemap.add_filemap(FileName::virtual_("test"), $src.into());
+
+            let lexed_tokens: Vec<_> = Lexer::new(&filemap).collect();
             let expected_tokens = vec![$({
-                let start = BytePos($span.find("~").unwrap() as RawPos);
-                let end = BytePos($span.rfind("~").unwrap() as RawPos + 1);
+                let start = BytePos($span.find("~").unwrap() as RawPos + 1);
+                let end = BytePos($span.rfind("~").unwrap() as RawPos + 2);
                 Ok((start, $token, end))
             }),*];
 

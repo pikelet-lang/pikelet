@@ -7,6 +7,8 @@ authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
 description = "Data structures for tracking source locations"
 publish = false
 
-
 [dependencies]
-termcolor = "0.3.4"
+failure = "0.1.1"
+
+[dev-dependencies]
+pretty_assertions = "0.5.0"

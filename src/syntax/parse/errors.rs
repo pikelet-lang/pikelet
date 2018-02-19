@@ -1,6 +1,7 @@
 use lalrpop_util::ParseError as LalrpopError;
-use source::pos::{BytePos, RawPos, Span};
-use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
+use source::FileMap;
+use source::pos::{BytePos, Span};
+use source_reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 
 use syntax::parse::{LexerError, Token};
@@ -33,7 +34,7 @@ pub enum ParseError {
 }
 
 /// Flatten away an LALRPOP error, leaving the inner `ParseError` behind
-pub fn from_lalrpop<T>(src: &str, err: LalrpopError<BytePos, T, ParseError>) -> ParseError
+pub fn from_lalrpop<T>(filemap: &FileMap, err: LalrpopError<BytePos, T, ParseError>) -> ParseError
 where
     T: Into<Token<String>>,
 {
@@ -44,7 +45,7 @@ where
             token: None,
             expected,
         } => ParseError::UnexpectedEof {
-            end: BytePos(src.len() as RawPos),
+            end: filemap.span().hi(),
             expected: ExpectedTokens(expected),
         },
         LalrpopError::UnrecognizedToken {

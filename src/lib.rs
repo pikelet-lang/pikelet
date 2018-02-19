@@ -9,6 +9,7 @@ extern crate pretty;
 extern crate pretty_assertions;
 extern crate rpds;
 extern crate source;
+extern crate source_reporting;
 extern crate unicode_xid;
 
 pub mod semantics;

@@ -1,6 +1,8 @@
-use pos::Span;
+//! Diagnostic reporting support for the source crate
 
-use reporting::Severity;
+use source::pos::Span;
+
+use Severity;
 
 /// A style for the underline
 #[derive(Copy, Clone, PartialEq, Debug)]

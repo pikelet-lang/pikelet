@@ -1,7 +1,7 @@
 //! Errors that might be produced during semantic analysis
 
 use source::pos::Span;
-use source::reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
+use source_reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
 use std::fmt;
 
 use syntax::core::{Name, RcType};

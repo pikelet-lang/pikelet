@@ -1,11 +1,14 @@
-//! Reporting of diagnostic messages
+extern crate source;
+extern crate termcolor;
 
 use std::fmt;
 use termcolor::Color;
 
 mod diagnostic;
+mod emitter;
 
 pub use self::diagnostic::{Diagnostic, SpanLabel, UnderlineStyle};
+pub use self::emitter::emit;
 
 /// A severity level for diagnostic messages
 #[derive(Copy, PartialEq, Clone, Hash, Debug)]

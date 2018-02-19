@@ -1,7 +1,7 @@
 //! Parser utilities
 
 use lalrpop_util::ParseError as LalrpopError;
-use source::pos::{BytePos, RawPos, Span};
+use source::FileMap;
 
 use syntax::concrete;
 use syntax::parse::lexer::Lexer;
@@ -15,58 +15,66 @@ pub use self::errors::{ExpectedTokens, ParseError};
 
 // TODO: DRY up these wrappers...
 
-pub fn repl_command<'src>(src: &'src str) -> (Option<concrete::ReplCommand>, Vec<ParseError>) {
+pub fn repl_command<'input>(
+    filemap: &'input FileMap,
+) -> (Option<concrete::ReplCommand>, Vec<ParseError>) {
     let mut errors = Vec::new();
-    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_ReplCommand(&mut errors, src, lexer) {
+    let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_ReplCommand(&mut errors, filemap, lexer) {
         Ok(value) => (Some(value), errors),
         Err(err) => {
-            errors.push(errors::from_lalrpop(src, err));
+            errors.push(errors::from_lalrpop(filemap, err));
             (None, errors)
         },
     }
 }
 
-pub fn module<'src>(src: &'src str) -> (Option<concrete::Module>, Vec<ParseError>) {
+pub fn module<'input>(filemap: &'input FileMap) -> (Option<concrete::Module>, Vec<ParseError>) {
     let mut errors = Vec::new();
-    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_Module(&mut errors, src, lexer) {
+    let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_Module(&mut errors, filemap, lexer) {
         Ok(value) => (Some(value), errors),
         Err(err) => {
-            errors.push(errors::from_lalrpop(src, err));
+            errors.push(errors::from_lalrpop(filemap, err));
             (None, errors)
         },
     }
 }
 
-pub fn term<'src>(src: &'src str) -> (concrete::Term, Vec<ParseError>) {
+pub fn term<'input>(filemap: &'input FileMap) -> (concrete::Term, Vec<ParseError>) {
     let mut errors = Vec::new();
-    let lexer = Lexer::new(src).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_Term(&mut errors, src, lexer) {
+    let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
+    match grammar::parse_Term(&mut errors, filemap, lexer) {
         Ok(value) => (value, errors),
         Err(err) => {
-            let src_span = Span::new(BytePos(0), BytePos(src.len() as RawPos));
-            errors.push(errors::from_lalrpop(src, err));
-            (concrete::Term::Error(src_span), errors)
+            errors.push(errors::from_lalrpop(filemap, err));
+            (concrete::Term::Error(filemap.span()), errors)
         },
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use source::{CodeMap, FileName};
+    use source::pos::{BytePos, Span};
+
     use super::*;
 
     #[test]
     fn pi_bad_ident() {
-        let parse_result = term("((x : Type) : Type) -> Type");
+        let src = "((x : Type) : Type) -> Type";
+        let mut codemap = CodeMap::new();
+        let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+        let parse_result = term(&filemap);
 
         assert_eq!(
             parse_result,
             (
-                concrete::Term::Error(Span::new(BytePos(0), BytePos(27))),
+                concrete::Term::Error(Span::new(BytePos(1), BytePos(28))),
                 vec![
                     ParseError::IdentifierExpectedInPiType {
-                        span: Span::new(BytePos(1), BytePos(11)),
+                        span: Span::new(BytePos(2), BytePos(12)),
                     },
                 ],
             )
