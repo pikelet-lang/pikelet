@@ -41,6 +41,12 @@ test2 = id Int : Type
 
 Notice that type aliases just become regular old value definitions!
 
+## What is a Pikelet?
+
+An odd sort of small (often pre-made) crumpet or pancake found in Australia and
+New Zealand. Often sent in school lunches spread with jam and butter. Also has
+a name that includes 'pi' and 'let' as substrings! 😅
+
 ## Roadmap
 
 - [ ] dependent record types
