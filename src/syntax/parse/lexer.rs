@@ -1,10 +1,10 @@
-use source::FileMap;
-use source::pos::Span;
-use source_reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
+use codespan::FileMap;
+use codespan::Span;
+use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
 use std::fmt;
 use std::str::CharIndices;
 
-use source::pos::{ByteOffset, BytePos, RawOffset};
+use codespan::{ByteOffset, BytePos, RawOffset};
 use unicode_xid::UnicodeXID;
 
 fn is_symbol(ch: char) -> bool {
@@ -48,10 +48,10 @@ impl LexerError {
             LexerError::UnexpectedCharacter { start, found } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("unexpected character {:?}", found),
-                spans: vec![
-                    SpanLabel {
-                        label: None, // TODO
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: None, // TODO
+                        style: LabelStyle::Primary,
                         span: Span::from_offset(start, ByteOffset::from_char_utf8(found)),
                     },
                 ],
@@ -329,8 +329,8 @@ impl<'input> Iterator for Lexer<'input> {
 
 #[cfg(test)]
 mod tests {
-    use source::{CodeMap, FileName};
-    use source::pos::RawPos;
+    use codespan::{CodeMap, FileName};
+    use codespan::RawPos;
 
     use super::*;
 

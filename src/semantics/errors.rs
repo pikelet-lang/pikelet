@@ -1,7 +1,7 @@
 //! Errors that might be produced during semantic analysis
 
-use source::pos::Span;
-use source_reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
+use codespan::Span;
+use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
 use std::fmt;
 
 use syntax::core::{Name, RcType};
@@ -36,10 +36,10 @@ impl InternalError {
                     "unsubstituted debruijn index: `{}{}`",
                     index.name, index.inner,
                 ),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("index found here".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("index found here".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -47,10 +47,10 @@ impl InternalError {
             InternalError::UndefinedName { ref name, var_span } => Diagnostic {
                 severity: Severity::Bug,
                 message: format!("cannot find `{}` in scope", name),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("not found in this scope".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("not found in this scope".into()),
+                        style: LabelStyle::Primary,
                         span: var_span,
                     },
                 ],
@@ -120,15 +120,15 @@ impl TypeError {
                     "applied an argument to a term that was not a function - found type `{}`",
                     found,
                 ),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("the term".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("the term".into()),
+                        style: LabelStyle::Primary,
                         span: fn_span,
                     },
-                    SpanLabel {
-                        label: Some("the applied argument".into()),
-                        style: UnderlineStyle::Secondary,
+                    Label {
+                        message: Some("the applied argument".into()),
+                        style: LabelStyle::Secondary,
                         span: arg_span,
                     },
                 ],
@@ -136,10 +136,10 @@ impl TypeError {
             TypeError::TypeAnnotationsNeeded { span } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("type annotations needed"),
-                spans: vec![
-                    SpanLabel {
-                        label: None, // TODO
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: None, // TODO
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -152,10 +152,10 @@ impl TypeError {
                     "found a function but expected a term of type `{}`",
                     expected,
                 ),
-                spans: vec![
-                    SpanLabel {
-                        label: None, // TODO
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: None, // TODO
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -170,10 +170,10 @@ impl TypeError {
                     "found a term of type `{}`, but expected a term of type `{}`",
                     found, expected,
                 ),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("the value".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("the value".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -181,10 +181,10 @@ impl TypeError {
             TypeError::ExpectedUniverse { ref found, span } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("expected type, found value `{}`", found),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("the value".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("the value".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -192,10 +192,10 @@ impl TypeError {
             TypeError::UndefinedName { ref name, var_span } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("cannot find `{}` in scope", name),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("not found in this scope".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("not found in this scope".into()),
+                        style: LabelStyle::Primary,
                         span: var_span,
                     },
                 ],

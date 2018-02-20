@@ -1,5 +1,5 @@
-use source::FileMap;
-use source::pos::{BytePos, Span};
+use codespan::FileMap;
+use codespan::{BytePos, Span};
 use std::u32;
 
 use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};

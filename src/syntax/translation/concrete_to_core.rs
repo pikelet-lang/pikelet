@@ -1,4 +1,4 @@
-use source::pos::Span;
+use codespan::Span;
 
 use syntax::concrete;
 use syntax::core;
@@ -194,7 +194,7 @@ impl<'a> FromConcrete<&'a concrete::Term> for core::RcTerm {
 
 #[cfg(test)]
 mod from_concrete {
-    use source::{CodeMap, FileName};
+    use codespan::{CodeMap, FileName};
 
     use library;
     use syntax::parse;

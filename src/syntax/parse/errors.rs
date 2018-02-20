@@ -1,7 +1,7 @@
 use lalrpop_util::ParseError as LalrpopError;
-use source::FileMap;
-use source::pos::{BytePos, Span};
-use source_reporting::{Diagnostic, Severity, SpanLabel, UnderlineStyle};
+use codespan::FileMap;
+use codespan::{BytePos, Span};
+use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
 use std::fmt;
 
 use syntax::parse::{LexerError, Token};
@@ -86,10 +86,10 @@ impl ParseError {
             ParseError::IdentifierExpectedInPiType { span } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("identifier expected when parsing dependent function type"),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("ill-formed dependent function type".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("ill-formed dependent function type".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -97,10 +97,10 @@ impl ParseError {
             ParseError::IntegerLiteralOverflow { span, value } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("integer literal overflow with value `{}`", value),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("overflowing literal".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("overflowing literal".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -108,10 +108,10 @@ impl ParseError {
             ParseError::UnknownReplCommand { span, ref command } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("unknown repl command `:{}`", command),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("unexpected command".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("unexpected command".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -123,10 +123,10 @@ impl ParseError {
             } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("expected one of {}, found `{}`", expected, token),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("unexpected token".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("unexpected token".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],
@@ -134,10 +134,10 @@ impl ParseError {
             ParseError::UnexpectedEof { end, ref expected } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("expected one of {}, found `EOF`", expected),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("unexpected EOF".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("unexpected EOF".into()),
+                        style: LabelStyle::Primary,
                         span: Span::new(end, end),
                     },
                 ],
@@ -145,10 +145,10 @@ impl ParseError {
             ParseError::ExtraToken { span, ref token } => Diagnostic {
                 severity: Severity::Error,
                 message: format!("extra token `{}`", token),
-                spans: vec![
-                    SpanLabel {
-                        label: Some("extra token".into()),
-                        style: UnderlineStyle::Primary,
+                labels: vec![
+                    Label {
+                        message: Some("extra token".into()),
+                        style: LabelStyle::Primary,
                         span,
                     },
                 ],

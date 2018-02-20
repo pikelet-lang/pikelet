@@ -1,4 +1,4 @@
-use source::{CodeMap, FileName};
+use codespan::{CodeMap, FileName};
 
 use syntax::parse;
 use syntax::translation::FromConcrete;

@@ -1,6 +1,6 @@
 //! The concrete syntax of the language
 
-use source::pos::{BytePos, Span};
+use codespan::{BytePos, Span};
 use std::fmt;
 use std::usize;
 

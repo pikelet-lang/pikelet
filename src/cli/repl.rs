@@ -3,8 +3,8 @@
 use failure::Error;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use source::{CodeMap, FileMap, FileName};
-use source_reporting;
+use codespan::{CodeMap, FileMap, FileName};
+use codespan_reporting;
 use std::path::PathBuf;
 use term_size;
 
@@ -69,10 +69,10 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        source_reporting::emit(&codemap, &err.to_diagnostic());
+                        codespan_reporting::emit(&codemap, &err.to_diagnostic());
                     },
                     Err(EvalPrintError::Type(err)) => {
-                        source_reporting::emit(&codemap, &err.to_diagnostic());
+                        codespan_reporting::emit(&codemap, &err.to_diagnostic());
                     },
                 }
             },

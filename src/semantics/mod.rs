@@ -10,7 +10,7 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 
-use source::pos::Span;
+use codespan::Span;
 
 use syntax::core::{self, Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term};
 use syntax::core::{Value, ValueLam, ValuePi};

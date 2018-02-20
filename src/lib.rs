@@ -1,3 +1,5 @@
+extern crate codespan;
+extern crate codespan_reporting;
 #[macro_use]
 extern crate failure;
 extern crate lalrpop_util;
@@ -8,8 +10,6 @@ extern crate pretty;
 #[macro_use]
 extern crate pretty_assertions;
 extern crate rpds;
-extern crate source;
-extern crate source_reporting;
 extern crate unicode_xid;
 
 mod library;
@@ -29,8 +29,8 @@ extern crate term_size;
 #[cfg(feature = "cli")]
 pub mod cli;
 
-use source::{CodeMap, FileMap, FileName};
-use source_reporting::Diagnostic;
+use codespan::{CodeMap, FileMap, FileName};
+use codespan_reporting::Diagnostic;
 
 use semantics::CheckedModule;
 
@@ -63,7 +63,7 @@ pub fn load_prelude(codemap: &mut CodeMap) -> CheckedModule {
         Ok(module) => module,
         Err(diagnostics) => {
             for diagnostic in diagnostics {
-                source_reporting::emit(codemap, &diagnostic);
+                codespan_reporting::emit(codemap, &diagnostic);
             }
             panic!("unexpected parse errors in prelude");
         },

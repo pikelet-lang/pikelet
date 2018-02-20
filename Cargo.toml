@@ -7,12 +7,6 @@ authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
 description = "An implementation of a small dependently typed lambda calculus in Rust."
 publish = false
 
-[workspace]
-members = [
-    "source",
-    "source-reporting",
-]
-
 [features]
 cli = [
     "isatty",
@@ -26,14 +20,14 @@ name = "pikelet"
 required-features = ["cli"]
 
 [dependencies]
+codespan = { git = "https://github.com/brendanzab/codespan", rev = "2e3ac61", version = "0.1.0" }
+codespan-reporting = { git = "https://github.com/brendanzab/codespan", rev = "2e3ac61", version = "0.1.0" }
 failure = "0.1.1"
 lalrpop-util = "0.14.0"
 lazy_static = "1.0"
 pretty = "0.3.2"
 regex = "0.2.0"
 rpds = "0.3.0"
-source = { path = "./source", version = "0.1.0" }
-source-reporting = { path = "./source-reporting", version = "0.1.0" }
 unicode-xid = "0.1.0"
 
 # cli dependencies
