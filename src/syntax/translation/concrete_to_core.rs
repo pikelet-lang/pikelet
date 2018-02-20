@@ -185,6 +185,7 @@ impl<'a> FromConcrete<&'a concrete::Term> for core::RcTerm {
 mod from_concrete {
     use source::{CodeMap, FileName};
 
+    use library;
     use syntax::parse;
 
     use super::*;
@@ -206,10 +207,8 @@ mod from_concrete {
 
         #[test]
         fn parse_prelude() {
-            let src = include_str!("../../../prelude.pi");
-
             let mut codemap = CodeMap::new();
-            let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+            let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
 
             let (concrete_module, errors) = parse::module(&filemap);
             assert!(errors.is_empty());
