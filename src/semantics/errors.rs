@@ -1,6 +1,6 @@
 //! Errors that might be produced during semantic analysis
 
-use codespan::Span;
+use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
 use std::fmt;
 
@@ -11,17 +11,17 @@ use syntax::var::{Debruijn, Named};
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
     UnsubstitutedDebruijnIndex {
-        span: Span,
+        span: ByteSpan,
         index: Named<Name, Debruijn>,
     },
     UndefinedName {
-        var_span: Span,
+        var_span: ByteSpan,
         name: Name,
     },
 }
 
 impl InternalError {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> ByteSpan {
         match *self {
             InternalError::UnsubstitutedDebruijnIndex { span, .. } => span,
             InternalError::UndefinedName { var_span, .. } => var_span,
@@ -78,28 +78,28 @@ impl fmt::Display for InternalError {
 #[derive(Debug, Clone, PartialEq)] // FIXME: Derive `Fail`
 pub enum TypeError {
     NotAFunctionType {
-        fn_span: Span,
-        arg_span: Span,
+        fn_span: ByteSpan,
+        arg_span: ByteSpan,
         found: RcType,
     },
     TypeAnnotationsNeeded {
-        span: Span,
+        span: ByteSpan,
     },
     Mismatch {
-        span: Span,
+        span: ByteSpan,
         found: RcType,
         expected: RcType,
     },
     UnexpectedFunction {
-        span: Span,
+        span: ByteSpan,
         expected: RcType,
     },
     ExpectedUniverse {
-        span: Span,
+        span: ByteSpan,
         found: RcType,
     },
     UndefinedName {
-        var_span: Span,
+        var_span: ByteSpan,
         name: Name,
     },
     Internal(InternalError),

@@ -54,7 +54,7 @@ pub fn term<'input>(filemap: &'input FileMap) -> (concrete::Term, Vec<ParseError
 #[cfg(test)]
 mod tests {
     use codespan::{CodeMap, FileName};
-    use codespan::{BytePos, Span};
+    use codespan::{ByteIndex, ByteSpan};
 
     use super::*;
 
@@ -69,10 +69,10 @@ mod tests {
         assert_eq!(
             parse_result,
             (
-                concrete::Term::Error(Span::new(BytePos(1), BytePos(28))),
+                concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(28))),
                 vec![
                     ParseError::IdentifierExpectedInPiType {
-                        span: Span::new(BytePos(2), BytePos(12)),
+                        span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
                     },
                 ],
             )

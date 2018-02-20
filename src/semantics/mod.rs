@@ -10,7 +10,7 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 
-use codespan::Span;
+use codespan::ByteSpan;
 
 use syntax::core::{self, Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term};
 use syntax::core::{Value, ValueLam, ValuePi};
@@ -105,12 +105,12 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
-                span: Span::none(), // TODO
+                span: ByteSpan::none(), // TODO
                 index: index.clone(),
             }),
             Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
                 InternalError::UndefinedName {
-                    var_span: Span::none(), // TODO
+                    var_span: ByteSpan::none(), // TODO
                     name: name.clone(),
                 }
             })? {
@@ -233,7 +233,7 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
         },
         (&Term::Lam(_), _) => {
             return Err(TypeError::UnexpectedFunction {
-                span: Span::none(), // TODO: term.span(),
+                span: ByteSpan::none(), // TODO: term.span(),
                 expected: expected.clone(),
             });
         },
@@ -261,7 +261,7 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
     match &inferred_ty == expected {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
-            span: Span::none(), // TODO: term.span().
+            span: ByteSpan::none(), // TODO: term.span().
             found: inferred_ty,
             expected: expected.clone(),
         }),
@@ -290,7 +290,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         match *ty.inner {
             Value::Universe(level) => Ok((elab, level)),
             _ => Err(TypeError::ExpectedUniverse {
-                span: Span::none(), // TODO: term.span().
+                span: ByteSpan::none(), // TODO: term.span().
                 found: ty,
             }),
         }
@@ -322,13 +322,13 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => {
                 Err(InternalError::UnsubstitutedDebruijnIndex {
-                    span: Span::none(), // TODO: term.span().
+                    span: ByteSpan::none(), // TODO: term.span().
                     index: index.clone(),
                 }.into())
             },
             Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
                 TypeError::UndefinedName {
-                    var_span: Span::none(), // TODO: term.span().
+                    var_span: ByteSpan::none(), // TODO: term.span().
                     name: name.clone(),
                 }
             })? {
@@ -343,7 +343,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::Var(var.clone()).into(), ty.clone()))
                 },
                 Binder::Lam(None) => Err(TypeError::TypeAnnotationsNeeded {
-                    span: Span::none(), // TODO: binder.span().
+                    span: ByteSpan::none(), // TODO: binder.span().
                 }),
                 //  1.  let x:τ = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
@@ -363,7 +363,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             match param.inner {
                 // TODO: More error info
                 None => Err(TypeError::TypeAnnotationsNeeded {
-                    span: Span::none(), // TODO: param.span().
+                    span: ByteSpan::none(), // TODO: param.span().
                 }),
                 Some(ann) => {
                     let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
@@ -421,8 +421,8 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
                 _ => Err(TypeError::NotAFunctionType {
-                    fn_span: Span::none(),  // TODO: fn_expr.span().
-                    arg_span: Span::none(), // TODO: arg_expr.span().
+                    fn_span: ByteSpan::none(),  // TODO: fn_expr.span().
+                    arg_span: ByteSpan::none(), // TODO: arg_expr.span().
                     found: fn_type.clone(),
                 }),
             }

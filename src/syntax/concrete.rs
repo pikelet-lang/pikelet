@@ -1,6 +1,6 @@
 //! The concrete syntax of the language
 
-use codespan::{BytePos, Span};
+use codespan::{ByteIndex, ByteSpan};
 use std::fmt;
 use std::usize;
 
@@ -42,7 +42,7 @@ pub enum ReplCommand {
     /// Repl commands that could not be parsed correctly
     ///
     /// This is used for error recovery
-    Error(Span),
+    Error(ByteSpan),
 }
 
 /// Modules
@@ -56,13 +56,13 @@ pub enum Module {
     /// <declarations>
     /// ```
     Valid {
-        name: (Span, String),
+        name: (ByteSpan, String),
         declarations: Vec<Declaration>,
     },
     /// Modules commands that could not be parsed correctly
     ///
     /// This is used for error recovery
-    Error(Span),
+    Error(ByteSpan),
 }
 
 impl fmt::Display for Module {
@@ -84,9 +84,9 @@ pub enum Declaration {
     /// import foo as my-foo (..);
     /// ```
     Import {
-        span: Span,
-        name: (Span, String),
-        rename: Option<(Span, String)>,
+        span: ByteSpan,
+        name: (ByteSpan, String),
+        rename: Option<(ByteSpan, String)>,
         exposing: Option<Exposing>,
     },
     /// Claims that a term abides by the given type
@@ -94,7 +94,7 @@ pub enum Declaration {
     /// ```text
     /// foo : some-type
     /// ```
-    Claim { name: (Span, String), ann: Term },
+    Claim { name: (ByteSpan, String), ann: Term },
     /// Declares the body of a term
     ///
     /// ```text
@@ -102,19 +102,19 @@ pub enum Declaration {
     /// foo x (y : some-type) = some-body
     /// ```
     Definition {
-        name: (Span, String),
+        name: (ByteSpan, String),
         params: LamParams,
         body: Term,
     },
     /// Declarations that could not be correctly parsed
     ///
     /// This is used for error recovery
-    Error(Span),
+    Error(ByteSpan),
 }
 
 impl Declaration {
     /// Return the span of source code that this declaration originated from
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> ByteSpan {
         match *self {
             Declaration::Import { span, .. } => span,
             Declaration::Claim { ref name, ref ann } => name.0.to(ann.span()),
@@ -142,17 +142,20 @@ pub enum Exposing {
     /// ```text
     /// (..)
     /// ```
-    All(Span),
+    All(ByteSpan),
     /// Import an exact set of definitions into the current scope
     ///
     /// ```text
     /// (foo, bar as baz)
     /// ```
-    Exact(Span, Vec<((Span, String), Option<(Span, String)>)>),
+    Exact(
+        ByteSpan,
+        Vec<((ByteSpan, String), Option<(ByteSpan, String)>)>,
+    ),
     /// Exposing declarations that could not be correctly parsed
     ///
     /// This is used for error recovery
-    Error(Span),
+    Error(ByteSpan),
 }
 
 impl fmt::Display for Exposing {
@@ -171,7 +174,7 @@ pub enum Term {
     /// ```text
     /// (e)
     /// ```
-    Parens(Span, Box<Term>),
+    Parens(ByteSpan, Box<Term>),
     /// A term annotated with a type
     ///
     /// ```text
@@ -183,13 +186,13 @@ pub enum Term {
     /// ```text
     /// Type
     /// ```
-    Universe(Span, Option<u32>),
+    Universe(ByteSpan, Option<u32>),
     /// Variables
     ///
     /// ```text
     /// x
     /// ```
-    Var(Span, String),
+    Var(ByteSpan, String),
     /// Lambda abstractions
     ///
     /// ```text
@@ -199,14 +202,14 @@ pub enum Term {
     /// \(x : t1) y (z : t2) => t3
     /// \(x y : t1) => t3
     /// ```
-    Lam(BytePos, LamParams, Box<Term>),
+    Lam(ByteIndex, LamParams, Box<Term>),
     /// Dependent function types
     ///
     /// ```text
     /// (x : t1) -> t2
     /// (x y : t1) -> t2
     /// ```
-    Pi(BytePos, PiParams, Box<Term>),
+    Pi(ByteIndex, PiParams, Box<Term>),
     /// Non-Dependent function types
     ///
     /// ```text
@@ -222,19 +225,19 @@ pub enum Term {
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
-    Error(Span),
+    Error(ByteSpan),
 }
 
 impl Term {
     /// Return the span of source code that this term originated from
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> ByteSpan {
         match *self {
             Term::Parens(span, _)
             | Term::Universe(span, _)
             | Term::Var(span, _)
             | Term::Error(span) => span,
             Term::Lam(start, _, ref body) | Term::Pi(start, _, ref body) => {
-                Span::new(start, body.span().hi())
+                ByteSpan::new(start, body.span().end())
             },
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
@@ -252,7 +255,7 @@ impl fmt::Display for Term {
 }
 
 /// The parameters to a lambda abstraction
-pub type LamParams = Vec<(Vec<(Span, String)>, Option<Box<Term>>)>;
+pub type LamParams = Vec<(Vec<(ByteSpan, String)>, Option<Box<Term>>)>;
 
 /// The parameters to a dependent function type
-pub type PiParams = (Vec<(Span, String)>, Box<Term>);
+pub type PiParams = (Vec<(ByteSpan, String)>, Box<Term>);

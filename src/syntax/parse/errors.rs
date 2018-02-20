@@ -1,6 +1,6 @@
 use lalrpop_util::ParseError as LalrpopError;
 use codespan::FileMap;
-use codespan::{BytePos, Span};
+use codespan::{ByteIndex, ByteSpan};
 use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
 use std::fmt;
 
@@ -11,30 +11,33 @@ pub enum ParseError {
     #[fail(display = "{}", _0)]
     Lexer(#[cause] LexerError),
     #[fail(display = "An identifier was expected when parsing a pi type at byte range {}.", span)]
-    IdentifierExpectedInPiType { span: Span },
+    IdentifierExpectedInPiType { span: ByteSpan },
     #[fail(display = "An integer literal {} was too large for the target type at byte range {}.",
            value, span)]
-    IntegerLiteralOverflow { span: Span, value: u64 },
+    IntegerLiteralOverflow { span: ByteSpan, value: u64 },
     #[fail(display = "Unknown repl command `:{}` found at byte range {}.", command, span)]
-    UnknownReplCommand { span: Span, command: String },
-    #[fail(display = "Unexpected EOF at byte pos {}, expected one of: {}.", end, expected)]
+    UnknownReplCommand { span: ByteSpan, command: String },
+    #[fail(display = "Unexpected EOF at byte index {}, expected one of: {}.", end, expected)]
     UnexpectedEof {
-        end: BytePos,
+        end: ByteIndex,
         expected: ExpectedTokens,
     },
     #[fail(display = "Unexpected token {}, found at byte range {}, expected one of: {}.", token,
            span, expected)]
     UnexpectedToken {
-        span: Span,
+        span: ByteSpan,
         token: Token<String>,
         expected: ExpectedTokens,
     },
     #[fail(display = "Extra token {} found at byte range {}", token, span)]
-    ExtraToken { span: Span, token: Token<String> },
+    ExtraToken {
+        span: ByteSpan,
+        token: Token<String>,
+    },
 }
 
 /// Flatten away an LALRPOP error, leaving the inner `ParseError` behind
-pub fn from_lalrpop<T>(filemap: &FileMap, err: LalrpopError<BytePos, T, ParseError>) -> ParseError
+pub fn from_lalrpop<T>(filemap: &FileMap, err: LalrpopError<ByteIndex, T, ParseError>) -> ParseError
 where
     T: Into<Token<String>>,
 {
@@ -45,21 +48,21 @@ where
             token: None,
             expected,
         } => ParseError::UnexpectedEof {
-            end: filemap.span().hi(),
+            end: filemap.span().end(),
             expected: ExpectedTokens(expected),
         },
         LalrpopError::UnrecognizedToken {
-            token: Some((lo, token, hi)),
+            token: Some((start, token, end)),
             expected,
         } => ParseError::UnexpectedToken {
-            span: Span::new(lo, hi),
+            span: ByteSpan::new(start, end),
             token: token.into(),
             expected: ExpectedTokens(expected),
         },
         LalrpopError::ExtraToken {
-            token: (lo, token, hi),
+            token: (start, token, end),
         } => ParseError::ExtraToken {
-            span: Span::new(lo, hi),
+            span: ByteSpan::new(start, end),
             token: token.into(),
         },
     }
@@ -67,7 +70,7 @@ where
 
 impl ParseError {
     /// Return the span of source code that this error originated from
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> ByteSpan {
         match *self {
             ParseError::Lexer(ref err) => err.span(),
             ParseError::IdentifierExpectedInPiType { span }
@@ -75,7 +78,7 @@ impl ParseError {
             | ParseError::UnknownReplCommand { span, .. }
             | ParseError::UnexpectedToken { span, .. }
             | ParseError::ExtraToken { span, .. } => span,
-            ParseError::UnexpectedEof { end, .. } => Span::new(end, end),
+            ParseError::UnexpectedEof { end, .. } => ByteSpan::new(end, end),
         }
     }
 
@@ -138,7 +141,7 @@ impl ParseError {
                     Label {
                         message: Some("unexpected EOF".into()),
                         style: LabelStyle::Primary,
-                        span: Span::new(end, end),
+                        span: ByteSpan::new(end, end),
                     },
                 ],
             },

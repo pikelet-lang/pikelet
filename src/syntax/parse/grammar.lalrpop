@@ -1,5 +1,5 @@
 use codespan::FileMap;
-use codespan::{BytePos, Span};
+use codespan::{ByteIndex, ByteSpan};
 use std::u32;
 
 use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};
@@ -8,7 +8,7 @@ use syntax::parse::{LalrpopError, ParseError, Token};
 grammar<'err, 'input>(errors: &'err mut Vec<ParseError>, filemap: &'input FileMap);
 
 extern {
-    type Location = BytePos;
+    type Location = ByteIndex;
     type Error = ParseError;
 
     enum Token<&'input str> {
@@ -47,19 +47,19 @@ extern {
 pub ReplCommand: ReplCommand = {
     => ReplCommand::NoOp,
     <term: Term> => ReplCommand::Eval(Box::new(term)),
-    <lo: @L> <command: "REPL command"> <hi: @R> =>? match command {
+    <start: @L> <command: "REPL command"> <end: @R> =>? match command {
         "?" | "h" | "help" => Ok(ReplCommand::Help),
         "q" | "quit" => Ok(ReplCommand::Quit),
         command => {
-            let span = Span::new(lo, hi);
+            let span = ByteSpan::new(start, end);
             let command = String::from(command);
             Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
         },
     },
-    <lo: @L> <command: "REPL command"> <hi: @R> <term: Term> =>? match command {
+    <start: @L> <command: "REPL command"> <end: @R> <term: Term> =>? match command {
         "t" | "type" => Ok(ReplCommand::TypeOf(Box::new(term))),
         command => {
-            let span = Span::new(lo, hi);
+            let span = ByteSpan::new(start, end);
             let command = String::from(command);
             Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
         },
@@ -67,44 +67,44 @@ pub ReplCommand: ReplCommand = {
 };
 
 pub Module: Module = {
-    "module" <name: SpannedIdent> ";" <declarations: Declaration*> => {
+    "module" <name: ByteSpannedIdent> ";" <declarations: Declaration*> => {
         Module::Valid { name, declarations }
     },
 };
 
 pub Declaration: Declaration = {
-    <lo: @L> "import" <name: SpannedIdent> <rename: ("as" <SpannedIdent>)?>
-        <exposing: Exposing?> <hi: @R> ";" =>
+    <start: @L> "import" <name: ByteSpannedIdent> <rename: ("as" <ByteSpannedIdent>)?>
+        <exposing: Exposing?> <end: @R> ";" =>
     {
-        Declaration::Import { span: Span::new(lo, hi), name, rename, exposing }
+        Declaration::Import { span: ByteSpan::new(start, end), name, rename, exposing }
     },
-    <name: SpannedIdent> ":" <ann: Term> ";" => {
+    <name: ByteSpannedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },
-    <name: SpannedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
+    <name: ByteSpannedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
         Declaration::Definition { name, params, body }
     },
-    <lo: @L> <recovered: !> <hi: @R> ";" => {
+    <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
-        Declaration::Error(Span::new(lo, hi))
+        Declaration::Error(ByteSpan::new(start, end))
     }
 };
 
 Exposing : Exposing = {
-    <lo: @L> "(" ".." ")" <hi: @R> => Exposing::All(Span::new(lo, hi)),
-    <lo: @L> "(" <names: (<ExposedIdent> ",")*> <last: ExposedIdent> <hi: @R> => {
+    <start: @L> "(" ".." ")" <end: @R> => Exposing::All(ByteSpan::new(start, end)),
+    <start: @L> "(" <names: (<ExposedIdent> ",")*> <last: ExposedIdent> <end: @R> => {
         let mut names = names;
         names.push(last);
-        Exposing::Exact(Span::new(lo, hi), names)
+        Exposing::Exact(ByteSpan::new(start, end), names)
     },
-    <lo: @L> <recovered: !> <hi: @R> => {
+    <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
-        Exposing::Error(Span::new(lo, hi))
+        Exposing::Error(ByteSpan::new(start, end))
     },
 };
 
-ExposedIdent : ((Span, String), Option<(Span, String)>) = {
-    <SpannedIdent> <("as" <SpannedIdent>)?>
+ExposedIdent : ((ByteSpan, String), Option<(ByteSpan, String)>) = {
+    <ByteSpannedIdent> <("as" <ByteSpannedIdent>)?>
 };
 
 pub Term: Term = {
@@ -116,11 +116,11 @@ pub Term: Term = {
 
 LamTerm: Term = {
     PiTerm,
-    <lo: @L> "\\" <name: SpannedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
-        Term::Lam(lo, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
+    <start: @L> "\\" <name: ByteSpannedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
+        Term::Lam(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
     },
-    <lo: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
-        Term::Lam(lo, params, Box::new(body))
+    <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
+        Term::Lam(start, params, Box::new(body))
     },
 };
 
@@ -139,11 +139,11 @@ PiTerm: Term = {
     //
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in by reparsing the binder:
-    <lo: @L> <binder: AppTerm> "->" <body: LamTerm> <hi: @R> =>? {
-        reparse_pi_type_hack(Span::new(lo, hi), binder, body)
+    <start: @L> <binder: AppTerm> "->" <body: LamTerm> <end: @R> =>? {
+        reparse_pi_type_hack(ByteSpan::new(start, end), binder, body)
     },
-    <lo: @L> "Type" <level: U32Literal> <hi: @R> => {
-        Term::Universe(Span::new(lo, hi), Some(level as u32))
+    <start: @L> "Type" <level: U32Literal> <end: @R> => {
+        Term::Universe(ByteSpan::new(start, end), Some(level as u32))
     },
 };
 
@@ -155,22 +155,22 @@ AppTerm: Term = {
 };
 
 AtomicTerm: Term = {
-    <lo: @L> "(" <term: Term> ")" <hi: @R> => Term::Parens(Span::new(lo, hi), Box::new(term)),
-    <lo: @L> "Type" <hi: @R> => Term::Universe(Span::new(lo, hi), None),
-    <lo: @L> <ident: Ident> <hi: @R> => Term::Var(Span::new(lo, hi), ident),
-    <lo: @L> <recovered: !> <hi: @R> => {
+    <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
+    <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
+    <start: @L> <ident: Ident> <end: @R> => Term::Var(ByteSpan::new(start, end), ident),
+    <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
-        Term::Error(Span::new(lo, hi))
+        Term::Error(ByteSpan::new(start, end))
     }
 };
 
-AtomicLamParam: (Vec<(Span, String)>, Option<Box<Term>>) = {
-    <name: SpannedIdent> => (vec![name], None),
-    "(" <names: SpannedIdent+> ":" <ann: PiTerm> ")" => (names, Some(Box::new(ann))),
+AtomicLamParam: (Vec<(ByteSpan, String)>, Option<Box<Term>>) = {
+    <name: ByteSpannedIdent> => (vec![name], None),
+    "(" <names: ByteSpannedIdent+> ":" <ann: PiTerm> ")" => (names, Some(Box::new(ann))),
 };
 
-SpannedIdent: (Span, String) = {
-    <lo: @L> <ident: Ident> <hi: @R> => (Span::new(lo, hi), ident),
+ByteSpannedIdent: (ByteSpan, String) = {
+    <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), ident),
 };
 
 Ident: String = {
@@ -178,7 +178,7 @@ Ident: String = {
 };
 
 U32Literal : u32 = {
-    <lo: @L> <value: "decimal literal"> <hi: @R> =>? {
-        u32_literal(Span::new(lo, hi), value)
+    <start: @L> <value: "decimal literal"> <end: @R> =>? {
+        u32_literal(ByteSpan::new(start, end), value)
     },
 };

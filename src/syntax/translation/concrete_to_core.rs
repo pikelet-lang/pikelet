@@ -1,4 +1,4 @@
-use codespan::Span;
+use codespan::ByteSpan;
 
 use syntax::concrete;
 use syntax::core;
@@ -18,7 +18,7 @@ use super::FromConcrete;
 /// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
 /// ```
 fn lam_from_concrete(
-    params: &[(Vec<(Span, String)>, Option<Box<concrete::Term>>)],
+    params: &[(Vec<(ByteSpan, String)>, Option<Box<concrete::Term>>)],
     body: &concrete::Term,
 ) -> core::RcTerm {
     let mut term = core::RcTerm::from_concrete(body);
@@ -51,7 +51,7 @@ fn lam_from_concrete(
 /// (a : t1) -> (b : t1) -> t3
 /// ```
 fn pi_from_concrete(
-    param_names: &[(Span, String)],
+    param_names: &[(ByteSpan, String)],
     ann: &concrete::Term,
     body: &concrete::Term,
 ) -> core::RcTerm {

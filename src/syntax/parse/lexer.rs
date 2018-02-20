@@ -1,10 +1,9 @@
-use codespan::FileMap;
-use codespan::Span;
+use codespan::{ByteSpan, FileMap};
 use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
 use std::fmt;
 use std::str::CharIndices;
 
-use codespan::{ByteOffset, BytePos, RawOffset};
+use codespan::{ByteIndex, ByteOffset, RawOffset};
 use unicode_xid::UnicodeXID;
 
 fn is_symbol(ch: char) -> bool {
@@ -30,15 +29,15 @@ fn is_dec_digit(ch: char) -> bool {
 #[derive(Fail, Debug, Clone, PartialEq, Eq)]
 pub enum LexerError {
     #[fail(display = "An unexpected character {:?} was found at byte {}.", found, start)]
-    UnexpectedCharacter { start: BytePos, found: char },
+    UnexpectedCharacter { start: ByteIndex, found: char },
 }
 
 impl LexerError {
     /// Return the span of source code that this error originated from
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> ByteSpan {
         match *self {
             LexerError::UnexpectedCharacter { start, found } => {
-                Span::from_offset(start, ByteOffset::from_char_utf8(found))
+                ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found))
             },
         }
     }
@@ -52,7 +51,7 @@ impl LexerError {
                     Label {
                         message: None, // TODO
                         style: LabelStyle::Primary,
-                        span: Span::from_offset(start, ByteOffset::from_char_utf8(found)),
+                        span: ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found)),
                     },
                 ],
             },
@@ -173,25 +172,25 @@ impl<'input> Lexer<'input> {
     }
 
     /// Return the next character in the source string
-    fn lookahead(&self) -> Option<(BytePos, char)> {
+    fn lookahead(&self) -> Option<(ByteIndex, char)> {
         self.lookahead.map(|(index, ch)| {
             let off = ByteOffset(index as RawOffset);
-            let pos = self.filemap.span().lo() + off;
-            (pos, ch)
+            let index = self.filemap.span().start() + off;
+            (index, ch)
         })
     }
 
     /// Bump the current position in the source string by one character,
     /// returning the current character and byte position.
-    fn bump(&mut self) -> Option<(BytePos, char)> {
+    fn bump(&mut self) -> Option<(ByteIndex, char)> {
         let current = self.lookahead();
         self.lookahead = self.chars.next();
         current
     }
 
     /// Return a slice of the source string
-    fn slice(&self, start: BytePos, end: BytePos) -> &'input str {
-        &self.filemap.src_slice(Span::new(start, end)).unwrap()
+    fn slice(&self, start: ByteIndex, end: ByteIndex) -> &'input str {
+        &self.filemap.src_slice(ByteSpan::new(start, end)).unwrap()
     }
 
     // /// Test a predicate againt the next character in the source
@@ -205,7 +204,7 @@ impl<'input> Lexer<'input> {
     /// Consume characters while the predicate matches for the current
     /// character, then return the consumed slice and the end byte
     /// position.
-    fn take_while<F>(&mut self, start: BytePos, mut keep_going: F) -> (BytePos, &'input str)
+    fn take_while<F>(&mut self, start: ByteIndex, mut keep_going: F) -> (ByteIndex, &'input str)
     where
         F: FnMut(char) -> bool,
     {
@@ -215,7 +214,7 @@ impl<'input> Lexer<'input> {
     /// Consume characters until the predicate matches for the next character
     /// in the lookahead, then return the consumed slice and the end byte
     /// position.
-    fn take_until<F>(&mut self, start: BytePos, mut terminate: F) -> (BytePos, &'input str)
+    fn take_until<F>(&mut self, start: ByteIndex, mut terminate: F) -> (ByteIndex, &'input str)
     where
         F: FnMut(char) -> bool,
     {
@@ -227,12 +226,12 @@ impl<'input> Lexer<'input> {
             }
         }
 
-        let eof = self.filemap.span().hi();
+        let eof = self.filemap.span().end();
         (eof, self.slice(start, eof))
     }
 
     /// Consume a REPL command
-    fn repl_command(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
+    fn repl_command(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
         let (end, command) = self.take_while(start + ByteOffset::from_str(":"), |ch| {
             is_ident_continue(ch) || ch == '?'
         });
@@ -245,7 +244,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a doc comment
-    fn doc_comment(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
+    fn doc_comment(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
         let (end, mut comment) =
             self.take_until(start + ByteOffset::from_str("|||"), |ch| ch == '\n');
 
@@ -258,7 +257,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume an identifier token
-    fn ident(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
+    fn ident(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
         let (end, ident) = self.take_while(start, is_ident_continue);
 
         let token = match ident {
@@ -273,7 +272,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a decimal literal token
-    fn dec_literal(&mut self, start: BytePos) -> (BytePos, Token<&'input str>, BytePos) {
+    fn dec_literal(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
         let (end, src) = self.take_while(start, is_dec_digit);
 
         let int = u64::from_str_radix(src, 10).unwrap();
@@ -283,9 +282,9 @@ impl<'input> Lexer<'input> {
 }
 
 impl<'input> Iterator for Lexer<'input> {
-    type Item = Result<(BytePos, Token<&'input str>, BytePos), LexerError>;
+    type Item = Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError>;
 
-    fn next(&mut self) -> Option<Result<(BytePos, Token<&'input str>, BytePos), LexerError>> {
+    fn next(&mut self) -> Option<Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError>> {
         while let Some((start, ch)) = self.bump() {
             let end = start + ByteOffset::from_char_utf8(ch);
 
@@ -330,7 +329,7 @@ impl<'input> Iterator for Lexer<'input> {
 #[cfg(test)]
 mod tests {
     use codespan::{CodeMap, FileName};
-    use codespan::RawPos;
+    use codespan::RawIndex;
 
     use super::*;
 
@@ -344,8 +343,8 @@ mod tests {
 
             let lexed_tokens: Vec<_> = Lexer::new(&filemap).collect();
             let expected_tokens = vec![$({
-                let start = BytePos($span.find("~").unwrap() as RawPos + 1);
-                let end = BytePos($span.rfind("~").unwrap() as RawPos + 2);
+                let start = ByteIndex($span.find("~").unwrap() as RawIndex + 1);
+                let end = ByteIndex($span.rfind("~").unwrap() as RawIndex + 2);
                 Ok((start, $token, end))
             }),*];
 

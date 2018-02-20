@@ -4,13 +4,13 @@ include!(concat!(env!("OUT_DIR"), "/syntax/parse/grammar.rs"));
 /// a body. See the comments on the `PiTerm` rule in the `grammer.lalrpop` for
 /// more information.
 fn reparse_pi_type_hack<L, T>(
-    span: Span,
+    span: ByteSpan,
     binder: Term,
     body: Term,
 ) -> Result<Term, LalrpopError<L, T, ParseError>> {
     fn param_names<L, T>(
         term: Term,
-        names: &mut Vec<(Span, String)>,
+        names: &mut Vec<(ByteSpan, String)>,
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match term {
             Term::Var(span, name) => names.push((span, name)),
@@ -34,7 +34,7 @@ fn reparse_pi_type_hack<L, T>(
                 Term::Ann(params, ann) => {
                     let mut names = Vec::new();
                     param_names(*params, &mut names)?;
-                    Ok(Term::Pi(span.lo(), (names, ann), body.into()))
+                    Ok(Term::Pi(span.start(), (names, ann), body.into()))
                 },
                 ann => {
                     let parens = Term::Parens(paren_span, ann.into()).into();
@@ -46,7 +46,7 @@ fn reparse_pi_type_hack<L, T>(
     }
 }
 
-fn u32_literal<L, T>(span: Span, value: u64) -> Result<u32, LalrpopError<L, T, ParseError>> {
+fn u32_literal<L, T>(span: ByteSpan, value: u64) -> Result<u32, LalrpopError<L, T, ParseError>> {
     if value <= u32::MAX as u64 {
         Ok(value as u32)
     } else {
