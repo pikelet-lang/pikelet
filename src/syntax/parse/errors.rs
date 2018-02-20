@@ -10,26 +10,24 @@ use syntax::parse::{LexerError, Token};
 pub enum ParseError {
     #[fail(display = "{}", _0)]
     Lexer(#[cause] LexerError),
-    #[fail(display = "An identifier was expected when parsing a pi type at byte range {}.", span)]
+    #[fail(display = "An identifier was expected when parsing a pi type.")]
     IdentifierExpectedInPiType { span: ByteSpan },
-    #[fail(display = "An integer literal {} was too large for the target type at byte range {}.",
-           value, span)]
+    #[fail(display = "An integer literal {} was too large for the target type.", value)]
     IntegerLiteralOverflow { span: ByteSpan, value: u64 },
-    #[fail(display = "Unknown repl command `:{}` found at byte range {}.", command, span)]
+    #[fail(display = "Unknown repl command `:{}` found.", command)]
     UnknownReplCommand { span: ByteSpan, command: String },
-    #[fail(display = "Unexpected EOF at byte index {}, expected one of: {}.", end, expected)]
+    #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
     UnexpectedEof {
         end: ByteIndex,
         expected: ExpectedTokens,
     },
-    #[fail(display = "Unexpected token {}, found at byte range {}, expected one of: {}.", token,
-           span, expected)]
+    #[fail(display = "Unexpected token {}, found, expected one of: {}.", token, expected)]
     UnexpectedToken {
         span: ByteSpan,
         token: Token<String>,
         expected: ExpectedTokens,
     },
-    #[fail(display = "Extra token {} found at byte range {}", token, span)]
+    #[fail(display = "Extra token {} found", token)]
     ExtraToken {
         span: ByteSpan,
         token: Token<String>,

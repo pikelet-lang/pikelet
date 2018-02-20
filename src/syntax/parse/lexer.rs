@@ -28,7 +28,7 @@ fn is_dec_digit(ch: char) -> bool {
 /// An error that occurred while lexing the source file
 #[derive(Fail, Debug, Clone, PartialEq, Eq)]
 pub enum LexerError {
-    #[fail(display = "An unexpected character {:?} was found at byte {}.", found, start)]
+    #[fail(display = "An unexpected character {:?} was found.", found)]
     UnexpectedCharacter { start: ByteIndex, found: char },
 }
 
