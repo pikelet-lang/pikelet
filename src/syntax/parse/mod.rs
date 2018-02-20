@@ -15,28 +15,26 @@ pub use self::errors::{ExpectedTokens, ParseError};
 
 // TODO: DRY up these wrappers...
 
-pub fn repl_command<'input>(
-    filemap: &'input FileMap,
-) -> (Option<concrete::ReplCommand>, Vec<ParseError>) {
+pub fn repl_command<'input>(filemap: &'input FileMap) -> (concrete::ReplCommand, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
     match grammar::parse_ReplCommand(&mut errors, filemap, lexer) {
-        Ok(value) => (Some(value), errors),
+        Ok(value) => (value, errors),
         Err(err) => {
             errors.push(errors::from_lalrpop(filemap, err));
-            (None, errors)
+            (concrete::ReplCommand::Error(filemap.span()), errors)
         },
     }
 }
 
-pub fn module<'input>(filemap: &'input FileMap) -> (Option<concrete::Module>, Vec<ParseError>) {
+pub fn module<'input>(filemap: &'input FileMap) -> (concrete::Module, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
     match grammar::parse_Module(&mut errors, filemap, lexer) {
-        Ok(value) => (Some(value), errors),
+        Ok(value) => (value, errors),
         Err(err) => {
             errors.push(errors::from_lalrpop(filemap, err));
-            (None, errors)
+            (concrete::Module::Error(filemap.span()), errors)
         },
     }
 }

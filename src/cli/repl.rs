@@ -113,7 +113,7 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
         return Err(EvalPrintError::Parse(parse_errors));
     }
 
-    match repl_command.unwrap() {
+    match repl_command {
         ReplCommand::Help => for line in HELP_TEXT {
             println!("{}", line);
         },
@@ -136,7 +136,7 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
             println!("{}", doc.pretty(term_width().unwrap_or(usize::MAX)));
         },
 
-        ReplCommand::NoOp => {},
+        ReplCommand::NoOp | ReplCommand::Error(_) => {},
         ReplCommand::Quit => return Ok(ControlFlow::Break),
     }
 

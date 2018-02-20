@@ -68,7 +68,7 @@ pub ReplCommand: ReplCommand = {
 
 pub Module: Module = {
     "module" <name: SpannedIdent> ";" <declarations: Declaration*> => {
-        Module { name, declarations }
+        Module::Valid { name, declarations }
     },
 };
 

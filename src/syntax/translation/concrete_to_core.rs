@@ -75,66 +75,77 @@ impl<'a> FromConcrete<&'a concrete::Module> for core::Module {
         use std::collections::BTreeMap;
         use std::collections::btree_map::Entry;
 
-        // The type claims that we have encountered so far! We'll use these when
-        // we encounter their corresponding definitions later as type annotations
-        let mut claims = BTreeMap::new();
-        // The definitions, desugared from the concrete syntax
-        let mut definitions = Vec::<core::Definition>::new();
+        match *module {
+            concrete::Module::Valid {
+                ref name,
+                ref declarations,
+            } => {
+                // The type claims that we have encountered so far! We'll use these when
+                // we encounter their corresponding definitions later as type annotations
+                let mut claims = BTreeMap::new();
+                // The definitions, desugared from the concrete syntax
+                let mut definitions = Vec::<core::Definition>::new();
 
-        for declaration in &module.declarations {
-            match *declaration {
-                concrete::Declaration::Import { .. } => unimplemented!("import declarations"),
-                // We've enountered a claim! Let's try to add it to the claims
-                // that we've seen so far...
-                concrete::Declaration::Claim {
-                    name: (_, ref name),
-                    ref ann,
-                    ..
-                } => {
-                    match claims.entry(name) {
-                        // Oh no! We've already seen a claim for this name!
-                        Entry::Occupied(_) => panic!(), // FIXME: Better error
-                        // This name does not yet have a claim associated with it
-                        Entry::Vacant(mut entry) => {
-                            let mut ann = core::RcTerm::from_concrete(ann);
+                for declaration in declarations {
+                    match *declaration {
+                        concrete::Declaration::Import { .. } => {
+                            unimplemented!("import declarations")
+                        },
+                        // We've enountered a claim! Let's try to add it to the claims
+                        // that we've seen so far...
+                        concrete::Declaration::Claim {
+                            name: (_, ref name),
+                            ref ann,
+                            ..
+                        } => {
+                            match claims.entry(name) {
+                                // Oh no! We've already seen a claim for this name!
+                                Entry::Occupied(_) => panic!(), // FIXME: Better error
+                                // This name does not yet have a claim associated with it
+                                Entry::Vacant(mut entry) => {
+                                    let mut ann = core::RcTerm::from_concrete(ann);
+
+                                    for (level, definition) in definitions.iter().rev().enumerate()
+                                    {
+                                        let name = core::Name::user(definition.name.clone());
+                                        ann.close_at(Debruijn(level as u32), &name);
+                                    }
+
+                                    entry.insert(ann)
+                                },
+                            };
+                        },
+                        // We've encountered a definition. Let's desugar it!
+                        concrete::Declaration::Definition {
+                            name: (_, ref name),
+                            ref params,
+                            ref body,
+                            ..
+                        } => {
+                            let name = name.clone();
+                            let mut term = lam_from_concrete(params, body);
+                            let ann = claims.remove(&name);
 
                             for (level, definition) in definitions.iter().rev().enumerate() {
                                 let name = core::Name::user(definition.name.clone());
-                                ann.close_at(Debruijn(level as u32), &name);
+                                term.close_at(Debruijn(level as u32), &name);
                             }
 
-                            entry.insert(ann)
+                            definitions.push(core::Definition { name, term, ann });
                         },
-                    };
-                },
-                // We've encountered a definition. Let's desugar it!
-                concrete::Declaration::Definition {
-                    name: (_, ref name),
-                    ref params,
-                    ref body,
-                    ..
-                } => {
-                    let name = name.clone();
-                    let mut term = lam_from_concrete(params, body);
-                    let ann = claims.remove(&name);
-
-                    for (level, definition) in definitions.iter().rev().enumerate() {
-                        let name = core::Name::user(definition.name.clone());
-                        term.close_at(Debruijn(level as u32), &name);
+                        concrete::Declaration::Error(_) => unimplemented!("error recovery"),
                     }
+                }
 
-                    definitions.push(core::Definition { name, term, ann });
-                },
-                concrete::Declaration::Error(_) => unimplemented!("error recovery"),
-            }
-        }
+                // FIXME: Better error
+                assert!(claims.is_empty());
 
-        // FIXME: Better error
-        assert!(claims.is_empty());
-
-        core::Module {
-            name: module.name.1.clone(),
-            definitions,
+                core::Module {
+                    name: name.1.clone(),
+                    definitions,
+                }
+            },
+            concrete::Module::Error(_) => unimplemented!("error recovery"),
         }
     }
 }
@@ -213,7 +224,7 @@ mod from_concrete {
             let (concrete_module, errors) = parse::module(&filemap);
             assert!(errors.is_empty());
 
-            Module::from_concrete(&concrete_module.unwrap());
+            Module::from_concrete(&concrete_module);
         }
     }
 

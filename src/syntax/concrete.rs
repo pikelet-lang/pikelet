@@ -39,21 +39,30 @@ pub enum ReplCommand {
     /// :type <term>
     /// ```
     TypeOf(Box<Term>),
+    /// Repl commands that could not be parsed correctly
+    ///
+    /// This is used for error recovery
+    Error(Span),
 }
 
-/// A module definition:
-///
-/// ```text
-/// module my-module;
-///
-/// <declarations>
-/// ```
+/// Modules
 #[derive(Debug, Clone, PartialEq)]
-pub struct Module {
-    /// The name of the module
-    pub name: (Span, String),
-    /// The declarations contained in the module
-    pub declarations: Vec<Declaration>,
+pub enum Module {
+    /// A module definition:
+    ///
+    /// ```text
+    /// module my-module;
+    ///
+    /// <declarations>
+    /// ```
+    Valid {
+        name: (Span, String),
+        declarations: Vec<Declaration>,
+    },
+    /// Modules commands that could not be parsed correctly
+    ///
+    /// This is used for error recovery
+    Error(Span),
 }
 
 impl fmt::Display for Module {

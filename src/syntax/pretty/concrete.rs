@@ -8,19 +8,25 @@ use super::{Options, StaticDoc, ToDoc};
 
 impl ToDoc for Module {
     fn to_doc(&self, options: Options) -> StaticDoc {
-        Doc::group(
-            Doc::text("module")
-                .append(Doc::space())
-                .append(Doc::as_string(&self.name.1))
-                .append(Doc::text(";")),
-        ).append(Doc::newline())
-            .append(Doc::newline())
-            .append(Doc::intersperse(
-                self.declarations
-                    .iter()
-                    .map(|declaration| declaration.to_doc(options)),
-                Doc::newline().append(Doc::newline()),
-            ))
+        match *self {
+            Module::Valid {
+                ref name,
+                ref declarations,
+            } => Doc::group(
+                Doc::text("module")
+                    .append(Doc::space())
+                    .append(Doc::as_string(&name.1))
+                    .append(Doc::text(";")),
+            ).append(Doc::newline())
+                .append(Doc::newline())
+                .append(Doc::intersperse(
+                    declarations
+                        .iter()
+                        .map(|declaration| declaration.to_doc(options)),
+                    Doc::newline().append(Doc::newline()),
+                )),
+            Module::Error(_) => Doc::text("<error>"),
+        }
     }
 }
 

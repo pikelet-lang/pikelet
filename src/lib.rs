@@ -43,17 +43,12 @@ pub fn load_file(file: &FileMap) -> Result<CheckedModule, Vec<Diagnostic>> {
     let (module, errors) = syntax::parse::module(&file);
     diagnostics.extend(errors.iter().map(|err| err.to_diagnostic()));
 
-    match module {
-        None => Err(diagnostics),
-        Some(module) => {
-            let module = Module::from_concrete(&module);
-            match semantics::check_module(&module) {
-                Ok(module) => Ok(module),
-                Err(err) => {
-                    diagnostics.push(err.to_diagnostic());
-                    Err(diagnostics)
-                },
-            }
+    let module = Module::from_concrete(&module);
+    match semantics::check_module(&module) {
+        Ok(module) => Ok(module),
+        Err(err) => {
+            diagnostics.push(err.to_diagnostic());
+            Err(diagnostics)
         },
     }
 }
