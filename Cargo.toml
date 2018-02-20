@@ -8,6 +8,7 @@ description = "An implementation of a small dependently typed lambda calculus in
 publish = false
 
 [features]
+default = ["cli"]
 cli = [
     "isatty",
     "rustyline",
