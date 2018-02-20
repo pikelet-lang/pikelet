@@ -122,7 +122,7 @@ impl ParseError {
                 ref expected,
             } => Diagnostic {
                 severity: Severity::Error,
-                message: format!("expected one of {}, found `{}`", token, expected),
+                message: format!("expected one of {}, found `{}`", expected, token),
                 spans: vec![
                     SpanLabel {
                         label: Some("unexpected token".into()),
