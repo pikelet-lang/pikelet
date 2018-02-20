@@ -1,75 +1,56 @@
 # Pikelet 🥞
 
-An implementation of a small dependently typed lambda calculus in Rust. This
-project is intended as an explaratory exercise, and as a basis for more fully
-featured dependently typed languages in Rust.
+This is an implementation of a small [dependently typed][dependent-type-wikipedia]
+lambda calculus in Rust. This project is intended as an explaratory exercise,
+and to serve as a basis for more fully featured dependently typed languages.
 
-The type system was originally inspired by the one presented in [_A Tutorial
-Implementation of a Dependently Typed Lambda Calculus_](lambdapi), but it has
-since diverged from it in a number of ways, so perhaps a rename is in order!
+Thanks to the hard work of our academics, it has become much easier for the
+average developer to try their hand at building dependent type systems. Alas the
+materials required to tackle this are scattered throughout the literature, and
+can be time consuming to track down. Hopefully this project makes it easier to
+see how this can be done in Rust!
 
-[lambdapi]: https://www.andres-loeh.de/LambdaPi/
+We take a [bidirectional approach][bidirectional-typing-paper] to building the
+type system, similar to the one descibed in the excellent
+[LambdaPi paper][lambdapi-site]. This allows us to provide a good amount of
+local type inference while still maintaining a simple, easy to understand type
+checking algorithm.
 
-## Why dependent types?
-
-You may have noticed in languages like Haskell that there seems to be an uncanny
-similarity between the way one works with terms (ie. expressions), and the way
-one works with types:
-
-```hs
-id :: forall a. a -> a
-id x = x
-
-test = id 1
-
-type Id (a :: Type) = a
-type Test = Id Int
-```
-
-Dependent type systems elevate types to being _first class_ entities in a
-programming language by eliminating the distinction between terms and types,
-putting them all in the same syntax. This means that we can reuse the same
-programming techniques both at the type and value level:
-
-```idris
-id : {a : Type} -> a -> a
-id x = x
-
-test1 = id 1 : Int
-test2 = id Int : Type
-```
-
-Notice that type aliases just become regular old value definitions!
-
-## What is a Pikelet?
-
-An odd sort of small (often pre-made) crumpet or pancake found in Australia and
-New Zealand. Often sent in school lunches spread with jam and butter. Also has
-a name that includes 'pi' and 'let' as substrings! 😅
+[dependent-type-wikipedia]: https://en.wikipedia.org/wiki/Dependent_type
 
 ## Roadmap
 
-- [ ] dependent record types
-- [ ] implement module imports
-- [ ] `let` and `where` bindings
-- [ ] layout based syntax
-- [ ] improve UX
+There's still a decent amount of work I want to do to Pikelet before I share it
+around more widely:
+
+- syntax
+  - [ ] layout based lexer
+  - [ ] `let` and `where` bindings
+- type system
+  - [ ] dependent records
+  - [ ] universe hierarchy
+    - [x] stratified - _this is actually very annoying to use_
+    - [ ] cumulative?
+      - [twitter thread][universes-twitter-ramble]
+      - [blog post by Conor McBride][universes-pigworker-blog]
+- more fully featured elaborator
+  - [ ] holes, ie. `_` and `?hole`
+  - [ ] implicit arguments, ie. `{a : Type}`
+  - [ ] instance arguments, ie. `[eq : EQ a]`
+- UX and polish
+  - [ ] actually implement module system
   - [ ] pretty error messages
+    - [x] diagnostic reporting crate - see [brendanzab/codespan][codespan]
     - [ ] underlined source code snippets
     - [ ] type diffs
   - [ ] prettier pretty printing
     - [ ] rename ugly genvars!
     - [ ] use non-dependant arrows when possible
-- [ ] universe hierarchy
-  - [x] stratified - _this is actually very annoying to use_
-  - [ ] cumulative?
-    - [twitter thread](https://twitter.com/brendanzab/status/962681577120587776)
-    - [blog post by Conor McBride](https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/)
-- [ ] more fully featured elaborator
-  - [ ] holes, ie. `_` and `?hole`
-  - [ ] implicit arguments, ie. `{a : Type}`
-  - [ ] instance arguments, ie. `[eq : EQ a]`
-- [ ] clean up and document internals
+- back-end
+  - [ ] JIT/VM
+  - [ ] compiler - to LLVM perhaps - see “Implementing and Optimizing a Simple,
+        Dependently-Typed Language” [[PAPER][compiling-lambdapi-paper]]
+- clean up and document internals
   - [ ] document challenges with name binding
   - [ ] ensure substitution points match the typing judgements
   - [ ] fix typechecking at the module level
@@ -80,24 +61,51 @@ a name that includes 'pi' and 'let' as substrings! 😅
     - Why is there an `Option<Value>` on `Value::Lam`?
   - [ ] performance tuning, and profiling
   - [ ] property based testing - see “Effect-Driven QuickChecking of Compilers”
-        [[VIDEO](https://www.youtube.com/watch?v=_KrZzaShDew)]
-        [[PAPER](http://janmidtgaard.dk/papers/Midtgaard-al%3AICFP17-full.pdf)]
+        [[VIDEO][quickchecking-compilers-video]]
+        [[PAPER][quickchecking-compilers-paper]]
+
+Future experiments into integrating effects, coeffects, worldly types, linear
+types, graded types, cubical type theory, and observational type theory are
+(sadly) most likely beyond the scope of Pikelet. Getting them all to play nicely
+under one roof is sadly still an open research problem. That said, Pikelet could
+serve as nice, simple basis for experimenting with those ideas, perhaps with the
+goal of building a new systems-oriented dependently typed language!
+
+[codespan]: https://github.com/brendanzab/codespan
+[universes-twitter-ramble]: https://twitter.com/brendanzab/status/962681577120587776
+[universes-pigworker-blog]: https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/
+[compiling-lambdapi-paper]: http://publications.lib.chalmers.se/records/fulltext/124826.pdf
+[quickchecking-compilers-video]: https://www.youtube.com/watch?v=_KrZzaShDew
+[quickchecking-compilers-paper]: http://janmidtgaard.dk/papers/Midtgaard-al%3AICFP17-full.pdf
 
 ## References
 
 - Charguéraud, Arthur (2011). “The Locally Nameless Representation”.
   In _Journal of Automated Reasoning (JAR)_.
-  [[SITE]](http://www.chargueraud.org/softs/ln/)
-  [[PAPER]](http://www.chargueraud.org/research/2009/ln/main.pdf)
+  [[SITE][ln-site]]
+  [[PAPER][ln-paper]]
 - Christiansen, David Raymond (2013). “Bidirectional Typing Rules: A Tutorial”.
-  [[PAPER]](http://www.davidchristiansen.dk/tutorials/bidirectional.pdf)
+  [[PAPER][bidirectional-typing-paper]]
 - Löh, Andres, McBride, Conor and Swierstra, Wouter (2009). “A tutorial
   implementation of a dependently typed lambda calculus”.
-  [[SITE]](https://www.andres-loeh.de/LambdaPi/)
-  [[PAPER]](https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf)
+  [[SITE][lambdapi-site]]
+  [[PAPER][lambdapi-paper]]
 - Norell, Ulf (2007). “Towards a practical programming language based on
   dependent type theory”.
-  [[PAPER]](http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf)
+  [[PAPER][agda-paper]]
+
+[ln-site]: http://www.chargueraud.org/softs/ln/
+[ln-paper]: http://www.chargueraud.org/research/2009/ln/main.pdf
+[bidirectional-typing-paper]: http://www.davidchristiansen.dk/tutorials/bidirectional.pdf
+[lambdapi-site]: https://www.andres-loeh.de/LambdaPi/
+[lambdapi-paper]: https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf
+[agda-paper]: http://www.cse.chalmers.se/~ulfn/papers/thesis.pdf
+
+## What is a Pikelet?
+
+A pikelet is an odd sort of small (often pre-made) pancake found in Australia
+and New Zealand. Commonly sent in school lunches spread with jam and butter.
+Handily it also has a name that includes 'pi' and 'let' as substrings! 😅
 
 ## Acknowledgments
 
