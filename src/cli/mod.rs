@@ -1,3 +1,5 @@
+//! The command line interface for Pikelet
+
 use failure::Error;
 use std::str::FromStr;
 

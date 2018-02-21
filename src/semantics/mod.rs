@@ -4,6 +4,21 @@
 //! phases: type checking and type inference. This makes the flow of information
 //! through the type checker clear and relatively easy to reason about.
 //!
+//! # Judgements
+//!
+//! The semantics of Pikelet are described by the following judgement forms:
+//!
+//! | name           | notation         | inputs        | outputs  | implementing function  |
+//! |----------------|------------------|---------------|----------|------------------------|
+//! | normalization  | `Γ ⊢ e ⇓ v`     | `Γ`, `e`      | `v`      | `semantics::normalize` |
+//! | type checking  | `Γ ⊢ e ⇐ τ ⤳ v` | `Γ`, `e`, `τ` | `v`      | `semantics::check`     |
+//! | type inference | `Γ ⊢ e ⇒ τ ⤳ v` | `Γ`, `e`      | `τ`, `v` | `semantics::infer`     |
+//!
+//! The judgements rely on the syntax for terms, values, and contexts that were
+//! previously defined in `syntax::core`.  Care has been taken to design the
+//! judgments in such a way that they are 'syntax-directed', meaning an
+//! algorithm can be clearly derived from them.
+//!
 //! # A note on notation
 //!
 //! We provide [natural deduction][natural-deduction-wikipedia] judgements to
@@ -33,19 +48,6 @@
 //!
 //! These judgements can be considered ['axioms'][axiom-wikipedia], ie. they are
 //! the base cases of our recursive judgements.
-//!
-//! The key judgements we define in this module are:
-//!
-//! - normalization: `Γ ⊢ e ⇓ v`
-//! - type checking: `Γ ⊢ e ⇐ τ ⤳ v`
-//! - type inference: `Γ ⊢ e ⇒ τ ⤳ v`
-//!
-//! These rely on the syntax for terms, values, and contexts that were
-//! previously defined in `syntax::core`.
-//!
-//! Care has been taken to design the judgments in such a way that they are
-//! 'syntax-directed', meaning an algorithm can be clearly derived from them.
-//! Note that this is not always clear in all natural deduction systems.
 //!
 //! [natural-deduction-wikipedia]: https://en.wikipedia.org/wiki/Natural_deduction
 //! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
