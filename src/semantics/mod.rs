@@ -21,7 +21,23 @@
 //!
 //! ## Elaboration
 //!
-//! TODO: Document
+//! Elaboration is the process of filling in missing information that the
+//! programmer omitted in the original code, generally based on the results
+//! of type inference.
+//!
+//! In Pikelet's judgement forms the elaborated terms are denoted after the
+//! wiggly arrow, ie. `⤳`. At the moment not much is added - only the missing
+//! type annotations on function parameters. It's unclear at the moment how
+//! bidirectional checking could be extended to support more involved
+//! elaboration, for example handling implicit arguments like:
+//!
+//! ```text
+//! id : {a : Type} -> a -> a
+//! ```
+//!
+//! Perhaps we'd have to resort to unification-based inference for that! Not
+//! sure how that would work in concert with bidirectional checking, and it
+//! would be great to here any advice if folks have any!
 //!
 //! ## Error Handling
 //!
