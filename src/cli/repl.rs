@@ -100,9 +100,9 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use std::usize;
 
     use syntax::concrete::ReplCommand;
-    use syntax::core::{Context, RcTerm};
+    use syntax::core::Context;
     use syntax::pretty::{self, ToDoc};
-    use syntax::translation::FromConcrete;
+    use syntax::translation::ToCore;
 
     fn term_width() -> Option<usize> {
         term_size::dimensions().map(|(width, _)| width)
@@ -119,7 +119,7 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
         },
 
         ReplCommand::Eval(parse_term) => {
-            let term = RcTerm::from_concrete(&parse_term);
+            let term = parse_term.to_core();
             let context = Context::new();
             let (_, inferred) = semantics::infer(&context, &term)?;
             let evaluated = semantics::normalize(&context, &term)?;
@@ -128,7 +128,7 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
             println!("{}", doc.pretty(term_width().unwrap_or(usize::MAX)));
         },
         ReplCommand::TypeOf(parse_term) => {
-            let term = RcTerm::from_concrete(&parse_term);
+            let term = parse_term.to_core();
             let context = Context::new();
             let (_, inferred) = semantics::infer(&context, &term)?;
             let doc = inferred.to_doc(pretty::Options::default());

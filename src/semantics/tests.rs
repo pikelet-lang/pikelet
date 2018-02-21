@@ -1,6 +1,6 @@
 use codespan::{CodeMap, FileName};
 
-use syntax::translation::FromConcrete;
+use syntax::translation::ToCore;
 use syntax::parse;
 
 use super::*;
@@ -11,7 +11,7 @@ fn parse(src: &str) -> RcTerm {
     let (concrete_term, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
-    RcTerm::from_concrete(&concrete_term)
+    concrete_term.to_core()
 }
 
 mod normalize {
@@ -578,7 +578,7 @@ mod check_module {
         let (concrete_module, errors) = parse::module(&filemap);
         assert!(errors.is_empty());
 
-        let module = Module::from_concrete(&concrete_module);
+        let module = concrete_module.to_core();
         check_module(&module).unwrap();
     }
 }

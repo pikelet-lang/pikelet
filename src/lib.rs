@@ -35,15 +35,14 @@ use codespan_reporting::Diagnostic;
 use semantics::CheckedModule;
 
 pub fn load_file(file: &FileMap) -> Result<CheckedModule, Vec<Diagnostic>> {
-    use syntax::core::Module;
-    use syntax::translation::FromConcrete;
+    use syntax::translation::ToCore;
 
     let mut diagnostics = Vec::new();
 
     let (module, errors) = syntax::parse::module(&file);
     diagnostics.extend(errors.iter().map(|err| err.to_diagnostic()));
 
-    let module = Module::from_concrete(&module);
+    let module = module.to_core();
     match semantics::check_module(&module) {
         Ok(module) => Ok(module),
         Err(err) => {
