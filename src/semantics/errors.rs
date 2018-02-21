@@ -82,8 +82,9 @@ pub enum TypeError {
         arg_span: ByteSpan,
         found: RcType,
     },
-    TypeAnnotationsNeeded {
-        span: ByteSpan,
+    FunctionParamNeedsAnnotation {
+        param_span: ByteSpan,
+        name: Name,
     },
     Mismatch {
         span: ByteSpan,
@@ -133,14 +134,20 @@ impl TypeError {
                     },
                 ],
             },
-            TypeError::TypeAnnotationsNeeded { span } => Diagnostic {
+            TypeError::FunctionParamNeedsAnnotation {
+                param_span,
+                ref name,
+            } => Diagnostic {
                 severity: Severity::Error,
-                message: format!("type annotations needed"),
+                message: format!(
+                    "type annotation needed for the function parameter `{}`",
+                    name
+                ),
                 labels: vec![
                     Label {
-                        message: None, // TODO
+                        message: Some("the parameter that requires an annotation".into()),
                         style: LabelStyle::Primary,
-                        span,
+                        span: param_span,
                     },
                 ],
             },
@@ -216,7 +223,11 @@ impl fmt::Display for TypeError {
             TypeError::NotAFunctionType { ref found, .. } => {
                 write!(f, "Applied an argument to a non-function type `{}`", found,)
             },
-            TypeError::TypeAnnotationsNeeded { .. } => write!(f, "Type annotations needed"),
+            TypeError::FunctionParamNeedsAnnotation { ref name, .. } => write!(
+                f,
+                "Type annotation needed for the function parameter `{}`",
+                name,
+            ),
             TypeError::Mismatch {
                 ref found,
                 ref expected,

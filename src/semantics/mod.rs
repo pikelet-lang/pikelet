@@ -388,8 +388,10 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 //      Γ ⊢ x ⇒ τ ⤳ v
                 Some(&Binder::Let(ref ty, ref value)) => Ok((ty.clone(), value.clone())),
 
-                Some(&Binder::Lam(None)) => Err(TypeError::TypeAnnotationsNeeded {
-                    span: ByteSpan::none(), // TODO: binder.span().
+                Some(&Binder::Lam(None)) => Err(TypeError::FunctionParamNeedsAnnotation {
+                    param_span: ByteSpan::none(), // TODO: binder.span().
+                    // var_span: ByteSpan::none(),   // TODO: term.span().
+                    name: name.clone(),
                 }),
                 None => Err(TypeError::UndefinedName {
                     var_span: ByteSpan::none(), // TODO: term.span().
@@ -430,9 +432,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
                     Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
                 },
-                // TODO: More error info
-                None => Err(TypeError::TypeAnnotationsNeeded {
-                    span: ByteSpan::none(), // TODO: param.span().
+                None => Err(TypeError::FunctionParamNeedsAnnotation {
+                    param_span: ByteSpan::none(), // TODO: param.span().
+                    name: param.name.clone(),
                 }),
             }
         },
