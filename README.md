@@ -72,9 +72,9 @@ around more widely:
 Future experiments into integrating effects, coeffects, worldly types, linear
 types, graded types, cubical type theory, and observational type theory are
 (sadly) most likely beyond the scope of Pikelet. Getting them all to play nicely
-under one roof is sadly still an open research problem. That said, Pikelet could
-serve as nice, simple basis for experimenting with those ideas, perhaps with the
-goal of building a new systems-oriented dependently typed language!
+under one roof is still an open research problem. That said, Pikelet could serve
+as a basis for experimenting with those ideas, perhaps with the goal of building
+a new systems-oriented dependently typed language!
 
 [codespan]: https://github.com/brendanzab/codespan
 [universes-twitter-ramble]: https://twitter.com/brendanzab/status/962681577120587776
