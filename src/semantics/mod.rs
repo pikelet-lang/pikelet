@@ -1,14 +1,54 @@
 //! The semantics of the language
 //!
+//! We take a bidirectional approach to type checking, splitting it into two
+//! phases: type checking and type inference. This makes the flow of information
+//! through the type checker clear and relatively easy to reason about.
+//!
+//! # A note on notation
+//!
+//! We provide [natural deduction][natural-deduction-wikipedia] judgements to
+//! define the semantics of our type system. These can be intimidating to read
+//! at first, but are a concise way of describing a logical system. The
+//! judgements all follow the same general pattern:
+//!
+//! ```text
+//! 1. premise
+//! 2. premise
+//!    ...
+//! n. premise
+//! ────────────────
+//!    conclusion
+//! ```
+//!
+//! In contrast to traditional mathematical notation, we nuber the premises
+//! to allow use to mark the relevant parts of the code that determine whether
+//! these premises are met.
+//!
+//! Sometimes you will see judgements that do not have any premises:
+//!
+//! ```text
+//! ────────────────
+//!    conclusion
+//! ````
+//!
+//! These judgements can be considered ['axioms'][axiom-wikipedia], ie. they are
+//! the base cases of our recursive judgements.
+//!
 //! The key judgements we define in this module are:
 //!
 //! - normalization: `Γ ⊢ e ⇓ v`
 //! - type checking: `Γ ⊢ e ⇐ τ ⤳ v`
 //! - type inference: `Γ ⊢ e ⇒ τ ⤳ v`
 //!
-//! We take a bidirectional approach to type checking, splitting it into two
-//! phases: type checking and type inference. This makes the flow of information
-//! through the type checker clear and relatively easy to reason about.
+//! These rely on the syntax for terms, values, and contexts that were
+//! previously defined in `syntax::core`.
+//!
+//! Care has been taken to design the judgments in such a way that they are
+//! 'syntax-directed', meaning an algorithm can be clearly derived from them.
+//! Note that this is not always clear in all natural deduction systems.
+//!
+//! [natural-deduction-wikipedia]: https://en.wikipedia.org/wiki/Natural_deduction
+//! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
 
 use codespan::ByteSpan;
 
