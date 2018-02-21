@@ -37,7 +37,7 @@
 //!
 //! Perhaps we'd have to resort to unification-based inference for that! Not
 //! sure how that would work in concert with bidirectional checking, and it
-//! would be great to here any advice if folks have any!
+//! would be great to hear any advice if folks have any!
 //!
 //! ## Error Handling
 //!
@@ -63,7 +63,7 @@
 //!    conclusion
 //! ```
 //!
-//! In contrast to traditional mathematical notation, we nuber the premises
+//! In contrast to traditional mathematical notation, we number the premises
 //! to allow use to mark the relevant parts of the code that determine whether
 //! these premises are met.
 //!
