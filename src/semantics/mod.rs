@@ -19,6 +19,18 @@
 //! judgments in such a way that they are 'syntax-directed', meaning an
 //! algorithm can be clearly derived from them.
 //!
+//! ## Elaboration
+//!
+//! TODO: Document
+//!
+//! ## Error Handling
+//!
+//! If no judgement matches, we return an appropriate error type. Errors that
+//! arise in the `check` and `normalize` functions can be converted into
+//! `Diagnostic`s to assist in fixing problems. Errors that arise in the
+//! `normalize` function are assumed to be bugs in the implementation,
+//! because the type checker should catch these problems before hand.
+//!
 //! # A note on notation
 //!
 //! We provide [natural deduction][natural-deduction-wikipedia] judgements to
