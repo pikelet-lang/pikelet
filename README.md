@@ -1,5 +1,10 @@
 # Pikelet 🥞
 
+[![Gitter][gitter-badge]][gitter-lobby]
+
+[gitter-badge]: https://badges.gitter.im/gluon-lang/gluon.svg
+[gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
+
 This is an implementation of a small [dependently typed][dependent-type-wikipedia]
 lambda calculus in Rust. This project is intended as an explaratory exercise,
 and to serve as a basis for more fully featured dependently typed languages.
