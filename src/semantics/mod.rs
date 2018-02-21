@@ -143,19 +143,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::Universe(level) => Ok(Value::Universe(level).into()),
 
         Term::Var(ref var) => match *var {
-            // We should always be substituting bound variables with fresh
-            // variables when entering scopes using `unbind`, so if we've
-            // encountered one here this is definitely a bug!
-            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
-                span: ByteSpan::none(), // TODO
-                index: index.clone(),
-            }),
-            Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
-                InternalError::UndefinedName {
-                    var_span: ByteSpan::none(), // TODO
-                    name: name.clone(),
-                }
-            })? {
+            Var::Free(ref name) => match context.lookup_binder(name) {
                 // Can't reduce further - we are in a pi or let binding!
                 // We'll have to hope that these are substituted away later,
                 // either in EVAL/APP or INFER/APP. For now we just forward the
@@ -168,14 +156,27 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 //  2.  Πx:τ ∈ Γ
                 // ───────────────────── (EVAL/VAR-PI)
                 //      Γ ⊢ x ⇓ x
-                Binder::Lam(_) | Binder::Pi(_) => Ok(Value::Var(var.clone()).into()),
+                Some(&Binder::Lam(_)) | Some(&Binder::Pi(_)) => Ok(Value::Var(var.clone()).into()),
                 // We have a value in scope, let's use that!
                 //
                 //  1.  let x:τ = v ∈ Γ
                 // ───────────────────── (EVAL/VAR-LET)
                 //      Γ ⊢ x ⇓ v
-                Binder::Let(_, ref value) => Ok(value.clone()),
+                Some(&Binder::Let(_, ref value)) => Ok(value.clone()),
+
+                None => Err(InternalError::UndefinedName {
+                    var_span: ByteSpan::none(), // TODO
+                    name: name.clone(),
+                }),
             },
+
+            // We should always be substituting bound variables with fresh
+            // variables when entering scopes using `unbind`, so if we've
+            // encountered one here this is definitely a bug!
+            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
+                span: ByteSpan::none(), // TODO
+                index: index.clone(),
+            }),
         },
 
         //  1. Γ,λx ⊢ e ⇓ v
@@ -359,6 +360,31 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         )),
 
         Term::Var(ref var) => match *var {
+            Var::Free(ref name) => match context.lookup_binder(name) {
+                //  1.  λx:τ ∈ Γ
+                // ─────────────────────── (INFER/VAR-LAM)
+                //      Γ ⊢ x ⇒ τ ⤳ x
+                //
+                //  2.  Πx:τ ∈ Γ
+                // ─────────────────────── (INFER/VAR-PI)
+                //      Γ ⊢ x ⇒ τ ⤳ x
+                Some(&Binder::Lam(Some(ref ty))) | Some(&Binder::Pi(ref ty)) => {
+                    Ok((Value::Var(var.clone()).into(), ty.clone()))
+                },
+                //  1.  let x:τ = v ∈ Γ
+                // ─────────────────────── (INFER/VAR-LET)
+                //      Γ ⊢ x ⇒ τ ⤳ v
+                Some(&Binder::Let(ref ty, ref value)) => Ok((ty.clone(), value.clone())),
+
+                Some(&Binder::Lam(None)) => Err(TypeError::TypeAnnotationsNeeded {
+                    span: ByteSpan::none(), // TODO: binder.span().
+                }),
+                None => Err(TypeError::UndefinedName {
+                    var_span: ByteSpan::none(), // TODO: term.span().
+                    name: name.clone(),
+                }),
+            },
+
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
@@ -367,30 +393,6 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     span: ByteSpan::none(), // TODO: term.span().
                     index: index.clone(),
                 }.into())
-            },
-            Var::Free(ref name) => match *context.lookup_binder(name).ok_or_else(|| {
-                TypeError::UndefinedName {
-                    var_span: ByteSpan::none(), // TODO: term.span().
-                    name: name.clone(),
-                }
-            })? {
-                //  1.  λx:τ ∈ Γ
-                // ─────────────────────── (INFER/VAR-LAM)
-                //      Γ ⊢ x ⇒ τ ⤳ x
-                //
-                //  2.  Πx:τ ∈ Γ
-                // ─────────────────────── (INFER/VAR-PI)
-                //      Γ ⊢ x ⇒ τ ⤳ x
-                Binder::Lam(Some(ref ty)) | Binder::Pi(ref ty) => {
-                    Ok((Value::Var(var.clone()).into(), ty.clone()))
-                },
-                Binder::Lam(None) => Err(TypeError::TypeAnnotationsNeeded {
-                    span: ByteSpan::none(), // TODO: binder.span().
-                }),
-                //  1.  let x:τ = v ∈ Γ
-                // ─────────────────────── (INFER/VAR-LET)
-                //      Γ ⊢ x ⇒ τ ⤳ v
-                Binder::Let(ref ty, ref value) => Ok((ty.clone(), value.clone())),
             },
         },
 
@@ -403,10 +405,6 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             let (param, body) = lam.clone().unbind();
 
             match param.inner {
-                // TODO: More error info
-                None => Err(TypeError::TypeAnnotationsNeeded {
-                    span: ByteSpan::none(), // TODO: param.span().
-                }),
                 Some(ann) => {
                     let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
                     let simp_ann = normalize(context, &ann)?; // 2.
@@ -420,6 +418,10 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
                     Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
                 },
+                // TODO: More error info
+                None => Err(TypeError::TypeAnnotationsNeeded {
+                    span: ByteSpan::none(), // TODO: param.span().
+                }),
             }
         },
 
