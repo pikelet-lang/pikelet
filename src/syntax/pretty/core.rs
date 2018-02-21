@@ -4,7 +4,7 @@ use pretty::Doc;
 
 use syntax::core::{Definition, Module};
 use syntax::core::{Binder, Context, Level, Name, RcTerm, RcValue, Term, Value};
-use syntax::var::Var;
+use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
 
@@ -34,7 +34,7 @@ pub fn pretty_universe(options: Options, level: Level) -> StaticDoc {
     }
 }
 
-pub fn pretty_var(options: Options, var: &Var<Name>) -> StaticDoc {
+pub fn pretty_var(options: Options, var: &Var<Name, Debruijn>) -> StaticDoc {
     match options.debug_indices {
         true => Doc::text(format!("{:#}", var)),
         false => Doc::as_string(var),

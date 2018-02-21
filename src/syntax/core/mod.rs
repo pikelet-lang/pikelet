@@ -125,7 +125,7 @@ pub enum Term {
     /// Universes
     Universe(Level), // 2.
     /// A variable
-    Var(Var<Name>), // 3.
+    Var(Var<Name, Debruijn>), // 3.
     /// Lambda abstractions
     Lam(TermLam), // 4.
     /// Dependent function types
@@ -170,7 +170,7 @@ pub enum Value {
     /// Universes
     Universe(Level), // 1.
     /// Variables
-    Var(Var<Name>), // 2.
+    Var(Var<Name, Debruijn>), // 2.
     /// A lambda abstraction
     Lam(ValueLam), // 3.
     /// A pi type

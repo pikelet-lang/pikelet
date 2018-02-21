@@ -122,23 +122,23 @@ impl Debruijn {
 
 impl fmt::Display for Debruijn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "@{}", self.0)
     }
 }
 
 /// A variable that can either be free or bound
 #[derive(Debug, Clone, PartialEq)]
-pub enum Var<N> {
+pub enum Var<N, B> {
     /// A free variable
     Free(N),
     /// A variable that is bound by a lambda or pi binder
-    Bound(Named<N, Debruijn>),
+    Bound(Named<N, B>),
 }
 
-impl<N: fmt::Display> fmt::Display for Var<N> {
+impl<N: fmt::Display, B: fmt::Display> fmt::Display for Var<N, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Var::Bound(ref bound) if f.alternate() => write!(f, "{}@{}", bound.name, bound.inner),
+            Var::Bound(ref bound) if f.alternate() => write!(f, "{}{}", bound.name, bound.inner),
             Var::Bound(Named { ref name, .. }) | Var::Free(ref name) => write!(f, "{}", name),
         }
     }
