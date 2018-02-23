@@ -19,7 +19,8 @@ impl TermLam {
         self.unsafe_param.name = fv.clone();
         (
             self.unsafe_param,
-            self.unsafe_body.open(&Term::Var(Var::Free(fv)).into()),
+            self.unsafe_body
+                .open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into()),
         )
     }
 }
@@ -39,7 +40,8 @@ impl TermPi {
         self.unsafe_param.name = fv.clone();
         (
             self.unsafe_param,
-            self.unsafe_body.open(&Term::Var(Var::Free(fv)).into()),
+            self.unsafe_body
+                .open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into()),
         )
     }
 }
@@ -100,7 +102,7 @@ pub fn unbind2(
     (
         lam.unsafe_param,
         lam.unsafe_body
-            .open(&Term::Var(Var::Free(fv.clone())).into()),
+            .open(&Term::Var(SourceMeta::default(), Var::Free(fv.clone())).into()),
         pi.unsafe_param,
         pi.unsafe_body.open(&Value::Var(Var::Free(fv)).into()),
     )
@@ -113,17 +115,17 @@ impl RcTerm {
 
     pub fn close_at(&mut self, level: Debruijn, name: &Name) {
         *self = match *Rc::make_mut(&mut self.inner) {
-            Term::Ann(ref mut expr, ref mut ty) => {
+            Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
                 return;
             },
-            Term::Universe(_) => return,
-            Term::Var(Var::Free(ref n)) if n == name => {
-                Term::Var(Var::Bound(Named::new(n.clone(), level))).into()
+            Term::Universe(_, _) => return,
+            Term::Var(meta, Var::Free(ref n)) if n == name => {
+                Term::Var(meta, Var::Bound(Named::new(n.clone(), level))).into()
             },
-            Term::Var(Var::Bound(_)) | Term::Var(Var::Free(_)) => return,
-            Term::Lam(ref mut lam) => {
+            Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => return,
+            Term::Lam(_, ref mut lam) => {
                 lam.unsafe_param
                     .inner
                     .as_mut()
@@ -131,12 +133,12 @@ impl RcTerm {
                 lam.unsafe_body.close_at(level.succ(), name);
                 return;
             },
-            Term::Pi(ref mut pi) => {
+            Term::Pi(_, ref mut pi) => {
                 pi.unsafe_param.inner.close_at(level, name);
                 pi.unsafe_body.close_at(level.succ(), name);
                 return;
             },
-            Term::App(ref mut fn_expr, ref mut arg_expr) => {
+            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
                 return;
@@ -150,56 +152,59 @@ impl RcTerm {
 
     pub fn open_at(&self, level: Debruijn, x: &RcTerm) -> RcTerm {
         match *self.inner {
-            Term::Ann(ref expr, ref ty) => {
+            Term::Ann(meta, ref expr, ref ty) => {
                 let expr = expr.open_at(level, x);
                 let ty = ty.open_at(level, x);
 
-                Term::App(expr.clone(), ty.clone()).into()
+                Term::App(meta, expr.clone(), ty.clone()).into()
             },
-            Term::Universe(_) => self.clone(),
-            Term::Var(Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
-            Term::Var(Var::Bound(_)) | Term::Var(Var::Free(_)) => self.clone(),
-            Term::Lam(ref lam) => {
+            Term::Universe(_, _) => self.clone(),
+            Term::Var(_, Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
+            Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => self.clone(),
+            Term::Lam(meta, ref lam) => {
                 let param_ty = lam.unsafe_param
                     .inner
                     .as_ref()
                     .map(|param_ty| param_ty.open_at(level, x));
                 let body = lam.unsafe_body.open_at(level.succ(), x);
-
-                Term::Lam(TermLam {
+                let lam = TermLam {
                     unsafe_param: Named::new(lam.unsafe_param.name.clone(), param_ty),
+
                     unsafe_body: body,
-                }).into()
+                };
+
+                Term::Lam(meta, lam).into()
             },
-            Term::Pi(ref pi) => {
+            Term::Pi(meta, ref pi) => {
                 let param_ty = pi.unsafe_param.inner.open_at(level, x);
                 let body = pi.unsafe_body.open_at(level.succ(), x);
-
-                Term::Pi(TermPi {
+                let pi = TermPi {
                     unsafe_param: Named::new(pi.unsafe_param.name.clone(), param_ty),
                     unsafe_body: body,
-                }).into()
+                };
+
+                Term::Pi(meta, pi).into()
             },
-            Term::App(ref fn_expr, ref arg_expr) => {
+            Term::App(meta, ref fn_expr, ref arg_expr) => {
                 let fn_expr = fn_expr.open_at(level, x);
                 let arg = arg_expr.open_at(level, x);
 
-                Term::App(fn_expr, arg).into()
+                Term::App(meta, fn_expr, arg).into()
             },
         }
     }
 
     pub fn subst(&mut self, name: &Name, x: &RcTerm) {
         *self = match *Rc::make_mut(&mut self.inner) {
-            Term::Ann(ref mut expr, ref mut ty) => {
+            Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.subst(name, x);
                 ty.subst(name, x);
                 return;
             },
-            Term::Universe(_) => return,
-            Term::Var(Var::Free(ref n)) if n == name => x.clone(),
-            Term::Var(Var::Free(_)) | Term::Var(Var::Bound(_)) => return,
-            Term::Lam(ref mut lam) => {
+            Term::Universe(_, _) => return,
+            Term::Var(_, Var::Free(ref n)) if n == name => x.clone(),
+            Term::Var(_, Var::Free(_)) | Term::Var(_, Var::Bound(_)) => return,
+            Term::Lam(_, ref mut lam) => {
                 lam.unsafe_param
                     .inner
                     .as_mut()
@@ -207,12 +212,12 @@ impl RcTerm {
                 lam.unsafe_body.subst(name, x);
                 return;
             },
-            Term::Pi(ref mut pi) => {
+            Term::Pi(_, ref mut pi) => {
                 pi.unsafe_param.inner.subst(name, x);
                 pi.unsafe_body.subst(name, x);
                 return;
             },
-            Term::App(ref mut fn_expr, ref mut arg_expr) => {
+            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.subst(name, x);
                 arg_expr.subst(name, x);
                 return;

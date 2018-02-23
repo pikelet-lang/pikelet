@@ -1,4 +1,4 @@
-use codespan::{CodeMap, FileName};
+use codespan::{ByteIndex, CodeMap, FileName};
 
 use syntax::translation::ToCore;
 use syntax::parse;
@@ -26,7 +26,7 @@ mod normalize {
         assert_eq!(
             normalize(&context, &parse(r"x")),
             Err(InternalError::UndefinedName {
-                var_span: ByteSpan::none(),
+                var_span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
                 name: x,
             }),
         );
@@ -221,7 +221,7 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::UndefinedName {
-                var_span: ByteSpan::none(),
+                var_span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
                 name: x,
             }),
         );
@@ -313,8 +313,8 @@ mod infer {
         assert_eq!(
             infer(&context, &parse(given_expr)),
             Err(TypeError::NotAFunctionType {
-                fn_span: ByteSpan::none(),
-                arg_span: ByteSpan::none(),
+                fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
+                arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
                 found: Value::Universe(Level::ZERO.succ()).into(),
             }),
         )

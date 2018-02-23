@@ -116,22 +116,22 @@ pub fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &
 impl ToDoc for Term {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
-            Term::Ann(ref expr, ref ty) => pretty_ann(options, expr, ty),
-            Term::Universe(level) => pretty_universe(options, level),
-            Term::Var(ref var) => pretty_var(options, var),
-            Term::Lam(ref lam) => pretty_lam(
+            Term::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
+            Term::Universe(_, level) => pretty_universe(options, level),
+            Term::Var(_, ref var) => pretty_var(options, var),
+            Term::Lam(_, ref lam) => pretty_lam(
                 options,
                 &lam.unsafe_param.name,
                 lam.unsafe_param.inner.as_ref(),
                 &lam.unsafe_body,
             ),
-            Term::Pi(ref pi) => pretty_pi(
+            Term::Pi(_, ref pi) => pretty_pi(
                 options,
                 &pi.unsafe_param.name,
                 &pi.unsafe_param.inner,
                 &pi.unsafe_body,
             ),
-            Term::App(ref f, ref a) => pretty_app(options, f, a),
+            Term::App(_, ref f, ref a) => pretty_app(options, f, a),
         }
     }
 }

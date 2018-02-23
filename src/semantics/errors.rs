@@ -84,6 +84,7 @@ pub enum TypeError {
     },
     FunctionParamNeedsAnnotation {
         param_span: ByteSpan,
+        var_span: Option<ByteSpan>,
         name: Name,
     },
     Mismatch {
@@ -136,6 +137,7 @@ impl TypeError {
             },
             TypeError::FunctionParamNeedsAnnotation {
                 param_span,
+                var_span: _, // TODO
                 ref name,
             } => Diagnostic {
                 severity: Severity::Error,

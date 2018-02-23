@@ -1,5 +1,6 @@
 //! The core syntax of the language
 
+use codespan::ByteSpan;
 use rpds::List;
 use std::fmt;
 use std::rc::Rc;
@@ -15,6 +16,26 @@ pub use self::nameplate_ickiness::unbind2;
 
 #[cfg(test)]
 mod tests;
+
+/// Source metadata that should be ignored when checking for alpha equality
+#[derive(Debug, Copy, Clone)]
+pub struct SourceMeta {
+    pub span: ByteSpan,
+}
+
+impl Default for SourceMeta {
+    fn default() -> SourceMeta {
+        SourceMeta {
+            span: ByteSpan::none(),
+        }
+    }
+}
+
+impl PartialEq for SourceMeta {
+    fn eq(&self, _: &SourceMeta) -> bool {
+        true
+    }
+}
 
 /// The name of a free variable
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -121,17 +142,17 @@ impl fmt::Display for Definition {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(RcTerm, RcTerm), // 1.
+    Ann(SourceMeta, RcTerm, RcTerm), // 1.
     /// Universes
-    Universe(Level), // 2.
+    Universe(SourceMeta, Level), // 2.
     /// A variable
-    Var(Var<Name, Debruijn>), // 3.
+    Var(SourceMeta, Var<Name, Debruijn>), // 3.
     /// Lambda abstractions
-    Lam(TermLam), // 4.
+    Lam(SourceMeta, TermLam), // 4.
     /// Dependent function types
-    Pi(TermPi), // 5.
+    Pi(SourceMeta, TermPi), // 5.
     /// Term application
-    App(RcTerm, RcTerm), // 6.
+    App(SourceMeta, RcTerm, RcTerm), // 6.
 }
 
 impl fmt::Display for Term {
@@ -241,6 +262,19 @@ pub type Type = Value;
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
 
+impl RcTerm {
+    pub fn span(&self) -> ByteSpan {
+        match *self.inner {
+            Term::Ann(meta, _, _)
+            | Term::Universe(meta, _)
+            | Term::Var(meta, _)
+            | Term::Lam(meta, _)
+            | Term::Pi(meta, _)
+            | Term::App(meta, _, _) => meta.span,
+        }
+    }
+}
+
 /// A binder that introduces a variable into the context
 ///
 /// ```text
@@ -256,6 +290,13 @@ pub enum Binder {
     Pi(RcType), // 2.
     /// A value and type binding that was introduced by passing over a let binding
     Let(RcValue, RcType), // 3.
+}
+
+impl Binder {
+    pub fn span(&self) -> ByteSpan {
+        // TODO: real span
+        ByteSpan::none()
+    }
 }
 
 /// A list of binders that have been accumulated during typechecking
