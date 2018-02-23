@@ -161,7 +161,7 @@ impl TypeError {
                 ),
                 labels: vec![
                     Label {
-                        message: None, // TODO
+                        message: Some("the function".into()),
                         style: LabelStyle::Primary,
                         span,
                     },
@@ -179,7 +179,7 @@ impl TypeError {
                 ),
                 labels: vec![
                     Label {
-                        message: Some("the value".into()),
+                        message: Some("the term".into()),
                         style: LabelStyle::Primary,
                         span,
                     },
