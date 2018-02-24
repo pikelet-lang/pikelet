@@ -15,7 +15,7 @@ use syntax::parse;
 #[derive(Debug, StructOpt)]
 pub struct Opts {
     /// The prompt to display before expressions
-    #[structopt(long = "prompt", default_value = "> ")]
+    #[structopt(long = "prompt", default_value = "Pikelet> ")]
     pub prompt: String,
 
     /// The history file to record previous commands to (blank to disable)
@@ -50,9 +50,14 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     }
 
     println!(
-        "{}, version {} (:? for help, :q to quit)",
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION"),
+        r"    ____  _ __        __     __
+   / __ \(_) /_____  / /__  / /_
+  / /_/ / / //_/ _ \/ / _ \/ __/    Version {version}
+ / ____/ / ,< /  __/ /  __/ /_      {homepage}
+/_/   /_/_/|_|\___/_/\___/\__/      :? for help
+",
+        version = env!("CARGO_PKG_VERSION"),
+        homepage = env!("CARGO_PKG_HOMEPAGE"),
     );
 
     // TODO: Load files
