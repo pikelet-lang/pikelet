@@ -246,9 +246,9 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ie. apply functions to their arguments
         //
         //  1.  Γ ⊢ e₁ ⇓ λx.v₁
-        //  2.  Γ ⊢ v₁[x↦e₂] ⇓ v₂
+        //  2.  Γ ⊢ v₁ ⇓ v₂
         // ───────────────────────────── (EVAL/APP)
-        //      Γ ⊢ e₁ e₂ ⇓ v₂
+        //      Γ ⊢ e₁ e₂ ⇓ v₂[x↦e₂]
         Term::App(_, ref fn_expr, ref arg) => {
             let fn_expr = normalize(context, fn_expr)?; // 1.
             let arg = normalize(context, arg)?; // 2.
@@ -477,9 +477,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
         //  1.  Γ ⊢ e₁ ⇒ Πx:τ₁.τ₂ ⤳ v₁
         //  2.  Γ ⊢ e₂ ⇐ τ₁ ⤳ v₂
-        //  3.  τ₂[x↦e₂] ⇓ τ₃
-        // ───────────────────────────────── (INFER/APP)
-        //      Γ ⊢ e₁ e₂ ⇒ τ₃ ⤳ v₁ v₂
+        //  3.  τ₂ ⇓ τ₃
+        // ────────────────────────────────────── (INFER/APP)
+        //      Γ ⊢ e₁ e₂ ⇒ τ₃[x↦e₂] ⤳ v₁ v₂
         Term::App(_, ref fn_expr, ref arg_expr) => {
             let (elab_fn_expr, fn_type) = infer(context, fn_expr)?; // 1.
 

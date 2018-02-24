@@ -57,7 +57,7 @@ around more widely:
         Dependently-Typed Language” [[PAPER][compiling-lambdapi-paper]]
 - clean up and document internals
   - [ ] document challenges with name binding
-  - [ ] ensure substitution points match the typing judgements
+  - [x] ensure substitution points match the typing judgements
   - [ ] fix typechecking at the module level
   - [ ] settle on a logging strategy for judgements
   - [ ] automate name binding boilerplate to get it out of `syntax::core`
