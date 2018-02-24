@@ -2,6 +2,8 @@
 ///! a variable binding abstraction to help us get rid of this boilerplate.
 ///! See the `syntax::var` module for more information!
 
+use std::collections::HashSet;
+
 use super::*;
 
 impl TermLam {
@@ -223,6 +225,42 @@ impl RcTerm {
                 return;
             },
         };
+    }
+
+    fn visit_vars<F: FnMut(&Var<Name, Debruijn>)>(&self, on_var: &mut F) {
+        match *self.inner {
+            Term::Ann(_, ref expr, ref ty) => {
+                expr.visit_vars(on_var);
+                ty.visit_vars(on_var);
+            },
+            Term::Universe(_, _) => {},
+            Term::Var(_, ref var) => on_var(var),
+            Term::Lam(_, ref lam) => {
+                if let Some(ref param) = lam.unsafe_param.inner {
+                    param.visit_vars(on_var);
+                }
+                lam.unsafe_body.visit_vars(on_var);
+            },
+            Term::Pi(_, ref pi) => {
+                pi.unsafe_param.inner.visit_vars(on_var);
+                pi.unsafe_body.visit_vars(on_var);
+            },
+            Term::App(_, ref fn_expr, ref arg_expr) => {
+                fn_expr.visit_vars(on_var);
+                arg_expr.visit_vars(on_var);
+            },
+        };
+    }
+
+    pub fn free_vars(&self) -> HashSet<Name> {
+        let mut free_vars = HashSet::new();
+        self.visit_vars(&mut |var| match *var {
+            Var::Bound(_) => {},
+            Var::Free(ref name) => {
+                free_vars.insert(name.clone());
+            },
+        });
+        free_vars
     }
 }
 
