@@ -1,7 +1,7 @@
 use lalrpop_util::ParseError as LalrpopError;
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
-use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
+use codespan_reporting::Diagnostic;
 use std::fmt;
 
 use syntax::parse::{LexerError, Token};
@@ -84,75 +84,31 @@ impl ParseError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             ParseError::Lexer(ref err) => err.to_diagnostic(),
-            ParseError::IdentifierExpectedInPiType { span } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("identifier expected when parsing dependent function type"),
-                labels: vec![
-                    Label {
-                        message: Some("ill-formed dependent function type".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+            ParseError::IdentifierExpectedInPiType { span } => {
+                Diagnostic::new_error("identifier expected when parsing dependent function type")
+                    .with_primary_label(span, "ill-formed dependent function type")
             },
-            ParseError::IntegerLiteralOverflow { span, value } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("integer literal overflow with value `{}`", value),
-                labels: vec![
-                    Label {
-                        message: Some("overflowing literal".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+            ParseError::IntegerLiteralOverflow { span, value } => {
+                Diagnostic::new_error(format!("integer literal overflow with value `{}`", value))
+                    .with_primary_label(span, "overflowing literal")
             },
-            ParseError::UnknownReplCommand { span, ref command } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("unknown repl command `:{}`", command),
-                labels: vec![
-                    Label {
-                        message: Some("unexpected command".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+            ParseError::UnknownReplCommand { span, ref command } => {
+                Diagnostic::new_error(format!("unknown repl command `:{}`", command))
+                    .with_primary_label(span, "unexpected command")
             },
             ParseError::UnexpectedToken {
                 span,
                 ref token,
                 ref expected,
-            } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("expected one of {}, found `{}`", expected, token),
-                labels: vec![
-                    Label {
-                        message: Some("unexpected token".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+            } => Diagnostic::new_error(format!("expected one of {}, found `{}`", expected, token))
+                .with_primary_label(span, "unexpected token"),
+            ParseError::UnexpectedEof { end, ref expected } => {
+                Diagnostic::new_error(format!("expected one of {}, found `EOF`", expected))
+                    .with_primary_label(ByteSpan::new(end, end), "unexpected EOF")
             },
-            ParseError::UnexpectedEof { end, ref expected } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("expected one of {}, found `EOF`", expected),
-                labels: vec![
-                    Label {
-                        message: Some("unexpected EOF".into()),
-                        style: LabelStyle::Primary,
-                        span: ByteSpan::new(end, end),
-                    },
-                ],
-            },
-            ParseError::ExtraToken { span, ref token } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("extra token `{}`", token),
-                labels: vec![
-                    Label {
-                        message: Some("extra token".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+            ParseError::ExtraToken { span, ref token } => {
+                Diagnostic::new_error(format!("extra token `{}`", token))
+                    .with_primary_label(span, "extra token")
             },
         }
     }

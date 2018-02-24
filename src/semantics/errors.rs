@@ -1,7 +1,7 @@
 //! Errors that might be produced during semantic analysis
 
 use codespan::ByteSpan;
-use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
+use codespan_reporting::Diagnostic;
 use std::fmt;
 
 use syntax::core::{Name, RcType};
@@ -30,30 +30,15 @@ impl InternalError {
 
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
-            InternalError::UnsubstitutedDebruijnIndex { span, ref index } => Diagnostic {
-                severity: Severity::Bug,
-                message: format!(
+            InternalError::UnsubstitutedDebruijnIndex { span, ref index } => {
+                Diagnostic::new_bug(format!(
                     "unsubstituted debruijn index: `{}{}`",
                     index.name, index.inner,
-                ),
-                labels: vec![
-                    Label {
-                        message: Some("index found here".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+                )).with_primary_label(span, "index found here")
             },
-            InternalError::UndefinedName { ref name, var_span } => Diagnostic {
-                severity: Severity::Bug,
-                message: format!("cannot find `{}` in scope", name),
-                labels: vec![
-                    Label {
-                        message: Some("not found in this scope".into()),
-                        style: LabelStyle::Primary,
-                        span: var_span,
-                    },
-                ],
+            InternalError::UndefinedName { ref name, var_span } => {
+                Diagnostic::new_bug(format!("cannot find `{}` in scope", name))
+                    .with_primary_label(var_span, "not found in this scope")
             },
         }
     }
@@ -116,98 +101,40 @@ impl TypeError {
                 fn_span,
                 arg_span,
                 ref found,
-            } => Diagnostic {
-                severity: Severity::Error,
-                message: format!(
-                    "applied an argument to a term that was not a function - found type `{}`",
-                    found,
-                ),
-                labels: vec![
-                    Label {
-                        message: Some("the term".into()),
-                        style: LabelStyle::Primary,
-                        span: fn_span,
-                    },
-                    Label {
-                        message: Some("the applied argument".into()),
-                        style: LabelStyle::Secondary,
-                        span: arg_span,
-                    },
-                ],
-            },
+            } => Diagnostic::new_error(format!(
+                "applied an argument to a term that was not a function - found type `{}`",
+                found,
+            )).with_primary_label(fn_span, "the term")
+                .with_secondary_label(arg_span, "the applied argument"),
             TypeError::FunctionParamNeedsAnnotation {
                 param_span,
                 var_span: _, // TODO
                 ref name,
-            } => Diagnostic {
-                severity: Severity::Error,
-                message: format!(
-                    "type annotation needed for the function parameter `{}`",
-                    name
-                ),
-                labels: vec![
-                    Label {
-                        message: Some("the parameter that requires an annotation".into()),
-                        style: LabelStyle::Primary,
-                        span: param_span,
-                    },
-                ],
-            },
+            } => Diagnostic::new_error(format!(
+                "type annotation needed for the function parameter `{}`",
+                name
+            )).with_primary_label(param_span, "the parameter that requires an annotation"),
             TypeError::UnexpectedFunction {
                 span, ref expected, ..
-            } => Diagnostic {
-                severity: Severity::Error,
-                message: format!(
-                    "found a function but expected a term of type `{}`",
-                    expected,
-                ),
-                labels: vec![
-                    Label {
-                        message: Some("the function".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
-            },
+            } => Diagnostic::new_error(format!(
+                "found a function but expected a term of type `{}`",
+                expected,
+            )).with_primary_label(span, "the function"),
             TypeError::Mismatch {
                 span,
                 ref found,
                 ref expected,
-            } => Diagnostic {
-                severity: Severity::Error,
-                message: format!(
-                    "found a term of type `{}`, but expected a term of type `{}`",
-                    found, expected,
-                ),
-                labels: vec![
-                    Label {
-                        message: Some("the term".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
+            } => Diagnostic::new_error(format!(
+                "found a term of type `{}`, but expected a term of type `{}`",
+                found, expected,
+            )).with_primary_label(span, "the term"),
+            TypeError::ExpectedUniverse { ref found, span } => {
+                Diagnostic::new_error(format!("expected type, found value `{}`", found))
+                    .with_primary_label(span, "the value")
             },
-            TypeError::ExpectedUniverse { ref found, span } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("expected type, found value `{}`", found),
-                labels: vec![
-                    Label {
-                        message: Some("the value".into()),
-                        style: LabelStyle::Primary,
-                        span,
-                    },
-                ],
-            },
-            TypeError::UndefinedName { ref name, var_span } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("cannot find `{}` in scope", name),
-                labels: vec![
-                    Label {
-                        message: Some("not found in this scope".into()),
-                        style: LabelStyle::Primary,
-                        span: var_span,
-                    },
-                ],
+            TypeError::UndefinedName { ref name, var_span } => {
+                Diagnostic::new_error(format!("cannot find `{}` in scope", name))
+                    .with_primary_label(var_span, "not found in this scope")
             },
         }
     }

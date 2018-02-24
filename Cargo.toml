@@ -21,8 +21,8 @@ name = "pikelet"
 required-features = ["cli"]
 
 [dependencies]
-codespan = { git = "https://github.com/brendanzab/codespan", rev = "1ac28dd", version = "0.1.0" }
-codespan-reporting = { git = "https://github.com/brendanzab/codespan", rev = "1ac28dd", version = "0.1.0" }
+codespan = { git = "https://github.com/brendanzab/codespan", rev = "a7f34e8", version = "0.1.0" }
+codespan-reporting = { git = "https://github.com/brendanzab/codespan", rev = "a7f34e8", version = "0.1.0" }
 failure = "0.1.1"
 lalrpop-util = "0.14.0"
 lazy_static = "1.0"

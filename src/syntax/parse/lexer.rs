@@ -1,5 +1,5 @@
 use codespan::{ByteSpan, FileMap};
-use codespan_reporting::{Diagnostic, Label, LabelStyle, Severity};
+use codespan_reporting::{Diagnostic, Label};
 use std::fmt;
 use std::str::CharIndices;
 
@@ -44,16 +44,10 @@ impl LexerError {
 
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
-            LexerError::UnexpectedCharacter { start, found } => Diagnostic {
-                severity: Severity::Error,
-                message: format!("unexpected character {:?}", found),
-                labels: vec![
-                    Label {
-                        message: None, // TODO
-                        style: LabelStyle::Primary,
-                        span: ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found)),
-                    },
-                ],
+            LexerError::UnexpectedCharacter { start, found } => {
+                let char_span = ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found));
+                Diagnostic::new_error(format!("unexpected character {:?}", found))
+                    .with_label(Label::new_primary(char_span))
             },
         }
     }
