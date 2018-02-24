@@ -203,7 +203,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: term.span(),
-                index: index.clone(),
+                name: index.name.clone(),
+                index: index.inner,
             }),
         },
 
@@ -420,7 +421,8 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             // encountered one here this is definitely a bug!
             Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: term.span(),
-                index: index.clone(),
+                name: index.name.clone(),
+                index: index.inner,
             }.into()),
         },
 

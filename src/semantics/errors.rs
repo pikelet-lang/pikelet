@@ -5,19 +5,19 @@ use codespan_reporting::Diagnostic;
 use std::fmt;
 
 use syntax::core::{Name, RcType};
-use syntax::var::{Debruijn, Named};
+use syntax::var::Debruijn;
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
+    #[fail(display = "Unsubstituted debruijn index: `{}{}`.", name, index)]
     UnsubstitutedDebruijnIndex {
         span: ByteSpan,
-        index: Named<Name, Debruijn>,
-    },
-    UndefinedName {
-        var_span: ByteSpan,
         name: Name,
+        index: Debruijn,
     },
+    #[fail(display = "Undefined name `{}`.", name)]
+    UndefinedName { var_span: ByteSpan, name: Name },
 }
 
 impl InternalError {
@@ -30,30 +30,15 @@ impl InternalError {
 
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
-            InternalError::UnsubstitutedDebruijnIndex { span, ref index } => {
-                Diagnostic::new_bug(format!(
-                    "unsubstituted debruijn index: `{}{}`",
-                    index.name, index.inner,
-                )).with_primary_label(span, "index found here")
-            },
+            InternalError::UnsubstitutedDebruijnIndex {
+                span,
+                ref name,
+                index,
+            } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index,))
+                .with_primary_label(span, "index found here"),
             InternalError::UndefinedName { ref name, var_span } => {
                 Diagnostic::new_bug(format!("cannot find `{}` in scope", name))
                     .with_primary_label(var_span, "not found in this scope")
-            },
-        }
-    }
-}
-
-impl fmt::Display for InternalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            InternalError::UnsubstitutedDebruijnIndex { ref index, .. } => write!(
-                f,
-                "Unsubstituted debruijn index: `{}{}`.",
-                index.name, index.inner,
-            ),
-            InternalError::UndefinedName { ref name, .. } => {
-                write!(f, "Undefined name `{}`.", name)
             },
         }
     }
