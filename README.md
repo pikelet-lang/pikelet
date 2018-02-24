@@ -1,7 +1,10 @@
 # Pikelet 🥞
 
+[![Build Status](travis-badge)][travis-url]
 [![Gitter][gitter-badge]][gitter-lobby]
 
+[travis-badge]: https://travis-ci.org/brendanzab/pikelet.svg?branch=master
+[travis-url]: https://travis-ci.org/brendanzab/pikelet
 [gitter-badge]: https://badges.gitter.im/gluon-lang/gluon.svg
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
 
