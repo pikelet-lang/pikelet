@@ -60,7 +60,7 @@ pub enum Token<S> {
     Ident(S),
     DocComment(S),
     ReplCommand(S),
-    DecLiteral(u64),
+    DecLiteral(S),
 
     // Keywords
     As,     // as
@@ -93,7 +93,7 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Ident(ref name) => write!(f, "{}", name),
             Token::DocComment(ref comment) => write!(f, "||| {}", comment),
             Token::ReplCommand(ref command) => write!(f, ":{}", command),
-            Token::DecLiteral(value) => write!(f, "{}", value),
+            Token::DecLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
             Token::Module => write!(f, "module"),
             Token::Import => write!(f, "import"),
@@ -122,7 +122,7 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Ident(name) => Token::Ident(String::from(name)),
             Token::DocComment(comment) => Token::DocComment(String::from(comment)),
             Token::ReplCommand(command) => Token::ReplCommand(String::from(command)),
-            Token::DecLiteral(value) => Token::DecLiteral(value),
+            Token::DecLiteral(value) => Token::DecLiteral(String::from(value)),
             Token::As => Token::As,
             Token::Module => Token::Module,
             Token::Import => Token::Import,
@@ -269,9 +269,7 @@ impl<'input> Lexer<'input> {
     fn dec_literal(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
         let (end, src) = self.take_while(start, is_dec_digit);
 
-        let int = u64::from_str_radix(src, 10).unwrap();
-
-        (start, Token::DecLiteral(int), end)
+        (start, Token::DecLiteral(src), end)
     }
 }
 

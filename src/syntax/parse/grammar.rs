@@ -46,12 +46,11 @@ fn reparse_pi_type_hack<L, T>(
     }
 }
 
-fn u32_literal<L, T>(span: ByteSpan, value: u64) -> Result<u32, LalrpopError<L, T, ParseError>> {
-    if value <= u32::MAX as u64 {
-        Ok(value as u32)
-    } else {
-        Err(LalrpopError::User {
-            error: ParseError::IntegerLiteralOverflow { span, value },
-        })
-    }
+fn u32_literal<L, T>(span: ByteSpan, src: &str) -> Result<u32, LalrpopError<L, T, ParseError>> {
+    u32::from_str_radix(src, 10).map_err(|_| LalrpopError::User {
+        error: ParseError::IntegerLiteralOverflow {
+            span,
+            value: src.to_string(),
+        },
+    })
 }

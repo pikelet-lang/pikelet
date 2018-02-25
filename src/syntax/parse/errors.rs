@@ -13,7 +13,7 @@ pub enum ParseError {
     #[fail(display = "An identifier was expected when parsing a pi type.")]
     IdentifierExpectedInPiType { span: ByteSpan },
     #[fail(display = "An integer literal {} was too large for the target type.", value)]
-    IntegerLiteralOverflow { span: ByteSpan, value: u64 },
+    IntegerLiteralOverflow { span: ByteSpan, value: String },
     #[fail(display = "Unknown repl command `:{}` found.", command)]
     UnknownReplCommand { span: ByteSpan, command: String },
     #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
@@ -88,7 +88,7 @@ impl ParseError {
                 Diagnostic::new_error("identifier expected when parsing dependent function type")
                     .with_primary_label(span, "ill-formed dependent function type")
             },
-            ParseError::IntegerLiteralOverflow { span, value } => {
+            ParseError::IntegerLiteralOverflow { span, ref value } => {
                 Diagnostic::new_error(format!("integer literal overflow with value `{}`", value))
                     .with_primary_label(span, "overflowing literal")
             },

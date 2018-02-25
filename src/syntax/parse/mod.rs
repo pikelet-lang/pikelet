@@ -78,4 +78,26 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn integer_overflow() {
+        let src = "Type 111111111111111111111111111111";
+        let mut codemap = CodeMap::new();
+        let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+        let parse_result = term(&filemap);
+
+        assert_eq!(
+            parse_result,
+            (
+                concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(36))),
+                vec![
+                    ParseError::IntegerLiteralOverflow {
+                        span: ByteSpan::new(ByteIndex(6), ByteIndex(36)),
+                        value: String::from("111111111111111111111111111111"),
+                    },
+                ],
+            )
+        );
+    }
 }

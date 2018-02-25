@@ -16,7 +16,7 @@ extern {
         "identifier" => Token::Ident(<&'input str>),
         "doc comment" => Token::DocComment(<&'input str>),
         "REPL command" => Token::ReplCommand(<&'input str>),
-        "decimal literal" => Token::DecLiteral(<u64>),
+        "decimal literal" => Token::DecLiteral(<&'input str>),
 
         // Keywords
         "as" => Token::As,
