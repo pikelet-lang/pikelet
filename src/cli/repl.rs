@@ -27,6 +27,15 @@ pub struct Opts {
     pub files: Vec<PathBuf>,
 }
 
+const LOGO_TEXT: &[&str] = &[
+    r"    ____  _ __        __     __     ",
+    r"   / __ \(_) /_____  / /__  / /_    ",
+    r"  / /_/ / / //_/ _ \/ / _ \/ __/    ",
+    r" / ____/ / ,< /  __/ /  __/ /_      ",
+    r"/_/   /_/_/|_|\___/_/\___/\__/      ",
+    r"",
+];
+
 const HELP_TEXT: &[&str] = &[
     "",
     "Command       Arguments   Purpose",
@@ -49,16 +58,14 @@ pub fn run(opts: Opts) -> Result<(), Error> {
         rl.load_history(&history_file)?;
     }
 
-    println!(
-        r"    ____  _ __        __     __
-   / __ \(_) /_____  / /__  / /_
-  / /_/ / / //_/ _ \/ / _ \/ __/    Version {version}
- / ____/ / ,< /  __/ /  __/ /_      {homepage}
-/_/   /_/_/|_|\___/_/\___/\__/      :? for help
-",
-        version = env!("CARGO_PKG_VERSION"),
-        homepage = env!("CARGO_PKG_HOMEPAGE"),
-    );
+    for (i, line) in LOGO_TEXT.iter().enumerate() {
+        match i {
+            2 => println!("{}Version {}", line, env!("CARGO_PKG_VERSION")),
+            3 => println!("{}{}", line, env!("CARGO_PKG_HOMEPAGE")),
+            4 => println!("{}:? for help", line),
+            _ => println!("{}", line),
+        }
+    }
 
     // TODO: Load files
 
