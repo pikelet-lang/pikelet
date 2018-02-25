@@ -1,6 +1,29 @@
-///! This is terrible, hideous, and ugly. Burn it with fire. We need to make
-///! a variable binding abstraction to help us get rid of this boilerplate.
-///! See the `syntax::var` module for more information!
+//! This is terrible, hideous, and ugly. Burn it with fire. We need to make
+//! a variable binding abstraction to help us get rid of this boilerplate.
+//!
+//! There are a number of libraries out there for other languages that abstract
+//! away handling locally nameless representations, but I've not yet figured out
+//! how to port them to Rust yet:
+//!
+//! - DBLib: Facilities for working with de Bruijn indices in Coq
+//!     - [Blog Post](http://gallium.inria.fr/blog/announcing-dblib/)
+//!     - [Github](https://github.com/coq-contribs/dblib)
+//! - Unbound: Specify the binding structure of your data type with an
+//!   expressive set of type combinators, and Unbound handles the rest!
+//!   Automatically derives alpha-equivalence, free variable calculation,
+//!   capture-avoiding substitution, and more.
+//!     - [Github](https://github.com/sweirich/replib)
+//!     - [Hackage](https://hackage.haskell.org/package/unbound)
+//! - Unbound-Generics: an independent re-implementation of Unbound but using
+//!   GHC.Generics instead of RepLib.
+//!     - [Github](http://github.com/lambdageek/unbound-generics)
+//!     - [Hackage](https://hackage.haskell.org/package/unbound-generics)
+//! - Bound: Bruijn indices for Haskell
+//!     - [Blog Post](https://www.schoolofhaskell.com/user/edwardk/bound)
+//!     - [Github](https://github.com/ekmett/bound/)
+//!     - [Hackage](https://hackage.haskell.org/package/bound)
+//! - The Penn Locally Nameless Metatheory Library
+//!     - [Github](https://github.com/plclub/metalib)
 
 use std::collections::HashSet;
 
