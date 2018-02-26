@@ -1,6 +1,7 @@
+use codespan::ByteSpan;
+
 use syntax::concrete;
 use syntax::core;
-
 use syntax::var::Var;
 
 /// An environment used to reconstruct concrete terms
@@ -22,8 +23,40 @@ pub trait ToConcrete<T> {
 }
 
 impl ToConcrete<concrete::Module> for core::Module {
-    fn to_concrete(&self, _env: &Env) -> concrete::Module {
-        unimplemented!()
+    fn to_concrete(&self, env: &Env) -> concrete::Module {
+        use std::iter;
+
+        let declarations = self.definitions
+            .iter()
+            .flat_map(|definition| {
+                let name = (ByteSpan::none(), definition.name.clone());
+
+                // build up the type claim, if it exists
+                let ann = definition.ann.as_ref();
+                let new_ann = ann.map(|ann| concrete::Declaration::Claim {
+                    name: name.clone(),
+                    ann: ann.to_concrete(env),
+                });
+
+                // build up the concrete definition
+                let new_definition = {
+                    // pull lambda arguments from the body into the definition
+                    let (params, body) = match definition.term.to_concrete(env) {
+                        concrete::Term::Lam(_, params, body) => (params, *body),
+                        body => (vec![], body),
+                    };
+
+                    concrete::Declaration::Definition { name, params, body }
+                };
+
+                new_ann.into_iter().chain(iter::once(new_definition))
+            })
+            .collect();
+
+        concrete::Module::Valid {
+            name: (ByteSpan::none(), self.name.clone()),
+            declarations,
+        }
     }
 }
 
@@ -64,8 +97,14 @@ impl ToConcrete<concrete::Term> for core::RcTerm {
                 // use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 // add the used name to the environment
-                // convert the body using the new environment
-                // check if the body can be collapsed to form a 'sugary' lambda
+
+                // // convert the body using the new environment
+                // match body.to_concrete(env) {
+                //     // check if the body can be collapsed to form a 'sugary' lambda
+                //     concrete::Term::Lam(_, params, body) => unimplemented!(),
+                //     body => concrete::Term::Lam(ByteSpan::none(), vec![param], body),
+                // }
+
                 unimplemented!()
             },
             core::Term::Pi(_, ref pi) => {
@@ -75,7 +114,13 @@ impl ToConcrete<concrete::Term> for core::RcTerm {
                     // otherwise create a pretty name
                     // add the used name to the environment
                     // convert the body using the new environment
-                    // check if the body can be collapsed to form a 'sugary' pi
+
+                    // // match body.to_concrete(env) {
+                    //     // check if the body can be collapsed to form a 'sugary' pi
+                    //     concrete::Term::Pi(_, params, body) => unimplemented!(),
+                    //     body => concrete::Term::Pi(ByteSpan::none(), vec![param], body),
+                    // }
+
                     unimplemented!()
                 } else {
                     // The body is not dependent on the parameter - so let's use an arrow instead!
