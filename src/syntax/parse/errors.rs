@@ -1,7 +1,7 @@
 use lalrpop_util::ParseError as LalrpopError;
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
-use codespan_reporting::Diagnostic;
+use codespan_reporting::{Diagnostic, Label};
 use std::fmt;
 
 use syntax::parse::{LexerError, Token};
@@ -84,31 +84,34 @@ impl ParseError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             ParseError::Lexer(ref err) => err.to_diagnostic(),
-            ParseError::IdentifierExpectedInPiType { span } => {
-                Diagnostic::new_error("identifier expected when parsing dependent function type")
-                    .with_primary_label(span, "ill-formed dependent function type")
-            },
+            ParseError::IdentifierExpectedInPiType { span } => Diagnostic::new_error(
+                "identifier expected when parsing dependent function type",
+            ).with_label(
+                Label::new_primary(span).with_message("ill-formed dependent function type"),
+            ),
             ParseError::IntegerLiteralOverflow { span, ref value } => {
                 Diagnostic::new_error(format!("integer literal overflow with value `{}`", value))
-                    .with_primary_label(span, "overflowing literal")
+                    .with_label(Label::new_primary(span).with_message("overflowing literal"))
             },
             ParseError::UnknownReplCommand { span, ref command } => {
                 Diagnostic::new_error(format!("unknown repl command `:{}`", command))
-                    .with_primary_label(span, "unexpected command")
+                    .with_label(Label::new_primary(span).with_message("unexpected command"))
             },
             ParseError::UnexpectedToken {
                 span,
                 ref token,
                 ref expected,
             } => Diagnostic::new_error(format!("expected one of {}, found `{}`", expected, token))
-                .with_primary_label(span, "unexpected token"),
+                .with_label(Label::new_primary(span).with_message("unexpected token")),
             ParseError::UnexpectedEof { end, ref expected } => {
                 Diagnostic::new_error(format!("expected one of {}, found `EOF`", expected))
-                    .with_primary_label(ByteSpan::new(end, end), "unexpected EOF")
+                    .with_label(
+                        Label::new_primary(ByteSpan::new(end, end)).with_message("unexpected EOF"),
+                    )
             },
             ParseError::ExtraToken { span, ref token } => {
                 Diagnostic::new_error(format!("extra token `{}`", token))
-                    .with_primary_label(span, "extra token")
+                    .with_label(Label::new_primary(span).with_message("extra token"))
             },
         }
     }

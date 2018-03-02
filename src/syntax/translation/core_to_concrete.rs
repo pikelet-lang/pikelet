@@ -29,7 +29,7 @@ impl ToConcrete<concrete::Module> for core::Module {
         let declarations = self.definitions
             .iter()
             .flat_map(|definition| {
-                let name = (ByteSpan::none(), definition.name.clone());
+                let name = (ByteSpan::default(), definition.name.clone());
 
                 // build up the type claim, if it exists
                 let ann = definition.ann.as_ref();
@@ -54,7 +54,7 @@ impl ToConcrete<concrete::Module> for core::Module {
             .collect();
 
         concrete::Module::Valid {
-            name: (ByteSpan::none(), self.name.clone()),
+            name: (ByteSpan::default(), self.name.clone()),
             declarations,
         }
     }
@@ -102,7 +102,7 @@ impl ToConcrete<concrete::Term> for core::RcTerm {
                 // match body.to_concrete(env) {
                 //     // check if the body can be collapsed to form a 'sugary' lambda
                 //     concrete::Term::Lam(_, params, body) => unimplemented!(),
-                //     body => concrete::Term::Lam(ByteSpan::none(), vec![param], body),
+                //     body => concrete::Term::Lam(ByteSpan::default(), vec![param], body),
                 // }
 
                 unimplemented!()
@@ -118,7 +118,7 @@ impl ToConcrete<concrete::Term> for core::RcTerm {
                     // // match body.to_concrete(env) {
                     //     // check if the body can be collapsed to form a 'sugary' pi
                     //     concrete::Term::Pi(_, params, body) => unimplemented!(),
-                    //     body => concrete::Term::Pi(ByteSpan::none(), vec![param], body),
+                    //     body => concrete::Term::Pi(ByteSpan::default(), vec![param], body),
                     // }
 
                     unimplemented!()

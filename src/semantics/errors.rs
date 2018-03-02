@@ -1,7 +1,7 @@
 //! Errors that might be produced during semantic analysis
 
 use codespan::ByteSpan;
-use codespan_reporting::Diagnostic;
+use codespan_reporting::{Diagnostic, Label};
 use std::fmt;
 
 use syntax::core::{Name, RcType};
@@ -35,10 +35,11 @@ impl InternalError {
                 ref name,
                 index,
             } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index,))
-                .with_primary_label(span, "index found here"),
+                .with_label(Label::new_primary(span).with_message("index found here")),
             InternalError::UndefinedName { ref name, var_span } => {
-                Diagnostic::new_bug(format!("cannot find `{}` in scope", name))
-                    .with_primary_label(var_span, "not found in this scope")
+                Diagnostic::new_bug(format!("cannot find `{}` in scope", name)).with_label(
+                    Label::new_primary(var_span).with_message("not found in this scope"),
+                )
             },
         }
     }
@@ -89,8 +90,8 @@ impl TypeError {
             } => Diagnostic::new_error(format!(
                 "applied an argument to a term that was not a function - found type `{}`",
                 found,
-            )).with_primary_label(fn_span, "the term")
-                .with_secondary_label(arg_span, "the applied argument"),
+            )).with_label(Label::new_primary(fn_span).with_message("the term"))
+                .with_label(Label::new_secondary(arg_span).with_message("the applied argument")),
             TypeError::FunctionParamNeedsAnnotation {
                 param_span,
                 var_span: _, // TODO
@@ -98,13 +99,16 @@ impl TypeError {
             } => Diagnostic::new_error(format!(
                 "type annotation needed for the function parameter `{}`",
                 name
-            )).with_primary_label(param_span, "the parameter that requires an annotation"),
+            )).with_label(
+                Label::new_primary(param_span)
+                    .with_message("the parameter that requires an annotation"),
+            ),
             TypeError::UnexpectedFunction {
                 span, ref expected, ..
             } => Diagnostic::new_error(format!(
                 "found a function but expected a term of type `{}`",
                 expected,
-            )).with_primary_label(span, "the function"),
+            )).with_label(Label::new_primary(span).with_message("the function")),
             TypeError::Mismatch {
                 span,
                 ref found,
@@ -112,14 +116,15 @@ impl TypeError {
             } => Diagnostic::new_error(format!(
                 "found a term of type `{}`, but expected a term of type `{}`",
                 found, expected,
-            )).with_primary_label(span, "the term"),
+            )).with_label(Label::new_primary(span).with_message("the term")),
             TypeError::ExpectedUniverse { ref found, span } => {
                 Diagnostic::new_error(format!("expected type, found value `{}`", found))
-                    .with_primary_label(span, "the value")
+                    .with_label(Label::new_primary(span).with_message("the value"))
             },
             TypeError::UndefinedName { ref name, var_span } => {
-                Diagnostic::new_error(format!("cannot find `{}` in scope", name))
-                    .with_primary_label(var_span, "not found in this scope")
+                Diagnostic::new_error(format!("cannot find `{}` in scope", name)).with_label(
+                    Label::new_primary(var_span).with_message("not found in this scope"),
+                )
             },
         }
     }

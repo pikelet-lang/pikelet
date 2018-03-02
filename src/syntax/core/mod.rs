@@ -26,7 +26,7 @@ pub struct SourceMeta {
 impl Default for SourceMeta {
     fn default() -> SourceMeta {
         SourceMeta {
-            span: ByteSpan::none(),
+            span: ByteSpan::default(),
         }
     }
 }
@@ -295,7 +295,7 @@ pub enum Binder {
 impl Binder {
     pub fn span(&self) -> ByteSpan {
         // TODO: real span
-        ByteSpan::none()
+        ByteSpan::default()
     }
 }
 

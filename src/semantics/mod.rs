@@ -406,7 +406,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 Some(&Binder::Let(ref ty, ref value)) => Ok((ty.clone(), value.clone())),
 
                 Some(&Binder::Lam(None)) => Err(TypeError::FunctionParamNeedsAnnotation {
-                    param_span: ByteSpan::none(), // TODO: binder.span(),
+                    param_span: ByteSpan::default(), // TODO: binder.span(),
                     var_span: Some(term.span()),
                     name: name.clone(),
                 }),
@@ -449,7 +449,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
                 },
                 None => Err(TypeError::FunctionParamNeedsAnnotation {
-                    param_span: ByteSpan::none(), // TODO: param.span(),
+                    param_span: ByteSpan::default(), // TODO: param.span(),
                     var_span: None,
                     name: param.name.clone(),
                 }),
