@@ -45,9 +45,9 @@ impl InternalError {
 }
 
 /// An error produced during typechecking
-#[derive(Debug, Clone, PartialEq)] // FIXME: Derive `Fail`
+#[derive(Debug, Clone, PartialEq)] // FIXME: Derive `Fail` (Rc does not impl `Send + Sync`)
 pub enum TypeError {
-    NotAFunctionType {
+    ArgAppliedToNonFunction {
         fn_span: ByteSpan,
         arg_span: ByteSpan,
         found: RcType,
@@ -82,7 +82,7 @@ impl TypeError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             TypeError::Internal(ref err) => err.to_diagnostic(),
-            TypeError::NotAFunctionType {
+            TypeError::ArgAppliedToNonFunction {
                 fn_span,
                 arg_span,
                 ref found,
@@ -134,7 +134,7 @@ impl From<InternalError> for TypeError {
 impl fmt::Display for TypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TypeError::NotAFunctionType { ref found, .. } => {
+            TypeError::ArgAppliedToNonFunction { ref found, .. } => {
                 write!(f, "Applied an argument to a non-function type `{}`", found,)
             },
             TypeError::FunctionParamNeedsAnnotation { ref name, .. } => write!(

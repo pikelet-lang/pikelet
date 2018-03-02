@@ -247,9 +247,9 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ie. apply functions to their arguments
         //
         //  1.  Γ ⊢ e₁ ⇓ λx.v₁
-        //  2.  Γ ⊢ v₁ ⇓ v₂
+        //  2.  Γ ⊢ e₂ ⇓ v₂
         // ───────────────────────────── (EVAL/APP)
-        //      Γ ⊢ e₁ e₂ ⇓ v₂[x↦e₂]
+        //      Γ ⊢ e₁ e₂ ⇓ v₂[x↦v₂]
         Term::App(_, ref fn_expr, ref arg) => {
             let fn_expr = normalize(context, fn_expr)?; // 1.
             let arg = normalize(context, arg)?; // 2.
@@ -483,9 +483,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         // ────────────────────────────────────── (INFER/APP)
         //      Γ ⊢ e₁ e₂ ⇒ τ₃[x↦e₂] ⤳ v₁ v₂
         Term::App(_, ref fn_expr, ref arg_expr) => {
-            let (elab_fn_expr, fn_type) = infer(context, fn_expr)?; // 1.
+            let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?; // 1.
 
-            match *fn_type.inner {
+            match *fn_ty.inner {
                 Value::Pi(ref pi) => {
                     let (pi_param, mut pi_body) = pi.clone().unbind();
 
@@ -495,10 +495,10 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
                     Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
                 },
-                _ => Err(TypeError::NotAFunctionType {
+                _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: fn_expr.span(),
                     arg_span: arg_expr.span(),
-                    found: fn_type.clone(),
+                    found: fn_ty.clone(),
                 }),
             }
         },

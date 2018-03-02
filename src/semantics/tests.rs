@@ -312,7 +312,7 @@ mod infer {
 
         assert_eq!(
             infer(&context, &parse(given_expr)),
-            Err(TypeError::NotAFunctionType {
+            Err(TypeError::ArgAppliedToNonFunction {
                 fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
                 arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
                 found: Value::Universe(Level::ZERO.succ()).into(),
