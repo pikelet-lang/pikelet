@@ -369,7 +369,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
     match *term.inner {
         //  1.  Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
-        //  2.  ρ ⇓ τ
+        //  2.  Γ ⊢ ρ ⇓ τ
         //  3.  Γ ⊢ e ⇐ τ ⤳ v
         // ───────────────────────────── (INFER/ANN)
         //      Γ ⊢ (e:ρ) ⇒ τ ⤳ v
@@ -426,7 +426,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         },
 
         //  1.  Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
-        //  2.  ρ ⇓ τ₁
+        //  2.  Γ ⊢ ρ ⇓ τ₁
         //  3.  Γ,λx:τ₁ ⊢ e ⇒ τ₂ ⤳ v
         // ───────────────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂ ⤳ λx:τ.v
@@ -456,7 +456,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
         },
 
         //  1.  Γ ⊢ ρ₁ ⇒ Typeᵢ ⤳ τ₁
-        //  2.  ρ₁ ⇓ τ₁'
+        //  2.  Γ ⊢ ρ₁ ⇓ τ₁'
         //  3.  Γ,Πx:τ₁' ⊢ ρ₂ ⇐ Typeⱼ ⤳ τ₂
         //  4.  k = max(i, j)
         // ────────────────────────────────────────── (INFER/PI)
@@ -478,7 +478,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
         //  1.  Γ ⊢ e₁ ⇒ Πx:τ₁.τ₂ ⤳ v₁
         //  2.  Γ ⊢ e₂ ⇐ τ₁ ⤳ v₂
-        //  3.  τ₂ ⇓ τ₃
+        //  3.  Γ ⊢ τ₂ ⇓ τ₃
         // ────────────────────────────────────── (INFER/APP)
         //      Γ ⊢ e₁ e₂ ⇒ τ₃[x↦e₂] ⤳ v₁ v₂
         Term::App(_, ref fn_expr, ref arg_expr) => {
