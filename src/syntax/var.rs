@@ -117,3 +117,18 @@ impl<N: fmt::Display, B: fmt::Display> fmt::Display for Var<N, B> {
         }
     }
 }
+
+pub trait LocallyNameless: Sized {
+    type Name: Clone;
+
+    fn close(&mut self, name: &Self::Name) {
+        self.close_at(Debruijn::ZERO, name);
+    }
+
+    fn open(&mut self, term: &Self) {
+        self.open_at(Debruijn::ZERO, term);
+    }
+
+    fn close_at(&mut self, index: Debruijn, name: &Self::Name);
+    fn open_at(&mut self, index: Debruijn, term: &Self);
+}

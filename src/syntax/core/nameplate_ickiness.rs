@@ -27,6 +27,7 @@
 
 use std::collections::HashSet;
 
+use syntax::var::LocallyNameless;
 use super::*;
 
 impl TermLam {
@@ -142,12 +143,10 @@ pub fn unbind2(
     (lam_param, lam_body, pi_param, pi_body)
 }
 
-impl RcTerm {
-    pub fn close(&mut self, name: &Name) {
-        self.close_at(Debruijn::ZERO, name);
-    }
+impl LocallyNameless for RcTerm {
+    type Name = Name;
 
-    pub fn close_at(&mut self, level: Debruijn, name: &Name) {
+    fn close_at(&mut self, level: Debruijn, name: &Name) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.close_at(level, name);
@@ -180,11 +179,7 @@ impl RcTerm {
         };
     }
 
-    pub fn open(&mut self, x: &RcTerm) {
-        self.open_at(Debruijn::ZERO, &x);
-    }
-
-    pub fn open_at(&mut self, level: Debruijn, x: &RcTerm) {
+    fn open_at(&mut self, level: Debruijn, x: &RcTerm) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.open_at(level, x);
@@ -214,7 +209,9 @@ impl RcTerm {
             },
         };
     }
+}
 
+impl RcTerm {
     pub fn subst(&mut self, name: &Name, x: &RcTerm) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Term::Ann(_, ref mut expr, ref mut ty) => {
@@ -283,12 +280,10 @@ impl RcTerm {
     }
 }
 
-impl RcValue {
-    pub fn close(&mut self, name: &Name) {
-        self.close_at(Debruijn::ZERO, name);
-    }
+impl LocallyNameless for RcValue {
+    type Name = Name;
 
-    pub fn close_at(&mut self, level: Debruijn, name: &Name) {
+    fn close_at(&mut self, level: Debruijn, name: &Name) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => return,
             Value::Var(Var::Free(ref n)) if n == name => {
@@ -316,11 +311,7 @@ impl RcValue {
         };
     }
 
-    pub fn open(&mut self, x: &RcValue) {
-        self.open_at(Debruijn::ZERO, &x);
-    }
-
-    pub fn open_at(&mut self, level: Debruijn, x: &RcValue) {
+    fn open_at(&mut self, level: Debruijn, x: &RcValue) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => return,
             Value::Var(Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
@@ -345,7 +336,9 @@ impl RcValue {
             },
         };
     }
+}
 
+impl RcValue {
     pub fn subst(&mut self, name: &Name, x: &RcValue) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => return,
