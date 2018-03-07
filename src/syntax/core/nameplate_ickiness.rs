@@ -39,14 +39,15 @@ impl TermLam {
         }
     }
 
-    pub fn unbind(mut self) -> (Named<Name, Option<RcTerm>>, RcTerm) {
-        let fv = Name::fresh(self.unsafe_param.name.name());
-        self.unsafe_param.name = fv.clone();
-        (
-            self.unsafe_param,
-            self.unsafe_body
-                .open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into()),
-        )
+    pub fn unbind(self) -> (Named<Name, Option<RcTerm>>, RcTerm) {
+        let mut param = self.unsafe_param;
+        let mut body = self.unsafe_body;
+
+        let fv = Name::fresh(param.name.name());
+        param.name = fv.clone();
+        body.open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into());
+
+        (param, body)
     }
 }
 
@@ -60,14 +61,15 @@ impl TermPi {
         }
     }
 
-    pub fn unbind(mut self) -> (Named<Name, RcTerm>, RcTerm) {
-        let fv = Name::fresh(self.unsafe_param.name.name());
-        self.unsafe_param.name = fv.clone();
-        (
-            self.unsafe_param,
-            self.unsafe_body
-                .open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into()),
-        )
+    pub fn unbind(self) -> (Named<Name, RcTerm>, RcTerm) {
+        let mut param = self.unsafe_param;
+        let mut body = self.unsafe_body;
+
+        let fv = Name::fresh(param.name.name());
+        param.name = fv.clone();
+        body.open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into());
+
+        (param, body)
     }
 }
 
@@ -81,13 +83,15 @@ impl ValueLam {
         }
     }
 
-    pub fn unbind(mut self) -> (Named<Name, Option<RcValue>>, RcValue) {
-        let fv = Name::fresh(self.unsafe_param.name.name());
-        self.unsafe_param.name = fv.clone();
-        (
-            self.unsafe_param,
-            self.unsafe_body.open(&Value::Var(Var::Free(fv)).into()),
-        )
+    pub fn unbind(self) -> (Named<Name, Option<RcValue>>, RcValue) {
+        let mut param = self.unsafe_param;
+        let mut body = self.unsafe_body;
+
+        let fv = Name::fresh(param.name.name());
+        param.name = fv.clone();
+        body.open(&Value::Var(Var::Free(fv)).into());
+
+        (param, body)
     }
 }
 
@@ -101,36 +105,41 @@ impl ValuePi {
         }
     }
 
-    pub fn unbind(mut self) -> (Named<Name, RcValue>, RcValue) {
-        let fv = Name::fresh(self.unsafe_param.name.name());
-        self.unsafe_param.name = fv.clone();
-        (
-            self.unsafe_param,
-            self.unsafe_body.open(&Value::Var(Var::Free(fv)).into()),
-        )
+    pub fn unbind(self) -> (Named<Name, RcValue>, RcValue) {
+        let mut param = self.unsafe_param;
+        let mut body = self.unsafe_body;
+
+        let fv = Name::fresh(param.name.name());
+        param.name = fv.clone();
+        body.open(&Value::Var(Var::Free(fv)).into());
+
+        (param, body)
     }
 }
 
 // TODO: Would be nice for this to be more polymorphic
 pub fn unbind2(
-    mut lam: TermLam,
-    mut pi: ValuePi,
+    lam: TermLam,
+    pi: ValuePi,
 ) -> (
     Named<Name, Option<RcTerm>>,
     RcTerm,
     Named<Name, RcValue>,
     RcValue,
 ) {
-    let fv = Name::fresh(lam.unsafe_param.name.name());
-    lam.unsafe_param.name = fv.clone();
-    pi.unsafe_param.name = fv.clone();
-    (
-        lam.unsafe_param,
-        lam.unsafe_body
-            .open(&Term::Var(SourceMeta::default(), Var::Free(fv.clone())).into()),
-        pi.unsafe_param,
-        pi.unsafe_body.open(&Value::Var(Var::Free(fv)).into()),
-    )
+    let mut lam_param = lam.unsafe_param;
+    let mut lam_body = lam.unsafe_body;
+    let mut pi_param = pi.unsafe_param;
+    let mut pi_body = pi.unsafe_body;
+
+    let fv = Name::fresh(lam_param.name.name());
+    lam_param.name = fv.clone();
+    pi_param.name = fv.clone();
+
+    lam_body.open(&Term::Var(SourceMeta::default(), Var::Free(fv.clone())).into());
+    pi_body.open(&Value::Var(Var::Free(fv)).into());
+
+    (lam_param, lam_body, pi_param, pi_body)
 }
 
 impl RcTerm {
@@ -171,52 +180,39 @@ impl RcTerm {
         };
     }
 
-    pub fn open(&self, x: &RcTerm) -> RcTerm {
-        self.open_at(Debruijn::ZERO, &x)
+    pub fn open(&mut self, x: &RcTerm) {
+        self.open_at(Debruijn::ZERO, &x);
     }
 
-    pub fn open_at(&self, level: Debruijn, x: &RcTerm) -> RcTerm {
-        match *self.inner {
-            Term::Ann(meta, ref expr, ref ty) => {
-                let expr = expr.open_at(level, x);
-                let ty = ty.open_at(level, x);
-
-                Term::App(meta, expr.clone(), ty.clone()).into()
+    pub fn open_at(&mut self, level: Debruijn, x: &RcTerm) {
+        *self = match *Rc::make_mut(&mut self.inner) {
+            Term::Ann(_, ref mut expr, ref mut ty) => {
+                expr.open_at(level, x);
+                ty.open_at(level, x);
+                return;
             },
-            Term::Universe(_, _) => self.clone(),
+            Term::Universe(_, _) => return,
             Term::Var(_, Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
-            Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => self.clone(),
-            Term::Lam(meta, ref lam) => {
-                let param_ty = lam.unsafe_param
+            Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => return,
+            Term::Lam(_, ref mut lam) => {
+                lam.unsafe_param
                     .inner
-                    .as_ref()
+                    .as_mut()
                     .map(|param_ty| param_ty.open_at(level, x));
-                let body = lam.unsafe_body.open_at(level.succ(), x);
-                let lam = TermLam {
-                    unsafe_param: Named::new(lam.unsafe_param.name.clone(), param_ty),
-
-                    unsafe_body: body,
-                };
-
-                Term::Lam(meta, lam).into()
+                lam.unsafe_body.open_at(level.succ(), x);
+                return;
             },
-            Term::Pi(meta, ref pi) => {
-                let param_ty = pi.unsafe_param.inner.open_at(level, x);
-                let body = pi.unsafe_body.open_at(level.succ(), x);
-                let pi = TermPi {
-                    unsafe_param: Named::new(pi.unsafe_param.name.clone(), param_ty),
-                    unsafe_body: body,
-                };
-
-                Term::Pi(meta, pi).into()
+            Term::Pi(_, ref mut pi) => {
+                pi.unsafe_param.inner.open_at(level, x);
+                pi.unsafe_body.open_at(level.succ(), x);
+                return;
             },
-            Term::App(meta, ref fn_expr, ref arg_expr) => {
-                let fn_expr = fn_expr.open_at(level, x);
-                let arg = arg_expr.open_at(level, x);
-
-                Term::App(meta, fn_expr, arg).into()
+            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
+                fn_expr.open_at(level, x);
+                arg_expr.open_at(level, x);
+                return;
             },
-        }
+        };
     }
 
     pub fn subst(&mut self, name: &Name, x: &RcTerm) {
@@ -320,43 +316,34 @@ impl RcValue {
         };
     }
 
-    pub fn open(&self, x: &RcValue) -> RcValue {
-        self.open_at(Debruijn::ZERO, &x)
+    pub fn open(&mut self, x: &RcValue) {
+        self.open_at(Debruijn::ZERO, &x);
     }
 
-    pub fn open_at(&self, level: Debruijn, x: &RcValue) -> RcValue {
-        match *self.inner {
-            Value::Universe(_) => self.clone(),
+    pub fn open_at(&mut self, level: Debruijn, x: &RcValue) {
+        *self = match *Rc::make_mut(&mut self.inner) {
+            Value::Universe(_) => return,
             Value::Var(Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
-            Value::Var(Var::Bound(_)) | Value::Var(Var::Free(_)) => self.clone(),
-            Value::Lam(ref lam) => {
-                let param_ty = lam.unsafe_param
+            Value::Var(Var::Bound(_)) | Value::Var(Var::Free(_)) => return,
+            Value::Lam(ref mut lam) => {
+                lam.unsafe_param
                     .inner
-                    .as_ref()
+                    .as_mut()
                     .map(|param_ty| param_ty.open_at(level, x));
-                let body = lam.unsafe_body.open_at(level.succ(), x);
-
-                Value::Lam(ValueLam {
-                    unsafe_param: Named::new(lam.unsafe_param.name.clone(), param_ty),
-                    unsafe_body: body,
-                }).into()
+                lam.unsafe_body.open_at(level.succ(), x);
+                return;
             },
-            Value::Pi(ref pi) => {
-                let param_ty = pi.unsafe_param.inner.open_at(level, x);
-                let body = pi.unsafe_body.open_at(level.succ(), x);
-
-                Value::Pi(ValuePi {
-                    unsafe_param: Named::new(pi.unsafe_param.name.clone(), param_ty),
-                    unsafe_body: body,
-                }).into()
+            Value::Pi(ref mut pi) => {
+                pi.unsafe_param.inner.open_at(level, x);
+                pi.unsafe_body.open_at(level.succ(), x);
+                return;
             },
-            Value::App(ref fn_expr, ref arg_expr) => {
-                let fn_expr = fn_expr.open_at(level, x);
-                let arg = arg_expr.open_at(level, x);
-
-                Value::App(fn_expr, arg).into()
+            Value::App(ref mut fn_expr, ref mut arg_expr) => {
+                fn_expr.open_at(level, x);
+                arg_expr.open_at(level, x);
+                return;
             },
-        }
+        };
     }
 
     pub fn subst(&mut self, name: &Name, x: &RcValue) {
