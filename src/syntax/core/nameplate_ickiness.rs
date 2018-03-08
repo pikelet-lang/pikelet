@@ -152,70 +152,53 @@ impl LocallyNameless for RcTerm {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
-        *self = match *Rc::make_mut(&mut self.inner) {
+        match *Rc::make_mut(&mut self.inner) {
             Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
-                return;
             },
-            Term::Universe(_, _) => return,
-            Term::Var(meta, Var::Free(ref n)) if n == name => {
-                Term::Var(meta, Var::Bound(Named::new(n.clone(), level))).into()
-            },
-            Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => return,
+            Term::Universe(_, _) => {},
+            Term::Var(_, ref mut var) => var.close_at(level, name),
             Term::Lam(_, ref mut lam) => {
-                lam.unsafe_param
-                    .inner
-                    .as_mut()
-                    .map(|param| param.close_at(level, name));
+                lam.unsafe_param.close_at(level, name);
                 lam.unsafe_body.close_at(level.succ(), name);
-                return;
             },
             Term::Pi(_, ref mut pi) => {
-                pi.unsafe_param.inner.close_at(level, name);
+                pi.unsafe_param.close_at(level, name);
                 pi.unsafe_body.close_at(level.succ(), name);
-                return;
             },
             Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
-                return;
             },
-        };
+    }
     }
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
-        *self = match *Rc::make_mut(&mut self.inner) {
+        match *Rc::make_mut(&mut self.inner) {
             Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.open_at(level, name);
                 ty.open_at(level, name);
-                return;
             },
-            Term::Universe(_, _) => return,
-            Term::Var(meta, Var::Bound(Named { inner: index, .. })) if index == level => {
-                Term::Var(meta, Var::Free(name.clone())).into()
-            },
-            Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => return,
+            Term::Universe(_, _) => {},
+            Term::Var(_, ref mut var) => var.open_at(level, name),
             Term::Lam(_, ref mut lam) => {
                 lam.unsafe_param
                     .inner
                     .as_mut()
                     .map(|param_ty| param_ty.open_at(level, name));
                 lam.unsafe_body.open_at(level.succ(), name);
-                return;
             },
             Term::Pi(_, ref mut pi) => {
-                pi.unsafe_param.inner.open_at(level, name);
+                pi.unsafe_param.open_at(level, name);
                 pi.unsafe_body.open_at(level.succ(), name);
-                return;
             },
             Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);
-                return;
             },
-        };
     }
+}
 }
 
 impl RcTerm {
@@ -291,59 +274,41 @@ impl LocallyNameless for RcValue {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
-        *self = match *Rc::make_mut(&mut self.inner) {
-            Value::Universe(_) => return,
-            Value::Var(Var::Free(ref n)) if n == name => {
-                Value::Var(Var::Bound(Named::new(n.clone(), level))).into()
-            },
-            Value::Var(Var::Bound(_)) | Value::Var(Var::Free(_)) => return,
+        match *Rc::make_mut(&mut self.inner) {
+            Value::Universe(_) => {},
+            Value::Var(ref mut var) => var.close_at(level, name),
             Value::Lam(ref mut lam) => {
-                lam.unsafe_param
-                    .inner
-                    .as_mut()
-                    .map(|param| param.close_at(level, name));
+                lam.unsafe_param.close_at(level, name);
                 lam.unsafe_body.close_at(level.succ(), name);
-                return;
             },
             Value::Pi(ref mut pi) => {
-                pi.unsafe_param.inner.close_at(level, name);
+                pi.unsafe_param.close_at(level, name);
                 pi.unsafe_body.close_at(level.succ(), name);
-                return;
             },
             Value::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
-                return;
             },
-        };
+        }
     }
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
-        *self = match *Rc::make_mut(&mut self.inner) {
-            Value::Universe(_) => return,
-            Value::Var(Var::Bound(Named { inner: index, .. })) if index == level => {
-                Value::Var(Var::Free(name.clone())).into()
-            },
-            Value::Var(Var::Bound(_)) | Value::Var(Var::Free(_)) => return,
+        match *Rc::make_mut(&mut self.inner) {
+            Value::Universe(_) => {},
+            Value::Var(ref mut var) => var.open_at(level, name),
             Value::Lam(ref mut lam) => {
-                lam.unsafe_param
-                    .inner
-                    .as_mut()
-                    .map(|param_ty| param_ty.open_at(level, name));
+                lam.unsafe_param.open_at(level, name);
                 lam.unsafe_body.open_at(level.succ(), name);
-                return;
             },
             Value::Pi(ref mut pi) => {
-                pi.unsafe_param.inner.open_at(level, name);
+                pi.unsafe_param.open_at(level, name);
                 pi.unsafe_body.open_at(level.succ(), name);
-                return;
             },
             Value::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);
-                return;
             },
-        };
+        }
     }
 }
 

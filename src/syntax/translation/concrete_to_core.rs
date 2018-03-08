@@ -2,7 +2,7 @@ use codespan::ByteSpan;
 
 use syntax::concrete;
 use syntax::core;
-use syntax::var::{Debruijn, LocallyNameless, Named, Var, FreeName};
+use syntax::var::{Debruijn, FreeName, LocallyNameless, Named, Var};
 
 /// Translate something to the corresponding core representation
 pub trait ToCore<T> {

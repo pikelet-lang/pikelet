@@ -13,6 +13,45 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+/// Free names
+pub trait FreeName: Clone + PartialEq {
+    /// Generate a new, globally unique name
+    // FIXME: optional name hint, for debugging
+    // FIXME: inject free variable generator?
+    fn fresh() -> Self;
+}
+
+pub trait LocallyNameless: Sized {
+    type Name: FreeName;
+
+    fn close(&mut self, name: &Self::Name) {
+        self.close_at(Debruijn::ZERO, name);
+    }
+
+    fn open(&mut self, name: &Self::Name) {
+        self.open_at(Debruijn::ZERO, name);
+    }
+
+    fn close_at(&mut self, index: Debruijn, name: &Self::Name);
+    fn open_at(&mut self, index: Debruijn, name: &Self::Name);
+}
+
+impl<T: LocallyNameless> LocallyNameless for Option<T> {
+    type Name = T::Name;
+
+    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
+        if let Some(ref mut inner) = *self {
+            inner.close_at(index, name);
+        }
+    }
+
+    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
+        if let Some(ref mut inner) = *self {
+            inner.open_at(index, name);
+        }
+    }
+}
+
 /// A generated id
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenId(u32);
@@ -49,6 +88,18 @@ pub struct Named<N, T> {
 impl<N, T> Named<N, T> {
     pub fn new(name: N, inner: T) -> Named<N, T> {
         Named { name, inner }
+    }
+}
+
+impl<T: LocallyNameless> LocallyNameless for Named<T::Name, T> {
+    type Name = T::Name;
+
+    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
+        self.inner.close_at(index, name);
+    }
+
+    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
+        self.inner.open_at(index, name);
     }
 }
 
@@ -109,6 +160,24 @@ pub enum Var<N, B> {
     Bound(Named<N, B>),
 }
 
+impl<N: FreeName> LocallyNameless for Var<N, Debruijn> {
+    type Name = N;
+
+    fn close_at(&mut self, index: Debruijn, name: &N) {
+        *self = match *self {
+            Var::Free(ref n) if n == name => Var::Bound(Named::new(n.clone(), index)),
+            Var::Bound(_) | Var::Free(_) => return,
+        };
+    }
+
+    fn open_at(&mut self, index: Debruijn, name: &N) {
+        *self = match *self {
+            Var::Bound(Named { inner: i, .. }) if i == index => Var::Free(name.clone()),
+            Var::Bound(_) | Var::Free(_) => return,
+        };
+    }
+}
+
 impl<N: fmt::Display, B: fmt::Display> fmt::Display for Var<N, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -116,27 +185,4 @@ impl<N: fmt::Display, B: fmt::Display> fmt::Display for Var<N, B> {
             Var::Bound(Named { ref name, .. }) | Var::Free(ref name) => write!(f, "{}", name),
         }
     }
-}
-
-/// Free names
-pub trait FreeName: Clone + PartialEq {
-    /// Generate a new, globally unique name
-    // FIXME: optional name hint, for debugging
-    // FIXME: inject free variable generator?
-    fn fresh() -> Self;
-}
-
-pub trait LocallyNameless: Sized {
-    type Name: FreeName;
-
-    fn close(&mut self, name: &Self::Name) {
-        self.close_at(Debruijn::ZERO, name);
-    }
-
-    fn open(&mut self, name: &Self::Name) {
-        self.open_at(Debruijn::ZERO, name);
-    }
-
-    fn close_at(&mut self, index: Debruijn, name: &Self::Name);
-    fn open_at(&mut self, index: Debruijn, name: &Self::Name);
 }

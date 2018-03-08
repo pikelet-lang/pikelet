@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::usize;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::var::{Debruijn, GenId, Named, Var, FreeName};
+use syntax::var::{Debruijn, FreeName, GenId, Named, Var};
 
 // YUCK!
 mod nameplate_ickiness;
