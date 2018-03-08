@@ -7,12 +7,10 @@ use std::rc::Rc;
 use std::usize;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::var::{Debruijn, FreeName, GenId, Named, Var};
+use syntax::var::{Debruijn, FreeName, GenId, Named, Scope, Var};
 
 // YUCK!
 mod nameplate_ickiness;
-
-pub use self::nameplate_ickiness::unbind2;
 
 #[cfg(test)]
 mod tests;
@@ -149,9 +147,9 @@ pub enum Term {
     /// A variable
     Var(SourceMeta, Var<Name, Debruijn>), // 3.
     /// Lambda abstractions
-    Lam(SourceMeta, TermLam), // 4.
+    Lam(SourceMeta, Scope<Named<Name, Option<RcTerm>>, RcTerm>), // 4.
     /// Dependent function types
-    Pi(SourceMeta, TermPi), // 5.
+    Pi(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 5.
     /// Term application
     App(SourceMeta, RcTerm, RcTerm), // 6.
 }
@@ -162,20 +160,6 @@ impl fmt::Display for Term {
             .group()
             .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
-}
-
-// TODO: Reduce boilderplate with a name binding abstraction
-#[derive(Debug, Clone, PartialEq)]
-pub struct TermLam {
-    pub unsafe_param: Named<Name, Option<RcTerm>>,
-    pub unsafe_body: RcTerm,
-}
-
-// TODO: Reduce boilderplate with a name binding abstraction
-#[derive(Debug, Clone, PartialEq)]
-pub struct TermPi {
-    pub unsafe_param: Named<Name, RcTerm>,
-    pub unsafe_body: RcTerm,
 }
 
 /// Normal forms
@@ -194,9 +178,9 @@ pub enum Value {
     /// Variables
     Var(Var<Name, Debruijn>), // 2.
     /// A lambda abstraction
-    Lam(ValueLam), // 3.
+    Lam(Scope<Named<Name, Option<RcValue>>, RcValue>), // 3.
     /// A pi type
-    Pi(ValuePi), // 4.
+    Pi(Scope<Named<Name, RcValue>, RcValue>), // 4.
     /// Term application
     App(RcValue, RcValue), // 5.
 }
@@ -207,20 +191,6 @@ impl fmt::Display for Value {
             .group()
             .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
-}
-
-// TODO: Reduce boilderplate with a name binding abstraction
-#[derive(Debug, Clone, PartialEq)]
-pub struct ValueLam {
-    pub unsafe_param: Named<Name, Option<RcValue>>,
-    pub unsafe_body: RcValue,
-}
-
-// TODO: Reduce boilderplate with a name binding abstraction
-#[derive(Debug, Clone, PartialEq)]
-pub struct ValuePi {
-    pub unsafe_param: Named<Name, RcValue>,
-    pub unsafe_body: RcValue,
 }
 
 // Wrapper types

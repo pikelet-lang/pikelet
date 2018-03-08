@@ -82,9 +82,8 @@
 
 use codespan::ByteSpan;
 
-use syntax::core::{self, Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term};
-use syntax::core::{Value, ValueLam, ValuePi};
-use syntax::var::{Named, Var};
+use syntax::core::{Binder, Context, Level, Module, Name, RcTerm, RcType, RcValue, Term, Value};
+use syntax::var::{self, Named, Scope, Var};
 
 #[cfg(test)]
 mod tests;
@@ -226,7 +225,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let body_context = context.extend(param.name.clone(), Binder::Lam(ann.clone()));
             let body = normalize(&body_context, &body)?; // 1,3.
 
-            Ok(Value::Lam(ValueLam::bind(Named::new(param.name.clone(), ann), body)).into())
+            Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
         //  1.  Γ ⊢ ρ₁ ⇓ τ₁
@@ -240,7 +239,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let body_context = context.extend(param.name.clone(), Binder::Pi(ann.clone()));
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Value::Pi(ValuePi::bind(Named::new(param.name.clone(), ann), body)).into())
+            Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -285,14 +284,14 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.e ⇐ Πx:τ₁.τ₂ ⤳ λx:τ₁.v
         (&Term::Lam(_, ref lam), &Value::Pi(ref pi)) => {
-            let (lam_param, lam_body, pi_param, pi_body) = core::unbind2(lam.clone(), pi.clone());
+            let (lam_param, lam_body, pi_param, pi_body) = var::unbind2(lam.clone(), pi.clone());
 
             if lam_param.inner.is_none() {
                 let body_context =
                     context.extend(pi_param.name, Binder::Pi(pi_param.inner.clone()));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
-                let elab_term = Value::Lam(ValueLam::bind(
+                let elab_term = Value::Lam(Scope::bind(
                     Named::new(lam_param.name, Some(pi_param.inner)),
                     elab_lam_body,
                 )).into();
@@ -443,8 +442,8 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                     let (elab_body, body_ty) = infer(&body_context, &body)?; // 3.
 
                     let elab_param = Named::new(param.name.clone(), Some(elab_ann));
-                    let elab_lam = ValueLam::bind(elab_param, elab_body);
-                    let pi_ty = ValuePi::bind(Named::new(param.name.clone(), simp_ann), body_ty);
+                    let elab_lam = Scope::bind(elab_param, elab_body);
+                    let pi_ty = Scope::bind(Named::new(param.name.clone(), simp_ann), body_ty);
 
                     Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
                 },
@@ -471,7 +470,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
             let elab_param = Named::new(param.name.clone(), elab_ann);
-            let elab_pi = ValuePi::bind(elab_param, elab_body);
+            let elab_pi = Scope::bind(elab_param, elab_body);
             let level = cmp::max(level_ann, level_body); // 4.
 
             Ok((Value::Pi(elab_pi).into(), Value::Universe(level).into()))

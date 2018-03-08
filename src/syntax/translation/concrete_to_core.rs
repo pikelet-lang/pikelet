@@ -2,7 +2,7 @@ use codespan::ByteSpan;
 
 use syntax::concrete;
 use syntax::core;
-use syntax::var::{Debruijn, FreeName, LocallyNameless, Named, Var};
+use syntax::var::{Debruijn, FreeName, LocallyNameless, Named, Scope, Var};
 
 /// Translate something to the corresponding core representation
 pub trait ToCore<T> {
@@ -33,13 +33,10 @@ fn lam_to_core(
                 span: span.to(term.span()),
             };
             term = match *ann {
-                None => {
-                    core::Term::Lam(meta, core::TermLam::bind(Named::new(name, None), term)).into()
-                },
+                None => core::Term::Lam(meta, Scope::bind(Named::new(name, None), term)).into(),
                 Some(ref ann) => {
                     let ann = ann.to_core();
-                    core::Term::Lam(meta, core::TermLam::bind(Named::new(name, Some(ann)), term))
-                        .into()
+                    core::Term::Lam(meta, Scope::bind(Named::new(name, Some(ann)), term)).into()
                 },
             };
         }
@@ -73,7 +70,7 @@ fn pi_to_core(
             core::SourceMeta {
                 span: span.to(term.span()),
             },
-            core::TermPi::bind(
+            Scope::bind(
                 Named::new(core::Name::User(name.clone()), ann.clone()),
                 term,
             ),
@@ -191,7 +188,7 @@ impl ToCore<core::RcTerm> for concrete::Term {
                 let ann = ann.to_core();
                 let body = body.to_core();
 
-                core::Term::Pi(meta, core::TermPi::bind(Named::new(name, ann), body)).into()
+                core::Term::Pi(meta, Scope::bind(Named::new(name, ann), body)).into()
             },
             concrete::Term::App(ref fn_expr, ref arg) => {
                 let fn_expr = fn_expr.to_core();
@@ -241,7 +238,7 @@ mod to_core {
     mod term {
         use super::*;
 
-        use syntax::core::{Level, Name, SourceMeta, Term, TermLam, TermPi};
+        use syntax::core::{Level, Name, SourceMeta, Term};
 
         #[test]
         fn var() {
@@ -347,13 +344,13 @@ mod to_core {
                 parse(r"\x : Type -> Type => x"),
                 Term::Lam(
                     SourceMeta::default(),
-                    TermLam::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Some(
                                 Term::Pi(
                                     SourceMeta::default(),
-                                    TermPi::bind(
+                                    Scope::bind(
                                         Named::new(
                                             Name::user("_"),
                                             Term::Universe(SourceMeta::default(), Level::ZERO)
@@ -379,13 +376,13 @@ mod to_core {
                 parse(r"\x : (\y => y) => x"),
                 Term::Lam(
                     SourceMeta::default(),
-                    TermLam::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Some(
                                 Term::Lam(
                                     SourceMeta::default(),
-                                    TermLam::bind(
+                                    Scope::bind(
                                         Named::new(y.clone(), None),
                                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
                                     )
@@ -407,14 +404,14 @@ mod to_core {
                 parse(r"\(x y : Type) => x"),
                 Term::Lam(
                     SourceMeta::default(),
-                    TermLam::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Some(Term::Universe(SourceMeta::default(), Level::ZERO).into())
                         ),
                         Term::Lam(
                             SourceMeta::default(),
-                            TermLam::bind(
+                            Scope::bind(
                                 Named::new(
                                     y,
                                     Some(Term::Universe(SourceMeta::default(), Level::ZERO).into())
@@ -433,7 +430,7 @@ mod to_core {
                 parse(r"Type -> Type"),
                 Term::Pi(
                     SourceMeta::default(),
-                    TermPi::bind(
+                    Scope::bind(
                         Named::new(
                             Name::user("_"),
                             Term::Universe(SourceMeta::default(), Level::ZERO).into()
@@ -452,12 +449,12 @@ mod to_core {
                 parse(r"(x : Type -> Type) -> x"),
                 Term::Pi(
                     SourceMeta::default(),
-                    TermPi::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Term::Pi(
                                 SourceMeta::default(),
-                                TermPi::bind(
+                                Scope::bind(
                                     Named::new(
                                         Name::user("_"),
                                         Term::Universe(SourceMeta::default(), Level::ZERO).into()
@@ -481,14 +478,14 @@ mod to_core {
                 parse(r"(x y : Type) -> x"),
                 Term::Pi(
                     SourceMeta::default(),
-                    TermPi::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Term::Universe(SourceMeta::default(), Level::ZERO).into()
                         ),
                         Term::Pi(
                             SourceMeta::default(),
-                            TermPi::bind(
+                            Scope::bind(
                                 Named::new(
                                     y,
                                     Term::Universe(SourceMeta::default(), Level::ZERO).into()
@@ -509,14 +506,14 @@ mod to_core {
                 parse(r"(x : Type) -> x -> x"),
                 Term::Pi(
                     SourceMeta::default(),
-                    TermPi::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Term::Universe(SourceMeta::default(), Level::ZERO).into()
                         ),
                         Term::Pi(
                             SourceMeta::default(),
-                            TermPi::bind(
+                            Scope::bind(
                                 Named::new(
                                     Name::user("_"),
                                     Term::Var(SourceMeta::default(), Var::Free(x.clone())).into()
@@ -538,13 +535,13 @@ mod to_core {
                 parse(r"\(x : Type -> Type) (y : Type) => x y"),
                 Term::Lam(
                     SourceMeta::default(),
-                    TermLam::bind(
+                    Scope::bind(
                         Named::new(
                             x.clone(),
                             Some(
                                 Term::Pi(
                                     SourceMeta::default(),
-                                    TermPi::bind(
+                                    Scope::bind(
                                         Named::new(
                                             Name::user("_"),
                                             Term::Universe(SourceMeta::default(), Level::ZERO)
@@ -557,7 +554,7 @@ mod to_core {
                         ),
                         Term::Lam(
                             SourceMeta::default(),
-                            TermLam::bind(
+                            Scope::bind(
                                 Named::new(
                                     y.clone(),
                                     Some(Term::Universe(SourceMeta::default(), Level::ZERO).into())
@@ -583,14 +580,14 @@ mod to_core {
                 parse(r"\(a : Type) (x : a) => x"),
                 Term::Lam(
                     SourceMeta::default(),
-                    TermLam::bind(
+                    Scope::bind(
                         Named::new(
                             a.clone(),
                             Some(Term::Universe(SourceMeta::default(), Level::ZERO).into())
                         ),
                         Term::Lam(
                             SourceMeta::default(),
-                            TermLam::bind(
+                            Scope::bind(
                                 Named::new(
                                     x.clone(),
                                     Some(Term::Var(SourceMeta::default(), Var::Free(a)).into())
@@ -611,14 +608,14 @@ mod to_core {
                 parse(r"(a : Type) -> a -> a"),
                 Term::Pi(
                     SourceMeta::default(),
-                    TermPi::bind(
+                    Scope::bind(
                         Named::new(
                             a.clone(),
                             Term::Universe(SourceMeta::default(), Level::ZERO).into()
                         ),
                         Term::Pi(
                             SourceMeta::default(),
-                            TermPi::bind(
+                            Scope::bind(
                                 Named::new(
                                     Name::user("_"),
                                     Term::Var(SourceMeta::default(), Var::Free(a.clone())).into()

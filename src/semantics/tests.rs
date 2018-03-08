@@ -50,7 +50,7 @@ mod normalize {
 
         assert_eq!(
             normalize(&context, &parse(r"\x : Type => x")).unwrap(),
-            Value::Lam(ValueLam::bind(
+            Value::Lam(Scope::bind(
                 Named::new(x.clone(), Some(Value::Universe(Level::ZERO).into())),
                 Value::Var(Var::Free(x)).into(),
             )).into(),
@@ -65,7 +65,7 @@ mod normalize {
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type) -> x")).unwrap(),
-            Value::Pi(ValuePi::bind(
+            Value::Pi(Scope::bind(
                 Named::new(x.clone(), Value::Universe(Level::ZERO).into()),
                 Value::Var(Var::Free(x)).into(),
             )).into(),
@@ -78,16 +78,16 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty_arr: RcValue = Value::Pi(ValuePi::bind(
+        let ty_arr: RcValue = Value::Pi(Scope::bind(
             Named::new(Name::user("_"), Value::Universe(Level::ZERO).into()),
             Value::Universe(Level::ZERO).into(),
         )).into();
 
         assert_eq!(
             normalize(&context, &parse(r"\(x : Type -> Type) (y : Type) => x y")).unwrap(),
-            Value::Lam(ValueLam::bind(
+            Value::Lam(Scope::bind(
                 Named::new(x.clone(), Some(ty_arr)),
-                Value::Lam(ValueLam::bind(
+                Value::Lam(Scope::bind(
                     Named::new(y.clone(), Some(Value::Universe(Level::ZERO).into())),
                     Value::App(
                         Value::Var(Var::Free(x)).into(),
@@ -104,16 +104,16 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty_arr: RcValue = Value::Pi(ValuePi::bind(
+        let ty_arr: RcValue = Value::Pi(Scope::bind(
             Named::new(Name::user("_"), Value::Universe(Level::ZERO).into()),
             Value::Universe(Level::ZERO).into(),
         )).into();
 
         assert_eq!(
             normalize(&context, &parse(r"(x : Type -> Type) -> \y : Type => x y")).unwrap(),
-            Value::Pi(ValuePi::bind(
+            Value::Pi(Scope::bind(
                 Named::new(x.clone(), ty_arr),
-                Value::Lam(ValueLam::bind(
+                Value::Lam(Scope::bind(
                     Named::new(y.clone(), Some(Value::Universe(Level::ZERO).into())),
                     Value::App(
                         Value::Var(Var::Free(x)).into(),
