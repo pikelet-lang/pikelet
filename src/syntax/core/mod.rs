@@ -65,6 +65,12 @@ impl Name {
     }
 }
 
+impl From<GenId> for Name {
+    fn from(src: GenId) -> Name {
+        Name::Gen(Named::new(None, src)) // FIXME
+    }
+}
+
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

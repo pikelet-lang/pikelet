@@ -46,7 +46,7 @@ impl TermLam {
 
         let fv = Name::fresh(param.name.name());
         param.name = fv.clone();
-        body.open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into());
+        body.open(&fv);
 
         (param, body)
     }
@@ -68,7 +68,7 @@ impl TermPi {
 
         let fv = Name::fresh(param.name.name());
         param.name = fv.clone();
-        body.open(&Term::Var(SourceMeta::default(), Var::Free(fv)).into());
+        body.open(&fv);
 
         (param, body)
     }
@@ -90,7 +90,7 @@ impl ValueLam {
 
         let fv = Name::fresh(param.name.name());
         param.name = fv.clone();
-        body.open(&Value::Var(Var::Free(fv)).into());
+        body.open(&fv);
 
         (param, body)
     }
@@ -112,7 +112,7 @@ impl ValuePi {
 
         let fv = Name::fresh(param.name.name());
         param.name = fv.clone();
-        body.open(&Value::Var(Var::Free(fv)).into());
+        body.open(&fv);
 
         (param, body)
     }
@@ -137,8 +137,8 @@ pub fn unbind2(
     lam_param.name = fv.clone();
     pi_param.name = fv.clone();
 
-    lam_body.open(&Term::Var(SourceMeta::default(), Var::Free(fv.clone())).into());
-    pi_body.open(&Value::Var(Var::Free(fv)).into());
+    lam_body.open(&fv);
+    pi_body.open(&fv);
 
     (lam_param, lam_body, pi_param, pi_body)
 }
@@ -179,32 +179,34 @@ impl LocallyNameless for RcTerm {
         };
     }
 
-    fn open_at(&mut self, level: Debruijn, x: &RcTerm) {
+    fn open_at(&mut self, level: Debruijn, name: &Name) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Term::Ann(_, ref mut expr, ref mut ty) => {
-                expr.open_at(level, x);
-                ty.open_at(level, x);
+                expr.open_at(level, name);
+                ty.open_at(level, name);
                 return;
             },
             Term::Universe(_, _) => return,
-            Term::Var(_, Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
+            Term::Var(meta, Var::Bound(Named { inner: index, .. })) if index == level => {
+                Term::Var(meta, Var::Free(name.clone())).into()
+            },
             Term::Var(_, Var::Bound(_)) | Term::Var(_, Var::Free(_)) => return,
             Term::Lam(_, ref mut lam) => {
                 lam.unsafe_param
                     .inner
                     .as_mut()
-                    .map(|param_ty| param_ty.open_at(level, x));
-                lam.unsafe_body.open_at(level.succ(), x);
+                    .map(|param_ty| param_ty.open_at(level, name));
+                lam.unsafe_body.open_at(level.succ(), name);
                 return;
             },
             Term::Pi(_, ref mut pi) => {
-                pi.unsafe_param.inner.open_at(level, x);
-                pi.unsafe_body.open_at(level.succ(), x);
+                pi.unsafe_param.inner.open_at(level, name);
+                pi.unsafe_body.open_at(level.succ(), name);
                 return;
             },
             Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.open_at(level, x);
-                arg_expr.open_at(level, x);
+                fn_expr.open_at(level, name);
+                arg_expr.open_at(level, name);
                 return;
             },
         };
@@ -311,27 +313,29 @@ impl LocallyNameless for RcValue {
         };
     }
 
-    fn open_at(&mut self, level: Debruijn, x: &RcValue) {
+    fn open_at(&mut self, level: Debruijn, name: &Name) {
         *self = match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => return,
-            Value::Var(Var::Bound(Named { inner: index, .. })) if index == level => x.clone(),
+            Value::Var(Var::Bound(Named { inner: index, .. })) if index == level => {
+                Value::Var(Var::Free(name.clone())).into()
+            },
             Value::Var(Var::Bound(_)) | Value::Var(Var::Free(_)) => return,
             Value::Lam(ref mut lam) => {
                 lam.unsafe_param
                     .inner
                     .as_mut()
-                    .map(|param_ty| param_ty.open_at(level, x));
-                lam.unsafe_body.open_at(level.succ(), x);
+                    .map(|param_ty| param_ty.open_at(level, name));
+                lam.unsafe_body.open_at(level.succ(), name);
                 return;
             },
             Value::Pi(ref mut pi) => {
-                pi.unsafe_param.inner.open_at(level, x);
-                pi.unsafe_body.open_at(level.succ(), x);
+                pi.unsafe_param.inner.open_at(level, name);
+                pi.unsafe_body.open_at(level.succ(), name);
                 return;
             },
             Value::App(ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.open_at(level, x);
-                arg_expr.open_at(level, x);
+                fn_expr.open_at(level, name);
+                arg_expr.open_at(level, name);
                 return;
             },
         };
