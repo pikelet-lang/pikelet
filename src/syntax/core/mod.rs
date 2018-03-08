@@ -7,7 +7,7 @@ use std::rc::Rc;
 use std::usize;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::var::{Debruijn, GenId, Named, Var};
+use syntax::var::{Debruijn, GenId, Named, Var, FreeName};
 
 // YUCK!
 mod nameplate_ickiness;
@@ -52,11 +52,6 @@ impl Name {
         Name::User(name.into())
     }
 
-    /// Generate a new, globally unique name
-    pub fn fresh<S: Into<String>>(name: Option<S>) -> Name {
-        Name::Gen(Named::new(name.map(S::into), GenId::fresh()))
-    }
-
     pub fn name(&self) -> Option<&str> {
         match *self {
             Name::User(ref name) => Some(name),
@@ -65,9 +60,9 @@ impl Name {
     }
 }
 
-impl From<GenId> for Name {
-    fn from(src: GenId) -> Name {
-        Name::Gen(Named::new(None, src)) // FIXME
+impl FreeName for Name {
+    fn fresh() -> Name {
+        Name::Gen(Named::new(None, GenId::fresh())) // FIXME
     }
 }
 

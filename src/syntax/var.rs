@@ -118,8 +118,16 @@ impl<N: fmt::Display, B: fmt::Display> fmt::Display for Var<N, B> {
     }
 }
 
+/// Free names
+pub trait FreeName: Clone + PartialEq {
+    /// Generate a new, globally unique name
+    // FIXME: optional name hint, for debugging
+    // FIXME: inject free variable generator?
+    fn fresh() -> Self;
+}
+
 pub trait LocallyNameless: Sized {
-    type Name: Clone + From<GenId>;
+    type Name: FreeName;
 
     fn close(&mut self, name: &Self::Name) {
         self.close_at(Debruijn::ZERO, name);

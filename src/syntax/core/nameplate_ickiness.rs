@@ -44,9 +44,10 @@ impl TermLam {
         let mut param = self.unsafe_param;
         let mut body = self.unsafe_body;
 
-        let fv = Name::fresh(param.name.name());
-        param.name = fv.clone();
-        body.open(&fv);
+        // let free_name = Name::fresh(param.name.name()); // FIXME
+        let free_name = Name::fresh();
+        param.name = free_name.clone();
+        body.open(&free_name);
 
         (param, body)
     }
@@ -66,9 +67,10 @@ impl TermPi {
         let mut param = self.unsafe_param;
         let mut body = self.unsafe_body;
 
-        let fv = Name::fresh(param.name.name());
-        param.name = fv.clone();
-        body.open(&fv);
+        // let free_name = Name::fresh(param.name.name()); // FIXME
+        let free_name = Name::fresh();
+        param.name = free_name.clone();
+        body.open(&free_name);
 
         (param, body)
     }
@@ -88,9 +90,10 @@ impl ValueLam {
         let mut param = self.unsafe_param;
         let mut body = self.unsafe_body;
 
-        let fv = Name::fresh(param.name.name());
-        param.name = fv.clone();
-        body.open(&fv);
+        // let free_name = Name::fresh(param.name.name()); // FIXME
+        let free_name = Name::fresh();
+        param.name = free_name.clone();
+        body.open(&free_name);
 
         (param, body)
     }
@@ -110,9 +113,10 @@ impl ValuePi {
         let mut param = self.unsafe_param;
         let mut body = self.unsafe_body;
 
-        let fv = Name::fresh(param.name.name());
-        param.name = fv.clone();
-        body.open(&fv);
+        // let free_name = Name::fresh(param.name.name()); // FIXME
+        let free_name = Name::fresh();
+        param.name = free_name.clone();
+        body.open(&free_name);
 
         (param, body)
     }
@@ -133,12 +137,13 @@ pub fn unbind2(
     let mut pi_param = pi.unsafe_param;
     let mut pi_body = pi.unsafe_body;
 
-    let fv = Name::fresh(lam_param.name.name());
-    lam_param.name = fv.clone();
-    pi_param.name = fv.clone();
+    // let free_name = Name::fresh(lam_param.name.name()); // FIXME
+    let free_name = Name::fresh();
+    lam_param.name = free_name.clone();
+    pi_param.name = free_name.clone();
 
-    lam_body.open(&fv);
-    pi_body.open(&fv);
+    lam_body.open(&free_name);
+    pi_body.open(&free_name);
 
     (lam_param, lam_body, pi_param, pi_body)
 }

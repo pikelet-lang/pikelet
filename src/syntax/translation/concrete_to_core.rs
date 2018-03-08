@@ -2,7 +2,7 @@ use codespan::ByteSpan;
 
 use syntax::concrete;
 use syntax::core;
-use syntax::var::{Debruijn, LocallyNameless, Named, Var};
+use syntax::var::{Debruijn, LocallyNameless, Named, Var, FreeName};
 
 /// Translate something to the corresponding core representation
 pub trait ToCore<T> {
@@ -187,7 +187,7 @@ impl ToCore<core::RcTerm> for concrete::Term {
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Pi(_, (ref names, ref ann), ref body) => pi_to_core(names, ann, body),
             concrete::Term::Arrow(ref ann, ref body) => {
-                let name = core::Name::fresh(None::<&str>);
+                let name = core::Name::fresh();
                 let ann = ann.to_core();
                 let body = body.to_core();
 
