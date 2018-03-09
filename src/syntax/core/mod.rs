@@ -154,6 +154,19 @@ pub enum Term {
     App(SourceMeta, RcTerm, RcTerm), // 6.
 }
 
+impl RcTerm {
+    pub fn span(&self) -> ByteSpan {
+        match *self.inner {
+            Term::Ann(meta, _, _)
+            | Term::Universe(meta, _)
+            | Term::Var(meta, _)
+            | Term::Lam(meta, _)
+            | Term::Pi(meta, _)
+            | Term::App(meta, _, _) => meta.span,
+        }
+    }
+}
+
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
@@ -195,35 +208,6 @@ impl fmt::Display for Value {
 
 // Wrapper types
 
-macro_rules! make_wrapper {
-    ($name:ident, $wrapper:ident, $inner:ty) => {
-        #[derive(Clone, PartialEq)]
-        pub struct $name {
-            pub inner: $wrapper<$inner>,
-        }
-
-        impl From<$inner> for $name {
-            fn from(src: $inner) -> $name {
-                $name {
-                    inner: $wrapper::new(src),
-                }
-            }
-        }
-
-        impl fmt::Debug for $name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Debug::fmt(&self.inner, f)
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                $crate::std::fmt::Display::fmt(&self.inner, f)
-            }
-        }
-    };
-}
-
 make_wrapper!(RcTerm, Rc, Term);
 make_wrapper!(RcValue, Rc, Value);
 
@@ -232,19 +216,6 @@ pub type Type = Value;
 
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
-
-impl RcTerm {
-    pub fn span(&self) -> ByteSpan {
-        match *self.inner {
-            Term::Ann(meta, _, _)
-            | Term::Universe(meta, _)
-            | Term::Var(meta, _)
-            | Term::Lam(meta, _)
-            | Term::Pi(meta, _)
-            | Term::App(meta, _, _) => meta.span,
-        }
-    }
-}
 
 /// A binder that introduces a variable into the context
 ///
