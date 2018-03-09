@@ -5,7 +5,7 @@ use syntax::translation::ToCore;
 
 use super::*;
 
-fn parse(src: &str) -> RcTerm {
+fn parse(src: &str) -> RcRawTerm {
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
 

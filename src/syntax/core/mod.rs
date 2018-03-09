@@ -124,9 +124,9 @@ pub struct Definition {
     /// The name of the declaration
     pub name: String,
     /// The body of the definition
-    pub term: RcTerm,
+    pub term: RcRawTerm,
     /// An optional type annotation to aid in type inference
-    pub ann: Option<RcTerm>,
+    pub ann: Option<RcRawTerm>,
 }
 
 impl fmt::Display for Definition {
@@ -148,35 +148,35 @@ impl fmt::Display for Definition {
 ///       | ρ₁ ρ₂       6. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
-pub enum Term {
+pub enum RawTerm {
     /// A term annotated with a type
-    Ann(SourceMeta, RcTerm, RcTerm), // 1.
+    Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
     /// Universes
     Universe(SourceMeta, Level), // 2.
     /// A variable
     Var(SourceMeta, Var<Name, Debruijn>), // 3.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, Option<RcTerm>>, RcTerm>), // 4.
+    Lam(SourceMeta, Scope<Named<Name, Option<RcRawTerm>>, RcRawTerm>), // 4.
     /// Dependent function types
-    Pi(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 5.
-    /// Term application
-    App(SourceMeta, RcTerm, RcTerm), // 6.
+    Pi(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 5.
+    /// RawTerm application
+    App(SourceMeta, RcRawTerm, RcRawTerm), // 6.
 }
 
-impl RcTerm {
+impl RcRawTerm {
     pub fn span(&self) -> ByteSpan {
         match *self.inner {
-            Term::Ann(meta, _, _)
-            | Term::Universe(meta, _)
-            | Term::Var(meta, _)
-            | Term::Lam(meta, _)
-            | Term::Pi(meta, _)
-            | Term::App(meta, _, _) => meta.span,
+            RawTerm::Ann(meta, _, _)
+            | RawTerm::Universe(meta, _)
+            | RawTerm::Var(meta, _)
+            | RawTerm::Lam(meta, _)
+            | RawTerm::Pi(meta, _)
+            | RawTerm::App(meta, _, _) => meta.span,
         }
     }
 }
 
-impl fmt::Display for Term {
+impl fmt::Display for RawTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
@@ -203,7 +203,7 @@ pub enum Value {
     Lam(Scope<Named<Name, Option<RcValue>>, RcValue>), // 3.
     /// A pi type
     Pi(Scope<Named<Name, RcValue>, RcValue>), // 4.
-    /// Term application
+    /// RawTerm application
     App(RcValue, RcValue), // 5.
 }
 
@@ -217,7 +217,7 @@ impl fmt::Display for Value {
 
 // Wrapper types
 
-make_wrapper!(RcTerm, Rc, Term);
+make_wrapper!(RcRawTerm, Rc, RawTerm);
 make_wrapper!(RcValue, Rc, Value);
 
 /// Types are at the term level, so this is just an alias

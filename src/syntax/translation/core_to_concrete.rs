@@ -69,30 +69,30 @@ impl ToConcrete<Option<u32>> for core::Level {
     }
 }
 
-impl ToConcrete<concrete::Term> for core::RcTerm {
+impl ToConcrete<concrete::Term> for core::RcRawTerm {
     fn to_concrete(&self, env: &Env) -> concrete::Term {
         // FIXME: add concrete::Term::Paren where needed
         match *self.inner {
-            core::Term::Ann(_, ref term, ref ty) => concrete::Term::Ann(
+            core::RawTerm::Ann(_, ref term, ref ty) => concrete::Term::Ann(
                 Box::new(term.to_concrete(env)),
                 Box::new(ty.to_concrete(env)),
             ),
-            core::Term::Universe(meta, level) => {
+            core::RawTerm::Universe(meta, level) => {
                 concrete::Term::Universe(meta.span, level.to_concrete(env))
             },
-            core::Term::Var(meta, Var::Free(core::Name::User(ref name))) => {
+            core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.clone())
             },
-            core::Term::Var(_, Var::Free(core::Name::Gen(ref _gen))) => {
+            core::RawTerm::Var(_, Var::Free(core::Name::Gen(ref _gen))) => {
                 // TODO: use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 unimplemented!()
             },
-            core::Term::Var(_, Var::Bound(_)) => {
+            core::RawTerm::Var(_, Var::Bound(_)) => {
                 // TODO: Better message
                 panic!("Tried to convert a term that was not locally closed");
             },
-            core::Term::Lam(_, ref lam) => {
+            core::RawTerm::Lam(_, ref lam) => {
                 let (_param, _body) = lam.clone().unbind();
                 // use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
@@ -107,7 +107,7 @@ impl ToConcrete<concrete::Term> for core::RcTerm {
 
                 unimplemented!()
             },
-            core::Term::Pi(_, ref pi) => {
+            core::RawTerm::Pi(_, ref pi) => {
                 let (param, body) = pi.clone().unbind();
                 if body.free_vars().contains(&param.name) {
                     // use name if it is present, and not used in the current scope
@@ -130,7 +130,7 @@ impl ToConcrete<concrete::Term> for core::RcTerm {
                     )
                 }
             },
-            core::Term::App(_, ref fn_term, ref arg) => concrete::Term::Ann(
+            core::RawTerm::App(_, ref fn_term, ref arg) => concrete::Term::Ann(
                 Box::new(fn_term.to_concrete(env)),
                 Box::new(arg.to_concrete(env)),
             ),

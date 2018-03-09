@@ -30,20 +30,20 @@ use std::collections::HashSet;
 use syntax::var::LocallyNameless;
 use super::*;
 
-impl LocallyNameless for RcTerm {
+impl LocallyNameless for RcRawTerm {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
         match *Rc::make_mut(&mut self.inner) {
-            Term::Ann(_, ref mut expr, ref mut ty) => {
+            RawTerm::Ann(_, ref mut expr, ref mut ty) => {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
             },
-            Term::Universe(_, _) => {},
-            Term::Var(_, ref mut var) => var.close_at(level, name),
-            Term::Lam(_, ref mut lam) => lam.close_at(level, name),
-            Term::Pi(_, ref mut pi) => pi.close_at(level, name),
-            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
+            RawTerm::Universe(_, _) => {},
+            RawTerm::Var(_, ref mut var) => var.close_at(level, name),
+            RawTerm::Lam(_, ref mut lam) => lam.close_at(level, name),
+            RawTerm::Pi(_, ref mut pi) => pi.close_at(level, name),
+            RawTerm::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
             },
@@ -52,15 +52,15 @@ impl LocallyNameless for RcTerm {
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
         match *Rc::make_mut(&mut self.inner) {
-            Term::Ann(_, ref mut expr, ref mut ty) => {
+            RawTerm::Ann(_, ref mut expr, ref mut ty) => {
                 expr.open_at(level, name);
                 ty.open_at(level, name);
             },
-            Term::Universe(_, _) => {},
-            Term::Var(_, ref mut var) => var.open_at(level, name),
-            Term::Lam(_, ref mut lam) => lam.open_at(level, name),
-            Term::Pi(_, ref mut pi) => pi.open_at(level, name),
-            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
+            RawTerm::Universe(_, _) => {},
+            RawTerm::Var(_, ref mut var) => var.open_at(level, name),
+            RawTerm::Lam(_, ref mut lam) => lam.open_at(level, name),
+            RawTerm::Pi(_, ref mut pi) => pi.open_at(level, name),
+            RawTerm::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);
             },
@@ -68,26 +68,26 @@ impl LocallyNameless for RcTerm {
     }
 }
 
-impl RcTerm {
+impl RcRawTerm {
     fn visit_vars<F: FnMut(&Var<Name, Debruijn>)>(&self, on_var: &mut F) {
         match *self.inner {
-            Term::Ann(_, ref expr, ref ty) => {
+            RawTerm::Ann(_, ref expr, ref ty) => {
                 expr.visit_vars(on_var);
                 ty.visit_vars(on_var);
             },
-            Term::Universe(_, _) => {},
-            Term::Var(_, ref var) => on_var(var),
-            Term::Lam(_, ref lam) => {
+            RawTerm::Universe(_, _) => {},
+            RawTerm::Var(_, ref var) => on_var(var),
+            RawTerm::Lam(_, ref lam) => {
                 if let Some(ref param) = lam.unsafe_binder.inner {
                     param.visit_vars(on_var);
                 }
                 lam.unsafe_body.visit_vars(on_var);
             },
-            Term::Pi(_, ref pi) => {
+            RawTerm::Pi(_, ref pi) => {
                 pi.unsafe_binder.inner.visit_vars(on_var);
                 pi.unsafe_body.visit_vars(on_var);
             },
-            Term::App(_, ref fn_expr, ref arg_expr) => {
+            RawTerm::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
             },

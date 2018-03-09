@@ -3,7 +3,7 @@
 use pretty::Doc;
 
 use syntax::core::{Definition, Module};
-use syntax::core::{Binder, Context, Level, Name, RcTerm, RcValue, Term, Value};
+use syntax::core::{Binder, Context, Level, Name, RawTerm, RcRawTerm, RcValue, Value};
 use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
@@ -113,30 +113,30 @@ pub fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &
     )
 }
 
-impl ToDoc for Term {
+impl ToDoc for RawTerm {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
-            Term::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
-            Term::Universe(_, level) => pretty_universe(options, level),
-            Term::Var(_, ref var) => pretty_var(options, var),
-            Term::Lam(_, ref lam) => pretty_lam(
+            RawTerm::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
+            RawTerm::Universe(_, level) => pretty_universe(options, level),
+            RawTerm::Var(_, ref var) => pretty_var(options, var),
+            RawTerm::Lam(_, ref lam) => pretty_lam(
                 options,
                 &lam.unsafe_binder.name,
                 lam.unsafe_binder.inner.as_ref(),
                 &lam.unsafe_body,
             ),
-            Term::Pi(_, ref pi) => pretty_pi(
+            RawTerm::Pi(_, ref pi) => pretty_pi(
                 options,
                 &pi.unsafe_binder.name,
                 &pi.unsafe_binder.inner,
                 &pi.unsafe_body,
             ),
-            Term::App(_, ref f, ref a) => pretty_app(options, f, a),
+            RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
         }
     }
 }
 
-impl ToDoc for RcTerm {
+impl ToDoc for RcRawTerm {
     fn to_doc(&self, options: Options) -> StaticDoc {
         self.inner.to_doc(options)
     }
