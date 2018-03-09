@@ -69,37 +69,6 @@ impl LocallyNameless for RcTerm {
 }
 
 impl RcTerm {
-    pub fn subst(&mut self, name: &Name, x: &RcTerm) {
-        *self = match *Rc::make_mut(&mut self.inner) {
-            Term::Ann(_, ref mut expr, ref mut ty) => {
-                expr.subst(name, x);
-                ty.subst(name, x);
-                return;
-            },
-            Term::Universe(_, _) => return,
-            Term::Var(_, Var::Free(ref n)) if n == name => x.clone(),
-            Term::Var(_, Var::Free(_)) | Term::Var(_, Var::Bound(_)) => return,
-            Term::Lam(_, ref mut lam) => {
-                lam.unsafe_binder
-                    .inner
-                    .as_mut()
-                    .map(|param| param.subst(name, x));
-                lam.unsafe_body.subst(name, x);
-                return;
-            },
-            Term::Pi(_, ref mut pi) => {
-                pi.unsafe_binder.inner.subst(name, x);
-                pi.unsafe_body.subst(name, x);
-                return;
-            },
-            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.subst(name, x);
-                arg_expr.subst(name, x);
-                return;
-            },
-        };
-    }
-
     fn visit_vars<F: FnMut(&Var<Name, Debruijn>)>(&self, on_var: &mut F) {
         match *self.inner {
             Term::Ann(_, ref expr, ref ty) => {
