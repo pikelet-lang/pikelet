@@ -188,20 +188,6 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             }),
         },
 
-        //  1.  Γ ⊢ T ⇓ V
-        //  2.  Γ, λx:V ⊢ t ⇓ v
-        // ──────────────────────────────── (EVAL/LAM)
-        //      Γ ⊢ λx:T.t ⇓ λx:V.v
-        Term::Lam(_, ref lam) => {
-            let (param, body) = lam.clone().unbind();
-
-            let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend_lam(param.name.clone(), ann.clone());
-            let body = normalize(&body_context, &body)?; // 2.
-
-            Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
-        },
-
         //  1.  Γ ⊢ T₁ ⇓ V₁
         //  2.  Γ, Πx:V ⊢ T₂ ⇓ V₂
         // ─────────────────────────────────── (EVAL/PI)
@@ -214,6 +200,20 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let body = normalize(&body_context, &body)?; // 2.
 
             Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
+        },
+
+        //  1.  Γ ⊢ T ⇓ V
+        //  2.  Γ, λx:V ⊢ t ⇓ v
+        // ──────────────────────────────── (EVAL/LAM)
+        //      Γ ⊢ λx:T.t ⇓ λx:V.v
+        Term::Lam(_, ref lam) => {
+            let (param, body) = lam.clone().unbind();
+
+            let ann = normalize(context, &param.inner)?; // 1.
+            let body_context = context.extend_lam(param.name.clone(), ann.clone());
+            let body = normalize(&body_context, &body)?; // 2.
+
+            Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -391,6 +391,27 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             }.into()),
         },
 
+        //  1.  Γ ⊢ R₁ ⇒ Typeᵢ ⤳ T₁
+        //  2.  Γ ⊢ T₁ ⇓ T₁'
+        //  3.  Γ, Πx:T₁' ⊢ R₂ ⇐ Typeⱼ ⤳ T₂
+        //  4.  k = max(i, j)
+        // ────────────────────────────────────────── (INFER/PI)
+        //      Γ ⊢ Πx:R₁.R₂ ⇒ Typeₖ ⤳ Πx:T₁.T₂
+        RawTerm::Pi(meta, ref pi) => {
+            let (param, body) = pi.clone().unbind();
+
+            let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
+            let simp_ann = normalize(context, &elab_ann)?; // 2.
+            let body_context = context.extend_pi(param.name.clone(), simp_ann);
+            let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
+
+            let elab_param = Named::new(param.name.clone(), elab_ann);
+            let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body)).into();
+            let level = cmp::max(level_ann, level_body); // 4.
+
+            Ok((elab_pi, Value::Universe(level).into()))
+        },
+
         //  1.  Γ ⊢ R ⇒ Typeᵢ ⤳ T
         //  2.  Γ ⊢ T ⇓ V₁
         //  3.  Γ, λx:V₁ ⊢ r ⇒ V₂ ⤳ t
@@ -420,27 +441,6 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
                     name: param.name.clone(),
                 }),
             }
-        },
-
-        //  1.  Γ ⊢ R₁ ⇒ Typeᵢ ⤳ T₁
-        //  2.  Γ ⊢ T₁ ⇓ T₁'
-        //  3.  Γ, Πx:T₁' ⊢ R₂ ⇐ Typeⱼ ⤳ T₂
-        //  4.  k = max(i, j)
-        // ────────────────────────────────────────── (INFER/PI)
-        //      Γ ⊢ Πx:R₁.R₂ ⇒ Typeₖ ⤳ Πx:T₁.T₂
-        RawTerm::Pi(meta, ref pi) => {
-            let (param, body) = pi.clone().unbind();
-
-            let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
-            let simp_ann = normalize(context, &elab_ann)?; // 2.
-            let body_context = context.extend_pi(param.name.clone(), simp_ann);
-            let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
-
-            let elab_param = Named::new(param.name.clone(), elab_ann);
-            let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body)).into();
-            let level = cmp::max(level_ann, level_body); // 4.
-
-            Ok((elab_pi, Value::Universe(level).into()))
         },
 
         //  1.  Γ ⊢ r₁ ⇒ Πx:V₁.V₂ ⤳ t₁

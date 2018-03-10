@@ -9,6 +9,41 @@ pub trait ToCore<T> {
     fn to_core(&self) -> T;
 }
 
+/// Convert a sugary pi type from something like:
+///
+/// ```text
+/// (a b : t1) -> t3
+/// ```
+///
+/// To a bunch of nested pi types like:
+///
+/// ```text
+/// (a : t1) -> (b : t1) -> t3
+/// ```
+fn pi_to_core(
+    param_names: &[(ByteSpan, String)],
+    ann: &concrete::Term,
+    body: &concrete::Term,
+) -> core::RcRawTerm {
+    let ann = ann.to_core();
+    let mut term = body.to_core();
+
+    for &(span, ref name) in param_names.iter().rev() {
+        // This could be wrong... :/
+        term = core::RawTerm::Pi(
+            core::SourceMeta {
+                span: span.to(term.span()),
+            },
+            Scope::bind(
+                Named::new(core::Name::User(name.clone()), ann.clone()),
+                term,
+            ),
+        ).into();
+    }
+
+    term
+}
+
 /// Convert a sugary lambda from something like:
 ///
 /// ```text
@@ -40,41 +75,6 @@ fn lam_to_core(
                 },
             };
         }
-    }
-
-    term
-}
-
-/// Convert a sugary pi type from something like:
-///
-/// ```text
-/// (a b : t1) -> t3
-/// ```
-///
-/// To a bunch of nested pi types like:
-///
-/// ```text
-/// (a : t1) -> (b : t1) -> t3
-/// ```
-fn pi_to_core(
-    param_names: &[(ByteSpan, String)],
-    ann: &concrete::Term,
-    body: &concrete::Term,
-) -> core::RcRawTerm {
-    let ann = ann.to_core();
-    let mut term = body.to_core();
-
-    for &(span, ref name) in param_names.iter().rev() {
-        // This could be wrong... :/
-        term = core::RawTerm::Pi(
-            core::SourceMeta {
-                span: span.to(term.span()),
-            },
-            Scope::bind(
-                Named::new(core::Name::User(name.clone()), ann.clone()),
-                term,
-            ),
-        ).into();
     }
 
     term
@@ -181,8 +181,8 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
 
                 core::RawTerm::Var(meta, var).into()
             },
-            concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Pi(_, (ref names, ref ann), ref body) => pi_to_core(names, ann, body),
+            concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
                 let name = core::Name::fresh(None);
                 let ann = ann.to_core();

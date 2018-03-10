@@ -92,21 +92,6 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 // TODO: Better message
                 panic!("Tried to convert a term that was not locally closed");
             },
-            core::RawTerm::Lam(_, ref lam) => {
-                let (_param, _body) = lam.clone().unbind();
-                // use name if it is present, and not used in the current scope
-                // otherwise create a pretty name
-                // add the used name to the environment
-
-                // // convert the body using the new environment
-                // match body.to_concrete(env) {
-                //     // check if the body can be collapsed to form a 'sugary' lambda
-                //     concrete::Term::Lam(_, params, body) => unimplemented!(),
-                //     body => concrete::Term::Lam(ByteSpan::default(), vec![param], body),
-                // }
-
-                unimplemented!()
-            },
             core::RawTerm::Pi(_, ref pi) => {
                 let (param, body) = pi.clone().unbind();
                 if body.free_vars().contains(&param.name) {
@@ -129,6 +114,21 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                         Box::new(body.to_concrete(env)),
                     )
                 }
+            },
+            core::RawTerm::Lam(_, ref lam) => {
+                let (_param, _body) = lam.clone().unbind();
+                // use name if it is present, and not used in the current scope
+                // otherwise create a pretty name
+                // add the used name to the environment
+
+                // // convert the body using the new environment
+                // match body.to_concrete(env) {
+                //     // check if the body can be collapsed to form a 'sugary' lambda
+                //     concrete::Term::Lam(_, params, body) => unimplemented!(),
+                //     body => concrete::Term::Lam(ByteSpan::default(), vec![param], body),
+                // }
+
+                unimplemented!()
             },
             core::RawTerm::App(_, ref fn_term, ref arg) => concrete::Term::Ann(
                 Box::new(fn_term.to_concrete(env)),

@@ -41,8 +41,8 @@ impl LocallyNameless for RcRawTerm {
             },
             RawTerm::Universe(_, _) => {},
             RawTerm::Var(_, ref mut var) => var.close_at(level, name),
-            RawTerm::Lam(_, ref mut lam) => lam.close_at(level, name),
             RawTerm::Pi(_, ref mut pi) => pi.close_at(level, name),
+            RawTerm::Lam(_, ref mut lam) => lam.close_at(level, name),
             RawTerm::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
@@ -58,8 +58,8 @@ impl LocallyNameless for RcRawTerm {
             },
             RawTerm::Universe(_, _) => {},
             RawTerm::Var(_, ref mut var) => var.open_at(level, name),
-            RawTerm::Lam(_, ref mut lam) => lam.open_at(level, name),
             RawTerm::Pi(_, ref mut pi) => pi.open_at(level, name),
+            RawTerm::Lam(_, ref mut lam) => lam.open_at(level, name),
             RawTerm::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);
@@ -77,15 +77,15 @@ impl RcRawTerm {
             },
             RawTerm::Universe(_, _) => {},
             RawTerm::Var(_, ref var) => on_var(var),
+            RawTerm::Pi(_, ref pi) => {
+                pi.unsafe_binder.inner.visit_vars(on_var);
+                pi.unsafe_body.visit_vars(on_var);
+            },
             RawTerm::Lam(_, ref lam) => {
                 if let Some(ref param) = lam.unsafe_binder.inner {
                     param.visit_vars(on_var);
                 }
                 lam.unsafe_body.visit_vars(on_var);
-            },
-            RawTerm::Pi(_, ref pi) => {
-                pi.unsafe_binder.inner.visit_vars(on_var);
-                pi.unsafe_body.visit_vars(on_var);
             },
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
@@ -117,8 +117,8 @@ impl LocallyNameless for RcTerm {
             },
             Term::Universe(_, _) => {},
             Term::Var(_, ref mut var) => var.close_at(level, name),
-            Term::Lam(_, ref mut lam) => lam.close_at(level, name),
             Term::Pi(_, ref mut pi) => pi.close_at(level, name),
+            Term::Lam(_, ref mut lam) => lam.close_at(level, name),
             Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
@@ -134,8 +134,8 @@ impl LocallyNameless for RcTerm {
             },
             Term::Universe(_, _) => {},
             Term::Var(_, ref mut var) => var.open_at(level, name),
-            Term::Lam(_, ref mut lam) => lam.open_at(level, name),
             Term::Pi(_, ref mut pi) => pi.open_at(level, name),
+            Term::Lam(_, ref mut lam) => lam.open_at(level, name),
             Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);
@@ -151,8 +151,8 @@ impl LocallyNameless for RcValue {
         match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => {},
             Value::Var(ref mut var) => var.close_at(level, name),
-            Value::Lam(ref mut lam) => lam.close_at(level, name),
             Value::Pi(ref mut pi) => pi.close_at(level, name),
+            Value::Lam(ref mut lam) => lam.close_at(level, name),
             Value::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
@@ -164,8 +164,8 @@ impl LocallyNameless for RcValue {
         match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => {},
             Value::Var(ref mut var) => var.open_at(level, name),
-            Value::Lam(ref mut lam) => lam.open_at(level, name),
             Value::Pi(ref mut pi) => pi.open_at(level, name),
+            Value::Lam(ref mut lam) => lam.open_at(level, name),
             Value::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);

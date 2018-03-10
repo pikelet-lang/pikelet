@@ -236,7 +236,7 @@ impl Term {
             | Term::Universe(span, _)
             | Term::Var(span, _)
             | Term::Error(span) => span,
-            Term::Lam(start, _, ref body) | Term::Pi(start, _, ref body) => {
+            Term::Pi(start, _, ref body) | Term::Lam(start, _, ref body) => {
                 ByteSpan::new(start, body.span().end())
             },
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),

@@ -143,9 +143,9 @@ impl fmt::Display for RawDefinition {
 /// r,R ::= r:R         1. annotated terms
 ///       | Typeᵢ       2. universes
 ///       | x           3. variables
-///       | λx.r        4. lambda abstractions (no annotation)
-///       | λx:R.r      4. lambda abstractions (with annotation)
-///       | Πx:R₁.R₂    5. dependent function types
+///       | Πx:R₁.R₂    4. dependent function types
+///       | λx.r        5. lambda abstractions (no annotation)
+///       | λx:R.r      5. lambda abstractions (with annotation)
 ///       | R₁ R₂       6. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
@@ -156,10 +156,10 @@ pub enum RawTerm {
     Universe(SourceMeta, Level), // 2.
     /// A variable
     Var(SourceMeta, Var<Name, Debruijn>), // 3.
-    /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, Option<RcRawTerm>>, RcRawTerm>), // 4.
     /// Dependent function types
     Pi(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 5.
+    /// Lambda abstractions
+    Lam(SourceMeta, Scope<Named<Name, Option<RcRawTerm>>, RcRawTerm>), // 4.
     /// RawTerm application
     App(SourceMeta, RcRawTerm, RcRawTerm), // 6.
 }
@@ -170,8 +170,8 @@ impl RcRawTerm {
             RawTerm::Ann(meta, _, _)
             | RawTerm::Universe(meta, _)
             | RawTerm::Var(meta, _)
-            | RawTerm::Lam(meta, _)
             | RawTerm::Pi(meta, _)
+            | RawTerm::Lam(meta, _)
             | RawTerm::App(meta, _, _) => meta.span,
         }
     }
@@ -209,8 +209,8 @@ pub struct Definition {
 /// t,T ::= t:T         1. annotated terms
 ///       | Typeᵢ       2. universes
 ///       | x           3. variables
-///       | λx:T.t      4. lambda abstractions
-///       | Πx:T₁.T₂    5. dependent function types
+///       | Πx:T₁.T₂    4. dependent function types
+///       | λx:T.t      5. lambda abstractions
 ///       | t₁ t₂       6. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
@@ -221,10 +221,10 @@ pub enum Term {
     Universe(SourceMeta, Level), // 2.
     /// A variable
     Var(SourceMeta, Var<Name, Debruijn>), // 3.
-    /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 4.
     /// Dependent function types
     Pi(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 5.
+    /// Lambda abstractions
+    Lam(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 4.
     /// Term application
     App(SourceMeta, RcTerm, RcTerm), // 6.
 }
@@ -255,8 +255,8 @@ impl fmt::Display for Term {
 /// ```text
 /// v,V ::= Typeᵢ       1. universes
 ///       | x           2. variables
-///       | λx:V.v      3. lambda abstractions
-///       | Πx:V₁.V₂    4. dependent function types
+///       | Πx:V₁.V₂    3. dependent function types
+///       | λx:V.v      4. lambda abstractions
 ///       | v t         5. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
@@ -265,10 +265,10 @@ pub enum Value {
     Universe(Level), // 1.
     /// Variables
     Var(Var<Name, Debruijn>), // 2.
-    /// A lambda abstraction
-    Lam(Scope<Named<Name, RcValue>, RcValue>), // 3.
     /// A pi type
-    Pi(Scope<Named<Name, RcValue>, RcValue>), // 4.
+    Pi(Scope<Named<Name, RcValue>, RcValue>), // 3.
+    /// A lambda abstraction
+    Lam(Scope<Named<Name, RcValue>, RcValue>), // 4.
     /// RawTerm application
     App(RcValue, RcTerm), // 5.
 }
