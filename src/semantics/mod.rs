@@ -132,7 +132,7 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
         // Add the definition to the context
         context = context.extend(
             Name::user(name.clone()),
-            Binder::Let(term.clone(), ann.clone()),
+            Binder::Let(ann.clone(), term.clone()),
         );
 
         definitions.push(CheckedDefinition { name, term, ann })
@@ -402,7 +402,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 //  1.  let x:τ = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
                 //      Γ ⊢ x ⇒ τ ⤳ v
-                Some(&Binder::Let(ref ty, ref value)) => Ok((ty.clone(), value.clone())),
+                Some(&Binder::Let(ref ty, _)) => {
+                    Ok((Value::Var(var.clone()).into(), ty.clone()))
+                },
 
                 Some(&Binder::Lam(None)) => Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: binder.span(),
