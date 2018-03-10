@@ -137,15 +137,16 @@ impl fmt::Display for Definition {
     }
 }
 
-/// The core term syntax
+/// Raw terms, unchecked and with implicit syntax that needs to be elaborated
 ///
 /// ```text
-/// e,ρ ::= e:ρ         1. annotated terms
+/// r,R ::= r:R         1. annotated terms
 ///       | Typeᵢ       2. universes
 ///       | x           3. variables
-///       | λx:ρ₁.ρ₂    4. lambda abstractions
-///       | Πx:ρ₁.ρ₂    5. dependent function types
-///       | ρ₁ ρ₂       6. term application
+///       | λx.r        4. lambda abstractions (no annotation)
+///       | λx:R.r      4. lambda abstractions (with annotation)
+///       | Πx:R₁.R₂    5. dependent function types
+///       | R₁ R₂       6. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawTerm {
@@ -184,14 +185,61 @@ impl fmt::Display for RawTerm {
     }
 }
 
+/// The core term syntax
+///
+/// ```text
+/// t,T ::= t:T         1. annotated terms
+///       | Typeᵢ       2. universes
+///       | x           3. variables
+///       | λx:T.t      4. lambda abstractions
+///       | Πx:T₁.T₂    5. dependent function types
+///       | t₁ t₂       6. term application
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum Term {
+    /// A term annotated with a type
+    Ann(SourceMeta, RcTerm, RcTerm), // 1.
+    /// Universes
+    Universe(SourceMeta, Level), // 2.
+    /// A variable
+    Var(SourceMeta, Var<Name, Debruijn>), // 3.
+    /// Lambda abstractions
+    Lam(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 4.
+    /// Dependent function types
+    Pi(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 5.
+    /// Term application
+    App(SourceMeta, RcTerm, RcTerm), // 6.
+}
+
+impl RcTerm {
+    pub fn span(&self) -> ByteSpan {
+        match *self.inner {
+            Term::Ann(meta, _, _)
+            | Term::Universe(meta, _)
+            | Term::Var(meta, _)
+            | Term::Lam(meta, _)
+            | Term::Pi(meta, _)
+            | Term::App(meta, _, _) => meta.span,
+        }
+    }
+}
+
+impl fmt::Display for Term {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
+}
+
 /// Normal forms
 ///
 /// ```text
-/// v,τ ::= Typeᵢ       1. universes
+/// v,V ::= Typeᵢ       1. universes
 ///       | x           2. variables
-///       | λx:τ₁.τ₂    3. lambda abstractions
-///       | Πx:τ₁.τ₂    4. dependent function types
-///       | τ₁ τ₂       5. term application
+///       | λx:V.v      3. lambda abstractions
+///       | Πx:V₁.V₂    4. dependent function types
+///       | v t         5. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -200,11 +248,11 @@ pub enum Value {
     /// Variables
     Var(Var<Name, Debruijn>), // 2.
     /// A lambda abstraction
-    Lam(Scope<Named<Name, Option<RcValue>>, RcValue>), // 3.
+    Lam(Scope<Named<Name, RcValue>, RcValue>), // 3.
     /// A pi type
     Pi(Scope<Named<Name, RcValue>, RcValue>), // 4.
     /// RawTerm application
-    App(RcValue, RcValue), // 5.
+    App(RcValue, RcTerm), // 5.
 }
 
 impl fmt::Display for Value {
@@ -218,6 +266,7 @@ impl fmt::Display for Value {
 // Wrapper types
 
 make_wrapper!(RcRawTerm, Rc, RawTerm);
+make_wrapper!(RcTerm, Rc, Term);
 make_wrapper!(RcValue, Rc, Value);
 
 /// Types are at the term level, so this is just an alias
@@ -226,27 +275,65 @@ pub type Type = Value;
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
 
+impl<'a> From<&'a RcValue> for RcTerm {
+    fn from(src: &'a RcValue) -> RcTerm {
+        let meta = SourceMeta::default();
+
+        match *src.inner {
+            Value::Universe(level) => Term::Universe(meta, level).into(),
+            Value::Var(ref var) => Term::Var(meta, var.clone()).into(),
+            Value::Lam(ref lam) => {
+                let (param, body) = lam.clone().unbind();
+                let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
+
+                Term::Lam(meta, Scope::bind(param, RcTerm::from(&body))).into()
+            },
+            Value::Pi(ref pi) => {
+                let (param, body) = pi.clone().unbind();
+                let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
+
+                Term::Pi(meta, Scope::bind(param, RcTerm::from(&body))).into()
+            },
+            Value::App(ref fn_expr, ref arg_expr) => {
+                Term::App(meta, RcTerm::from(fn_expr), arg_expr.clone()).into()
+            },
+        }
+    }
+}
+
 /// A binder that introduces a variable into the context
 ///
 /// ```text
-/// b ::= λx:τ           1. lambda abstraction
-///     | Πx:τ           2. dependent function
-///     | let x:τ = v    3. let binding
+/// b ::= λx:V           1. lambda abstraction
+///     | Πx:V           2. dependent function
+///     | let x:V = t    3. let binding
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Binder {
     /// A type introduced after entering a lambda abstraction
-    Lam { ann: Option<RcType> }, // 1.
+    Lam { name: Name, ann: RcType }, // 1.
     /// A type introduced after entering a pi type
-    Pi { ann: RcType }, // 2.
+    Pi { name: Name, ann: RcType }, // 2.
     /// A value and type binding that was introduced by passing over a let binding
-    Let { ann: RcType, value: RcValue }, // 3.
+    Let {
+        name: Name,
+        ann: RcType,
+        value: RcTerm,
+    }, // 3.
 }
 
 impl Binder {
     pub fn span(&self) -> ByteSpan {
         // TODO: real span
         ByteSpan::default()
+    }
+
+    pub fn name(&self) -> &Name {
+        match *self {
+            Binder::Lam { ref name, .. }
+            | Binder::Pi { ref name, .. }
+            | Binder::Let { ref name, .. } => name,
+        }
     }
 }
 
@@ -258,7 +345,7 @@ impl Binder {
 /// ```
 #[derive(Clone, PartialEq)]
 pub struct Context {
-    pub binders: List<(Name, Binder)>,
+    pub binders: List<Binder>,
 }
 
 impl Context {
@@ -270,17 +357,14 @@ impl Context {
     }
 
     /// Extend the context with a binder
-    pub fn extend(&self, name: Name, binder: Binder) -> Context {
+    pub fn extend(&self, binder: Binder) -> Context {
         Context {
-            binders: self.binders.push_front((name, binder)),
+            binders: self.binders.push_front(binder),
         }
     }
 
     pub fn lookup_binder(&self, name: &Name) -> Option<&Binder> {
-        self.binders
-            .iter()
-            .find(|&&(ref n, _)| n == name)
-            .map(|&(_, ref b)| b)
+        self.binders.iter().find(|binder| binder.name() == name)
     }
 }
 
@@ -294,7 +378,7 @@ impl fmt::Display for Context {
 
 impl fmt::Debug for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct FmtBinders<'a>(&'a List<(Name, Binder)>);
+        struct FmtBinders<'a>(&'a List<Binder>);
 
         impl<'a> fmt::Debug for FmtBinders<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

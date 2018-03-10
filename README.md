@@ -65,8 +65,9 @@ around more widely:
   - [ ] settle on a logging strategy for judgements
   - [ ] automate name binding boilerplate to get it out of `syntax::core`
   - [ ] review `core::{Term, Value}`
-    - What about `CheckedTerm`s? `ElaboratedTerm`s?
-    - Why is there an `Option<Value>` on `Value::Lam`?
+    - [x] What about `CheckedTerm`s? `ElaboratedTerm`s?
+    - [x] Why is there an `Option<Value>` on `Value::Lam`?
+    - [ ] neutral/weak head normal forms
   - [ ] performance tuning, and profiling
   - [ ] property based testing - see “Effect-Driven QuickChecking of Compilers”
         [[VIDEO][quickchecking-compilers-video]]

@@ -133,8 +133,8 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
         ReplCommand::Eval(parse_term) => {
             let term = parse_term.to_core();
             let context = Context::new();
-            let (_, inferred) = semantics::infer(&context, &term)?;
-            let evaluated = semantics::normalize(&context, &term)?;
+            let (elab_term, inferred) = semantics::infer(&context, &term)?;
+            let evaluated = semantics::normalize(&context, &elab_term)?;
             let doc = pretty::pretty_ann(pretty::Options::default(), &evaluated, &inferred);
 
             println!("{}", doc.pretty(term_width().unwrap_or(usize::MAX)));

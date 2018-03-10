@@ -2,8 +2,8 @@
 
 use pretty::Doc;
 
-use syntax::core::{Definition, Module};
-use syntax::core::{Binder, Context, Level, Name, RawTerm, RcRawTerm, RcValue, Value};
+use syntax::core::{Binder, Context, Definition, Level, Module, Name, RawTerm, RcRawTerm, RcTerm,
+                   RcValue, Term, Value};
 use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
@@ -142,6 +142,35 @@ impl ToDoc for RcRawTerm {
     }
 }
 
+impl ToDoc for Term {
+    fn to_doc(&self, options: Options) -> StaticDoc {
+        match *self {
+            Term::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
+            Term::Universe(_, level) => pretty_universe(options, level),
+            Term::Var(_, ref var) => pretty_var(options, var),
+            Term::Lam(_, ref lam) => pretty_lam(
+                options,
+                &lam.unsafe_binder.name,
+                Some(&lam.unsafe_binder.inner),
+                &lam.unsafe_body,
+            ),
+            Term::Pi(_, ref pi) => pretty_pi(
+                options,
+                &pi.unsafe_binder.name,
+                &pi.unsafe_binder.inner,
+                &pi.unsafe_body,
+            ),
+            Term::App(_, ref f, ref a) => pretty_app(options, f, a),
+        }
+    }
+}
+
+impl ToDoc for RcTerm {
+    fn to_doc(&self, options: Options) -> StaticDoc {
+        self.inner.to_doc(options)
+    }
+}
+
 impl ToDoc for Value {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
@@ -149,7 +178,7 @@ impl ToDoc for Value {
             Value::Lam(ref lam) => pretty_lam(
                 options,
                 &lam.unsafe_binder.name,
-                lam.unsafe_binder.inner.as_ref(),
+                Some(&lam.unsafe_binder.inner),
                 &lam.unsafe_body,
             ),
             Value::Pi(ref pi) => pretty_pi(
@@ -174,43 +203,42 @@ impl ToDoc for Context {
     fn to_doc(&self, options: Options) -> StaticDoc {
         Doc::text("[")
             .append(Doc::intersperse(
-                self.binders
-                    .iter()
-                    .map(|&(ref name, ref binder)| match *binder {
-                        Binder::Lam { ref ann } => Doc::group(
-                            Doc::text(r"\").append(pretty_name(options, name)).append(
-                                match ann.as_ref() {
-                                    Some(ann) => Doc::space()
-                                        .append(Doc::text(":"))
-                                        .append(Doc::space())
-                                        .append(ann.to_doc(options.with_prec(Prec::PI)).group()),
-                                    None => Doc::nil(),
-                                },
-                            ),
-                        ),
-                        Binder::Pi { ref ann } => Doc::group(
-                            Doc::text("(")
-                                .append(pretty_name(options, name))
-                                .append(Doc::space())
+                self.binders.iter().map(|binder| match *binder {
+                    Binder::Lam { ref name, ref ann } => Doc::group(
+                        Doc::text(r"\").append(pretty_name(options, name)).append(
+                            Doc::space()
                                 .append(Doc::text(":"))
                                 .append(Doc::space())
-                                .append(ann.to_doc(options.with_prec(Prec::PI)))
-                                .append(Doc::text(")")),
+                                .append(ann.to_doc(options.with_prec(Prec::PI)).group()),
                         ),
-                        Binder::Let { ref ann, ref value } => Doc::group(
-                            Doc::text("let")
-                                .append(Doc::space())
-                                .append(pretty_name(options, name))
-                                .append(Doc::space())
-                                .append(Doc::text(":"))
-                                .append(Doc::space())
-                                .append(ann.to_doc(options.with_prec(Prec::PI)))
-                                .append(Doc::space())
-                                .append(Doc::text("="))
-                                .append(Doc::space())
-                                .append(value.to_doc(options.with_prec(Prec::PI))),
-                        ),
-                    }),
+                    ),
+                    Binder::Pi { ref name, ref ann } => Doc::group(
+                        Doc::text("(")
+                            .append(pretty_name(options, name))
+                            .append(Doc::space())
+                            .append(Doc::text(":"))
+                            .append(Doc::space())
+                            .append(ann.to_doc(options.with_prec(Prec::PI)))
+                            .append(Doc::text(")")),
+                    ),
+                    Binder::Let {
+                        ref name,
+                        ref ann,
+                        ref value,
+                    } => Doc::group(
+                        Doc::text("let")
+                            .append(Doc::space())
+                            .append(pretty_name(options, name))
+                            .append(Doc::space())
+                            .append(Doc::text(":"))
+                            .append(Doc::space())
+                            .append(ann.to_doc(options.with_prec(Prec::PI)))
+                            .append(Doc::space())
+                            .append(Doc::text("="))
+                            .append(Doc::space())
+                            .append(value.to_doc(options.with_prec(Prec::PI))),
+                    ),
+                }),
                 Doc::text(",").append(Doc::space()),
             ))
             .append(Doc::text("]"))

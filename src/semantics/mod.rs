@@ -10,9 +10,9 @@
 //!
 //! | name           | notation         | inputs        | outputs  | implementing function  |
 //! |----------------|------------------|---------------|----------|------------------------|
-//! | normalization  | `Γ ⊢ e ⇓ v`     | `Γ`, `e`      | `v`      | `semantics::normalize` |
-//! | type checking  | `Γ ⊢ e ⇐ τ ⤳ v` | `Γ`, `e`, `τ` | `v`      | `semantics::check`     |
-//! | type inference | `Γ ⊢ e ⇒ τ ⤳ v` | `Γ`, `e`      | `τ`, `v` | `semantics::infer`     |
+//! | normalization  | `Γ ⊢ t ⇓ v`     | `Γ`, `t`      | `v`      | `semantics::normalize` |
+//! | type checking  | `Γ ⊢ r ⇐ V ⤳ t` | `Γ`, `r`, `V` | `t`      | `semantics::check`     |
+//! | type inference | `Γ ⊢ r ⇒ V ⤳ t` | `Γ`, `r`      | `V`, `t` | `semantics::infer`     |
 //!
 //! The judgements rely on the syntax for terms, values, and contexts that were
 //! previously defined in `syntax::core`.  Care has been taken to design the
@@ -82,8 +82,8 @@
 
 use codespan::ByteSpan;
 
-use syntax::core::{Binder, Context, Level, Module, Name, RawTerm, RcRawTerm, RcType, RcValue,
-                   Value};
+use syntax::core::{Binder, Context, Level, Module, Name, RawTerm, RcRawTerm, RcTerm, RcType,
+                   RcValue, Term, Value};
 use syntax::var::{self, Named, Scope, Var};
 
 #[cfg(test)]
@@ -105,7 +105,7 @@ pub struct CheckedDefinition {
     /// The name of the definition
     pub name: String,
     /// The elaborated value
-    pub term: RcValue,
+    pub term: RcTerm,
     /// The type of the definition
     pub ann: RcType,
 }
@@ -124,6 +124,7 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
             // We have a type annotation! Evaluate it to its normal form, then
             // check that it matches the body of the definition
             Some(ref ann) => {
+                let (ann, _) = infer(&context, ann)?;
                 let ann = normalize(&context, &ann)?;
                 let elab_term = check(&context, &definition.term, &ann)?;
                 (elab_term, ann)
@@ -131,13 +132,11 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
         };
 
         // Add the definition to the context
-        context = context.extend(
-            Name::user(name.clone()),
-            Binder::Let {
-                ann: ann.clone(),
-                value: term.clone(),
-            },
-        );
+        context = context.extend(Binder::Let {
+            name: Name::user(name.clone()),
+            ann: ann.clone(),
+            value: term.clone(),
+        });
 
         definitions.push(CheckedDefinition { name, term, ann })
     }
@@ -154,37 +153,33 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
 /// in the context.
 ///
 /// ```text
-/// Γ ⊢ e ⇓ v
+/// Γ ⊢ t ⇓ v
 /// ```
-///
-/// Here we diverge from the LambdaPi paper by requiring a context to be
-/// supplied. This allows us to resolve previously defined terms during
-/// normalization.
-pub fn normalize(context: &Context, term: &RcRawTerm) -> Result<RcValue, InternalError> {
+pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalError> {
     match *term.inner {
-        //  1.  Γ ⊢ e ⇓ v
+        //  1.  Γ ⊢ t ⇓ v
         // ─────────────────────── (EVAL/ANN)
-        //      Γ ⊢ e:ρ ⇓ v
-        RawTerm::Ann(_, ref expr, _) => {
+        //      Γ ⊢ t:T ⇓ v
+        Term::Ann(_, ref expr, _) => {
             normalize(context, expr) // 1.
         },
 
         // ─────────────────── (EVAL/TYPE)
         //  Γ ⊢ Type ⇓ Type
-        RawTerm::Universe(_, level) => Ok(Value::Universe(level).into()),
+        Term::Universe(_, level) => Ok(Value::Universe(level).into()),
 
-        RawTerm::Var(_, ref var) => match *var {
+        Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
                 // Can't reduce further - we are in a pi or let binding!
                 // We'll have to hope that these are substituted away later,
                 // either in EVAL/APP or INFER/APP. For now we just forward the
                 // variable name onward:
                 //
-                //  1.  λx:τ ∈ Γ
+                //  1.  λx:V ∈ Γ
                 // ───────────────────── (EVAL/VAR-LAM)
                 //      Γ ⊢ x ⇓ x
                 //
-                //  2.  Πx:τ ∈ Γ
+                //  2.  Πx:V ∈ Γ
                 // ───────────────────── (EVAL/VAR-PI)
                 //      Γ ⊢ x ⇓ x
                 Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
@@ -193,10 +188,11 @@ pub fn normalize(context: &Context, term: &RcRawTerm) -> Result<RcValue, Interna
 
                 // We have a value in scope, let's use that!
                 //
-                //  1.  let x:τ = v ∈ Γ
+                //  1.  let x:V = t ∈ Γ
+                //  2.  Γ ⊢ t ⇓ v
                 // ───────────────────── (EVAL/VAR-LET)
                 //      Γ ⊢ x ⇓ v
-                Some(&Binder::Let { ref value, .. }) => Ok(value.clone()),
+                Some(&Binder::Let { ref value, .. }) => normalize(context, value),
 
                 None => Err(InternalError::UndefinedName {
                     var_span: term.span(),
@@ -214,36 +210,35 @@ pub fn normalize(context: &Context, term: &RcRawTerm) -> Result<RcValue, Interna
             }),
         },
 
-        //  1. Γ,λx ⊢ e ⇓ v
-        // ───────────────────────── (EVAL/LAM)
-        //     Γ ⊢ λx.e ⇓ λx.v
-        //
-        //  2.  Γ ⊢ ρ ⇓ τ
-        //  3.  Γ,λx:τ ⊢ e ⇓ v
-        // ──────────────────────────────── (EVAL/LAM-ANN)
-        //      Γ ⊢ λx:ρ.e ⇓ λx:τ.v
-        RawTerm::Lam(_, ref lam) => {
+        //  1.  Γ ⊢ T ⇓ V
+        //  2.  Γ, λx:V ⊢ t ⇓ v
+        // ──────────────────────────────── (EVAL/LAM)
+        //      Γ ⊢ λx:T.t ⇓ λx:V.v
+        Term::Lam(_, ref lam) => {
             let (param, body) = lam.clone().unbind();
 
-            let ann = match param.inner {
-                None => None,
-                Some(ann) => Some(normalize(context, &ann)?), // 2.
-            };
-            let body_context = context.extend(param.name.clone(), Binder::Lam { ann: ann.clone() });
-            let body = normalize(&body_context, &body)?; // 1,3.
+            let ann = normalize(context, &param.inner)?; // 1.
+            let body_context = context.extend(Binder::Lam {
+                name: param.name.clone(),
+                ann: ann.clone(),
+            });
+            let body = normalize(&body_context, &body)?; // 2.
 
             Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
-        //  1.  Γ ⊢ ρ₁ ⇓ τ₁
-        //  2.  Γ,Πx:τ ⊢ ρ₂ ⇓ τ₂
-        // ─────────────────────────────────── (EVAL/PI-ANN)
-        //      Γ ⊢ Πx:ρ₁.ρ₂ ⇓ Πx:τ₁.τ₂
-        RawTerm::Pi(_, ref pi) => {
+        //  1.  Γ ⊢ T₁ ⇓ V₁
+        //  2.  Γ, Πx:V ⊢ T₂ ⇓ V₂
+        // ─────────────────────────────────── (EVAL/PI)
+        //      Γ ⊢ Πx:T₁.T₂ ⇓ Πx:V₁.V₂
+        Term::Pi(_, ref pi) => {
             let (param, body) = pi.clone().unbind();
 
             let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend(param.name.clone(), Binder::Pi { ann: ann.clone() });
+            let body_context = context.extend(Binder::Pi {
+                name: param.name.clone(),
+                ann: ann.clone(),
+            });
             let body = normalize(&body_context, &body)?; // 2.
 
             Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
@@ -252,22 +247,26 @@ pub fn normalize(context: &Context, term: &RcRawTerm) -> Result<RcValue, Interna
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
         // ie. apply functions to their arguments
         //
-        //  1.  Γ ⊢ e₁ ⇓ λx.v₁
-        //  2.  Γ ⊢ e₂ ⇓ v₂
-        // ───────────────────────────── (EVAL/APP)
-        //      Γ ⊢ e₁ e₂ ⇓ v₂[x↦v₂]
-        RawTerm::App(_, ref fn_expr, ref arg) => {
+        //  1.  Γ ⊢ v₁ ⇓ λx:V₁.v₁
+        //  2.  Γ, let x:V₁ = v₂ x ⊢ v₁ ⇓ v₁'
+        // ───────────────────────────────────── (EVAL/APP)
+        //      Γ ⊢ v₁ t₂ ⇓ v₁'
+        Term::App(_, ref fn_expr, ref arg) => {
             let fn_expr = normalize(context, fn_expr)?; // 1.
-            let arg = normalize(context, arg)?; // 2.
 
             match *fn_expr.inner {
                 Value::Lam(ref lam) => {
                     // FIXME: do a local unbind here
-                    let (param, mut body) = lam.clone().unbind();
-                    body.subst(&param.name, &arg);
-                    Ok(body)
+                    let (param, body) = lam.clone().unbind();
+
+                    let body_context = context.extend(Binder::Let {
+                        name: param.name,
+                        ann: param.inner,
+                        value: arg.clone(),
+                    });
+                    normalize(&body_context, &RcTerm::from(&body)) // 2.
                 },
-                _ => Ok(Value::App(fn_expr.clone(), arg).into()),
+                _ => Ok(Value::App(fn_expr.clone(), arg.clone()).into()),
             }
         },
     }
@@ -279,35 +278,29 @@ pub fn normalize(context: &Context, term: &RcRawTerm) -> Result<RcValue, Interna
 /// the expected type and return its elaborated form.
 ///
 /// ```text
-/// Γ ⊢ e ⇐ τ ⤳ v
+/// Γ ⊢ r ⇐ V ⤳ t
 /// ```
-pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<RcValue, TypeError> {
+pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<RcTerm, TypeError> {
     match (&*term.inner, &*expected.inner) {
         // We infer the type of the argument (`τ₁`) of the lambda from the
         // supplied pi type, then 'push' it into the elaborated term, along with
         // the elaborated body (`v`).
         //
-        //  1.  Γ,Πx:τ₁ ⊢ e ⇐ τ₂ ⤳ v
+        //  1.  Γ, Πx:V₁ ⊢ r ⇐ V₂ ⤳ t
         // ────────────────────────────────────── (CHECK/LAM)
-        //      Γ ⊢ λx.e ⇐ Πx:τ₁.τ₂ ⤳ λx:τ₁.v
-        (&RawTerm::Lam(_, ref lam), &Value::Pi(ref pi)) => {
+        //      Γ ⊢ λx.r ⇐ Πx:V₁.V₂ ⤳ λx:V₁.t
+        (&RawTerm::Lam(meta, ref lam), &Value::Pi(ref pi)) => {
             let (lam_param, lam_body, pi_param, pi_body) = var::unbind2(lam.clone(), pi.clone());
 
             if lam_param.inner.is_none() {
-                let body_context = context.extend(
-                    pi_param.name,
-                    Binder::Pi {
-                        ann: pi_param.inner.clone(),
-                    },
-                );
+                let body_context = context.extend(Binder::Pi {
+                    name: pi_param.name,
+                    ann: pi_param.inner.clone(),
+                });
+                let elab_param = Named::new(lam_param.name, RcTerm::from(&pi_param.inner));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
-                let elab_term = Value::Lam(Scope::bind(
-                    Named::new(lam_param.name, Some(pi_param.inner)),
-                    elab_lam_body,
-                )).into();
-
-                return Ok(elab_term);
+                return Ok(Term::Lam(meta, Scope::bind(elab_param, elab_lam_body)).into());
             }
 
             // TODO: We might want to optimise for this case, rather than
@@ -325,10 +318,10 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
     // Flip the direction of the type checker, comparing the type of the
     // expected term for [alpha equivalence] with the inferred term.
     //
-    //  1.  Γ ⊢ e₂ ⇒ τ ⤳ v
-    //  2.  e₁ ≡ e₂
+    //  1.  Γ ⊢ r ⇒ V₂ ⤳ t
+    //  2.  V₁ ≡ V₂
     // ─────────────────────── (CHECK/INFER)
-    //      Γ ⊢ e₁ ⇐ τ ⤳ v
+    //      Γ ⊢ r ⇐ V₁ ⤳ t
     //
     // NOTE: We could change 2. to check for subtyping instead of alpha
     // equivalence. This could be useful for implementing a cumulative
@@ -356,18 +349,18 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 /// and return its elaborated form.
 ///
 /// ```text
-/// Γ ⊢ e ⇒ τ ⤳ v
+/// Γ ⊢ r ⇒ V ⤳ t
 /// ```
-pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcValue, RcType), TypeError> {
+pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), TypeError> {
     use std::cmp;
 
     /// Ensures that the given term is a universe, returning the level of that
     /// universe and its elaborated form.
     ///
     /// ```text
-    /// Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
+    /// Γ ⊢ R ⇒ Typeᵢ ⤳ T
     /// ```
-    fn infer_universe(context: &Context, term: &RcRawTerm) -> Result<(RcValue, Level), TypeError> {
+    fn infer_universe(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, Level), TypeError> {
         let (elab, ty) = infer(context, term)?;
         match *ty.inner {
             Value::Universe(level) => Ok((elab, level)),
@@ -379,49 +372,44 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcValue, RcType), T
     }
 
     match *term.inner {
-        //  1.  Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
-        //  2.  Γ ⊢ ρ ⇓ τ
-        //  3.  Γ ⊢ e ⇐ τ ⤳ v
+        //  1.  Γ ⊢ R ⇒ Typeᵢ ⤳ T
+        //  2.  Γ ⊢ T ⇓ V
+        //  3.  Γ ⊢ r ⇐ V ⤳ r
         // ───────────────────────────── (INFER/ANN)
-        //      Γ ⊢ (e:ρ) ⇒ τ ⤳ v
-        RawTerm::Ann(_, ref expr, ref ty) => {
-            infer_universe(context, ty)?; // 1.
-            let simp_ty = normalize(context, &ty)?; // 2.
+        //      Γ ⊢ (r:R) ⇒ V ⤳ (t:T)
+        RawTerm::Ann(meta, ref expr, ref ty) => {
+            let (elab_ty, _) = infer_universe(context, ty)?; // 1.
+            let simp_ty = normalize(context, &elab_ty)?; // 2.
             let elab_expr = check(context, expr, &simp_ty)?; // 3.
-            Ok((elab_expr, simp_ty))
+            Ok((Term::Ann(meta, elab_expr, elab_ty).into(), simp_ty))
         },
 
         // ───────────────────────────────── (INFER/TYPE)
         //  Γ ⊢ Typeᵢ ⇒ Typeᵢ₊₁ ⤳ Typeᵢ
-        RawTerm::Universe(_, level) => Ok((
-            Value::Universe(level).into(),
+        RawTerm::Universe(meta, level) => Ok((
+            Term::Universe(meta, level).into(),
             Value::Universe(level.succ()).into(),
         )),
 
-        RawTerm::Var(_, ref var) => match *var {
+        RawTerm::Var(meta, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
-                //  1.  λx:τ ∈ Γ
+                //  1.  λx:V ∈ Γ
                 // ─────────────────────── (INFER/VAR-LAM)
-                //      Γ ⊢ x ⇒ τ ⤳ x
+                //      Γ ⊢ x ⇒ V ⤳ x
                 //
-                //  2.  Πx:τ ∈ Γ
+                //  2.  Πx:V ∈ Γ
                 // ─────────────────────── (INFER/VAR-PI)
-                //      Γ ⊢ x ⇒ τ ⤳ x
+                //      Γ ⊢ x ⇒ V ⤳ x
                 //
-                //  3.  let x:τ = v ∈ Γ
+                //  3.  let x:V = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
-                //      Γ ⊢ x ⇒ τ ⤳ v
-                Some(&Binder::Lam { ann: Some(ref ty) })
-                | Some(&Binder::Pi { ann: ref ty })
+                //      Γ ⊢ x ⇒ V ⤳ x
+                Some(&Binder::Lam { ann: ref ty, .. })
+                | Some(&Binder::Pi { ann: ref ty, .. })
                 | Some(&Binder::Let { ann: ref ty, .. }) => {
-                    Ok((Value::Var(var.clone()).into(), ty.clone()))
+                    Ok((Term::Var(meta, var.clone()).into(), ty.clone()))
                 },
 
-                Some(&Binder::Lam { ann: None }) => Err(TypeError::FunctionParamNeedsAnnotation {
-                    param_span: ByteSpan::default(), // TODO: binder.span(),
-                    var_span: Some(term.span()),
-                    name: name.clone(),
-                }),
                 None => Err(TypeError::UndefinedName {
                     var_span: term.span(),
                     name: name.clone(),
@@ -438,29 +426,31 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcValue, RcType), T
             }.into()),
         },
 
-        //  1.  Γ ⊢ ρ ⇒ Typeᵢ ⤳ τ
-        //  2.  Γ ⊢ ρ ⇓ τ₁
-        //  3.  Γ,λx:τ₁ ⊢ e ⇒ τ₂ ⤳ v
+        //  1.  Γ ⊢ R ⇒ Typeᵢ ⤳ T
+        //  2.  Γ ⊢ T ⇓ V₁
+        //  3.  Γ, λx:V₁ ⊢ r ⇒ V₂ ⤳ t
         // ───────────────────────────────────────── (INFER/LAM)
-        //      Γ ⊢ λx:ρ.e ⇒ Πx:τ₁.τ₂ ⤳ λx:τ.v
-        RawTerm::Lam(_, ref lam) => {
+        //      Γ ⊢ λx:R.r ⇒ Πx:V₁.V₂ ⤳ λx:T.t
+        RawTerm::Lam(meta, ref lam) => {
             let (param, body) = lam.clone().unbind();
 
             match param.inner {
                 Some(ann) => {
-                    let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
-                    let simp_ann = normalize(context, &ann)?; // 2.
-                    let binder = Binder::Lam {
-                        ann: Some(simp_ann.clone()),
-                    };
-                    let body_context = context.extend(param.name.clone(), binder);
-                    let (elab_body, body_ty) = infer(&body_context, &body)?; // 3.
+                    let (lam_ann, _) = infer_universe(context, &ann)?; // 1.
+                    let pi_ann = normalize(context, &lam_ann)?; // 2.
+                    let body_ctx = context.extend(Binder::Lam {
+                        name: param.name.clone(),
+                        ann: pi_ann.clone(),
+                    });
+                    let (lam_body, pi_body) = infer(&body_ctx, &body)?; // 3.
 
-                    let elab_param = Named::new(param.name.clone(), Some(elab_ann));
-                    let elab_lam = Scope::bind(elab_param, elab_body);
-                    let pi_ty = Scope::bind(Named::new(param.name.clone(), simp_ann), body_ty);
+                    let lam_param = Named::new(param.name.clone(), lam_ann);
+                    let pi_param = Named::new(param.name.clone(), pi_ann);
 
-                    Ok((Value::Lam(elab_lam).into(), Value::Pi(pi_ty).into()))
+                    Ok((
+                        Term::Lam(meta, Scope::bind(lam_param, lam_body)).into(),
+                        Value::Pi(Scope::bind(pi_param, pi_body)).into(),
+                    ))
                 },
                 None => Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: param.span(),
@@ -470,44 +460,55 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcValue, RcType), T
             }
         },
 
-        //  1.  Γ ⊢ ρ₁ ⇒ Typeᵢ ⤳ τ₁
-        //  2.  Γ ⊢ ρ₁ ⇓ τ₁'
-        //  3.  Γ,Πx:τ₁' ⊢ ρ₂ ⇐ Typeⱼ ⤳ τ₂
+        //  1.  Γ ⊢ R₁ ⇒ Typeᵢ ⤳ T₁
+        //  2.  Γ ⊢ T₁ ⇓ T₁'
+        //  3.  Γ, Πx:T₁' ⊢ R₂ ⇐ Typeⱼ ⤳ T₂
         //  4.  k = max(i, j)
         // ────────────────────────────────────────── (INFER/PI)
-        //      Γ ⊢ Πx:ρ₁.ρ₂ ⇒ Typeₖ ⤳ Πx:τ₁.τ₂
-        RawTerm::Pi(_, ref pi) => {
+        //      Γ ⊢ Πx:R₁.R₂ ⇒ Typeₖ ⤳ Πx:T₁.T₂
+        RawTerm::Pi(meta, ref pi) => {
             let (param, body) = pi.clone().unbind();
 
             let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
-            let simp_ann = normalize(context, &param.inner)?; // 2.
-            let body_context = context.extend(param.name.clone(), Binder::Pi { ann: simp_ann });
+            let simp_ann = normalize(context, &elab_ann)?; // 2.
+            let body_context = context.extend(Binder::Pi {
+                name: param.name.clone(),
+                ann: simp_ann,
+            });
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
             let elab_param = Named::new(param.name.clone(), elab_ann);
-            let elab_pi = Scope::bind(elab_param, elab_body);
+            let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body)).into();
             let level = cmp::max(level_ann, level_body); // 4.
 
-            Ok((Value::Pi(elab_pi).into(), Value::Universe(level).into()))
+            Ok((elab_pi, Value::Universe(level).into()))
         },
 
-        //  1.  Γ ⊢ e₁ ⇒ Πx:τ₁.τ₂ ⤳ v₁
-        //  2.  Γ ⊢ e₂ ⇐ τ₁ ⤳ v₂
-        //  3.  Γ ⊢ τ₂ ⇓ τ₃
+        //  1.  Γ ⊢ r₁ ⇒ Πx:V₁.V₂ ⤳ t₁
+        //  2.  Γ ⊢ r₂ ⇐ V₁ ⤳ t₂
+        //  3.  Γ, let x:V₁ = t₂ ⊢ V₂ ⇓ V₂'
         // ────────────────────────────────────── (INFER/APP)
-        //      Γ ⊢ e₁ e₂ ⇒ τ₃[x↦e₂] ⤳ v₁ v₂
-        RawTerm::App(_, ref fn_expr, ref arg_expr) => {
+        //      Γ ⊢ r₁ r₂ ⇒ V₂' ⤳ t₁ t₂
+        RawTerm::App(meta, ref fn_expr, ref arg_expr) => {
             let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?; // 1.
 
             match *fn_ty.inner {
                 Value::Pi(ref pi) => {
-                    let (pi_param, mut pi_body) = pi.clone().unbind();
+                    let (pi_param, pi_body) = pi.clone().unbind();
 
-                    let elab_arg_expr = check(context, arg_expr, &pi_param.inner)?; // 2.
-                    let simp_arg_expr = normalize(context, &arg_expr)?; // 3.
-                    pi_body.subst(&pi_param.name, &simp_arg_expr);
+                    let arg_expr = check(context, arg_expr, &pi_param.inner)?; // 2.
 
-                    Ok((Value::App(elab_fn_expr, elab_arg_expr).into(), pi_body))
+                    // 3.
+                    let pi_body = normalize(
+                        &context.extend(Binder::Let {
+                            name: pi_param.name,
+                            ann: pi_param.inner,
+                            value: arg_expr.clone(),
+                        }),
+                        &RcTerm::from(&pi_body),
+                    )?;
+
+                    Ok((Term::App(meta, elab_fn_expr, arg_expr).into(), pi_body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: fn_expr.span(),
