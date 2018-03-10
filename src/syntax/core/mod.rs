@@ -381,6 +381,18 @@ impl Context {
         }
     }
 
+    pub fn extend_lam(&self, name: Name, ann: RcType) -> Context {
+        self.extend(Binder::Lam { name, ann })
+    }
+
+    pub fn extend_pi(&self, name: Name, ann: RcType) -> Context {
+        self.extend(Binder::Pi { name, ann })
+    }
+
+    pub fn extend_let(&self, name: Name, ann: RcType, value: RcTerm) -> Context {
+        self.extend(Binder::Let { name, ann, value })
+    }
+
     pub fn lookup_binder(&self, name: &Name) -> Option<&Binder> {
         self.binders.iter().find(|binder| binder.name() == name)
     }

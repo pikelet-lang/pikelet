@@ -114,11 +114,7 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
         };
 
         // Add the definition to the context
-        context = context.extend(Binder::Let {
-            name: Name::user(name.clone()),
-            ann: ann.clone(),
-            value: term.clone(),
-        });
+        context = context.extend_let(Name::user(name.clone()), ann.clone(), term.clone());
 
         definitions.push(Definition { name, term, ann })
     }
@@ -200,10 +196,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let (param, body) = lam.clone().unbind();
 
             let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend(Binder::Lam {
-                name: param.name.clone(),
-                ann: ann.clone(),
-            });
+            let body_context = context.extend_lam(param.name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
             Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
@@ -217,10 +210,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let (param, body) = pi.clone().unbind();
 
             let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend(Binder::Pi {
-                name: param.name.clone(),
-                ann: ann.clone(),
-            });
+            let body_context = context.extend_pi(param.name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
             Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
@@ -241,11 +231,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                     // FIXME: do a local unbind here
                     let (param, body) = lam.clone().unbind();
 
-                    let body_context = context.extend(Binder::Let {
-                        name: param.name,
-                        ann: param.inner,
-                        value: arg.clone(),
-                    });
+                    let body_context = context.extend_let(param.name, param.inner, arg.clone());
                     normalize(&body_context, &RcTerm::from(&body)) // 2.
                 },
                 _ => Ok(Value::App(fn_expr.clone(), arg.clone()).into()),
@@ -275,10 +261,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
             let (lam_param, lam_body, pi_param, pi_body) = var::unbind2(lam.clone(), pi.clone());
 
             if lam_param.inner.is_none() {
-                let body_context = context.extend(Binder::Pi {
-                    name: pi_param.name,
-                    ann: pi_param.inner.clone(),
-                });
+                let body_context = context.extend_pi(pi_param.name, pi_param.inner.clone());
                 let elab_param = Named::new(lam_param.name, RcTerm::from(&pi_param.inner));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
@@ -420,10 +403,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
                 Some(ann) => {
                     let (lam_ann, _) = infer_universe(context, &ann)?; // 1.
                     let pi_ann = normalize(context, &lam_ann)?; // 2.
-                    let body_ctx = context.extend(Binder::Lam {
-                        name: param.name.clone(),
-                        ann: pi_ann.clone(),
-                    });
+                    let body_ctx = context.extend_lam(param.name.clone(), pi_ann.clone());
                     let (lam_body, pi_body) = infer(&body_ctx, &body)?; // 3.
 
                     let lam_param = Named::new(param.name.clone(), lam_ann);
@@ -453,10 +433,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
 
             let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
             let simp_ann = normalize(context, &elab_ann)?; // 2.
-            let body_context = context.extend(Binder::Pi {
-                name: param.name.clone(),
-                ann: simp_ann,
-            });
+            let body_context = context.extend_pi(param.name.clone(), simp_ann);
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
             let elab_param = Named::new(param.name.clone(), elab_ann);
@@ -482,11 +459,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
 
                     // 3.
                     let pi_body = normalize(
-                        &context.extend(Binder::Let {
-                            name: pi_param.name,
-                            ann: pi_param.inner,
-                            value: arg_expr.clone(),
-                        }),
+                        &context.extend_let(pi_param.name, pi_param.inner, arg_expr.clone()),
                         &RcTerm::from(&pi_body),
                     )?;
 
