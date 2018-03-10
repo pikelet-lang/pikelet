@@ -15,10 +15,12 @@ use std::hash::{Hash, Hasher};
 
 /// Free names
 pub trait FreeName: Clone + PartialEq {
+    type Hint;
+
     /// Generate a new, globally unique name
-    // FIXME: optional name hint, for debugging
-    // FIXME: inject free variable generator?
-    fn fresh() -> Self;
+    fn fresh(hint: Option<Self::Hint>) -> Self;
+
+    fn hint(&self) -> Option<Self::Hint>;
 }
 
 pub trait LocallyNameless: Sized {
@@ -211,8 +213,7 @@ where
         let mut binder = self.unsafe_binder;
         let mut body = self.unsafe_body;
 
-        // let free_name = N::fresh(binder.name.name()); // FIXME
-        let free_name = N::fresh();
+        let free_name = N::fresh(binder.name.hint());
         body.open(&free_name);
         binder.name = free_name;
 
@@ -254,9 +255,7 @@ where
     let mut scope2_binder = scope2.unsafe_binder;
     let mut scope2_body = scope2.unsafe_body;
 
-    // let free_name = N::fresh(scope1_binder.name.name()); // FIXME
-    let free_name = N::fresh();
-
+    let free_name = N::fresh(scope1_binder.name.hint());
     scope1_body.open(&free_name);
     scope2_body.open(&free_name);
     scope1_binder.name = free_name.clone();
