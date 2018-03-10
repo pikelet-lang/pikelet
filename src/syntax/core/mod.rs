@@ -227,11 +227,11 @@ pub type RcType = RcValue;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Binder {
     /// A type introduced after entering a lambda abstraction
-    Lam(Option<RcType>), // 1.
+    Lam { ann: Option<RcType> }, // 1.
     /// A type introduced after entering a pi type
-    Pi(RcType), // 2.
+    Pi { ann: RcType }, // 2.
     /// A value and type binding that was introduced by passing over a let binding
-    Let(RcValue, RcType), // 3.
+    Let { ann: RcType, value: RcValue }, // 3.
 }
 
 impl Binder {

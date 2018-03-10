@@ -177,7 +177,7 @@ impl ToDoc for Context {
                 self.binders
                     .iter()
                     .map(|&(ref name, ref binder)| match *binder {
-                        Binder::Lam(ref ann) => Doc::group(
+                        Binder::Lam { ref ann } => Doc::group(
                             Doc::text(r"\").append(pretty_name(options, name)).append(
                                 match ann.as_ref() {
                                     Some(ann) => Doc::space()
@@ -188,7 +188,7 @@ impl ToDoc for Context {
                                 },
                             ),
                         ),
-                        Binder::Pi(ref ann) => Doc::group(
+                        Binder::Pi { ref ann } => Doc::group(
                             Doc::text("(")
                                 .append(pretty_name(options, name))
                                 .append(Doc::space())
@@ -197,7 +197,7 @@ impl ToDoc for Context {
                                 .append(ann.to_doc(options.with_prec(Prec::PI)))
                                 .append(Doc::text(")")),
                         ),
-                        Binder::Let(ref ann, ref value) => Doc::group(
+                        Binder::Let { ref ann, ref value } => Doc::group(
                             Doc::text("let")
                                 .append(Doc::space())
                                 .append(pretty_name(options, name))

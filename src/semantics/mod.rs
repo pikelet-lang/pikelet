@@ -132,7 +132,10 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
         // Add the definition to the context
         context = context.extend(
             Name::user(name.clone()),
-            Binder::Let(ann.clone(), term.clone()),
+            Binder::Let {
+                ann: ann.clone(),
+                value: term.clone(),
+            },
         );
 
         definitions.push(CheckedDefinition { name, term, ann })
@@ -183,13 +186,16 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 //  2.  Πx:τ ∈ Γ
                 // ───────────────────── (EVAL/VAR-PI)
                 //      Γ ⊢ x ⇓ x
-                Some(&Binder::Lam(_)) | Some(&Binder::Pi(_)) => Ok(Value::Var(var.clone()).into()),
+                Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
+                    Ok(Value::Var(var.clone()).into())
+                },
+
                 // We have a value in scope, let's use that!
                 //
                 //  1.  let x:τ = v ∈ Γ
                 // ───────────────────── (EVAL/VAR-LET)
                 //      Γ ⊢ x ⇓ v
-                Some(&Binder::Let(_, ref value)) => Ok(value.clone()),
+                Some(&Binder::Let { ref value, .. }) => Ok(value.clone()),
 
                 None => Err(InternalError::UndefinedName {
                     var_span: term.span(),
@@ -222,7 +228,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 None => None,
                 Some(ann) => Some(normalize(context, &ann)?), // 2.
             };
-            let body_context = context.extend(param.name.clone(), Binder::Lam(ann.clone()));
+            let body_context = context.extend(param.name.clone(), Binder::Lam { ann: ann.clone() });
             let body = normalize(&body_context, &body)?; // 1,3.
 
             Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
@@ -236,7 +242,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let (param, body) = pi.clone().unbind();
 
             let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend(param.name.clone(), Binder::Pi(ann.clone()));
+            let body_context = context.extend(param.name.clone(), Binder::Pi { ann: ann.clone() });
             let body = normalize(&body_context, &body)?; // 2.
 
             Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
@@ -287,8 +293,12 @@ pub fn check(context: &Context, term: &RcTerm, expected: &RcType) -> Result<RcVa
             let (lam_param, lam_body, pi_param, pi_body) = var::unbind2(lam.clone(), pi.clone());
 
             if lam_param.inner.is_none() {
-                let body_context =
-                    context.extend(pi_param.name, Binder::Pi(pi_param.inner.clone()));
+                let body_context = context.extend(
+                    pi_param.name,
+                    Binder::Pi {
+                        ann: pi_param.inner.clone(),
+                    },
+                );
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
                 let elab_term = Value::Lam(Scope::bind(
@@ -396,17 +406,17 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 //  2.  Πx:τ ∈ Γ
                 // ─────────────────────── (INFER/VAR-PI)
                 //      Γ ⊢ x ⇒ τ ⤳ x
-                Some(&Binder::Lam(Some(ref ty))) | Some(&Binder::Pi(ref ty)) => {
-                    Ok((Value::Var(var.clone()).into(), ty.clone()))
-                },
-                //  1.  let x:τ = v ∈ Γ
+                //
+                //  3.  let x:τ = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
                 //      Γ ⊢ x ⇒ τ ⤳ v
-                Some(&Binder::Let(ref ty, _)) => {
+                Some(&Binder::Lam { ann: Some(ref ty) })
+                | Some(&Binder::Pi { ann: ref ty })
+                | Some(&Binder::Let { ann: ref ty, .. }) => {
                     Ok((Value::Var(var.clone()).into(), ty.clone()))
                 },
 
-                Some(&Binder::Lam(None)) => Err(TypeError::FunctionParamNeedsAnnotation {
+                Some(&Binder::Lam { ann: None }) => Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: binder.span(),
                     var_span: Some(term.span()),
                     name: name.clone(),
@@ -439,7 +449,9 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
                 Some(ann) => {
                     let (elab_ann, _) = infer_universe(context, &ann)?; // 1.
                     let simp_ann = normalize(context, &ann)?; // 2.
-                    let binder = Binder::Lam(Some(simp_ann.clone()));
+                    let binder = Binder::Lam {
+                        ann: Some(simp_ann.clone()),
+                    };
                     let body_context = context.extend(param.name.clone(), binder);
                     let (elab_body, body_ty) = infer(&body_context, &body)?; // 3.
 
@@ -468,7 +480,7 @@ pub fn infer(context: &Context, term: &RcTerm) -> Result<(RcValue, RcType), Type
 
             let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
             let simp_ann = normalize(context, &param.inner)?; // 2.
-            let body_context = context.extend(param.name.clone(), Binder::Pi(simp_ann));
+            let body_context = context.extend(param.name.clone(), Binder::Pi { ann: simp_ann });
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
             let elab_param = Named::new(param.name.clone(), elab_ann);
