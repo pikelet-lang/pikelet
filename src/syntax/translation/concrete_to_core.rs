@@ -80,9 +80,9 @@ fn pi_to_core(
     term
 }
 
-impl ToCore<core::Module> for concrete::Module {
+impl ToCore<core::RawModule> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
-    fn to_core(&self) -> core::Module {
+    fn to_core(&self) -> core::RawModule {
         use std::collections::BTreeMap;
         use std::collections::btree_map::Entry;
 
@@ -95,7 +95,7 @@ impl ToCore<core::Module> for concrete::Module {
                 // we encounter their corresponding definitions later as type annotations
                 let mut claims = BTreeMap::new();
                 // The definitions, desugared from the concrete syntax
-                let mut definitions = Vec::<core::Definition>::new();
+                let mut definitions = Vec::<core::RawDefinition>::new();
 
                 for declaration in declarations {
                     match *declaration {
@@ -142,7 +142,7 @@ impl ToCore<core::Module> for concrete::Module {
                                 term.close_at(Debruijn(level as u32), &name);
                             }
 
-                            definitions.push(core::Definition { name, term, ann });
+                            definitions.push(core::RawDefinition { name, term, ann });
                         },
                         concrete::Declaration::Error(_) => unimplemented!("error recovery"),
                     }
@@ -151,7 +151,7 @@ impl ToCore<core::Module> for concrete::Module {
                 // FIXME: Better error
                 assert!(claims.is_empty());
 
-                core::Module {
+                core::RawModule {
                     name: name.1.clone(),
                     definitions,
                 }

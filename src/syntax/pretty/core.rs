@@ -2,8 +2,8 @@
 
 use pretty::Doc;
 
-use syntax::core::{Binder, Context, Definition, Level, Module, Name, RawTerm, RcRawTerm, RcTerm,
-                   RcValue, Term, Value};
+use syntax::core::{Binder, Context, Level, Name, RawDefinition, RawModule, RawTerm, RcRawTerm,
+                   RcTerm, RcValue, Term, Value};
 use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
@@ -245,7 +245,7 @@ impl ToDoc for Context {
     }
 }
 
-impl ToDoc for Definition {
+impl ToDoc for RawDefinition {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match self.ann {
             None => Doc::nil(),
@@ -268,7 +268,7 @@ impl ToDoc for Definition {
     }
 }
 
-impl ToDoc for Module {
+impl ToDoc for RawModule {
     fn to_doc(&self, options: Options) -> StaticDoc {
         Doc::group(
             Doc::text("module")

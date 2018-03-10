@@ -22,7 +22,7 @@ pub trait ToConcrete<T> {
     fn to_concrete(&self, env: &Env) -> T;
 }
 
-impl ToConcrete<concrete::Module> for core::Module {
+impl ToConcrete<concrete::Module> for core::RawModule {
     fn to_concrete(&self, env: &Env) -> concrete::Module {
         use std::iter;
 

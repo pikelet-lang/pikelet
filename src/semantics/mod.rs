@@ -82,8 +82,8 @@
 
 use codespan::ByteSpan;
 
-use syntax::core::{Binder, Context, Level, Module, Name, RawTerm, RcRawTerm, RcTerm, RcType,
-                   RcValue, Term, Value};
+use syntax::core::{Binder, Context, Definition, Level, Module, Name, RawModule, RawTerm,
+                   RcRawTerm, RcTerm, RcType, RcValue, Term, Value};
 use syntax::var::{self, Named, Scope, Var};
 
 #[cfg(test)]
@@ -92,26 +92,8 @@ mod errors;
 
 pub use self::errors::{InternalError, TypeError};
 
-/// A typechecked and elaborated module
-pub struct CheckedModule {
-    /// The name of the module
-    pub name: String,
-    /// The definitions contained in the module
-    pub definitions: Vec<CheckedDefinition>,
-}
-
-/// A typechecked and elaborated definition
-pub struct CheckedDefinition {
-    /// The name of the definition
-    pub name: String,
-    /// The elaborated value
-    pub term: RcTerm,
-    /// The type of the definition
-    pub ann: RcType,
-}
-
 /// Typecheck and elaborate a module
-pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
+pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
     let mut context = Context::new();
     let mut definitions = Vec::with_capacity(module.definitions.len());
 
@@ -138,10 +120,10 @@ pub fn check_module(module: &Module) -> Result<CheckedModule, TypeError> {
             value: term.clone(),
         });
 
-        definitions.push(CheckedDefinition { name, term, ann })
+        definitions.push(Definition { name, term, ann })
     }
 
-    Ok(CheckedModule {
+    Ok(Module {
         name: module.name.clone(),
         definitions,
     })

@@ -104,14 +104,14 @@ impl fmt::Display for Level {
 }
 
 /// A module definition
-pub struct Module {
+pub struct RawModule {
     /// The name of the module
     pub name: String,
     /// The definitions contained in the module
-    pub definitions: Vec<Definition>,
+    pub definitions: Vec<RawDefinition>,
 }
 
-impl fmt::Display for Module {
+impl fmt::Display for RawModule {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
@@ -120,7 +120,7 @@ impl fmt::Display for Module {
 }
 
 /// Top level definitions
-pub struct Definition {
+pub struct RawDefinition {
     /// The name of the declaration
     pub name: String,
     /// The body of the definition
@@ -129,7 +129,7 @@ pub struct Definition {
     pub ann: Option<RcRawTerm>,
 }
 
-impl fmt::Display for Definition {
+impl fmt::Display for RawDefinition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
@@ -183,6 +183,24 @@ impl fmt::Display for RawTerm {
             .group()
             .render_fmt(f.width().unwrap_or(usize::MAX), f)
     }
+}
+
+/// A typechecked and elaborated module
+pub struct Module {
+    /// The name of the module
+    pub name: String,
+    /// The definitions contained in the module
+    pub definitions: Vec<Definition>,
+}
+
+/// A typechecked and elaborated definition
+pub struct Definition {
+    /// The name of the definition
+    pub name: String,
+    /// The elaborated value
+    pub term: RcTerm,
+    /// The type of the definition
+    pub ann: RcType,
 }
 
 /// The core term syntax

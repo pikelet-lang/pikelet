@@ -32,9 +32,9 @@ pub mod cli;
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting::Diagnostic;
 
-use semantics::CheckedModule;
+use syntax::core::Module;
 
-pub fn load_file(file: &FileMap) -> Result<CheckedModule, Vec<Diagnostic>> {
+pub fn load_file(file: &FileMap) -> Result<Module, Vec<Diagnostic>> {
     use syntax::translation::ToCore;
 
     let mut diagnostics = Vec::new();
@@ -52,7 +52,7 @@ pub fn load_file(file: &FileMap) -> Result<CheckedModule, Vec<Diagnostic>> {
     }
 }
 
-pub fn load_prelude(codemap: &mut CodeMap) -> CheckedModule {
+pub fn load_prelude(codemap: &mut CodeMap) -> Module {
     let file = codemap.add_filemap(
         FileName::real("library/prelude.pi"),
         String::from(library::PRELUDE),
