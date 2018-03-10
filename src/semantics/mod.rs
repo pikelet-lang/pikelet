@@ -10,9 +10,9 @@
 //!
 //! | name           | notation         | inputs        | outputs  | implementing function  |
 //! |----------------|------------------|---------------|----------|------------------------|
-//! | normalization  | `Γ ⊢ t ⇓ v`     | `Γ`, `t`      | `v`      | `semantics::normalize` |
-//! | type checking  | `Γ ⊢ r ⇐ V ⤳ t` | `Γ`, `r`, `V` | `t`      | `semantics::check`     |
-//! | type inference | `Γ ⊢ r ⇒ V ⤳ t` | `Γ`, `r`      | `V`, `t` | `semantics::infer`     |
+//! | normalization  | `Γ ⊢ t ⇒ v`     | `Γ`, `t`      | `v`      | `semantics::normalize` |
+//! | type checking  | `Γ ⊢ r ↑ V ⤳ t` | `Γ`, `r`, `V` | `t`      | `semantics::check`     |
+//! | type inference | `Γ ⊢ r ↓ V ⤳ t` | `Γ`, `r`      | `V`, `t` | `semantics::infer`     |
 //!
 //! The judgements rely on the syntax for terms, values, and contexts that were
 //! previously defined in `syntax::core`.  Care has been taken to design the
@@ -131,19 +131,19 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
 /// in the context.
 ///
 /// ```text
-/// Γ ⊢ t ⇓ v
+/// Γ ⊢ t ⇒ v
 /// ```
 pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalError> {
     match *term.inner {
-        //  1.  Γ ⊢ t ⇓ v
+        //  1.  Γ ⊢ t ⇒ v
         // ─────────────────────── (EVAL/ANN)
-        //      Γ ⊢ t:T ⇓ v
+        //      Γ ⊢ t:T ⇒ v
         Term::Ann(_, ref expr, _) => {
             normalize(context, expr) // 1.
         },
 
         // ─────────────────── (EVAL/TYPE)
-        //  Γ ⊢ Type ⇓ Type
+        //  Γ ⊢ Type ⇒ Type
         Term::Universe(_, level) => Ok(Value::Universe(level).into()),
 
         Term::Var(_, ref var) => match *var {
@@ -155,11 +155,11 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 //
                 //  1.  λx:V ∈ Γ
                 // ───────────────────── (EVAL/VAR-LAM)
-                //      Γ ⊢ x ⇓ x
+                //      Γ ⊢ x ⇒ x
                 //
                 //  2.  Πx:V ∈ Γ
                 // ───────────────────── (EVAL/VAR-PI)
-                //      Γ ⊢ x ⇓ x
+                //      Γ ⊢ x ⇒ x
                 Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
                     Ok(Value::Var(var.clone()).into())
                 },
@@ -167,9 +167,9 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 // We have a value in scope, let's use that!
                 //
                 //  1.  let x:V = t ∈ Γ
-                //  2.  Γ ⊢ t ⇓ v
+                //  2.  Γ ⊢ t ⇒ v
                 // ───────────────────── (EVAL/VAR-LET)
-                //      Γ ⊢ x ⇓ v
+                //      Γ ⊢ x ⇒ v
                 Some(&Binder::Let { ref value, .. }) => normalize(context, value),
 
                 None => Err(InternalError::UndefinedName {
@@ -188,10 +188,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             }),
         },
 
-        //  1.  Γ ⊢ T₁ ⇓ V₁
-        //  2.  Γ, Πx:V ⊢ T₂ ⇓ V₂
+        //  1.  Γ ⊢ T₁ ⇒ V₁
+        //  2.  Γ, Πx:V ⊢ T₂ ⇒ V₂
         // ─────────────────────────────────── (EVAL/PI)
-        //      Γ ⊢ Πx:T₁.T₂ ⇓ Πx:V₁.V₂
+        //      Γ ⊢ Πx:T₁.T₂ ⇒ Πx:V₁.V₂
         Term::Pi(_, ref pi) => {
             let (param, body) = pi.clone().unbind();
 
@@ -202,10 +202,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
         },
 
-        //  1.  Γ ⊢ T ⇓ V
-        //  2.  Γ, λx:V ⊢ t ⇓ v
+        //  1.  Γ ⊢ T ⇒ V
+        //  2.  Γ, λx:V ⊢ t ⇒ v
         // ──────────────────────────────── (EVAL/LAM)
-        //      Γ ⊢ λx:T.t ⇓ λx:V.v
+        //      Γ ⊢ λx:T.t ⇒ λx:V.v
         Term::Lam(_, ref lam) => {
             let (param, body) = lam.clone().unbind();
 
@@ -219,10 +219,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
         // ie. apply functions to their arguments
         //
-        //  1.  Γ ⊢ v₁ ⇓ λx:V₁.v₁
-        //  2.  Γ, let x:V₁ = v₂ x ⊢ v₁ ⇓ v₁'
+        //  1.  Γ ⊢ v₁ ⇒ λx:V₁.v₁
+        //  2.  Γ, let x:V₁ = v₂ x ⊢ v₁ ⇒ v₁'
         // ───────────────────────────────────── (EVAL/APP)
-        //      Γ ⊢ v₁ t₂ ⇓ v₁'
+        //      Γ ⊢ v₁ t₂ ⇒ v₁'
         Term::App(_, ref fn_expr, ref arg) => {
             let fn_expr = normalize(context, fn_expr)?; // 1.
 
@@ -246,7 +246,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 /// the expected type and return its elaborated form.
 ///
 /// ```text
-/// Γ ⊢ r ⇐ V ⤳ t
+/// Γ ⊢ r ↑ V ⤳ t
 /// ```
 pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<RcTerm, TypeError> {
     match (&*term.inner, &*expected.inner) {
@@ -254,9 +254,9 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
         // supplied pi type, then 'push' it into the elaborated term, along with
         // the elaborated body (`v`).
         //
-        //  1.  Γ, Πx:V₁ ⊢ r ⇐ V₂ ⤳ t
+        //  1.  Γ, Πx:V₁ ⊢ r ↑ V₂ ⤳ t
         // ────────────────────────────────────── (CHECK/LAM)
-        //      Γ ⊢ λx.r ⇐ Πx:V₁.V₂ ⤳ λx:V₁.t
+        //      Γ ⊢ λx.r ↑ Πx:V₁.V₂ ⤳ λx:V₁.t
         (&RawTerm::Lam(meta, ref lam), &Value::Pi(ref pi)) => {
             let (lam_param, lam_body, pi_param, pi_body) = var::unbind2(lam.clone(), pi.clone());
 
@@ -283,10 +283,10 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
     // Flip the direction of the type checker, comparing the type of the
     // expected term for [alpha equivalence] with the inferred term.
     //
-    //  1.  Γ ⊢ r ⇒ V₂ ⤳ t
+    //  1.  Γ ⊢ r ↓ V₂ ⤳ t
     //  2.  V₁ ≡ V₂
     // ─────────────────────── (CHECK/INFER)
-    //      Γ ⊢ r ⇐ V₁ ⤳ t
+    //      Γ ⊢ r ↑ V₁ ⤳ t
     //
     // NOTE: We could change 2. to check for subtyping instead of alpha
     // equivalence. This could be useful for implementing a cumulative
@@ -314,7 +314,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 /// and return its elaborated form.
 ///
 /// ```text
-/// Γ ⊢ r ⇒ V ⤳ t
+/// Γ ⊢ r ↓ V ⤳ t
 /// ```
 pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), TypeError> {
     use std::cmp;
@@ -323,7 +323,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
     /// universe and its elaborated form.
     ///
     /// ```text
-    /// Γ ⊢ R ⇒ Typeᵢ ⤳ T
+    /// Γ ⊢ R ↓ Typeᵢ ⤳ T
     /// ```
     fn infer_universe(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, Level), TypeError> {
         let (elab, ty) = infer(context, term)?;
@@ -337,11 +337,11 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
     }
 
     match *term.inner {
-        //  1.  Γ ⊢ R ⇒ Typeᵢ ⤳ T
-        //  2.  Γ ⊢ T ⇓ V
-        //  3.  Γ ⊢ r ⇐ V ⤳ r
+        //  1.  Γ ⊢ R ↓ Typeᵢ ⤳ T
+        //  2.  Γ ⊢ T ⇒ V
+        //  3.  Γ ⊢ r ↑ V ⤳ t
         // ───────────────────────────── (INFER/ANN)
-        //      Γ ⊢ (r:R) ⇒ V ⤳ (t:T)
+        //      Γ ⊢ r:R ↓ V ⤳ t:T
         RawTerm::Ann(meta, ref expr, ref ty) => {
             let (elab_ty, _) = infer_universe(context, ty)?; // 1.
             let simp_ty = normalize(context, &elab_ty)?; // 2.
@@ -350,7 +350,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         },
 
         // ───────────────────────────────── (INFER/TYPE)
-        //  Γ ⊢ Typeᵢ ⇒ Typeᵢ₊₁ ⤳ Typeᵢ
+        //  Γ ⊢ Typeᵢ ↓ Typeᵢ₊₁ ⤳ Typeᵢ
         RawTerm::Universe(meta, level) => Ok((
             Term::Universe(meta, level).into(),
             Value::Universe(level.succ()).into(),
@@ -360,15 +360,15 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             Var::Free(ref name) => match context.lookup_binder(name) {
                 //  1.  λx:V ∈ Γ
                 // ─────────────────────── (INFER/VAR-LAM)
-                //      Γ ⊢ x ⇒ V ⤳ x
+                //      Γ ⊢ x ↓ V ⤳ x
                 //
                 //  2.  Πx:V ∈ Γ
                 // ─────────────────────── (INFER/VAR-PI)
-                //      Γ ⊢ x ⇒ V ⤳ x
+                //      Γ ⊢ x ↓ V ⤳ x
                 //
                 //  3.  let x:V = v ∈ Γ
                 // ─────────────────────── (INFER/VAR-LET)
-                //      Γ ⊢ x ⇒ V ⤳ x
+                //      Γ ⊢ x ↓ V ⤳ x
                 Some(&Binder::Lam { ann: ref ty, .. })
                 | Some(&Binder::Pi { ann: ref ty, .. })
                 | Some(&Binder::Let { ann: ref ty, .. }) => {
@@ -391,12 +391,12 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             }.into()),
         },
 
-        //  1.  Γ ⊢ R₁ ⇒ Typeᵢ ⤳ T₁
-        //  2.  Γ ⊢ T₁ ⇓ T₁'
-        //  3.  Γ, Πx:T₁' ⊢ R₂ ⇐ Typeⱼ ⤳ T₂
+        //  1.  Γ ⊢ R₁ ↓ Typeᵢ ⤳ T₁
+        //  2.  Γ ⊢ T₁ ⇒ T₁'
+        //  3.  Γ, Πx:T₁' ⊢ R₂ ↑ Typeⱼ ⤳ T₂
         //  4.  k = max(i, j)
         // ────────────────────────────────────────── (INFER/PI)
-        //      Γ ⊢ Πx:R₁.R₂ ⇒ Typeₖ ⤳ Πx:T₁.T₂
+        //      Γ ⊢ Πx:R₁.R₂ ↓ Typeₖ ⤳ Πx:T₁.T₂
         RawTerm::Pi(meta, ref pi) => {
             let (param, body) = pi.clone().unbind();
 
@@ -412,11 +412,11 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             Ok((elab_pi, Value::Universe(level).into()))
         },
 
-        //  1.  Γ ⊢ R ⇒ Typeᵢ ⤳ T
-        //  2.  Γ ⊢ T ⇓ V₁
-        //  3.  Γ, λx:V₁ ⊢ r ⇒ V₂ ⤳ t
+        //  1.  Γ ⊢ R ↓ Typeᵢ ⤳ T
+        //  2.  Γ ⊢ T ⇒ V₁
+        //  3.  Γ, λx:V₁ ⊢ r ↓ V₂ ⤳ t
         // ───────────────────────────────────────── (INFER/LAM)
-        //      Γ ⊢ λx:R.r ⇒ Πx:V₁.V₂ ⤳ λx:T.t
+        //      Γ ⊢ λx:R.r ↓ Πx:V₁.V₂ ⤳ λx:T.t
         RawTerm::Lam(meta, ref lam) => {
             let (param, body) = lam.clone().unbind();
 
@@ -443,11 +443,11 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             }
         },
 
-        //  1.  Γ ⊢ r₁ ⇒ Πx:V₁.V₂ ⤳ t₁
-        //  2.  Γ ⊢ r₂ ⇐ V₁ ⤳ t₂
-        //  3.  Γ, let x:V₁ = t₂ ⊢ V₂ ⇓ V₂'
+        //  1.  Γ ⊢ r₁ ↓ Πx:V₁.V₂ ⤳ t₁
+        //  2.  Γ ⊢ r₂ ↑ V₁ ⤳ t₂
+        //  3.  Γ, let x:V₁ = t₂ ⊢ V₂ ⇒ V₂'
         // ────────────────────────────────────── (INFER/APP)
-        //      Γ ⊢ r₁ r₂ ⇒ V₂' ⤳ t₁ t₂
+        //      Γ ⊢ r₁ r₂ ↓ V₂' ⤳ t₁ t₂
         RawTerm::App(meta, ref fn_expr, ref arg_expr) => {
             let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?; // 1.
 
