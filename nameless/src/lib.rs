@@ -39,6 +39,8 @@
 #[macro_use]
 extern crate lazy_static;
 
+use std::rc::Rc;
+
 mod debruijn;
 mod gen_id;
 mod named;
@@ -89,5 +91,29 @@ impl<T: LocallyNameless> LocallyNameless for Option<T> {
         if let Some(ref mut inner) = *self {
             inner.open_at(index, name);
         }
+    }
+}
+
+impl<T: LocallyNameless> LocallyNameless for Box<T> {
+    type Name = T::Name;
+
+    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
+        (**self).close_at(index, name);
+    }
+
+    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
+        (**self).open_at(index, name);
+    }
+}
+
+impl<T: LocallyNameless + Clone> LocallyNameless for Rc<T> {
+    type Name = T::Name;
+
+    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
+        Rc::make_mut(self).close_at(index, name);
+    }
+
+    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
+        Rc::make_mut(self).open_at(index, name);
     }
 }

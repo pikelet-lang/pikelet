@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{Debruijn, FreeName, LocallyNameless, GenId, Named, Scope, Var};
+use nameless::{Debruijn, FreeName, GenId, LocallyNameless, Named, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -9,6 +9,9 @@ use std::rc::Rc;
 use std::usize;
 
 use syntax::pretty::{self, ToDoc};
+
+#[macro_use]
+mod macros;
 
 #[cfg(test)]
 mod tests;
@@ -183,11 +186,11 @@ impl fmt::Display for RawTerm {
     }
 }
 
-impl LocallyNameless for RcRawTerm {
+impl LocallyNameless for RawTerm {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             RawTerm::Ann(_, ref mut expr, ref mut ty) => {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
@@ -204,7 +207,7 @@ impl LocallyNameless for RcRawTerm {
     }
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             RawTerm::Ann(_, ref mut expr, ref mut ty) => {
                 expr.open_at(level, name);
                 ty.open_at(level, name);
@@ -316,11 +319,11 @@ impl RcTerm {
     }
 }
 
-impl LocallyNameless for RcTerm {
+impl LocallyNameless for Term {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
@@ -337,7 +340,7 @@ impl LocallyNameless for RcTerm {
     }
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             Term::Ann(_, ref mut expr, ref mut ty) => {
                 expr.open_at(level, name);
                 ty.open_at(level, name);
@@ -382,11 +385,11 @@ pub enum Value {
     Neutral(RcNeutral), // 4.
 }
 
-impl LocallyNameless for RcValue {
+impl LocallyNameless for Value {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             Value::Universe(_) => {},
             Value::Pi(ref mut pi) => pi.close_at(level, name),
             Value::Lam(ref mut lam) => lam.close_at(level, name),
@@ -395,7 +398,7 @@ impl LocallyNameless for RcValue {
     }
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             Value::Universe(_) => {},
             Value::Pi(ref mut pi) => pi.open_at(level, name),
             Value::Lam(ref mut lam) => lam.open_at(level, name),
@@ -429,11 +432,11 @@ pub enum Neutral {
     App(RcNeutral, RcTerm), // 2.
 }
 
-impl LocallyNameless for RcNeutral {
+impl LocallyNameless for Neutral {
     type Name = Name;
 
     fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             Neutral::Var(ref mut var) => var.close_at(level, name),
             Neutral::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
@@ -443,7 +446,7 @@ impl LocallyNameless for RcNeutral {
     }
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *Rc::make_mut(&mut self.inner) {
+        match *self {
             Neutral::Var(ref mut var) => var.open_at(level, name),
             Neutral::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
