@@ -2,8 +2,8 @@
 
 use pretty::Doc;
 
-use syntax::core::{Binder, Context, Level, Name, RawDefinition, RawModule, RawTerm, RcRawTerm,
-                   RcTerm, RcValue, Term, Value};
+use syntax::core::{Binder, Context, Level, Name, Neutral, RawDefinition, RawModule, RawTerm,
+                   RcNeutral, RcRawTerm, RcTerm, RcValue, Term, Value};
 use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
@@ -187,13 +187,27 @@ impl ToDoc for Value {
                 &pi.unsafe_binder.inner,
                 &pi.unsafe_body,
             ),
-            Value::Var(ref var) => pretty_var(options, var),
-            Value::App(ref fn_term, ref arg_term) => pretty_app(options, fn_term, arg_term),
+            Value::Neutral(ref n) => n.to_doc(options),
         }
     }
 }
 
 impl ToDoc for RcValue {
+    fn to_doc(&self, options: Options) -> StaticDoc {
+        self.inner.to_doc(options)
+    }
+}
+
+impl ToDoc for Neutral {
+    fn to_doc(&self, options: Options) -> StaticDoc {
+        match *self {
+            Neutral::Var(ref var) => pretty_var(options, var),
+            Neutral::App(ref fn_term, ref arg_term) => pretty_app(options, fn_term, arg_term),
+        }
+    }
+}
+
+impl ToDoc for RcNeutral {
     fn to_doc(&self, options: Options) -> StaticDoc {
         self.inner.to_doc(options)
     }

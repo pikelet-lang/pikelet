@@ -254,26 +254,48 @@ impl fmt::Display for Term {
 ///
 /// ```text
 /// v,V ::= Typeᵢ       1. universes
-///       | x           2. variables
-///       | Πx:V₁.V₂    3. dependent function types
-///       | λx:V.v      4. lambda abstractions
-///       | v t         5. term application
+///       | Πx:V₁.V₂    2. dependent function types
+///       | λx:V.v      3. lambda abstractions
+///       | n           4. neutral terms
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Universes
     Universe(Level), // 1.
-    /// Variables
-    Var(Var<Name, Debruijn>), // 2.
     /// A pi type
-    Pi(Scope<Named<Name, RcValue>, RcValue>), // 3.
+    Pi(Scope<Named<Name, RcValue>, RcValue>), // 2.
     /// A lambda abstraction
-    Lam(Scope<Named<Name, RcValue>, RcValue>), // 4.
-    /// RawTerm application
-    App(RcValue, RcTerm), // 5.
+    Lam(Scope<Named<Name, RcValue>, RcValue>), // 3.
+    /// Neutral terms
+    Neutral(RcNeutral), // 4.
 }
 
 impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
+}
+
+/// Neutral terms
+///
+/// These might be able to be reduced further depending on the bindings in the
+/// context
+///
+/// ```text
+/// n,N ::= x           1. variables
+///       | n t         2. term application
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+pub enum Neutral {
+    /// Variables
+    Var(Var<Name, Debruijn>), // 1.
+    /// RawTerm application
+    App(RcNeutral, RcTerm), // 2.
+}
+
+impl fmt::Display for Neutral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
@@ -286,6 +308,7 @@ impl fmt::Display for Value {
 make_wrapper!(RcRawTerm, Rc, RawTerm);
 make_wrapper!(RcTerm, Rc, Term);
 make_wrapper!(RcValue, Rc, Value);
+make_wrapper!(RcNeutral, Rc, Neutral);
 
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
@@ -293,13 +316,18 @@ pub type Type = Value;
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
 
+impl From<Neutral> for RcValue {
+    fn from(src: Neutral) -> RcValue {
+        Value::Neutral(src.into()).into()
+    }
+}
+
 impl<'a> From<&'a RcValue> for RcTerm {
     fn from(src: &'a RcValue) -> RcTerm {
         let meta = SourceMeta::default();
 
         match *src.inner {
             Value::Universe(level) => Term::Universe(meta, level).into(),
-            Value::Var(ref var) => Term::Var(meta, var.clone()).into(),
             Value::Lam(ref lam) => {
                 let (param, body) = lam.clone().unbind();
                 let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
@@ -312,7 +340,18 @@ impl<'a> From<&'a RcValue> for RcTerm {
 
                 Term::Pi(meta, Scope::bind(param, RcTerm::from(&body))).into()
             },
-            Value::App(ref fn_expr, ref arg_expr) => {
+            Value::Neutral(ref n) => RcTerm::from(n),
+        }
+    }
+}
+
+impl<'a> From<&'a RcNeutral> for RcTerm {
+    fn from(src: &'a RcNeutral) -> RcTerm {
+        let meta = SourceMeta::default();
+
+        match *src.inner {
+            Neutral::Var(ref var) => Term::Var(meta, var.clone()).into(),
+            Neutral::App(ref fn_expr, ref arg_expr) => {
                 Term::App(meta, RcTerm::from(fn_expr), arg_expr.clone()).into()
             },
         }

@@ -82,7 +82,7 @@
 
 use codespan::ByteSpan;
 
-use syntax::core::{Binder, Context, Definition, Level, Module, Name, RawModule, RawTerm,
+use syntax::core::{Binder, Context, Definition, Level, Module, Name, Neutral, RawModule, RawTerm,
                    RcRawTerm, RcTerm, RcType, RcValue, Term, Value};
 use syntax::var::{self, Named, Scope, Var};
 
@@ -161,7 +161,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 // ───────────────────── (EVAL/VAR-PI)
                 //      Γ ⊢ x ⇒ x
                 Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
-                    Ok(Value::Var(var.clone()).into())
+                    Ok(Neutral::Var(var.clone()).into())
                 },
 
                 // We have a value in scope, let's use that!
@@ -219,14 +219,14 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
         // ie. apply functions to their arguments
         //
-        //  1.  Γ ⊢ v₁ ⇒ λx:V₁.v₁
-        //  2.  Γ, let x:V₁ = v₂ x ⊢ v₁ ⇒ v₁'
+        //  1.  Γ ⊢ t₁ ⇒ λx:V₁.v₁
+        //  2.  Γ, let x:V₁ = t₂ x ⊢ v₁ ⇒ v₁'
         // ───────────────────────────────────── (EVAL/APP)
-        //      Γ ⊢ v₁ t₂ ⇒ v₁'
+        //      Γ ⊢ t₁ t₂ ⇒ v₁'
         Term::App(_, ref fn_expr, ref arg) => {
-            let fn_expr = normalize(context, fn_expr)?; // 1.
+            let fn_value = normalize(context, fn_expr)?; // 1.
 
-            match *fn_expr.inner {
+            match *fn_value.inner {
                 Value::Lam(ref lam) => {
                     // FIXME: do a local unbind here
                     let (param, body) = lam.clone().unbind();
@@ -234,7 +234,12 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                     let body_context = context.extend_let(param.name, param.inner, arg.clone());
                     normalize(&body_context, &RcTerm::from(&body)) // 2.
                 },
-                _ => Ok(Value::App(fn_expr.clone(), arg.clone()).into()),
+                Value::Neutral(ref fn_expr) => {
+                    Ok(Neutral::App(fn_expr.clone(), arg.clone()).into())
+                },
+                _ => Err(InternalError::ArgumentAppliedToNonFunction {
+                    span: fn_expr.span(),
+                }),
             }
         },
     }

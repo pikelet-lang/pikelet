@@ -150,10 +150,29 @@ impl LocallyNameless for RcValue {
     fn close_at(&mut self, level: Debruijn, name: &Name) {
         match *Rc::make_mut(&mut self.inner) {
             Value::Universe(_) => {},
-            Value::Var(ref mut var) => var.close_at(level, name),
             Value::Pi(ref mut pi) => pi.close_at(level, name),
             Value::Lam(ref mut lam) => lam.close_at(level, name),
-            Value::App(ref mut fn_expr, ref mut arg_expr) => {
+            Value::Neutral(ref mut n) => n.close_at(level, name),
+        }
+    }
+
+    fn open_at(&mut self, level: Debruijn, name: &Name) {
+        match *Rc::make_mut(&mut self.inner) {
+            Value::Universe(_) => {},
+            Value::Pi(ref mut pi) => pi.open_at(level, name),
+            Value::Lam(ref mut lam) => lam.open_at(level, name),
+            Value::Neutral(ref mut n) => n.open_at(level, name),
+        }
+    }
+}
+
+impl LocallyNameless for RcNeutral {
+    type Name = Name;
+
+    fn close_at(&mut self, level: Debruijn, name: &Name) {
+        match *Rc::make_mut(&mut self.inner) {
+            Neutral::Var(ref mut var) => var.close_at(level, name),
+            Neutral::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.close_at(level, name);
                 arg_expr.close_at(level, name);
             },
@@ -162,11 +181,8 @@ impl LocallyNameless for RcValue {
 
     fn open_at(&mut self, level: Debruijn, name: &Name) {
         match *Rc::make_mut(&mut self.inner) {
-            Value::Universe(_) => {},
-            Value::Var(ref mut var) => var.open_at(level, name),
-            Value::Pi(ref mut pi) => pi.open_at(level, name),
-            Value::Lam(ref mut lam) => lam.open_at(level, name),
-            Value::App(ref mut fn_expr, ref mut arg_expr) => {
+            Neutral::Var(ref mut var) => var.open_at(level, name),
+            Neutral::App(ref mut fn_expr, ref mut arg_expr) => {
                 fn_expr.open_at(level, name);
                 arg_expr.open_at(level, name);
             },

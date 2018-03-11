@@ -58,7 +58,7 @@ mod normalize {
             normalize(&context, &parse_infer(r"\x : Type => x")).unwrap(),
             Value::Lam(Scope::bind(
                 Named::new(x.clone(), Value::Universe(Level::ZERO).into()),
-                Value::Var(Var::Free(x)).into(),
+                Neutral::Var(Var::Free(x)).into(),
             )).into(),
         );
     }
@@ -73,7 +73,7 @@ mod normalize {
             normalize(&context, &parse_infer(r"(x : Type) -> x")).unwrap(),
             Value::Pi(Scope::bind(
                 Named::new(x.clone(), Value::Universe(Level::ZERO).into()),
-                Value::Var(Var::Free(x)).into(),
+                Neutral::Var(Var::Free(x)).into(),
             )).into(),
         );
     }
@@ -98,8 +98,8 @@ mod normalize {
                 Named::new(x.clone(), ty_arr),
                 Value::Lam(Scope::bind(
                     Named::new(y.clone(), Value::Universe(Level::ZERO).into()),
-                    Value::App(
-                        Value::Var(Var::Free(x)).into(),
+                    Neutral::App(
+                        Neutral::Var(Var::Free(x)).into(),
                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
                     ).into(),
                 )).into(),
@@ -127,8 +127,8 @@ mod normalize {
                 Named::new(x.clone(), ty_arr),
                 Value::Pi(Scope::bind(
                     Named::new(y.clone(), Value::Universe(Level::ZERO).into()),
-                    Value::App(
-                        Value::Var(Var::Free(x)).into(),
+                    Neutral::App(
+                        Neutral::Var(Var::Free(x)).into(),
                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
                     ).into(),
                 )).into(),
