@@ -260,9 +260,9 @@ impl ToDoc for Context {
 
 impl ToDoc for RawDefinition {
     fn to_doc(&self, options: Options) -> StaticDoc {
-        match self.ann {
-            None => Doc::nil(),
-            Some(ref ann) => Doc::group(
+        match *self.ann.inner {
+            RawTerm::Hole(_) => Doc::nil(),
+            ref ann => Doc::group(
                 Doc::as_string(&self.name)
                     .append(Doc::space())
                     .append(Doc::text(":"))

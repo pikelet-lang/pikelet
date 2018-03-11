@@ -80,7 +80,7 @@ pub struct RawDefinition {
     /// The body of the definition
     pub term: RcRawTerm,
     /// An optional type annotation to aid in type inference
-    pub ann: Option<RcRawTerm>,
+    pub ann: RcRawTerm,
 }
 
 impl fmt::Display for RawDefinition {

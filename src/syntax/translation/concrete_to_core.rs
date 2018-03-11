@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::{Debruijn, FreeName, LocallyNameless, Named, Scope, Var};
+use nameless::{FreeName, Named, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
@@ -81,9 +81,6 @@ fn lam_to_core(
 impl ToCore<core::RawModule> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
     fn to_core(&self) -> core::RawModule {
-        use std::collections::BTreeMap;
-        use std::collections::btree_map::Entry;
-
         match *self {
             concrete::Module::Valid {
                 ref name,
@@ -91,7 +88,7 @@ impl ToCore<core::RawModule> for concrete::Module {
             } => {
                 // The type claims that we have encountered so far! We'll use these when
                 // we encounter their corresponding definitions later as type annotations
-                let mut claims = BTreeMap::new();
+                let mut prev_claim = None;
                 // The definitions, desugared from the concrete syntax
                 let mut definitions = Vec::<core::RawDefinition>::new();
 
@@ -100,54 +97,56 @@ impl ToCore<core::RawModule> for concrete::Module {
                         concrete::Declaration::Import { .. } => {
                             unimplemented!("import declarations")
                         },
-                        // We've enountered a claim! Let's try to add it to the claims
-                        // that we've seen so far...
                         concrete::Declaration::Claim {
                             name: (_, ref name),
                             ref ann,
                             ..
-                        } => {
-                            match claims.entry(name) {
-                                // Oh no! We've already seen a claim for this name!
-                                Entry::Occupied(_) => panic!(), // FIXME: Better error
-                                // This name does not yet have a claim associated with it
-                                Entry::Vacant(mut entry) => {
-                                    let mut ann = ann.to_core();
-
-                                    for (level, definition) in definitions.iter().rev().enumerate()
-                                    {
-                                        let name = core::Name::user(definition.name.clone());
-                                        ann.close_at(Debruijn(level as u32), &name);
-                                    }
-
-                                    entry.insert(ann)
-                                },
-                            };
+                        } => match prev_claim.take() {
+                            Some((name, ann)) => {
+                                let term = core::RawTerm::Hole(core::SourceMeta::default()).into();
+                                definitions.push(core::RawDefinition { name, term, ann });
+                            },
+                            None => prev_claim = Some((name.clone(), ann.to_core())),
                         },
-                        // We've encountered a definition. Let's desugar it!
                         concrete::Declaration::Definition {
                             name: (_, ref name),
                             ref params,
                             ref body,
                             ..
                         } => {
-                            let name = name.clone();
-                            let mut term = lam_to_core(params, body);
-                            let ann = claims.remove(&name);
+                            let default_meta = core::SourceMeta::default();
 
-                            for (level, definition) in definitions.iter().rev().enumerate() {
-                                let name = core::Name::user(definition.name.clone());
-                                term.close_at(Debruijn(level as u32), &name);
-                            }
-
-                            definitions.push(core::RawDefinition { name, term, ann });
+                            match prev_claim.take() {
+                                None => definitions.push(core::RawDefinition {
+                                    name: name.clone(),
+                                    ann: core::RawTerm::Hole(default_meta).into(),
+                                    term: lam_to_core(params, body),
+                                }),
+                                Some((claim_name, ann)) => {
+                                    if claim_name == *name {
+                                        definitions.push(core::RawDefinition {
+                                            name: name.clone(),
+                                            ann,
+                                            term: lam_to_core(params, body),
+                                        });
+                                    } else {
+                                        definitions.push(core::RawDefinition {
+                                            name: claim_name.clone(),
+                                            ann,
+                                            term: core::RawTerm::Hole(default_meta).into(),
+                                        });
+                                        definitions.push(core::RawDefinition {
+                                            name: name.clone(),
+                                            ann: core::RawTerm::Hole(default_meta).into(),
+                                            term: lam_to_core(params, body),
+                                        });
+                                    }
+                                },
+                            };
                         },
                         concrete::Declaration::Error(_) => unimplemented!("error recovery"),
                     }
                 }
-
-                // FIXME: Better error
-                assert!(claims.is_empty());
 
                 core::RawModule {
                     name: name.1.clone(),

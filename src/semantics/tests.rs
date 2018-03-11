@@ -580,6 +580,8 @@ mod infer {
 
 mod check_module {
     use library;
+    use codespan_reporting;
+
     use super::*;
 
     #[test]
@@ -591,6 +593,9 @@ mod check_module {
         assert!(errors.is_empty());
 
         let module = concrete_module.to_core();
-        check_module(&module).unwrap();
+        if let Err(err) = check_module(&module) {
+            codespan_reporting::emit(&codemap, &err.to_diagnostic());
+            panic!("type error!")
+        }
     }
 }

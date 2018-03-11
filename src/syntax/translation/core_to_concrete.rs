@@ -31,12 +31,11 @@ impl ToConcrete<concrete::Module> for core::RawModule {
             .flat_map(|definition| {
                 let name = (ByteSpan::default(), definition.name.clone());
 
-                // build up the type claim, if it exists
-                let ann = definition.ann.as_ref();
-                let new_ann = ann.map(|ann| concrete::Declaration::Claim {
+                // build up the type claim
+                let new_ann = concrete::Declaration::Claim {
                     name: name.clone(),
-                    ann: ann.to_concrete(env),
-                });
+                    ann: definition.ann.to_concrete(env),
+                };
 
                 // build up the concrete definition
                 let new_definition = {
@@ -49,7 +48,7 @@ impl ToConcrete<concrete::Module> for core::RawModule {
                     concrete::Declaration::Definition { name, params, body }
                 };
 
-                new_ann.into_iter().chain(iter::once(new_definition))
+                iter::once(new_ann).chain(iter::once(new_definition))
             })
             .collect();
 
