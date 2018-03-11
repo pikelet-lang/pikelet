@@ -1,8 +1,8 @@
 use codespan::ByteSpan;
+use nameless::Var;
 
 use syntax::concrete;
 use syntax::core;
-use syntax::var::Var;
 
 /// An environment used to reconstruct concrete terms
 pub struct Env {

@@ -81,10 +81,10 @@
 //! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
 
 use codespan::ByteSpan;
+use nameless::{self, Named, Scope, Var};
 
 use syntax::core::{Binder, Context, Definition, Level, Module, Name, Neutral, RawModule, RawTerm,
                    RcRawTerm, RcTerm, RcType, RcValue, Term, Value};
-use syntax::var::{self, Named, Scope, Var};
 
 #[cfg(test)]
 mod tests;
@@ -263,7 +263,8 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.r ↑ Πx:V₁.V₂ ⤳ λx:V₁.t
         (&RawTerm::Lam(meta, ref lam), &Value::Pi(ref pi)) => {
-            let (lam_param, lam_body, pi_param, pi_body) = var::unbind2(lam.clone(), pi.clone());
+            let (lam_param, lam_body, pi_param, pi_body) =
+                nameless::unbind2(lam.clone(), pi.clone());
 
             if lam_param.inner.is_none() {
                 let body_context = context.extend_pi(pi_param.name, pi_param.inner.clone());

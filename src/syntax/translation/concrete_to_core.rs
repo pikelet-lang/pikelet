@@ -1,8 +1,8 @@
 use codespan::ByteSpan;
+use nameless::{Debruijn, FreeName, LocallyNameless, Named, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
-use syntax::var::{Debruijn, FreeName, LocallyNameless, Named, Scope, Var};
 
 /// Translate something to the corresponding core representation
 pub trait ToCore<T> {

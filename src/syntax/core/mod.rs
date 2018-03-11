@@ -1,13 +1,13 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
+use nameless::{Debruijn, FreeName, GenId, Named, Scope, Var};
 use rpds::List;
 use std::fmt;
 use std::rc::Rc;
 use std::usize;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::var::{Debruijn, FreeName, GenId, Named, Scope, Var};
 
 // YUCK!
 mod nameplate_ickiness;

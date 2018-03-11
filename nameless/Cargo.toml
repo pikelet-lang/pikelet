@@ -1,0 +1,7 @@
+[package]
+name = "nameless"
+version = "0.1.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+
+[dependencies]
+lazy_static = "1.0"

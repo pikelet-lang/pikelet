@@ -8,4 +8,3 @@ pub mod core;
 pub mod parse;
 pub mod pretty;
 pub mod translation;
-pub mod var;

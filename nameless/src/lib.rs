@@ -10,6 +10,9 @@
 //! - [A Locally-nameless Backend for Ott](http://www.di.ens.fr/~zappa/projects/ln_ott/)
 //! - [Library STLC_Tutorial](https://www.cis.upenn.edu/~plclub/popl08-tutorial/code/coqdoc/STLC_Tutorial.html)
 
+#[macro_use]
+extern crate lazy_static;
+
 use std::fmt;
 use std::hash::{Hash, Hasher};
 

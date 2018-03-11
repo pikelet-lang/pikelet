@@ -2,10 +2,10 @@
 
 use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
+use nameless::Debruijn;
 use std::fmt;
 
 use syntax::core::{Name, RcType};
-use syntax::var::Debruijn;
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]

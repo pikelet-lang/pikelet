@@ -1,10 +1,10 @@
 //! Pretty printing for the core syntax
 
+use nameless::{Debruijn, Var};
 use pretty::Doc;
 
 use syntax::core::{Binder, Context, Level, Name, Neutral, RawDefinition, RawModule, RawTerm,
                    RcNeutral, RcRawTerm, RcTerm, RcValue, Term, Value};
-use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
 

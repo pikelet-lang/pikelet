@@ -26,8 +26,8 @@
 //!     - [Github](https://github.com/plclub/metalib)
 
 use std::collections::HashSet;
+use nameless::LocallyNameless;
 
-use syntax::var::LocallyNameless;
 use super::*;
 
 impl LocallyNameless for RcRawTerm {
