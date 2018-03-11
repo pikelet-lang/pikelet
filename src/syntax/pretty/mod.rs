@@ -5,9 +5,6 @@ use pretty::{BoxDoc, Doc};
 mod concrete;
 mod core;
 
-// FIXME: Remove this re-export!
-pub use self::core::pretty_ann;
-
 /// Configurable parameters for controlling the pretty printer
 #[derive(Copy, Clone)]
 pub struct Options {

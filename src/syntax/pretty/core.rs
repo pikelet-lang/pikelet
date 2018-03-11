@@ -8,7 +8,7 @@ use syntax::var::{Debruijn, Var};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
 
-pub fn pretty_ann<E: ToDoc, T: ToDoc>(options: Options, expr: &E, ty: &T) -> StaticDoc {
+fn pretty_ann<E: ToDoc, T: ToDoc>(options: Options, expr: &E, ty: &T) -> StaticDoc {
     parens_if(
         Prec::ANN < options.prec,
         Doc::group(
@@ -23,7 +23,7 @@ pub fn pretty_ann<E: ToDoc, T: ToDoc>(options: Options, expr: &E, ty: &T) -> Sta
     )
 }
 
-pub fn pretty_universe(options: Options, level: Level) -> StaticDoc {
+fn pretty_universe(options: Options, level: Level) -> StaticDoc {
     if level == Level(0) {
         Doc::text("Type")
     } else {
@@ -34,14 +34,14 @@ pub fn pretty_universe(options: Options, level: Level) -> StaticDoc {
     }
 }
 
-pub fn pretty_var(options: Options, var: &Var<Name, Debruijn>) -> StaticDoc {
+fn pretty_var(options: Options, var: &Var<Name, Debruijn>) -> StaticDoc {
     match options.debug_indices {
         true => Doc::text(format!("{:#}", var)),
         false => Doc::as_string(var),
     }
 }
 
-pub fn pretty_name(options: Options, name: &Name) -> StaticDoc {
+fn pretty_name(options: Options, name: &Name) -> StaticDoc {
     // FIXME: pretty names
     match options.debug_indices {
         true => Doc::text(format!("{:#}", name)),
@@ -49,7 +49,7 @@ pub fn pretty_name(options: Options, name: &Name) -> StaticDoc {
     }
 }
 
-pub fn pretty_lam<A: ToDoc, B: ToDoc>(
+fn pretty_lam<A: ToDoc, B: ToDoc>(
     options: Options,
     name: &Name,
     ann: Option<&A>,
@@ -77,12 +77,7 @@ pub fn pretty_lam<A: ToDoc, B: ToDoc>(
     )
 }
 
-pub fn pretty_pi<A: ToDoc, B: ToDoc>(
-    options: Options,
-    name: &Name,
-    ann: &A,
-    body: &B,
-) -> StaticDoc {
+fn pretty_pi<A: ToDoc, B: ToDoc>(options: Options, name: &Name, ann: &A, body: &B) -> StaticDoc {
     parens_if(
         Prec::PI < options.prec,
         Doc::group(
@@ -103,7 +98,7 @@ pub fn pretty_pi<A: ToDoc, B: ToDoc>(
     )
 }
 
-pub fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &A) -> StaticDoc {
+fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &A) -> StaticDoc {
     parens_if(
         Prec::APP < options.prec,
         Doc::nil()
