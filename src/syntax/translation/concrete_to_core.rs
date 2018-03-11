@@ -35,7 +35,7 @@ fn pi_to_core(
                 span: span.to(term.span()),
             },
             Scope::bind(
-                Named::new(core::Name::User(name.clone()), ann.clone()),
+                Named::new(core::Name::user(name.clone()), ann.clone()),
                 term,
             ),
         ).into();
@@ -63,7 +63,7 @@ fn lam_to_core(
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(span, ref name) in names.iter().rev() {
-            let name = core::Name::User(name.clone());
+            let name = core::Name::user(name.clone());
             let meta = core::SourceMeta {
                 span: span.to(term.span()),
             };
@@ -177,7 +177,7 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
                 core::RawTerm::Universe(meta, core::Level(level.unwrap_or(0))).into()
             },
             concrete::Term::Var(_, ref x) => {
-                let var = Var::Free(core::Name::User(x.clone()));
+                let var = Var::Free(core::Name::user(x.clone()));
 
                 core::RawTerm::Var(meta, var).into()
             },

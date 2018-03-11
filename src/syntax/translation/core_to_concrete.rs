@@ -81,7 +81,7 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 concrete::Term::Universe(meta.span, level.to_concrete(env))
             },
             core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
-                concrete::Term::Var(meta.span, name.clone())
+                concrete::Term::Var(meta.span, name.to_string()) // FIXME
             },
             core::RawTerm::Var(_, Var::Free(core::Name::Gen(ref _gen))) => {
                 // TODO: use name if it is present, and not used in the current scope

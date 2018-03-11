@@ -17,7 +17,7 @@ mod name;
 #[cfg(test)]
 mod tests;
 
-pub use self::name::Name;
+pub use self::name::{Ident, Name};
 
 /// Source metadata that should be ignored when checking for alpha equality
 #[derive(Debug, Copy, Clone)]
