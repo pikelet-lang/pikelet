@@ -96,11 +96,11 @@ impl fmt::Display for RawDefinition {
 /// ```text
 /// r,R ::= r:R         1. annotated terms
 ///       | Typeᵢ       2. universes
-///       | x           3. variables
-///       | Πx:R₁.R₂    4. dependent function types
-///       | λx.r        5. lambda abstractions (no annotation)
-///       | λx:R.r      5. lambda abstractions (with annotation)
-///       | R₁ R₂       6. term application
+///       | _           3. hole
+///       | x           4. variables
+///       | Πx:R₁.R₂    5. dependent function types
+///       | λx:R.r      6. lambda abstractions
+///       | R₁ R₂       7. term application
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawTerm {
@@ -108,14 +108,16 @@ pub enum RawTerm {
     Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
     /// Universes
     Universe(SourceMeta, Level), // 2.
+    /// A hole
+    Hole(SourceMeta), // 3.
     /// A variable
-    Var(SourceMeta, Var<Name, Debruijn>), // 3.
+    Var(SourceMeta, Var<Name, Debruijn>), // 4.
     /// Dependent function types
     Pi(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 5.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, Option<RcRawTerm>>, RcRawTerm>), // 4.
+    Lam(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 6.
     /// RawTerm application
-    App(SourceMeta, RcRawTerm, RcRawTerm), // 6.
+    App(SourceMeta, RcRawTerm, RcRawTerm), // 7.
 }
 
 impl RcRawTerm {
@@ -123,6 +125,7 @@ impl RcRawTerm {
         match *self.inner {
             RawTerm::Ann(meta, _, _)
             | RawTerm::Universe(meta, _)
+            | RawTerm::Hole(meta)
             | RawTerm::Var(meta, _)
             | RawTerm::Pi(meta, _)
             | RawTerm::Lam(meta, _)
@@ -148,7 +151,7 @@ impl LocallyNameless for RawTerm {
                 expr.close_at(level, name);
                 ty.close_at(level, name);
             },
-            RawTerm::Universe(_, _) => {},
+            RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
             RawTerm::Var(_, ref mut var) => var.close_at(level, name),
             RawTerm::Pi(_, ref mut pi) => pi.close_at(level, name),
             RawTerm::Lam(_, ref mut lam) => lam.close_at(level, name),
@@ -165,7 +168,7 @@ impl LocallyNameless for RawTerm {
                 expr.open_at(level, name);
                 ty.open_at(level, name);
             },
-            RawTerm::Universe(_, _) => {},
+            RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
             RawTerm::Var(_, ref mut var) => var.open_at(level, name),
             RawTerm::Pi(_, ref mut pi) => pi.open_at(level, name),
             RawTerm::Lam(_, ref mut lam) => lam.open_at(level, name),
@@ -184,16 +187,14 @@ impl RcRawTerm {
                 expr.visit_vars(on_var);
                 ty.visit_vars(on_var);
             },
-            RawTerm::Universe(_, _) => {},
+            RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
             RawTerm::Var(_, ref var) => on_var(var),
             RawTerm::Pi(_, ref pi) => {
                 pi.unsafe_binder.inner.visit_vars(on_var);
                 pi.unsafe_body.visit_vars(on_var);
             },
             RawTerm::Lam(_, ref lam) => {
-                if let Some(ref param) = lam.unsafe_binder.inner {
-                    param.visit_vars(on_var);
-                }
+                lam.unsafe_binder.inner.visit_vars(on_var);
                 lam.unsafe_body.visit_vars(on_var);
             },
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {

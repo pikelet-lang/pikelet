@@ -112,6 +112,7 @@ impl ToDoc for Term {
                     Doc::space().append(Doc::as_string(level))
                 }))
             },
+            Term::Hole(_) => Doc::text("_"),
             Term::Var(_, ref name) => Doc::as_string(name),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
                 .append(pretty_lam_params(options, params))

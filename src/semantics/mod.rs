@@ -266,7 +266,8 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
             let (lam_param, lam_body, pi_param, pi_body) =
                 nameless::unbind2(lam.clone(), pi.clone());
 
-            if lam_param.inner.is_none() {
+            // Elaborate the hole, if it exists
+            if let RawTerm::Hole(_) = *lam_param.inner.inner {
                 let body_context = context.extend_pi(pi_param.name, pi_param.inner.clone());
                 let elab_param = Named::new(lam_param.name, RcTerm::from(&pi_param.inner));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
@@ -281,6 +282,12 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
             return Err(TypeError::UnexpectedFunction {
                 span: term.span(),
                 expected: expected.clone(),
+            });
+        },
+        (&RawTerm::Hole(meta), _) => {
+            return Err(TypeError::UnableToElaborateHole {
+                span: meta.span,
+                expected: Some(expected.clone()),
             });
         },
         _ => {},
@@ -362,6 +369,11 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             Value::Universe(level.succ()).into(),
         )),
 
+        RawTerm::Hole(meta) => Err(TypeError::UnableToElaborateHole {
+            span: meta.span,
+            expected: None,
+        }),
+
         RawTerm::Var(meta, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
                 //  1.  λx:V ∈ Γ
@@ -426,27 +438,27 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         RawTerm::Lam(meta, ref lam) => {
             let (param, body) = lam.clone().unbind();
 
-            match param.inner {
-                Some(ann) => {
-                    let (lam_ann, _) = infer_universe(context, &ann)?; // 1.
-                    let pi_ann = normalize(context, &lam_ann)?; // 2.
-                    let body_ctx = context.extend_lam(param.name.clone(), pi_ann.clone());
-                    let (lam_body, pi_body) = infer(&body_ctx, &body)?; // 3.
-
-                    let lam_param = Named::new(param.name.clone(), lam_ann);
-                    let pi_param = Named::new(param.name.clone(), pi_ann);
-
-                    Ok((
-                        Term::Lam(meta, Scope::bind(lam_param, lam_body)).into(),
-                        Value::Pi(Scope::bind(pi_param, pi_body)).into(),
-                    ))
-                },
-                None => Err(TypeError::FunctionParamNeedsAnnotation {
+            // Check for holes before entering to ensure we get a nice error
+            if let RawTerm::Hole(_) = *param.inner.inner {
+                return Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: param.span(),
                     var_span: None,
                     name: param.name.clone(),
-                }),
+                });
             }
+
+            let (lam_ann, _) = infer_universe(context, &param.inner)?; // 1.
+            let pi_ann = normalize(context, &lam_ann)?; // 2.
+            let body_ctx = context.extend_lam(param.name.clone(), pi_ann.clone());
+            let (lam_body, pi_body) = infer(&body_ctx, &body)?; // 3.
+
+            let lam_param = Named::new(param.name.clone(), lam_ann);
+            let pi_param = Named::new(param.name.clone(), pi_ann);
+
+            Ok((
+                Term::Lam(meta, Scope::bind(lam_param, lam_body)).into(),
+                Value::Pi(Scope::bind(pi_param, pi_body)).into(),
+            ))
         },
 
         //  1.  Γ ⊢ r₁ ↓ Πx:V₁.V₂ ⤳ t₁

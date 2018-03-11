@@ -65,6 +65,10 @@ pub enum TypeError {
         var_span: Option<ByteSpan>,
         name: Name,
     },
+    UnableToElaborateHole {
+        span: ByteSpan,
+        expected: Option<RcType>,
+    },
     Mismatch {
         span: ByteSpan,
         found: RcType,
@@ -110,6 +114,20 @@ impl TypeError {
                 Label::new_primary(param_span)
                     .with_message("the parameter that requires an annotation"),
             ),
+            TypeError::UnableToElaborateHole {
+                span,
+                expected: None,
+                ..
+            } => Diagnostic::new_error("unable to elaborate hole")
+                .with_label(Label::new_primary(span).with_message("the hole")),
+            TypeError::UnableToElaborateHole {
+                span,
+                expected: Some(ref expected),
+                ..
+            } => Diagnostic::new_error(format!(
+                "unable to elaborate hole - expected: `{}`",
+                expected,
+            )).with_label(Label::new_primary(span).with_message("the hole")),
             TypeError::UnexpectedFunction {
                 span, ref expected, ..
             } => Diagnostic::new_error(format!(
@@ -154,6 +172,13 @@ impl fmt::Display for TypeError {
                 "Type annotation needed for the function parameter `{}`",
                 name,
             ),
+            TypeError::UnableToElaborateHole { expected: None, .. } => {
+                write!(f, "Unable to elaborate hole",)
+            },
+            TypeError::UnableToElaborateHole {
+                expected: Some(ref ty),
+                ..
+            } => write!(f, "Unable to elaborate hole, expected: `{}`", ty,),
             TypeError::Mismatch {
                 ref found,
                 ref expected,

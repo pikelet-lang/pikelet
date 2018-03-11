@@ -42,7 +42,8 @@ around more widely:
       - [twitter thread][universes-twitter-ramble]
       - [blog post by Conor McBride][universes-pigworker-blog]
 - more fully featured elaborator
-  - [ ] holes, ie. `_` and `?hole`
+  - [x] holes, ie. `_`
+  - [ ] metavariables, ie. `?metavar`
   - [ ] implicit arguments, ie. `{a : Type}`
   - [ ] instance arguments, ie. `[eq : EQ a]`
 - UX and polish

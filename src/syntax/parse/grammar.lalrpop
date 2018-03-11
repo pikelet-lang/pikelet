@@ -20,6 +20,7 @@ extern {
 
         // Keywords
         "as" => Token::As,
+        "_" => Token::Hole,
         "module" => Token::Module,
         "import" => Token::Import,
         "Type" => Token::Type,
@@ -157,6 +158,7 @@ AppTerm: Term = {
 AtomicTerm: Term = {
     <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
     <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
+    <start: @L> "_" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
     <start: @L> <ident: Ident> <end: @R> => Term::Var(ByteSpan::new(start, end), ident),
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));

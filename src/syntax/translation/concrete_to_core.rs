@@ -67,13 +67,11 @@ fn lam_to_core(
             let meta = core::SourceMeta {
                 span: span.to(term.span()),
             };
-            term = match *ann {
-                None => core::RawTerm::Lam(meta, Scope::bind(Named::new(name, None), term)).into(),
-                Some(ref ann) => {
-                    let ann = ann.to_core();
-                    core::RawTerm::Lam(meta, Scope::bind(Named::new(name, Some(ann)), term)).into()
-                },
+            let ann = match *ann {
+                None => core::RawTerm::Hole(core::SourceMeta::default()).into(),
+                Some(ref ann) => ann.to_core(),
             };
+            term = core::RawTerm::Lam(meta, Scope::bind(Named::new(name, ann), term)).into();
         }
     }
 
@@ -176,6 +174,7 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
             concrete::Term::Universe(_, level) => {
                 core::RawTerm::Universe(meta, core::Level(level.unwrap_or(0))).into()
             },
+            concrete::Term::Hole(_) => core::RawTerm::Hole(meta).into(),
             concrete::Term::Var(_, ref x) => {
                 let var = Var::Free(core::Name::user(x.clone()));
 
@@ -347,20 +346,17 @@ mod to_core {
                     Scope::bind(
                         Named::new(
                             x.clone(),
-                            Some(
-                                RawTerm::Pi(
-                                    SourceMeta::default(),
-                                    Scope::bind(
-                                        Named::new(
-                                            Name::user("_"),
-                                            RawTerm::Universe(SourceMeta::default(), Level::ZERO)
-                                                .into()
-                                        ),
+                            RawTerm::Pi(
+                                SourceMeta::default(),
+                                Scope::bind(
+                                    Named::new(
+                                        Name::user("_"),
                                         RawTerm::Universe(SourceMeta::default(), Level::ZERO)
-                                            .into(),
-                                    )
-                                ).into()
-                            ),
+                                            .into()
+                                    ),
+                                    RawTerm::Universe(SourceMeta::default(), Level::ZERO).into(),
+                                )
+                            ).into()
                         ),
                         RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                     )
@@ -380,15 +376,16 @@ mod to_core {
                     Scope::bind(
                         Named::new(
                             x.clone(),
-                            Some(
-                                RawTerm::Lam(
-                                    SourceMeta::default(),
-                                    Scope::bind(
-                                        Named::new(y.clone(), None),
-                                        RawTerm::Var(SourceMeta::default(), Var::Free(y)).into(),
-                                    )
-                                ).into()
-                            ),
+                            RawTerm::Lam(
+                                SourceMeta::default(),
+                                Scope::bind(
+                                    Named::new(
+                                        y.clone(),
+                                        RawTerm::Hole(SourceMeta::default()).into()
+                                    ),
+                                    RawTerm::Var(SourceMeta::default(), Var::Free(y)).into(),
+                                )
+                            ).into(),
                         ),
                         RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                     )
@@ -408,17 +405,14 @@ mod to_core {
                     Scope::bind(
                         Named::new(
                             x.clone(),
-                            Some(RawTerm::Universe(SourceMeta::default(), Level::ZERO).into())
+                            RawTerm::Universe(SourceMeta::default(), Level::ZERO).into()
                         ),
                         RawTerm::Lam(
                             SourceMeta::default(),
                             Scope::bind(
                                 Named::new(
                                     y,
-                                    Some(
-                                        RawTerm::Universe(SourceMeta::default(), Level::ZERO)
-                                            .into()
-                                    )
+                                    RawTerm::Universe(SourceMeta::default(), Level::ZERO).into()
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                             )
@@ -544,30 +538,24 @@ mod to_core {
                     Scope::bind(
                         Named::new(
                             x.clone(),
-                            Some(
-                                RawTerm::Pi(
-                                    SourceMeta::default(),
-                                    Scope::bind(
-                                        Named::new(
-                                            Name::user("_"),
-                                            RawTerm::Universe(SourceMeta::default(), Level::ZERO)
-                                                .into()
-                                        ),
+                            RawTerm::Pi(
+                                SourceMeta::default(),
+                                Scope::bind(
+                                    Named::new(
+                                        Name::user("_"),
                                         RawTerm::Universe(SourceMeta::default(), Level::ZERO)
-                                            .into(),
-                                    )
-                                ).into(),
-                            ),
+                                            .into()
+                                    ),
+                                    RawTerm::Universe(SourceMeta::default(), Level::ZERO).into(),
+                                )
+                            ).into(),
                         ),
                         RawTerm::Lam(
                             SourceMeta::default(),
                             Scope::bind(
                                 Named::new(
                                     y.clone(),
-                                    Some(
-                                        RawTerm::Universe(SourceMeta::default(), Level::ZERO)
-                                            .into()
-                                    )
+                                    RawTerm::Universe(SourceMeta::default(), Level::ZERO).into()
                                 ),
                                 RawTerm::App(
                                     SourceMeta::default(),
@@ -593,14 +581,14 @@ mod to_core {
                     Scope::bind(
                         Named::new(
                             a.clone(),
-                            Some(RawTerm::Universe(SourceMeta::default(), Level::ZERO).into())
+                            RawTerm::Universe(SourceMeta::default(), Level::ZERO).into()
                         ),
                         RawTerm::Lam(
                             SourceMeta::default(),
                             Scope::bind(
                                 Named::new(
                                     x.clone(),
-                                    Some(RawTerm::Var(SourceMeta::default(), Var::Free(a)).into())
+                                    RawTerm::Var(SourceMeta::default(), Var::Free(a)).into()
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                             )

@@ -113,11 +113,15 @@ impl ToDoc for RawTerm {
         match *self {
             RawTerm::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
             RawTerm::Universe(_, level) => pretty_universe(options, level),
+            RawTerm::Hole(_) => Doc::text("_"),
             RawTerm::Var(_, ref var) => pretty_var(options, var),
             RawTerm::Lam(_, ref lam) => pretty_lam(
                 options,
                 &lam.unsafe_binder.name,
-                lam.unsafe_binder.inner.as_ref(),
+                match *lam.unsafe_binder.inner.inner {
+                    RawTerm::Hole(_) => None,
+                    _ => Some(&lam.unsafe_binder.inner),
+                },
                 &lam.unsafe_body,
             ),
             RawTerm::Pi(_, ref pi) => pretty_pi(

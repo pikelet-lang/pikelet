@@ -64,6 +64,7 @@ pub enum Token<S> {
 
     // Keywords
     As,     // as
+    Hole,   // _
     Module, // module
     Import, // import
     Type,   // Type
@@ -95,6 +96,7 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::ReplCommand(ref command) => write!(f, ":{}", command),
             Token::DecLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
+            Token::Hole => write!(f, "_"),
             Token::Module => write!(f, "module"),
             Token::Import => write!(f, "import"),
             Token::Type => write!(f, "Type"),
@@ -127,6 +129,7 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Module => Token::Module,
             Token::Import => Token::Import,
             Token::Type => Token::Type,
+            Token::Hole => Token::Hole,
             Token::BSlash => Token::BSlash,
             Token::Colon => Token::Colon,
             Token::Comma => Token::Comma,
@@ -256,6 +259,7 @@ impl<'input> Lexer<'input> {
 
         let token = match ident {
             "as" => Token::As,
+            "_" => Token::Hole,
             "module" => Token::Module,
             "import" => Token::Import,
             "Type" => Token::Type,
@@ -363,11 +367,12 @@ mod tests {
     #[test]
     fn keywords() {
         test! {
-            "  as module import Type  ",
-            "  ~~                     " => Token::As,
-            "     ~~~~~~              " => Token::Module,
-            "            ~~~~~~       " => Token::Import,
-            "                   ~~~~  " => Token::Type,
+            "  as _ module import Type  ",
+            "  ~~                       " => Token::As,
+            "     ~                     " => Token::Hole,
+            "       ~~~~~~              " => Token::Module,
+            "              ~~~~~~       " => Token::Import,
+            "                     ~~~~  " => Token::Type,
         };
     }
 

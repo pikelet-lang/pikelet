@@ -80,6 +80,7 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
             core::RawTerm::Universe(meta, level) => {
                 concrete::Term::Universe(meta.span, level.to_concrete(env))
             },
+            core::RawTerm::Hole(meta) => concrete::Term::Hole(meta.span),
             core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.to_string()) // FIXME
             },

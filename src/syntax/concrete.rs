@@ -187,6 +187,12 @@ pub enum Term {
     /// Type
     /// ```
     Universe(ByteSpan, Option<u32>),
+    /// Holes
+    ///
+    /// ```text
+    /// _
+    /// ```
+    Hole(ByteSpan),
     /// Variables
     ///
     /// ```text
@@ -234,6 +240,7 @@ impl Term {
         match *self {
             Term::Parens(span, _)
             | Term::Universe(span, _)
+            | Term::Hole(span)
             | Term::Var(span, _)
             | Term::Error(span) => span,
             Term::Pi(start, _, ref body) | Term::Lam(start, _, ref body) => {
