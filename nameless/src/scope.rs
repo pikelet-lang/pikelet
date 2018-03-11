@@ -24,9 +24,8 @@ where
         let mut binder = self.unsafe_binder;
         let mut body = self.unsafe_body;
 
-        let free_name = N::fresh(binder.name.hint());
-        body.open(&free_name);
-        binder.name = free_name;
+        binder.name.freshen();
+        body.open(&binder.name);
 
         (binder, body)
     }
@@ -66,11 +65,10 @@ where
     let mut scope2_binder = scope2.unsafe_binder;
     let mut scope2_body = scope2.unsafe_body;
 
-    let free_name = N::fresh(scope1_binder.name.hint());
-    scope1_body.open(&free_name);
-    scope2_body.open(&free_name);
-    scope1_binder.name = free_name.clone();
-    scope2_binder.name = free_name;
+    scope1_binder.name.freshen();
+    scope1_body.open(&scope1_binder.name);
+    scope2_body.open(&scope1_binder.name);
+    scope2_binder.name = scope1_binder.name.clone();
 
     (scope1_binder, scope1_body, scope2_binder, scope2_body)
 }

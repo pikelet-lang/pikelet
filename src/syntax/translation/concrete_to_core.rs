@@ -183,7 +183,7 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
             concrete::Term::Pi(_, (ref names, ref ann), ref body) => pi_to_core(names, ann, body),
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
-                let name = core::Name::fresh(None);
+                let name = core::Name::fresh();
                 let ann = ann.to_core();
                 let body = body.to_core();
 

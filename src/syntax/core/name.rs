@@ -46,17 +46,15 @@ impl Name {
 }
 
 impl FreeName for Name {
-    type Hint = Ident;
-
-    fn fresh(hint: Option<Ident>) -> Name {
-        Name::Gen(Named::new(hint, GenId::fresh())) // FIXME
+    fn fresh() -> Name {
+        Name::Gen(Named::new(None, GenId::fresh()))
     }
 
-    fn hint(&self) -> Option<Ident> {
-        match *self {
-            Name::User(ref name) => Some(name.clone()),
-            Name::Gen(Named { ref name, .. }) => name.clone(),
-        }
+    fn freshen(&mut self) {
+        *self = match *self {
+            Name::User(ref name) => Name::Gen(Named::new(Some(name.clone()), GenId::fresh())),
+            Name::Gen(_) => return,
+        };
     }
 }
 

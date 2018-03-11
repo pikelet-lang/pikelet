@@ -55,12 +55,10 @@ pub use self::var::Var;
 
 /// Free names
 pub trait FreeName: Clone + PartialEq {
-    type Hint;
+    fn fresh() -> Self;
 
     /// Generate a new, globally unique name
-    fn fresh(hint: Option<Self::Hint>) -> Self;
-
-    fn hint(&self) -> Option<Self::Hint>;
+    fn freshen(&mut self);
 }
 
 pub trait LocallyNameless: Sized {
