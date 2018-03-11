@@ -64,7 +64,7 @@ around more widely:
   - [x] ensure substitution points match the typing judgements
   - [ ] fix typechecking at the module level
   - [ ] settle on a logging strategy for judgements
-  - [ ] automate name binding boilerplate to get it out of `syntax::core`
+  - [x] automate name binding boilerplate to get it out of `syntax::core`
   - [ ] review `core::{Term, Value}`
     - [x] What about `CheckedTerm`s? `ElaboratedTerm`s?
     - [x] Why is there an `Option<Value>` on `Value::Lam`?

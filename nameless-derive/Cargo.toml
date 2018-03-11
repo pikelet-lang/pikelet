@@ -1,0 +1,13 @@
+[package]
+name = "nameless-derive"
+version = "0.1.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+publish = false
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "0.4"
+syn = "0.12"
+synstructure = "0.7"

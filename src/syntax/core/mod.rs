@@ -25,6 +25,14 @@ pub struct SourceMeta {
     pub span: ByteSpan,
 }
 
+// TODO: Derive this
+impl LocallyNameless for SourceMeta {
+    type Name = Name;
+
+    fn close_at(&mut self, _: Debruijn, _: &Name) {}
+    fn open_at(&mut self, _: Debruijn, _: &Name) {}
+}
+
 impl Default for SourceMeta {
     fn default() -> SourceMeta {
         SourceMeta {
@@ -49,6 +57,14 @@ impl Level {
     pub fn succ(self) -> Level {
         Level(self.0 + 1)
     }
+}
+
+// TODO: Derive this
+impl LocallyNameless for Level {
+    type Name = Name;
+
+    fn close_at(&mut self, _: Debruijn, _: &Name) {}
+    fn open_at(&mut self, _: Debruijn, _: &Name) {}
 }
 
 impl fmt::Display for Level {
@@ -102,7 +118,7 @@ impl fmt::Display for RawDefinition {
 ///       | λx:R.r      6. lambda abstractions
 ///       | R₁ R₂       7. term application
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, LocallyNameless)]
 pub enum RawTerm {
     /// A term annotated with a type
     Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
@@ -139,44 +155,6 @@ impl fmt::Display for RawTerm {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
             .render_fmt(f.width().unwrap_or(usize::MAX), f)
-    }
-}
-
-impl LocallyNameless for RawTerm {
-    type Name = Name;
-
-    fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            RawTerm::Ann(_, ref mut expr, ref mut ty) => {
-                expr.close_at(level, name);
-                ty.close_at(level, name);
-            },
-            RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
-            RawTerm::Var(_, ref mut var) => var.close_at(level, name),
-            RawTerm::Pi(_, ref mut pi) => pi.close_at(level, name),
-            RawTerm::Lam(_, ref mut lam) => lam.close_at(level, name),
-            RawTerm::App(_, ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.close_at(level, name);
-                arg_expr.close_at(level, name);
-            },
-        }
-    }
-
-    fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            RawTerm::Ann(_, ref mut expr, ref mut ty) => {
-                expr.open_at(level, name);
-                ty.open_at(level, name);
-            },
-            RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
-            RawTerm::Var(_, ref mut var) => var.open_at(level, name),
-            RawTerm::Pi(_, ref mut pi) => pi.open_at(level, name),
-            RawTerm::Lam(_, ref mut lam) => lam.open_at(level, name),
-            RawTerm::App(_, ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.open_at(level, name);
-                arg_expr.open_at(level, name);
-            },
-        }
     }
 }
 
@@ -244,7 +222,7 @@ pub struct Definition {
 ///       | λx:T.t      5. lambda abstractions
 ///       | t₁ t₂       6. term application
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, LocallyNameless)]
 pub enum Term {
     /// A term annotated with a type
     Ann(SourceMeta, RcTerm, RcTerm), // 1.
@@ -273,44 +251,6 @@ impl RcTerm {
     }
 }
 
-impl LocallyNameless for Term {
-    type Name = Name;
-
-    fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            Term::Ann(_, ref mut expr, ref mut ty) => {
-                expr.close_at(level, name);
-                ty.close_at(level, name);
-            },
-            Term::Universe(_, _) => {},
-            Term::Var(_, ref mut var) => var.close_at(level, name),
-            Term::Pi(_, ref mut pi) => pi.close_at(level, name),
-            Term::Lam(_, ref mut lam) => lam.close_at(level, name),
-            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.close_at(level, name);
-                arg_expr.close_at(level, name);
-            },
-        }
-    }
-
-    fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            Term::Ann(_, ref mut expr, ref mut ty) => {
-                expr.open_at(level, name);
-                ty.open_at(level, name);
-            },
-            Term::Universe(_, _) => {},
-            Term::Var(_, ref mut var) => var.open_at(level, name),
-            Term::Pi(_, ref mut pi) => pi.open_at(level, name),
-            Term::Lam(_, ref mut lam) => lam.open_at(level, name),
-            Term::App(_, ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.open_at(level, name);
-                arg_expr.open_at(level, name);
-            },
-        }
-    }
-}
-
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
@@ -327,7 +267,7 @@ impl fmt::Display for Term {
 ///       | λx:V.v      3. lambda abstractions
 ///       | n           4. neutral terms
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, LocallyNameless)]
 pub enum Value {
     /// Universes
     Universe(Level), // 1.
@@ -337,28 +277,6 @@ pub enum Value {
     Lam(Scope<Named<Name, RcValue>, RcValue>), // 3.
     /// Neutral terms
     Neutral(RcNeutral), // 4.
-}
-
-impl LocallyNameless for Value {
-    type Name = Name;
-
-    fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            Value::Universe(_) => {},
-            Value::Pi(ref mut pi) => pi.close_at(level, name),
-            Value::Lam(ref mut lam) => lam.close_at(level, name),
-            Value::Neutral(ref mut n) => n.close_at(level, name),
-        }
-    }
-
-    fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            Value::Universe(_) => {},
-            Value::Pi(ref mut pi) => pi.open_at(level, name),
-            Value::Lam(ref mut lam) => lam.open_at(level, name),
-            Value::Neutral(ref mut n) => n.open_at(level, name),
-        }
-    }
 }
 
 impl fmt::Display for Value {
@@ -378,36 +296,12 @@ impl fmt::Display for Value {
 /// n,N ::= x           1. variables
 ///       | n t         2. term application
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, LocallyNameless)]
 pub enum Neutral {
     /// Variables
     Var(Var<Name, Debruijn>), // 1.
     /// RawTerm application
     App(RcNeutral, RcTerm), // 2.
-}
-
-impl LocallyNameless for Neutral {
-    type Name = Name;
-
-    fn close_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            Neutral::Var(ref mut var) => var.close_at(level, name),
-            Neutral::App(ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.close_at(level, name);
-                arg_expr.close_at(level, name);
-            },
-        }
-    }
-
-    fn open_at(&mut self, level: Debruijn, name: &Name) {
-        match *self {
-            Neutral::Var(ref mut var) => var.open_at(level, name),
-            Neutral::App(ref mut fn_expr, ref mut arg_expr) => {
-                fn_expr.open_at(level, name);
-                arg_expr.open_at(level, name);
-            },
-        }
-    }
 }
 
 impl fmt::Display for Neutral {

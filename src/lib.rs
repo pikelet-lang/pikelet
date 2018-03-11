@@ -3,6 +3,7 @@ extern crate codespan_reporting;
 #[macro_use]
 extern crate failure;
 extern crate lalrpop_util;
+#[macro_use]
 extern crate nameless;
 extern crate pretty;
 #[cfg(test)]

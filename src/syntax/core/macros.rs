@@ -1,6 +1,6 @@
 macro_rules! make_wrapper {
     ($name:ident, $wrapper:ident, $inner:ty) => {
-        #[derive(Clone, PartialEq)]
+        #[derive(Clone, PartialEq, LocallyNameless)]
         pub struct $name {
             pub inner: $wrapper<$inner>,
         }
@@ -10,18 +10,6 @@ macro_rules! make_wrapper {
                 $name {
                     inner: $wrapper::new(src),
                 }
-            }
-        }
-
-        impl LocallyNameless for $name {
-            type Name = Name;
-
-            fn close_at(&mut self, level: Debruijn, name: &Name) {
-                self.inner.close_at(level, name);
-            }
-
-            fn open_at(&mut self, level: Debruijn, name: &Name) {
-                self.inner.open_at(level, name);
             }
         }
 

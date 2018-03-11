@@ -38,8 +38,16 @@
 
 #[macro_use]
 extern crate lazy_static;
+#[cfg(feature = "nameless-derive")]
+#[allow(unused_imports)]
+#[macro_use]
+extern crate nameless_derive;
 
 use std::rc::Rc;
+
+#[cfg(feature = "nameless-derive")]
+#[doc(hidden)]
+pub use nameless_derive::*;
 
 mod debruijn;
 mod gen_id;

@@ -12,6 +12,7 @@ publish = false
 [workspace]
 members = [
     "./nameless",
+    "./nameless-derive",
 ]
 
 [features]
