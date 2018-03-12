@@ -81,7 +81,7 @@
 //! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
 
 use codespan::ByteSpan;
-use nameless::{self, Named, Scope, Var};
+use nameless::{self, AlphaEq, Named, Scope, Var};
 
 use syntax::core::{Binder, Context, Definition, Level, Module, Name, Neutral, RawModule, RawTerm,
                    RcRawTerm, RcTerm, RcType, RcValue, Term, Value};
@@ -309,9 +309,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 
     let (elab_term, inferred_ty) = infer(context, term)?; // 1.
 
-    // Because we have invested lots of effort into setting up our
-    // locally nameless representation alpha equivalence is easy-peasy!
-    match &inferred_ty == expected {
+    match RcType::alpha_eq(&inferred_ty, expected) {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
             span: term.span(),

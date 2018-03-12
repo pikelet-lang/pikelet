@@ -1,5 +1,7 @@
 use std::fmt;
 
+use AlphaEq;
+
 /// The [debruijn index] of the binder that introduced the variable
 ///
 /// For example:
@@ -27,6 +29,12 @@ impl Debruijn {
             Debruijn::ZERO => None,
             Debruijn(i) => Some(Debruijn(i - 1)),
         }
+    }
+}
+
+impl AlphaEq for Debruijn {
+    fn alpha_eq(&self, other: &Debruijn) -> bool {
+        self == other
     }
 }
 

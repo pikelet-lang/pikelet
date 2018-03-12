@@ -1,4 +1,4 @@
-use {Debruijn, FreeName, LocallyNameless, Named};
+use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope<B, T> {
@@ -28,6 +28,13 @@ where
         body.open(&binder.name);
 
         (binder, body)
+    }
+}
+
+impl<B: AlphaEq, T: AlphaEq> AlphaEq for Scope<B, T> {
+    fn alpha_eq(&self, other: &Scope<B, T>) -> bool {
+        B::alpha_eq(&self.unsafe_binder, &other.unsafe_binder)
+            && T::alpha_eq(&self.unsafe_body, &other.unsafe_body)
     }
 }
 

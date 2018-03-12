@@ -1,14 +1,24 @@
 use std::fmt;
 
-use {Debruijn, FreeName, LocallyNameless, Named};
+use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named};
 
 /// A variable that can either be free or bound
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Var<N, B> {
     /// A free variable
     Free(N),
     /// A variable that is bound by a lambda or pi binder
     Bound(Named<N, B>),
+}
+
+impl<N: AlphaEq, B: AlphaEq> AlphaEq for Var<N, B> {
+    fn alpha_eq(&self, other: &Var<N, B>) -> bool {
+        match (self, other) {
+            (&Var::Free(ref lhs), &Var::Free(ref rhs)) => N::alpha_eq(lhs, rhs),
+            (&Var::Bound(ref lhs), &Var::Bound(ref rhs)) => Named::alpha_eq(lhs, rhs),
+            (_, _) => false,
+        }
+    }
 }
 
 impl<N: FreeName> LocallyNameless for Var<N, Debruijn> {

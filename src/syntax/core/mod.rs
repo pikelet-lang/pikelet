@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{Debruijn, LocallyNameless, Named, Scope, Var};
+use nameless::{AlphaEq, Debruijn, LocallyNameless, Named, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -20,7 +20,7 @@ mod tests;
 pub use self::name::{Ident, Name};
 
 /// Source metadata that should be ignored when checking for alpha equality
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SourceMeta {
     pub span: ByteSpan,
 }
@@ -41,14 +41,14 @@ impl Default for SourceMeta {
     }
 }
 
-impl PartialEq for SourceMeta {
-    fn eq(&self, _: &SourceMeta) -> bool {
+impl AlphaEq for SourceMeta {
+    fn alpha_eq(&self, _: &SourceMeta) -> bool {
         true
     }
 }
 
 /// A universe level
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, AlphaEq)]
 pub struct Level(pub u32);
 
 impl Level {
@@ -118,7 +118,7 @@ impl fmt::Display for RawDefinition {
 ///       | λx:R.r      6. lambda abstractions
 ///       | R₁ R₂       7. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
 pub enum RawTerm {
     /// A term annotated with a type
     Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
@@ -222,7 +222,7 @@ pub struct Definition {
 ///       | λx:T.t      5. lambda abstractions
 ///       | t₁ t₂       6. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
 pub enum Term {
     /// A term annotated with a type
     Ann(SourceMeta, RcTerm, RcTerm), // 1.
@@ -267,7 +267,7 @@ impl fmt::Display for Term {
 ///       | λx:V.v      3. lambda abstractions
 ///       | n           4. neutral terms
 /// ```
-#[derive(Debug, Clone, PartialEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
 pub enum Value {
     /// Universes
     Universe(Level), // 1.
@@ -296,7 +296,7 @@ impl fmt::Display for Value {
 /// n,N ::= x           1. variables
 ///       | n t         2. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
 pub enum Neutral {
     /// Variables
     Var(Var<Name, Debruijn>), // 1.

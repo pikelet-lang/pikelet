@@ -240,7 +240,7 @@ mod to_core {
 
         #[test]
         fn var() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"x"),
                 RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("x"))).into()
             );
@@ -248,7 +248,7 @@ mod to_core {
 
         #[test]
         fn var_kebab_case() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"or-elim"),
                 RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("or-elim"))).into(),
             );
@@ -256,7 +256,7 @@ mod to_core {
 
         #[test]
         fn ty() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"Type"),
                 RawTerm::Universe(SourceMeta::default(), Level::ZERO).into()
             );
@@ -264,7 +264,7 @@ mod to_core {
 
         #[test]
         fn ty_level() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"Type 2"),
                 RawTerm::Universe(SourceMeta::default(), Level::ZERO.succ().succ()).into()
             );
@@ -272,7 +272,7 @@ mod to_core {
 
         #[test]
         fn ann() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"Type : Type"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -284,7 +284,7 @@ mod to_core {
 
         #[test]
         fn ann_ann_left() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"Type : Type : Type"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -300,7 +300,7 @@ mod to_core {
 
         #[test]
         fn ann_ann_right() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"Type : (Type : Type)"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -316,7 +316,7 @@ mod to_core {
 
         #[test]
         fn ann_ann_ann() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"(Type : Type) : (Type : Type)"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -338,7 +338,7 @@ mod to_core {
         fn lam_ann() {
             let x = Name::user("x");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"\x : Type -> Type => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
@@ -368,7 +368,7 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"\x : (\y => y) => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
@@ -397,7 +397,7 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"\(x y : Type) => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
@@ -423,7 +423,7 @@ mod to_core {
 
         #[test]
         fn arrow() {
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"Type -> Type"),
                 RawTerm::Pi(
                     SourceMeta::default(),
@@ -442,7 +442,7 @@ mod to_core {
         fn pi() {
             let x = Name::user("x");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"(x : Type -> Type) -> x"),
                 RawTerm::Pi(
                     SourceMeta::default(),
@@ -472,7 +472,7 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"(x y : Type) -> x"),
                 RawTerm::Pi(
                     SourceMeta::default(),
@@ -500,7 +500,7 @@ mod to_core {
         fn pi_arrow() {
             let x = Name::user("x");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"(x : Type) -> x -> x"),
                 RawTerm::Pi(
                     SourceMeta::default(),
@@ -530,7 +530,7 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"\(x : Type -> Type) (y : Type) => x y"),
                 RawTerm::Lam(
                     SourceMeta::default(),
@@ -573,7 +573,7 @@ mod to_core {
             let x = Name::user("x");
             let a = Name::user("a");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"\(a : Type) (x : a) => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
@@ -601,7 +601,7 @@ mod to_core {
         fn id_ty() {
             let a = Name::user("a");
 
-            assert_eq!(
+            assert_alpha_eq!(
                 parse(r"(a : Type) -> a -> a"),
                 RawTerm::Pi(
                     SourceMeta::default(),
@@ -631,7 +631,7 @@ mod to_core {
 
             #[test]
             fn lam_args() {
-                assert_eq!(
+                assert_alpha_eq!(
                     parse(r"\x (y : Type) z => x"),
                     parse(r"\x => \y : Type => \z => x"),
                 );
@@ -639,7 +639,7 @@ mod to_core {
 
             #[test]
             fn lam_args_multi() {
-                assert_eq!(
+                assert_alpha_eq!(
                     parse(r"\(x : Type) (y : Type) z => x"),
                     parse(r"\(x y : Type) z => x"),
                 );
@@ -647,7 +647,7 @@ mod to_core {
 
             #[test]
             fn pi_args() {
-                assert_eq!(
+                assert_alpha_eq!(
                     parse(r"(a : Type) -> (x y z : a) -> x"),
                     parse(r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
                 );
@@ -655,7 +655,7 @@ mod to_core {
 
             #[test]
             fn arrow() {
-                assert_eq!(
+                assert_alpha_eq!(
                     parse(r"(a : Type) -> a -> a"),
                     parse(r"(a : Type) -> (x : a) -> a"),
                 )

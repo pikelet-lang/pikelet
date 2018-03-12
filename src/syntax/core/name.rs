@@ -1,4 +1,4 @@
-use nameless::{FreeName, GenId, Named};
+use nameless::{AlphaEq, FreeName, GenId, Named};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -16,6 +16,12 @@ impl From<String> for Ident {
     }
 }
 
+impl AlphaEq for Ident {
+    fn alpha_eq(&self, other: &Ident) -> bool {
+        self == other
+    }
+}
+
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -23,7 +29,7 @@ impl fmt::Display for Ident {
 }
 
 /// The name of a free variable
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, AlphaEq)]
 pub enum Name {
     /// Names originating from user input
     User(Ident),
