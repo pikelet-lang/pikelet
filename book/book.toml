@@ -1,0 +1,12 @@
+[book]
+title = "Pikelet Language Book"
+authors = ["Brendan Zabarauskas"]
+description = "Documentation for the Pikelet Language"
+multilingual = false
+src = "src"
+
+[build]
+build-dir = "build"
+
+[output.html]
+mathjax-support = true
