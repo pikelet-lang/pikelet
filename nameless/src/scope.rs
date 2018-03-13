@@ -1,4 +1,4 @@
-use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named};
+use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named, OnBoundFn, OnFreeFn};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope<B, T> {
@@ -8,11 +8,14 @@ pub struct Scope<B, T> {
 
 impl<N: FreeName, B, T> Scope<Named<N, B>, T>
 where
-    B: LocallyNameless<Name = N>,
-    T: LocallyNameless<Name = N>,
+    B: LocallyNameless<Name = N, Bound = Debruijn>,
+    T: LocallyNameless<Name = N, Bound = Debruijn>,
 {
     pub fn bind(binder: Named<N, B>, mut body: T) -> Scope<Named<N, B>, T> {
-        body.close(&binder.name);
+        body.close(&|level, name| match name == &binder.name {
+            true => Some(level),
+            false => None,
+        });
 
         Scope {
             unsafe_binder: binder,
@@ -25,7 +28,10 @@ where
         let mut body = self.unsafe_body;
 
         binder.name.freshen();
-        body.open(&binder.name);
+        body.open(&|level, index| match level == *index {
+            true => Some(binder.name.clone()),
+            false => None,
+        });
 
         (binder, body)
     }
@@ -40,19 +46,20 @@ impl<B: AlphaEq, T: AlphaEq> AlphaEq for Scope<B, T> {
 
 impl<N: FreeName, B, T> LocallyNameless for Scope<Named<N, B>, T>
 where
-    B: LocallyNameless<Name = N>,
-    T: LocallyNameless<Name = N>,
+    B: LocallyNameless<Name = N, Bound = Debruijn>,
+    T: LocallyNameless<Name = N, Bound = Debruijn>,
 {
     type Name = N;
+    type Bound = Debruijn;
 
-    fn close_at(&mut self, index: Debruijn, name: &N) {
-        self.unsafe_binder.close_at(index, name);
-        self.unsafe_body.close_at(index.succ(), name);
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<N, Debruijn>) {
+        self.unsafe_binder.close_at(index, on_free);
+        self.unsafe_body.close_at(index.succ(), on_free);
     }
 
-    fn open_at(&mut self, index: Debruijn, name: &N) {
-        self.unsafe_binder.open_at(index, &name);
-        self.unsafe_body.open_at(index.succ(), &name);
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<N, Debruijn>) {
+        self.unsafe_binder.open_at(index, on_bound);
+        self.unsafe_body.open_at(index.succ(), on_bound);
     }
 }
 
@@ -62,20 +69,28 @@ pub fn unbind2<N, B1, T1, B2, T2>(
 ) -> (Named<N, B1>, T1, Named<N, B2>, T2)
 where
     N: FreeName,
-    B1: LocallyNameless<Name = N>,
-    T1: LocallyNameless<Name = N>,
-    B2: LocallyNameless<Name = N>,
-    T2: LocallyNameless<Name = N>,
+    B1: LocallyNameless<Name = N, Bound = Debruijn>,
+    T1: LocallyNameless<Name = N, Bound = Debruijn>,
+    B2: LocallyNameless<Name = N, Bound = Debruijn>,
+    T2: LocallyNameless<Name = N, Bound = Debruijn>,
 {
     let mut scope1_binder = scope1.unsafe_binder;
     let mut scope1_body = scope1.unsafe_body;
     let mut scope2_binder = scope2.unsafe_binder;
     let mut scope2_body = scope2.unsafe_body;
 
-    scope1_binder.name.freshen();
-    scope1_body.open(&scope1_binder.name);
-    scope2_body.open(&scope1_binder.name);
-    scope2_binder.name = scope1_binder.name.clone();
+    {
+        scope1_binder.name.freshen();
+        scope2_binder.name = scope1_binder.name.clone();
+
+        let on_bound = &|level: Debruijn, index: &Debruijn| match level == *index {
+            true => Some(scope1_binder.name.clone()),
+            false => None,
+        };
+
+        scope1_body.open(on_bound);
+        scope2_body.open(on_bound);
+    }
 
     (scope1_binder, scope1_body, scope2_binder, scope2_body)
 }

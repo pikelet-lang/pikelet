@@ -161,57 +161,64 @@ macro_rules! assert_alpha_eq {
     });
 }
 
+pub type OnFreeFn<'a, N, B> = &'a Fn(Debruijn, &N) -> Option<B>;
+pub type OnBoundFn<'a, N, B> = &'a Fn(Debruijn, &B) -> Option<N>;
+
 pub trait LocallyNameless {
     type Name: FreeName;
+    type Bound;
 
-    fn close(&mut self, name: &Self::Name) {
-        self.close_at(Debruijn::ZERO, name);
+    fn close(&mut self, on_free: OnFreeFn<Self::Name, Self::Bound>) {
+        self.close_at(Debruijn::ZERO, on_free);
     }
 
-    fn open(&mut self, name: &Self::Name) {
-        self.open_at(Debruijn::ZERO, name);
+    fn open(&mut self, on_bound: OnBoundFn<Self::Name, Self::Bound>) {
+        self.open_at(Debruijn::ZERO, on_bound);
     }
 
-    fn close_at(&mut self, index: Debruijn, name: &Self::Name);
-    fn open_at(&mut self, index: Debruijn, name: &Self::Name);
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<Self::Name, Self::Bound>);
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<Self::Name, Self::Bound>);
 }
 
 impl<T: LocallyNameless> LocallyNameless for Option<T> {
     type Name = T::Name;
+    type Bound = T::Bound;
 
-    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::Name, T::Bound>) {
         if let Some(ref mut inner) = *self {
-            inner.close_at(index, name);
+            inner.close_at(index, on_free);
         }
     }
 
-    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::Name, T::Bound>) {
         if let Some(ref mut inner) = *self {
-            inner.open_at(index, name);
+            inner.open_at(index, on_bound);
         }
     }
 }
 
 impl<T: LocallyNameless> LocallyNameless for Box<T> {
     type Name = T::Name;
+    type Bound = T::Bound;
 
-    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
-        (**self).close_at(index, name);
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::Name, T::Bound>) {
+        (**self).close_at(index, on_free);
     }
 
-    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
-        (**self).open_at(index, name);
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::Name, T::Bound>) {
+        (**self).open_at(index, on_bound);
     }
 }
 
 impl<T: LocallyNameless + Clone> LocallyNameless for Rc<T> {
     type Name = T::Name;
+    type Bound = T::Bound;
 
-    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
-        Rc::make_mut(self).close_at(index, name);
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::Name, T::Bound>) {
+        Rc::make_mut(self).close_at(index, on_free);
     }
 
-    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
-        Rc::make_mut(self).open_at(index, name);
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::Name, T::Bound>) {
+        Rc::make_mut(self).open_at(index, on_bound);
     }
 }

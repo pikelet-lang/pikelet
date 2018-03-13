@@ -1,6 +1,6 @@
 use std::fmt;
 
-use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named};
+use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named, OnBoundFn, OnFreeFn};
 
 /// A variable that can either be free or bound
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,20 +21,27 @@ impl<N: AlphaEq, B: AlphaEq> AlphaEq for Var<N, B> {
     }
 }
 
-impl<N: FreeName> LocallyNameless for Var<N, Debruijn> {
+impl<N: FreeName, B> LocallyNameless for Var<N, B> {
     type Name = N;
+    type Bound = B;
 
-    fn close_at(&mut self, index: Debruijn, name: &N) {
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<N, B>) {
         *self = match *self {
-            Var::Free(ref n) if n == name => Var::Bound(Named::new(n.clone(), index)),
-            Var::Bound(_) | Var::Free(_) => return,
+            Var::Bound(_) => return,
+            Var::Free(ref name) => match on_free(index, name) {
+                Some(index) => Var::Bound(Named::new(name.clone(), index)),
+                None => return,
+            },
         };
     }
 
-    fn open_at(&mut self, index: Debruijn, name: &N) {
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<N, B>) {
         *self = match *self {
-            Var::Bound(Named { inner: i, .. }) if i == index => Var::Free(name.clone()),
-            Var::Bound(_) | Var::Free(_) => return,
+            Var::Free(_) => return,
+            Var::Bound(Named { ref inner, .. }) => match on_bound(index, inner) {
+                Some(name) => Var::Free(name),
+                None => return,
+            },
         };
     }
 }

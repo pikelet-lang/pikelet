@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use {AlphaEq, Debruijn, LocallyNameless};
+use {AlphaEq, Debruijn, LocallyNameless, OnBoundFn, OnFreeFn};
 
 /// A type annotated with a name for debugging purposes
 ///
@@ -25,13 +25,14 @@ impl<N, T: AlphaEq> AlphaEq for Named<N, T> {
 
 impl<T: LocallyNameless> LocallyNameless for Named<T::Name, T> {
     type Name = T::Name;
+    type Bound = T::Bound;
 
-    fn close_at(&mut self, index: Debruijn, name: &T::Name) {
-        self.inner.close_at(index, name);
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::Name, T::Bound>) {
+        self.inner.close_at(index, on_free);
     }
 
-    fn open_at(&mut self, index: Debruijn, name: &T::Name) {
-        self.inner.open_at(index, name);
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::Name, T::Bound>) {
+        self.inner.open_at(index, on_bound);
     }
 }
 

@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{AlphaEq, Debruijn, LocallyNameless, Named, Scope, Var};
+use nameless::{AlphaEq, Debruijn, LocallyNameless, Named, OnBoundFn, OnFreeFn, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -28,9 +28,10 @@ pub struct SourceMeta {
 // TODO: Derive this
 impl LocallyNameless for SourceMeta {
     type Name = Name;
+    type Bound = Debruijn;
 
-    fn close_at(&mut self, _: Debruijn, _: &Name) {}
-    fn open_at(&mut self, _: Debruijn, _: &Name) {}
+    fn close_at(&mut self, _: Debruijn, _: OnFreeFn<Name, Debruijn>) {}
+    fn open_at(&mut self, _: Debruijn, _: OnBoundFn<Name, Debruijn>) {}
 }
 
 impl Default for SourceMeta {
@@ -62,9 +63,10 @@ impl Level {
 // TODO: Derive this
 impl LocallyNameless for Level {
     type Name = Name;
+    type Bound = Debruijn;
 
-    fn close_at(&mut self, _: Debruijn, _: &Name) {}
-    fn open_at(&mut self, _: Debruijn, _: &Name) {}
+    fn close_at(&mut self, _: Debruijn, _: OnFreeFn<Name, Debruijn>) {}
+    fn open_at(&mut self, _: Debruijn, _: OnBoundFn<Name, Debruijn>) {}
 }
 
 impl fmt::Display for Level {
