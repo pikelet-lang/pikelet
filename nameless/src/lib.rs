@@ -63,9 +63,6 @@ pub use self::var::Var;
 
 /// Free names
 pub trait FreeName: Clone + PartialEq {
-    fn fresh() -> Self;
-
-    /// Generate a new, globally unique name
     fn freshen(&mut self);
 }
 
@@ -164,7 +161,7 @@ macro_rules! assert_alpha_eq {
     });
 }
 
-pub trait LocallyNameless: Sized {
+pub trait LocallyNameless {
     type Name: FreeName;
 
     fn close(&mut self, name: &Self::Name) {

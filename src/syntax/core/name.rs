@@ -52,15 +52,17 @@ impl Name {
 }
 
 impl FreeName for Name {
-    fn fresh() -> Name {
-        Name::Gen(Named::new(None, GenId::fresh()))
-    }
-
     fn freshen(&mut self) {
         *self = match *self {
             Name::User(ref name) => Name::Gen(Named::new(Some(name.clone()), GenId::fresh())),
             Name::Gen(_) => return,
         };
+    }
+}
+
+impl From<GenId> for Name {
+    fn from(src: GenId) -> Name {
+        Name::Gen(Named::new(None, src))
     }
 }
 
