@@ -1,6 +1,6 @@
 macro_rules! make_wrapper {
     ($name:ident, $wrapper:ident, $inner:ty) => {
-        #[derive(Clone, PartialEq, AlphaEq, LocallyNameless)]
+        #[derive(Clone, PartialEq, AlphaEq, Bound)]
         pub struct $name {
             pub inner: $wrapper<$inner>,
         }

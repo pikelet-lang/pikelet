@@ -164,7 +164,7 @@ macro_rules! assert_alpha_eq {
 pub type OnFreeFn<'a, N, B> = &'a Fn(Debruijn, &N) -> Option<B>;
 pub type OnBoundFn<'a, N, B> = &'a Fn(Debruijn, &B) -> Option<N>;
 
-pub trait LocallyNameless {
+pub trait Bound {
     type FreeName: FreeName;
     type BoundName;
 
@@ -180,7 +180,7 @@ pub trait LocallyNameless {
     fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<Self::FreeName, Self::BoundName>);
 }
 
-impl<T: LocallyNameless> LocallyNameless for Option<T> {
+impl<T: Bound> Bound for Option<T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
@@ -197,7 +197,7 @@ impl<T: LocallyNameless> LocallyNameless for Option<T> {
     }
 }
 
-impl<T: LocallyNameless> LocallyNameless for Box<T> {
+impl<T: Bound> Bound for Box<T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
@@ -210,7 +210,7 @@ impl<T: LocallyNameless> LocallyNameless for Box<T> {
     }
 }
 
-impl<T: LocallyNameless + Clone> LocallyNameless for Rc<T> {
+impl<T: Bound + Clone> Bound for Rc<T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
@@ -223,7 +223,7 @@ impl<T: LocallyNameless + Clone> LocallyNameless for Rc<T> {
     }
 }
 
-impl<T: LocallyNameless + Clone> LocallyNameless for [T] {
+impl<T: Bound + Clone> Bound for [T] {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 

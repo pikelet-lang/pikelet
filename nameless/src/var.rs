@@ -1,6 +1,6 @@
 use std::fmt;
 
-use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named, OnBoundFn, OnFreeFn};
+use {AlphaEq, Bound, Debruijn, FreeName, Named, OnBoundFn, OnFreeFn};
 
 /// A variable that can either be free or bound
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,7 +21,7 @@ impl<N: AlphaEq, B: AlphaEq> AlphaEq for Var<N, B> {
     }
 }
 
-impl<N: FreeName, B> LocallyNameless for Var<N, B> {
+impl<N: FreeName, B> Bound for Var<N, B> {
     type FreeName = N;
     type BoundName = B;
 

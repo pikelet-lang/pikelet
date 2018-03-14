@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use {AlphaEq, Debruijn, LocallyNameless, OnBoundFn, OnFreeFn};
+use {AlphaEq, Bound, Debruijn, OnBoundFn, OnFreeFn};
 
 /// A type annotated with a name for debugging purposes
 ///
@@ -23,7 +23,7 @@ impl<N, T: AlphaEq> AlphaEq for Named<N, T> {
     }
 }
 
-impl<T: LocallyNameless> LocallyNameless for Named<T::FreeName, T> {
+impl<T: Bound> Bound for Named<T::FreeName, T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 

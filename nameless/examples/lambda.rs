@@ -51,10 +51,10 @@ fn lookup<'a>(mut env: &'a Rc<Env>, name: &Name) -> Option<&'a Rc<Expr>> {
 }
 
 // FIXME: remove need for this!
-#[derive(Debug, Copy, Clone, AlphaEq, LocallyNameless)]
+#[derive(Debug, Copy, Clone, AlphaEq, Bound)]
 pub struct Unit;
 
-#[derive(Debug, Clone, AlphaEq, LocallyNameless)]
+#[derive(Debug, Clone, AlphaEq, Bound)]
 pub enum Expr {
     Var(Var<Name, Debruijn>),
     Lam(Scope<Named<Name, Unit>, Rc<Expr>>),

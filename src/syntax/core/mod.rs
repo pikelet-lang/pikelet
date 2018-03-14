@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{AlphaEq, Debruijn, LocallyNameless, Named, OnBoundFn, OnFreeFn, Scope, Var};
+use nameless::{AlphaEq, Bound, Debruijn, Named, OnBoundFn, OnFreeFn, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -26,7 +26,7 @@ pub struct SourceMeta {
 }
 
 // TODO: Derive this
-impl LocallyNameless for SourceMeta {
+impl Bound for SourceMeta {
     type FreeName = Name;
     type BoundName = Debruijn;
 
@@ -61,7 +61,7 @@ impl Level {
 }
 
 // TODO: Derive this
-impl LocallyNameless for Level {
+impl Bound for Level {
     type FreeName = Name;
     type BoundName = Debruijn;
 
@@ -120,7 +120,7 @@ impl fmt::Display for RawDefinition {
 ///       | λx:R.r      6. lambda abstractions
 ///       | R₁ R₂       7. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum RawTerm {
     /// A term annotated with a type
     Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
@@ -224,7 +224,7 @@ pub struct Definition {
 ///       | λx:T.t      5. lambda abstractions
 ///       | t₁ t₂       6. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum Term {
     /// A term annotated with a type
     Ann(SourceMeta, RcTerm, RcTerm), // 1.
@@ -269,7 +269,7 @@ impl fmt::Display for Term {
 ///       | λx:V.v      3. lambda abstractions
 ///       | n           4. neutral terms
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum Value {
     /// Universes
     Universe(Level), // 1.
@@ -298,7 +298,7 @@ impl fmt::Display for Value {
 /// n,N ::= x           1. variables
 ///       | n t         2. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, LocallyNameless)]
+#[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum Neutral {
     /// Variables
     Var(Var<Name, Debruijn>), // 1.

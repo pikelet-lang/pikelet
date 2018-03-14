@@ -1,4 +1,4 @@
-use {AlphaEq, Debruijn, FreeName, LocallyNameless, Named, OnBoundFn, OnFreeFn};
+use {AlphaEq, Bound, Debruijn, FreeName, Named, OnBoundFn, OnFreeFn};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope<B, T> {
@@ -8,8 +8,8 @@ pub struct Scope<B, T> {
 
 impl<N: FreeName, B, T> Scope<Named<N, B>, T>
 where
-    B: LocallyNameless<FreeName = N, BoundName = Debruijn>,
-    T: LocallyNameless<FreeName = N, BoundName = Debruijn>,
+    B: Bound<FreeName = N, BoundName = Debruijn>,
+    T: Bound<FreeName = N, BoundName = Debruijn>,
 {
     pub fn bind(binder: Named<N, B>, mut body: T) -> Scope<Named<N, B>, T> {
         body.close(&|level, name| match name == &binder.name {
@@ -44,10 +44,10 @@ impl<B: AlphaEq, T: AlphaEq> AlphaEq for Scope<B, T> {
     }
 }
 
-impl<N: FreeName, B, T> LocallyNameless for Scope<Named<N, B>, T>
+impl<N: FreeName, B, T> Bound for Scope<Named<N, B>, T>
 where
-    B: LocallyNameless<FreeName = N, BoundName = Debruijn>,
-    T: LocallyNameless<FreeName = N, BoundName = Debruijn>,
+    B: Bound<FreeName = N, BoundName = Debruijn>,
+    T: Bound<FreeName = N, BoundName = Debruijn>,
 {
     type FreeName = N;
     type BoundName = Debruijn;
@@ -69,10 +69,10 @@ pub fn unbind2<N, B1, T1, B2, T2>(
 ) -> (Named<N, B1>, T1, Named<N, B2>, T2)
 where
     N: FreeName,
-    B1: LocallyNameless<FreeName = N, BoundName = Debruijn>,
-    T1: LocallyNameless<FreeName = N, BoundName = Debruijn>,
-    B2: LocallyNameless<FreeName = N, BoundName = Debruijn>,
-    T2: LocallyNameless<FreeName = N, BoundName = Debruijn>,
+    B1: Bound<FreeName = N, BoundName = Debruijn>,
+    T1: Bound<FreeName = N, BoundName = Debruijn>,
+    B2: Bound<FreeName = N, BoundName = Debruijn>,
+    T2: Bound<FreeName = N, BoundName = Debruijn>,
 {
     let mut scope1_binder = scope1.unsafe_binder;
     let mut scope1_body = scope1.unsafe_body;

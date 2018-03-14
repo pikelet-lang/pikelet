@@ -8,25 +8,25 @@ extern crate synstructure;
 
 use synstructure::{BindStyle, Structure};
 
-decl_derive!([LocallyNameless] => locally_nameless_derive);
+decl_derive!([Bound] => locally_nameless_derive);
 
 fn locally_nameless_derive(mut s: Structure) -> quote::Tokens {
     s.bind_with(|_| BindStyle::RefMut);
 
     let close_at_body = s.each(|bi| {
         quote!{
-            ::nameless::LocallyNameless::close_at(#bi, index, on_free);
+            ::nameless::Bound::close_at(#bi, index, on_free);
         }
     });
 
     let open_at_body = s.each(|bi| {
         quote!{
-            ::nameless::LocallyNameless::open_at(#bi, index, on_bound);
+            ::nameless::Bound::open_at(#bi, index, on_bound);
         }
     });
 
     s.bound_impl(
-        quote!(::nameless::LocallyNameless),
+        quote!(::nameless::Bound),
         quote! {
             type FreeName = Name; // FIXME!
             type BoundName = ::nameless::Debruijn; // FIXME!
