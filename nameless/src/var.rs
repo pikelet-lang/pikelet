@@ -1,6 +1,6 @@
 use std::fmt;
 
-use {AlphaEq, Bound, Debruijn, FreeName, Named, OnBoundFn, OnFreeFn};
+use {AlphaEq, Binder, Bound, Debruijn, FreeName, Named};
 
 /// A variable that can either be free or bound
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,20 +25,26 @@ impl<N: FreeName, B> Bound for Var<N, B> {
     type FreeName = N;
     type BoundName = B;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<N, B>) {
+    fn close_at<B1>(&mut self, index: Debruijn, binder: &B1)
+    where
+        B1: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
         *self = match *self {
             Var::Bound(_) => return,
-            Var::Free(ref name) => match on_free(index, name) {
+            Var::Free(ref name) => match binder.on_free(index, name) {
                 Some(index) => Var::Bound(Named::new(name.clone(), index)),
                 None => return,
             },
         };
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<N, B>) {
+    fn open_at<B1>(&mut self, index: Debruijn, binder: &B1)
+    where
+        B1: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
         *self = match *self {
             Var::Free(_) => return,
-            Var::Bound(Named { ref inner, .. }) => match on_bound(index, inner) {
+            Var::Bound(Named { ref inner, .. }) => match binder.on_bound(index, inner) {
                 Some(name) => Var::Free(name),
                 None => return,
             },

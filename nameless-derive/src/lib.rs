@@ -13,15 +13,19 @@ decl_derive!([Bound] => locally_nameless_derive);
 fn locally_nameless_derive(mut s: Structure) -> quote::Tokens {
     s.bind_with(|_| BindStyle::RefMut);
 
+    let binder = quote! {
+        __B: ::nameless::Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    };
+
     let close_at_body = s.each(|bi| {
         quote!{
-            ::nameless::Bound::close_at(#bi, index, on_free);
+            ::nameless::Bound::close_at(#bi, __index, __binder);
         }
     });
 
     let open_at_body = s.each(|bi| {
         quote!{
-            ::nameless::Bound::open_at(#bi, index, on_bound);
+            ::nameless::Bound::open_at(#bi, __index, __binder);
         }
     });
 
@@ -31,19 +35,11 @@ fn locally_nameless_derive(mut s: Structure) -> quote::Tokens {
             type FreeName = Name; // FIXME!
             type BoundName = ::nameless::Debruijn; // FIXME!
 
-            fn close_at(
-                &mut self,
-                index: Debruijn,
-                on_free: ::nameless::OnFreeFn<Self::FreeName, Self::BoundName>,
-            ) {
+            fn close_at<__B>(&mut self, __index: Debruijn, __binder: &__B) where #binder {
                 match *self { #close_at_body }
             }
 
-            fn open_at(
-                &mut self,
-                index: Debruijn,
-                on_bound: ::nameless::OnBoundFn<Self::FreeName, Self::BoundName>,
-            ) {
+            fn open_at<__B>(&mut self, __index: Debruijn, __binder: &__B) where #binder {
                 match *self { #open_at_body }
             }
         },

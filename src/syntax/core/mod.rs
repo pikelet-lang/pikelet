@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{AlphaEq, Bound, Debruijn, Named, OnBoundFn, OnFreeFn, Scope, Var};
+use nameless::{AlphaEq, Binder as NBinder, Bound, Debruijn, Named, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -30,8 +30,8 @@ impl Bound for SourceMeta {
     type FreeName = Name;
     type BoundName = Debruijn;
 
-    fn close_at(&mut self, _: Debruijn, _: OnFreeFn<Name, Debruijn>) {}
-    fn open_at(&mut self, _: Debruijn, _: OnBoundFn<Name, Debruijn>) {}
+    fn close_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
+    fn open_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
 }
 
 impl Default for SourceMeta {
@@ -65,8 +65,8 @@ impl Bound for Level {
     type FreeName = Name;
     type BoundName = Debruijn;
 
-    fn close_at(&mut self, _: Debruijn, _: OnFreeFn<Name, Debruijn>) {}
-    fn open_at(&mut self, _: Debruijn, _: OnBoundFn<Name, Debruijn>) {}
+    fn close_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
+    fn open_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
 }
 
 impl fmt::Display for Level {

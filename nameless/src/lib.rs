@@ -161,38 +161,52 @@ macro_rules! assert_alpha_eq {
     });
 }
 
-pub type OnFreeFn<'a, N, B> = &'a Fn(Debruijn, &N) -> Option<B>;
-pub type OnBoundFn<'a, N, B> = &'a Fn(Debruijn, &B) -> Option<N>;
-
 pub trait Bound {
     type FreeName: FreeName;
     type BoundName;
 
-    fn close(&mut self, on_free: OnFreeFn<Self::FreeName, Self::BoundName>) {
-        self.close_at(Debruijn::ZERO, on_free);
+    fn close<B>(&mut self, binder: &B)
+    where
+        B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
+        self.close_at(Debruijn::ZERO, binder);
     }
 
-    fn open(&mut self, on_bound: OnBoundFn<Self::FreeName, Self::BoundName>) {
-        self.open_at(Debruijn::ZERO, on_bound);
+    fn open<B>(&mut self, binder: &B)
+    where
+        B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
+        self.open_at(Debruijn::ZERO, binder);
     }
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<Self::FreeName, Self::BoundName>);
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<Self::FreeName, Self::BoundName>);
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>;
+
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>;
 }
 
 impl<T: Bound> Bound for Option<T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
         if let Some(ref mut inner) = *self {
-            inner.close_at(index, on_free);
+            inner.close_at(index, binder);
         }
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
         if let Some(ref mut inner) = *self {
-            inner.open_at(index, on_bound);
+            inner.open_at(index, binder);
         }
     }
 }
@@ -201,12 +215,18 @@ impl<T: Bound> Bound for Box<T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
-        (**self).close_at(index, on_free);
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
+        (**self).close_at(index, binder);
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
-        (**self).open_at(index, on_bound);
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
+        (**self).open_at(index, binder);
     }
 }
 
@@ -214,12 +234,18 @@ impl<T: Bound + Clone> Bound for Rc<T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
-        Rc::make_mut(self).close_at(index, on_free);
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
+        Rc::make_mut(self).close_at(index, binder);
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
-        Rc::make_mut(self).open_at(index, on_bound);
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
+        Rc::make_mut(self).open_at(index, binder);
     }
 }
 
@@ -227,15 +253,26 @@ impl<T: Bound + Clone> Bound for [T] {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
         for elem in self {
-            elem.close_at(index, on_free);
+            elem.close_at(index, binder);
         }
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
         for elem in self {
-            elem.open_at(index, on_bound);
+            elem.open_at(index, binder);
         }
     }
+}
+
+pub trait Binder: Bound {
+    fn on_free(&self, index: Debruijn, name: &Self::FreeName) -> Option<Self::BoundName>;
+    fn on_bound(&self, index: Debruijn, name: &Self::BoundName) -> Option<Self::FreeName>;
 }

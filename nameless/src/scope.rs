@@ -1,4 +1,4 @@
-use {AlphaEq, Bound, Debruijn, FreeName, Named, OnBoundFn, OnFreeFn};
+use {AlphaEq, Binder, Bound, Debruijn, FreeName, Named};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope<B, T> {
@@ -12,10 +12,7 @@ where
     T: Bound<FreeName = N, BoundName = Debruijn>,
 {
     pub fn bind(binder: Named<N, B>, mut body: T) -> Scope<Named<N, B>, T> {
-        body.close(&|level, name| match name == &binder.name {
-            true => Some(level),
-            false => None,
-        });
+        body.close(&binder);
 
         Scope {
             unsafe_binder: binder,
@@ -28,10 +25,7 @@ where
         let mut body = self.unsafe_body;
 
         binder.name.freshen();
-        body.open(&|level, index| match level == *index {
-            true => Some(binder.name.clone()),
-            false => None,
-        });
+        body.open(&binder);
 
         (binder, body)
     }
@@ -52,14 +46,20 @@ where
     type FreeName = N;
     type BoundName = Debruijn;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<N, Debruijn>) {
-        self.unsafe_binder.close_at(index, on_free);
-        self.unsafe_body.close_at(index.succ(), on_free);
+    fn close_at<B1>(&mut self, index: Debruijn, binder: &B1)
+    where
+        B1: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
+        self.unsafe_binder.close_at(index, binder);
+        self.unsafe_body.close_at(index.succ(), binder);
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<N, Debruijn>) {
-        self.unsafe_binder.open_at(index, on_bound);
-        self.unsafe_body.open_at(index.succ(), on_bound);
+    fn open_at<B1>(&mut self, index: Debruijn, binder: &B1)
+    where
+        B1: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
+        self.unsafe_binder.open_at(index, binder);
+        self.unsafe_body.open_at(index.succ(), binder);
     }
 }
 
@@ -82,14 +82,8 @@ where
     {
         scope1_binder.name.freshen();
         scope2_binder.name = scope1_binder.name.clone();
-
-        let on_bound = &|level: Debruijn, index: &Debruijn| match level == *index {
-            true => Some(scope1_binder.name.clone()),
-            false => None,
-        };
-
-        scope1_body.open(on_bound);
-        scope2_body.open(on_bound);
+        scope1_body.open(&scope1_binder);
+        scope2_body.open(&scope2_binder);
     }
 
     (scope1_binder, scope1_body, scope2_binder, scope2_body)

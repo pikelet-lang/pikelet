@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use {AlphaEq, Bound, Debruijn, OnBoundFn, OnFreeFn};
+use {AlphaEq, Binder, Bound, Debruijn, FreeName};
 
 /// A type annotated with a name for debugging purposes
 ///
@@ -27,12 +27,37 @@ impl<T: Bound> Bound for Named<T::FreeName, T> {
     type FreeName = T::FreeName;
     type BoundName = T::BoundName;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
-        self.inner.close_at(index, on_free);
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
+        self.inner.close_at(index, binder);
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
-        self.inner.open_at(index, on_bound);
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+    {
+        self.inner.open_at(index, binder);
+    }
+}
+
+impl<N: FreeName, T> Binder for Named<N, T>
+where
+    T: Bound<FreeName = N, BoundName = Debruijn>,
+{
+    fn on_free(&self, index: Debruijn, name: &Self::FreeName) -> Option<Debruijn> {
+        match *name == self.name {
+            true => Some(index),
+            false => None,
+        }
+    }
+
+    fn on_bound(&self, index: Debruijn, name: &Debruijn) -> Option<Self::FreeName> {
+        match *name == index {
+            true => Some(self.name.clone()),
+            false => None,
+        }
     }
 }
 
