@@ -222,3 +222,20 @@ impl<T: LocallyNameless + Clone> LocallyNameless for Rc<T> {
         Rc::make_mut(self).open_at(index, on_bound);
     }
 }
+
+impl<T: LocallyNameless + Clone> LocallyNameless for [T] {
+    type FreeName = T::FreeName;
+    type BoundName = T::BoundName;
+
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
+        for elem in self {
+            elem.close_at(index, on_free);
+        }
+    }
+
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
+        for elem in self {
+            elem.open_at(index, on_bound);
+        }
+    }
+}
