@@ -22,8 +22,8 @@ impl<N: AlphaEq, B: AlphaEq> AlphaEq for Var<N, B> {
 }
 
 impl<N: FreeName, B> LocallyNameless for Var<N, B> {
-    type Name = N;
-    type Bound = B;
+    type FreeName = N;
+    type BoundName = B;
 
     fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<N, B>) {
         *self = match *self {

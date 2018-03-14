@@ -23,15 +23,15 @@ impl<N, T: AlphaEq> AlphaEq for Named<N, T> {
     }
 }
 
-impl<T: LocallyNameless> LocallyNameless for Named<T::Name, T> {
-    type Name = T::Name;
-    type Bound = T::Bound;
+impl<T: LocallyNameless> LocallyNameless for Named<T::FreeName, T> {
+    type FreeName = T::FreeName;
+    type BoundName = T::BoundName;
 
-    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::Name, T::Bound>) {
+    fn close_at(&mut self, index: Debruijn, on_free: OnFreeFn<T::FreeName, T::BoundName>) {
         self.inner.close_at(index, on_free);
     }
 
-    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::Name, T::Bound>) {
+    fn open_at(&mut self, index: Debruijn, on_bound: OnBoundFn<T::FreeName, T::BoundName>) {
         self.inner.open_at(index, on_bound);
     }
 }

@@ -27,8 +27,8 @@ pub struct SourceMeta {
 
 // TODO: Derive this
 impl LocallyNameless for SourceMeta {
-    type Name = Name;
-    type Bound = Debruijn;
+    type FreeName = Name;
+    type BoundName = Debruijn;
 
     fn close_at(&mut self, _: Debruijn, _: OnFreeFn<Name, Debruijn>) {}
     fn open_at(&mut self, _: Debruijn, _: OnBoundFn<Name, Debruijn>) {}
@@ -62,8 +62,8 @@ impl Level {
 
 // TODO: Derive this
 impl LocallyNameless for Level {
-    type Name = Name;
-    type Bound = Debruijn;
+    type FreeName = Name;
+    type BoundName = Debruijn;
 
     fn close_at(&mut self, _: Debruijn, _: OnFreeFn<Name, Debruijn>) {}
     fn open_at(&mut self, _: Debruijn, _: OnBoundFn<Name, Debruijn>) {}

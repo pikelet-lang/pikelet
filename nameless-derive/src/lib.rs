@@ -28,13 +28,13 @@ fn locally_nameless_derive(mut s: Structure) -> quote::Tokens {
     s.bound_impl(
         quote!(::nameless::LocallyNameless),
         quote! {
-            type Name = Name; // FIXME!
-            type Bound = ::nameless::Debruijn; // FIXME!
+            type FreeName = Name; // FIXME!
+            type BoundName = ::nameless::Debruijn; // FIXME!
 
             fn close_at(
                 &mut self,
                 index: Debruijn,
-                on_free: ::nameless::OnFreeFn<Self::Name, Self::Bound>,
+                on_free: ::nameless::OnFreeFn<Self::FreeName, Self::BoundName>,
             ) {
                 match *self { #close_at_body }
             }
@@ -42,7 +42,7 @@ fn locally_nameless_derive(mut s: Structure) -> quote::Tokens {
             fn open_at(
                 &mut self,
                 index: Debruijn,
-                on_bound: ::nameless::OnBoundFn<Self::Name, Self::Bound>,
+                on_bound: ::nameless::OnBoundFn<Self::FreeName, Self::BoundName>,
             ) {
                 match *self { #open_at_body }
             }
