@@ -1,6 +1,6 @@
 # Pikelet 🥞
 
-[![Build Status](travis-badge)][travis-url]
+[![Build Status][travis-badge]][travis-url]
 [![Gitter][gitter-badge]][gitter-lobby]
 
 [travis-badge]: https://travis-ci.org/brendanzab/pikelet.svg?branch=master
