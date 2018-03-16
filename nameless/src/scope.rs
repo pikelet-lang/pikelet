@@ -1,4 +1,4 @@
-use {AlphaEq, Binder, Bound, Debruijn, FreeName, Named};
+use {AlphaEq, Binder, Bound, Debruijn};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope<B, T> {
@@ -6,12 +6,12 @@ pub struct Scope<B, T> {
     pub unsafe_body: T,
 }
 
-impl<N: FreeName, B, T> Scope<Named<N, B>, T>
+impl<B, T> Scope<B, T>
 where
-    B: Bound<FreeName = N, BoundName = Debruijn>,
-    T: Bound<FreeName = N, BoundName = Debruijn>,
+    B: Binder,
+    T: Bound<FreeName = B::FreeName, BoundName = B::BoundName>,
 {
-    pub fn bind(binder: Named<N, B>, mut body: T) -> Scope<Named<N, B>, T> {
+    pub fn bind(binder: B, mut body: T) -> Scope<B, T> {
         body.close(&binder);
 
         Scope {
@@ -20,11 +20,11 @@ where
         }
     }
 
-    pub fn unbind(self) -> (Named<N, B>, T) {
+    pub fn unbind(self) -> (B, T) {
         let mut binder = self.unsafe_binder;
         let mut body = self.unsafe_body;
 
-        binder.name.freshen();
+        binder.freshen();
         body.open(&binder);
 
         (binder, body)
@@ -38,17 +38,17 @@ impl<B: AlphaEq, T: AlphaEq> AlphaEq for Scope<B, T> {
     }
 }
 
-impl<N: FreeName, B, T> Bound for Scope<Named<N, B>, T>
+impl<B, T> Bound for Scope<B, T>
 where
-    B: Bound<FreeName = N, BoundName = Debruijn>,
-    T: Bound<FreeName = N, BoundName = Debruijn>,
+    B: Binder,
+    T: Bound<FreeName = B::FreeName, BoundName = B::BoundName>,
 {
-    type FreeName = N;
-    type BoundName = Debruijn;
+    type FreeName = B::FreeName;
+    type BoundName = B::BoundName;
 
     fn close_at<B1>(&mut self, index: Debruijn, binder: &B1)
     where
-        B1: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+        B1: Binder<FreeName = B::FreeName, BoundName = B::BoundName>,
     {
         self.unsafe_binder.close_at(index, binder);
         self.unsafe_body.close_at(index.succ(), binder);
@@ -56,23 +56,19 @@ where
 
     fn open_at<B1>(&mut self, index: Debruijn, binder: &B1)
     where
-        B1: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
+        B1: Binder<FreeName = B::FreeName, BoundName = B::BoundName>,
     {
         self.unsafe_binder.open_at(index, binder);
         self.unsafe_body.open_at(index.succ(), binder);
     }
 }
 
-pub fn unbind2<N, B1, T1, B2, T2>(
-    scope1: Scope<Named<N, B1>, T1>,
-    scope2: Scope<Named<N, B2>, T2>,
-) -> (Named<N, B1>, T1, Named<N, B2>, T2)
+pub fn unbind2<B1, T1, B2, T2>(scope1: Scope<B1, T1>, scope2: Scope<B2, T2>) -> (B1, T1, B2, T2)
 where
-    N: FreeName,
-    B1: Bound<FreeName = N, BoundName = Debruijn>,
-    T1: Bound<FreeName = N, BoundName = Debruijn>,
-    B2: Bound<FreeName = N, BoundName = Debruijn>,
-    T2: Bound<FreeName = N, BoundName = Debruijn>,
+    B1: Binder,
+    T1: Bound<FreeName = B1::FreeName, BoundName = B1::BoundName>,
+    B2: Binder<FreeName = B1::FreeName, BoundName = B1::BoundName, NamePerm = B1::NamePerm>,
+    T2: Bound<FreeName = B1::FreeName, BoundName = B1::BoundName>,
 {
     let mut scope1_binder = scope1.unsafe_binder;
     let mut scope1_body = scope1.unsafe_body;
@@ -80,8 +76,8 @@ where
     let mut scope2_body = scope2.unsafe_body;
 
     {
-        scope1_binder.name.freshen();
-        scope2_binder.name = scope1_binder.name.clone();
+        let names = scope1_binder.freshen();
+        scope2_binder.rename(&names);
         scope1_body.open(&scope1_binder);
         scope2_body.open(&scope2_binder);
     }

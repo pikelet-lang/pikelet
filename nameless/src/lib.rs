@@ -76,7 +76,7 @@ pub trait FreeName: Clone + PartialEq {
 /// \x y -> x
 /// \a b -> a
 /// ```
-pub trait AlphaEq<Other = Self> {
+pub trait AlphaEq<Other: ?Sized = Self> {
     fn alpha_eq(&self, other: &Other) -> bool;
 }
 
@@ -121,6 +121,19 @@ impl<T: AlphaEq> AlphaEq for Box<T> {
 impl<T: AlphaEq> AlphaEq for Rc<T> {
     fn alpha_eq(&self, other: &Rc<T>) -> bool {
         T::alpha_eq(self, other)
+    }
+}
+
+impl<T: AlphaEq> AlphaEq for [T] {
+    fn alpha_eq(&self, other: &[T]) -> bool {
+        self.len() == other.len()
+            && <_>::zip(self.iter(), other.iter()).all(|(lhs, rhs)| T::alpha_eq(lhs, rhs))
+    }
+}
+
+impl<T: AlphaEq> AlphaEq for Vec<T> {
+    fn alpha_eq(&self, other: &Vec<T>) -> bool {
+        <[T]>::alpha_eq(self, other)
     }
 }
 
@@ -272,7 +285,80 @@ impl<T: Bound + Clone> Bound for [T] {
     }
 }
 
+impl<T: Bound + Clone> Bound for Vec<T> {
+    type FreeName = T::FreeName;
+    type BoundName = T::BoundName;
+
+    fn close_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
+        <[T]>::close_at(self, index, binder)
+    }
+
+    fn open_at<B>(&mut self, index: Debruijn, binder: &B)
+    where
+        B: Binder<FreeName = T::FreeName, BoundName = T::BoundName>,
+    {
+        <[T]>::open_at(self, index, binder)
+    }
+}
+
 pub trait Binder: Bound {
+    type NamePerm;
+
+    fn freshen(&mut self) -> Self::NamePerm;
+    fn rename(&mut self, perm: &Self::NamePerm);
     fn on_free(&self, index: Debruijn, name: &Self::FreeName) -> Option<Self::BoundName>;
     fn on_bound(&self, index: Debruijn, name: &Self::BoundName) -> Option<Self::FreeName>;
+}
+
+impl<T: Binder + Clone> Binder for [T] {
+    type NamePerm = Vec<T::NamePerm>;
+
+    fn freshen(&mut self) -> Vec<T::NamePerm> {
+        self.iter_mut().map(|binder| binder.freshen()).collect()
+    }
+
+    fn rename(&mut self, perm: &Vec<T::NamePerm>) {
+        assert_eq!(self.len(), perm.len());
+
+        for (binder, perm) in <_>::zip(self.iter_mut(), perm.iter()) {
+            binder.rename(perm);
+        }
+    }
+
+    fn on_free(&self, index: Debruijn, name: &T::FreeName) -> Option<T::BoundName> {
+        self.iter()
+            .enumerate()
+            .filter_map(|(_i, binder)| binder.on_free(index, name)) // FIXME: use binding number
+            .next() // FIXME: return bind
+    }
+
+    fn on_bound(&self, index: Debruijn, name: &T::BoundName) -> Option<T::FreeName> {
+        self.iter()
+            .enumerate()
+            .filter_map(|(_i, binder)| binder.on_bound(index, name)) // FIXME: use binding number
+            .next()
+    }
+}
+
+impl<T: Binder + Clone> Binder for Vec<T> {
+    type NamePerm = Vec<T::NamePerm>;
+
+    fn freshen(&mut self) -> Vec<T::NamePerm> {
+        <[T]>::freshen(self)
+    }
+
+    fn rename(&mut self, perm: &Vec<T::NamePerm>) {
+        <[T]>::rename(self, perm)
+    }
+
+    fn on_free(&self, index: Debruijn, name: &T::FreeName) -> Option<T::BoundName> {
+        <[T]>::on_free(self, index, name)
+    }
+
+    fn on_bound(&self, index: Debruijn, name: &T::BoundName) -> Option<T::FreeName> {
+        <[T]>::on_bound(self, index, name)
+    }
 }

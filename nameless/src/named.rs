@@ -46,6 +46,17 @@ impl<N: FreeName, T> Binder for Named<N, T>
 where
     T: Bound<FreeName = N, BoundName = Debruijn>,
 {
+    type NamePerm = N;
+
+    fn freshen(&mut self) -> N {
+        self.name.freshen();
+        self.name.clone()
+    }
+
+    fn rename(&mut self, perm: &N) {
+        self.name = perm.clone(); // FIXME: double clone
+    }
+
     fn on_free(&self, index: Debruijn, name: &Self::FreeName) -> Option<Debruijn> {
         match *name == self.name {
             true => Some(index),
