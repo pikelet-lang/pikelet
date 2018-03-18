@@ -143,13 +143,13 @@ PiTerm: Term = {
     <start: @L> <binder: AppTerm> "->" <body: LamTerm> <end: @R> =>? {
         reparse_pi_type_hack(ByteSpan::new(start, end), binder, body)
     },
-    <start: @L> "Type" <level: U32Literal> <end: @R> => {
-        Term::Universe(ByteSpan::new(start, end), Some(level as u32))
-    },
 };
 
 AppTerm: Term = {
     AtomicTerm,
+    <start: @L> "Type" <level: U32Literal> <end: @R> => {
+        Term::Universe(ByteSpan::new(start, end), Some(level as u32))
+    },
     <f: AppTerm> <arg: AtomicTerm> => {
         Term::App(Box::new(f), Box::new(arg))
     },
