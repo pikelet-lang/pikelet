@@ -100,6 +100,9 @@ impl_alpha_eq_eq!(i16);
 impl_alpha_eq_eq!(i32);
 impl_alpha_eq_eq!(i64);
 impl_alpha_eq_eq!(isize);
+impl_alpha_eq_eq!(f32);
+impl_alpha_eq_eq!(f64);
+impl_alpha_eq_eq!(char);
 impl_alpha_eq_eq!(String);
 impl_alpha_eq_eq!(());
 

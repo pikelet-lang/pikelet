@@ -65,6 +65,12 @@ pub enum TypeError {
         var_span: Option<ByteSpan>,
         name: Name,
     },
+    AmbiguousIntLiteral {
+        span: ByteSpan,
+    },
+    AmbiguousFloatLiteral {
+        span: ByteSpan,
+    },
     UnableToElaborateHole {
         span: ByteSpan,
         expected: Option<RcType>,
@@ -114,6 +120,16 @@ impl TypeError {
                 Label::new_primary(param_span)
                     .with_message("the parameter that requires an annotation"),
             ),
+            TypeError::AmbiguousIntLiteral { span } => {
+                Diagnostic::new_error("ambiguous integer literal").with_label(
+                    Label::new_primary(span).with_message("type annotations needed here"),
+                )
+            },
+            TypeError::AmbiguousFloatLiteral { span } => {
+                Diagnostic::new_error("ambiguous floating point literal").with_label(
+                    Label::new_primary(span).with_message("type annotations needed here"),
+                )
+            },
             TypeError::UnableToElaborateHole {
                 span,
                 expected: None,
@@ -172,6 +188,10 @@ impl fmt::Display for TypeError {
                 "Type annotation needed for the function parameter `{}`",
                 name,
             ),
+            TypeError::AmbiguousIntLiteral { .. } => write!(f, "Ambiguous integer literal"),
+            TypeError::AmbiguousFloatLiteral { .. } => {
+                write!(f, "Ambiguous floating point literal")
+            },
             TypeError::UnableToElaborateHole { expected: None, .. } => {
                 write!(f, "Unable to elaborate hole",)
             },

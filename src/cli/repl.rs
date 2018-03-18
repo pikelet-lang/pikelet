@@ -133,7 +133,7 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
 
         ReplCommand::Eval(parse_term) => {
             let raw_term = parse_term.to_core();
-            let context = Context::new();
+            let context = Context::default();
             let (term, inferred) = semantics::infer(&context, &raw_term)?;
             let evaluated = semantics::normalize(&context, &term)?;
 

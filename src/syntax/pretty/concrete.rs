@@ -113,6 +113,10 @@ impl ToDoc for Term {
                 }))
             },
             Term::Hole(_) => Doc::text("_"),
+            Term::String(_, ref value) => Doc::text(format!("{:?}", value)),
+            Term::Char(_, value) => Doc::text(format!("{:?}", value)),
+            Term::Int(_, value) => Doc::as_string(value),
+            Term::Float(_, value) => Doc::as_string(value),
             Term::Var(_, ref name) => Doc::as_string(name),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
                 .append(pretty_lam_params(options, params))

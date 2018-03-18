@@ -45,12 +45,3 @@ fn reparse_pi_type_hack<L, T>(
         ann => Ok(Term::Arrow(ann.into(), body.into())),
     }
 }
-
-fn u32_literal<L, T>(span: ByteSpan, src: &str) -> Result<u32, LalrpopError<L, T, ParseError>> {
-    u32::from_str_radix(src, 10).map_err(|_| LalrpopError::User {
-        error: ParseError::IntegerLiteralOverflow {
-            span,
-            value: src.to_string(),
-        },
-    })
-}

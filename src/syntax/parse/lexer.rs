@@ -1,7 +1,7 @@
 use codespan::{ByteSpan, FileMap};
 use codespan_reporting::{Diagnostic, Label};
-use std::fmt;
-use std::str::CharIndices;
+use std::{fmt, u64};
+use std::str::{CharIndices, FromStr};
 
 use codespan::{ByteIndex, ByteOffset, RawOffset};
 use unicode_xid::UnicodeXID;
@@ -30,15 +30,33 @@ fn is_dec_digit(ch: char) -> bool {
 pub enum LexerError {
     #[fail(display = "An unexpected character {:?} was found.", found)]
     UnexpectedCharacter { start: ByteIndex, found: char },
+    #[fail(display = "Unexpected end of file.")]
+    UnexpectedEof { end: ByteIndex },
+    #[fail(display = "Unterminated string literal.")]
+    UnterminatedStringLiteral { span: ByteSpan },
+    #[fail(display = "Unterminated character literal.")]
+    UnterminatedCharLiteral { span: ByteSpan },
+    #[fail(display = "Empty character literal.")]
+    EmptyCharLiteral { span: ByteSpan },
+    #[fail(display = "An unknown escape code \\{} was found.", found)]
+    UnknownEscapeCode { start: ByteIndex, found: char },
+    #[fail(display = "An integer literal {} was too large for the target type.", value)]
+    IntegerLiteralOverflow { span: ByteSpan, value: String },
 }
 
 impl LexerError {
     /// Return the span of source code that this error originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            LexerError::UnexpectedCharacter { start, found } => {
+            LexerError::UnexpectedCharacter { start, found }
+            | LexerError::UnknownEscapeCode { start, found } => {
                 ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found))
             },
+            LexerError::UnexpectedEof { end } => ByteSpan::new(end, end),
+            LexerError::UnterminatedStringLiteral { span }
+            | LexerError::UnterminatedCharLiteral { span }
+            | LexerError::EmptyCharLiteral { span }
+            | LexerError::IntegerLiteralOverflow { span, .. } => span,
         }
     }
 
@@ -49,18 +67,44 @@ impl LexerError {
                 Diagnostic::new_error(format!("unexpected character {:?}", found))
                     .with_label(Label::new_primary(char_span))
             },
+            LexerError::UnexpectedEof { end } => Diagnostic::new_error("unexpected end of file")
+                .with_label(Label::new_primary(ByteSpan::new(end, end))),
+            LexerError::UnterminatedStringLiteral { span } => {
+                Diagnostic::new_error("unterminated string literal")
+                    .with_label(Label::new_primary(span))
+            },
+            LexerError::UnterminatedCharLiteral { span } => {
+                Diagnostic::new_error("unterminated character literal")
+                    .with_label(Label::new_primary(span))
+            },
+            LexerError::EmptyCharLiteral { span } => {
+                Diagnostic::new_error("empty character literal")
+                    .with_label(Label::new_primary(span))
+            },
+            LexerError::UnknownEscapeCode { start, found } => {
+                let char_span = ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found));
+                Diagnostic::new_error(format!("unknown escape code \\{}", found))
+                    .with_label(Label::new_primary(char_span))
+            },
+            LexerError::IntegerLiteralOverflow { span, ref value } => {
+                Diagnostic::new_error(format!("integer literal overflow with value `{}`", value))
+                    .with_label(Label::new_primary(span).with_message("overflowing literal"))
+            },
         }
     }
 }
 
 /// A token in the source file, to be emitted by the `Lexer`
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token<S> {
     // Data
     Ident(S),
     DocComment(S),
     ReplCommand(S),
-    DecLiteral(S),
+    StringLiteral(String),
+    CharLiteral(char),
+    DecLiteral(u64),
+    FloatLiteral(f64),
 
     // Keywords
     As,     // as
@@ -94,7 +138,10 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Ident(ref name) => write!(f, "{}", name),
             Token::DocComment(ref comment) => write!(f, "||| {}", comment),
             Token::ReplCommand(ref command) => write!(f, ":{}", command),
+            Token::StringLiteral(ref value) => write!(f, "\"{}\"", value),
+            Token::CharLiteral(ref value) => write!(f, "'{}'", value),
             Token::DecLiteral(ref value) => write!(f, "{}", value),
+            Token::FloatLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
             Token::Hole => write!(f, "_"),
             Token::Module => write!(f, "module"),
@@ -124,7 +171,10 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Ident(name) => Token::Ident(String::from(name)),
             Token::DocComment(comment) => Token::DocComment(String::from(comment)),
             Token::ReplCommand(command) => Token::ReplCommand(String::from(command)),
-            Token::DecLiteral(value) => Token::DecLiteral(String::from(value)),
+            Token::StringLiteral(value) => Token::StringLiteral(value),
+            Token::CharLiteral(value) => Token::CharLiteral(value),
+            Token::DecLiteral(value) => Token::DecLiteral(value),
+            Token::FloatLiteral(value) => Token::FloatLiteral(value),
             Token::As => Token::As,
             Token::Module => Token::Module,
             Token::Import => Token::Import,
@@ -253,7 +303,7 @@ impl<'input> Lexer<'input> {
         (start, Token::DocComment(comment), end)
     }
 
-    /// Consume an identifier token
+    /// Consume an identifier
     fn ident(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
         let (end, ident) = self.take_while(start, is_ident_continue);
 
@@ -269,11 +319,97 @@ impl<'input> Lexer<'input> {
         (start, token, end)
     }
 
-    /// Consume a decimal literal token
-    fn dec_literal(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
+    /// Consume an escape code
+    fn escape_code(&mut self, start: ByteIndex) -> Result<char, LexerError> {
+        match self.bump() {
+            Some((_, '\'')) => Ok('\''),
+            Some((_, '"')) => Ok('"'),
+            Some((_, '\\')) => Ok('\\'),
+            Some((_, '/')) => Ok('/'),
+            Some((_, 'n')) => Ok('\n'),
+            Some((_, 'r')) => Ok('\r'),
+            Some((_, 't')) => Ok('\t'),
+            // TODO: Unicode escape codes
+            Some((start, ch)) => Err(LexerError::UnknownEscapeCode { start, found: ch }),
+            None => Err(LexerError::UnexpectedEof { end: start }),
+        }
+    }
+
+    /// Consume a string literal
+    fn string_literal(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+        let mut string = String::new();
+        let mut end = start;
+
+        while let Some((next, ch)) = self.bump() {
+            end = next + ByteOffset::from_char_utf8(ch);
+            match ch {
+                '\\' => string.push(self.escape_code(next)?),
+                '"' => return Ok((start, Token::StringLiteral(string), end)),
+                ch => string.push(ch),
+            }
+        }
+
+        Err(LexerError::UnterminatedStringLiteral {
+            span: ByteSpan::new(start, end),
+        })
+    }
+
+    /// Consume a character literal
+    fn char_literal(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+        let ch = match self.bump() {
+            Some((next, '\\')) => self.escape_code(next)?,
+            Some((next, '\'')) => {
+                return Err(LexerError::EmptyCharLiteral {
+                    span: ByteSpan::new(start, next + ByteOffset::from_char_utf8('\'')),
+                })
+            },
+            Some((_, ch)) => ch,
+            None => return Err(LexerError::UnexpectedEof { end: start }),
+        };
+
+        match self.bump() {
+            Some((end, '\'')) => Ok((
+                start,
+                Token::CharLiteral(ch),
+                end + ByteOffset::from_char_utf8('\''),
+            )),
+            Some((next, ch)) => Err(LexerError::UnterminatedCharLiteral {
+                span: ByteSpan::new(start, next + ByteOffset::from_char_utf8(ch)),
+            }),
+            None => Err(LexerError::UnexpectedEof { end: start }),
+        }
+    }
+
+    /// Consume a decimal literal
+    fn dec_literal(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
         let (end, src) = self.take_while(start, is_dec_digit);
 
-        (start, Token::DecLiteral(src), end)
+        if let Some((_, '.')) = self.lookahead() {
+            self.bump(); // skip '.'
+            let (end, src) = self.take_while(start, is_dec_digit);
+
+            match f64::from_str(src) {
+                Ok(value) => Ok((start, Token::FloatLiteral(value), end)),
+                Err(_) => unimplemented!(),
+            }
+        } else {
+            match u64::from_str_radix(src, 10) {
+                Ok(value) => Ok((start, Token::DecLiteral(value), end)),
+                Err(_) => Err(LexerError::IntegerLiteralOverflow {
+                    span: ByteSpan::new(start, end),
+                    value: src.to_string(),
+                }),
+            }
+        }
     }
 }
 
@@ -311,8 +447,10 @@ impl<'input> Iterator for Lexer<'input> {
                 '}' => Ok((start, Token::RBrace, end)),
                 '[' => Ok((start, Token::LBracket, end)),
                 ']' => Ok((start, Token::RBracket, end)),
+                '"' => self.string_literal(start),
+                '\'' => self.char_literal(start),
                 ch if is_ident_start(ch) => Ok(self.ident(start)),
-                ch if is_dec_digit(ch) => Ok(self.dec_literal(start)),
+                ch if is_dec_digit(ch) => self.dec_literal(start),
                 ch if ch.is_whitespace() => continue,
                 _ => Err(LexerError::UnexpectedCharacter { start, found: ch }),
             });
@@ -361,6 +499,40 @@ mod tests {
         test! {
             "       ||| hello this is dog",
             "       ~~~~~~~~~~~~~~~~~~~~~" => Token::DocComment("hello this is dog"),
+        };
+    }
+
+    #[test]
+    fn string_literal() {
+        test! {
+            r#"  "a" "\t"  "#,
+            r#"  ~~~       "# => Token::StringLiteral(String::from("a")),
+            r#"      ~~~~  "# => Token::StringLiteral(String::from("\t")),
+        };
+    }
+
+    #[test]
+    fn char_literal() {
+        test! {
+            r"  'a' '\t'  ",
+            r"  ~~~       " => Token::CharLiteral('a'),
+            r"      ~~~~  " => Token::CharLiteral('\t'),
+        };
+    }
+
+    #[test]
+    fn dec_literal() {
+        test! {
+            "  123  ",
+            "  ~~~  " => Token::DecLiteral(123),
+        };
+    }
+
+    #[test]
+    fn float_literal() {
+        test! {
+            "  122.345  ",
+            "  ~~~~~~~  " => Token::FloatLiteral(122.345),
         };
     }
 

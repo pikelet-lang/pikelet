@@ -193,6 +193,14 @@ pub enum Term {
     /// _
     /// ```
     Hole(ByteSpan),
+    /// String literals
+    String(ByteSpan, String),
+    /// Character literals
+    Char(ByteSpan, char),
+    /// Integer literals
+    Int(ByteSpan, u64),
+    /// Floating point literals
+    Float(ByteSpan, f64),
     /// Variables
     ///
     /// ```text
@@ -241,6 +249,10 @@ impl Term {
             Term::Parens(span, _)
             | Term::Universe(span, _)
             | Term::Hole(span)
+            | Term::String(span, _)
+            | Term::Char(span, _)
+            | Term::Int(span, _)
+            | Term::Float(span, _)
             | Term::Var(span, _)
             | Term::Error(span) => span,
             Term::Pi(start, _, ref body) | Term::Lam(start, _, ref body) => {

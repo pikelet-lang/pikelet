@@ -146,6 +146,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         //  Γ ⊢ Type ⇒ Type
         Term::Universe(_, level) => Ok(Value::Universe(level).into()),
 
+        Term::Constant(_, ref c) => Ok(Value::Constant(c.clone()).into()),
+
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
                 // Can't reduce further - we are in a pi or let binding!
@@ -254,6 +256,24 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 /// Γ ⊢ r ↑ V ⤳ t
 /// ```
 pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<RcTerm, TypeError> {
+    use syntax::core::{Constant, RawConstant};
+
+    /// ```text
+    /// Γ ⊢ r ↑ c ⤳ t
+    /// ```
+    fn check_const(c: &RawConstant, c_ty: &Constant) -> Option<Constant> {
+        match (c, c_ty) {
+            // FIXME: overflow?
+            (&RawConstant::Int(value), &Constant::U32Type) => Some(Constant::U32(value as u32)),
+            (&RawConstant::Int(value), &Constant::U64Type) => Some(Constant::U64(value)),
+            (&RawConstant::Int(value), &Constant::F32Type) => Some(Constant::F32(value as f32)),
+            (&RawConstant::Int(value), &Constant::F64Type) => Some(Constant::F64(value as f64)),
+            (&RawConstant::Float(value), &Constant::F32Type) => Some(Constant::F32(value as f32)),
+            (&RawConstant::Float(value), &Constant::F64Type) => Some(Constant::F64(value)),
+            (_, _) => None,
+        }
+    }
+
     match (&*term.inner, &*expected.inner) {
         // We infer the type of the argument (`τ₁`) of the lambda from the
         // supplied pi type, then 'push' it into the elaborated term, along with
@@ -277,6 +297,11 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 
             // TODO: We might want to optimise for this case, rather than
             // falling through to `infer` and reunbinding at INFER/LAM
+        },
+        (&RawTerm::Constant(meta, ref c), &Value::Constant(ref c_ty)) => {
+            if let Some(c) = check_const(c, c_ty) {
+                return Ok(Term::Constant(meta, c).into());
+            }
         },
         (&RawTerm::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
@@ -330,6 +355,8 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), TypeError> {
     use std::cmp;
 
+    use syntax::core::{RawConstant, SourceMeta};
+
     /// Ensures that the given term is a universe, returning the level of that
     /// universe and its elaborated form.
     ///
@@ -345,6 +372,28 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
                 found: ty,
             }),
         }
+    }
+
+    /// ```text
+    /// Γ ⊢ r ↓ c ⤳ t
+    /// ```
+    fn infer_const(meta: SourceMeta, c: &RawConstant) -> Result<(RcTerm, RcType), TypeError> {
+        use syntax::core::{Constant as C, RawConstant as RawC};
+
+        let (term, ty) = match *c {
+            RawC::String(ref value) => (C::String(value.clone()), Value::Constant(C::StringType)),
+            RawC::Char(value) => (C::Char(value), Value::Constant(C::CharType)),
+            RawC::Int(_) => return Err(TypeError::AmbiguousIntLiteral { span: meta.span }),
+            RawC::Float(_) => return Err(TypeError::AmbiguousFloatLiteral { span: meta.span }),
+            RawC::StringType => (C::StringType, Value::Universe(Level::ZERO)),
+            RawC::CharType => (C::CharType, Value::Universe(Level::ZERO)),
+            RawC::U32Type => (C::U32Type, Value::Universe(Level::ZERO)),
+            RawC::U64Type => (C::U64Type, Value::Universe(Level::ZERO)),
+            RawC::F32Type => (C::F32Type, Value::Universe(Level::ZERO)),
+            RawC::F64Type => (C::F64Type, Value::Universe(Level::ZERO)),
+        };
+
+        Ok((Term::Constant(meta, term).into(), ty.into()))
     }
 
     match *term.inner {
@@ -371,6 +420,8 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             span: meta.span,
             expected: None,
         }),
+
+        RawTerm::Constant(meta, ref c) => infer_const(meta, c),
 
         RawTerm::Var(meta, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {

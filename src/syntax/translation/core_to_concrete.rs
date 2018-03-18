@@ -80,6 +80,15 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 concrete::Term::Universe(meta.span, level.to_concrete(env))
             },
             core::RawTerm::Hole(meta) => concrete::Term::Hole(meta.span),
+            core::RawTerm::Constant(meta, ref c) => match *c {
+                core::RawConstant::String(ref value) => {
+                    concrete::Term::String(meta.span, value.clone())
+                },
+                core::RawConstant::Char(value) => concrete::Term::Char(meta.span, value),
+                core::RawConstant::Int(value) => concrete::Term::Int(meta.span, value),
+                core::RawConstant::Float(value) => concrete::Term::Float(meta.span, value),
+                _ => unimplemented!("primitive types"),
+            },
             core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.to_string()) // FIXME
             },

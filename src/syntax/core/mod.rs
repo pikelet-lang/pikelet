@@ -75,6 +75,66 @@ impl fmt::Display for Level {
     }
 }
 
+/// Raw primitive constants
+///
+/// These are either the literal values or the types that describe them.
+///
+/// We could church encode all the things, but that would be prohibitively
+/// expensive computationally!
+#[derive(Debug, Clone, PartialEq, PartialOrd, AlphaEq)]
+pub enum RawConstant {
+    String(String),
+    Char(char),
+    Int(u64),
+    Float(f64),
+    StringType,
+    CharType,
+    U32Type,
+    U64Type,
+    F32Type,
+    F64Type,
+}
+
+// TODO: Derive this
+impl Bound for RawConstant {
+    type FreeName = Name;
+    type BoundName = Debruijn;
+
+    fn close_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
+    fn open_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
+}
+
+/// Primitive constants
+///
+/// These are either the literal values or the types that describe them.
+///
+/// We could church encode all the things, but that would be prohibitively
+/// expensive computationally!
+#[derive(Debug, Clone, PartialEq, PartialOrd, AlphaEq)]
+pub enum Constant {
+    String(String),
+    Char(char),
+    U32(u32),
+    U64(u64),
+    F32(f32),
+    F64(f64),
+    StringType,
+    CharType,
+    U32Type,
+    U64Type,
+    F32Type,
+    F64Type,
+}
+
+// TODO: Derive this
+impl Bound for Constant {
+    type FreeName = Name;
+    type BoundName = Debruijn;
+
+    fn close_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
+    fn open_at<B: NBinder<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &B) {}
+}
+
 /// A module definition
 pub struct RawModule {
     /// The name of the module
@@ -111,14 +171,18 @@ impl fmt::Display for RawDefinition {
 
 /// Raw terms, unchecked and with implicit syntax that needs to be elaborated
 ///
+/// For now the only implicit syntax we have is holes and lambdas that lack a
+/// type annotation.
+///
 /// ```text
 /// r,R ::= r:R         1. annotated terms
 ///       | Typeᵢ       2. universes
-///       | _           3. hole
-///       | x           4. variables
-///       | Πx:R₁.R₂    5. dependent function types
-///       | λx:R.r      6. lambda abstractions
-///       | R₁ R₂       7. term application
+///       | c           3. constants
+///       | _           4. hole
+///       | x           5. variables
+///       | Πx:R₁.R₂    6. dependent function types
+///       | λx:R.r      7. lambda abstractions
+///       | R₁ R₂       8. term application
 /// ```
 #[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum RawTerm {
@@ -126,16 +190,18 @@ pub enum RawTerm {
     Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
     /// Universes
     Universe(SourceMeta, Level), // 2.
+    /// Constants
+    Constant(SourceMeta, RawConstant), // 3.
     /// A hole
-    Hole(SourceMeta), // 3.
+    Hole(SourceMeta), // 4.
     /// A variable
-    Var(SourceMeta, Var<Name, Debruijn>), // 4.
+    Var(SourceMeta, Var<Name, Debruijn>), // 5.
     /// Dependent function types
-    Pi(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 5.
+    Pi(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 6.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 6.
+    Lam(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 7.
     /// RawTerm application
-    App(SourceMeta, RcRawTerm, RcRawTerm), // 7.
+    App(SourceMeta, RcRawTerm, RcRawTerm), // 8.
 }
 
 impl RcRawTerm {
@@ -144,6 +210,7 @@ impl RcRawTerm {
             RawTerm::Ann(meta, _, _)
             | RawTerm::Universe(meta, _)
             | RawTerm::Hole(meta)
+            | RawTerm::Constant(meta, _)
             | RawTerm::Var(meta, _)
             | RawTerm::Pi(meta, _)
             | RawTerm::Lam(meta, _)
@@ -167,7 +234,7 @@ impl RcRawTerm {
                 expr.visit_vars(on_var);
                 ty.visit_vars(on_var);
             },
-            RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
+            RawTerm::Universe(_, _) | RawTerm::Hole(_) | RawTerm::Constant(_, _) => {},
             RawTerm::Var(_, ref var) => on_var(var),
             RawTerm::Pi(_, ref scope) => {
                 scope.unsafe_binder.inner.visit_vars(on_var);
@@ -219,10 +286,11 @@ pub struct Definition {
 /// ```text
 /// t,T ::= t:T         1. annotated terms
 ///       | Typeᵢ       2. universes
-///       | x           3. variables
-///       | Πx:T₁.T₂    4. dependent function types
-///       | λx:T.t      5. lambda abstractions
-///       | t₁ t₂       6. term application
+///       | c           3. constants
+///       | x           4. variables
+///       | Πx:T₁.T₂    5. dependent function types
+///       | λx:T.t      6. lambda abstractions
+///       | t₁ t₂       7. term application
 /// ```
 #[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum Term {
@@ -230,14 +298,16 @@ pub enum Term {
     Ann(SourceMeta, RcTerm, RcTerm), // 1.
     /// Universes
     Universe(SourceMeta, Level), // 2.
+    /// Constants
+    Constant(SourceMeta, Constant), // 3.
     /// A variable
-    Var(SourceMeta, Var<Name, Debruijn>), // 3.
+    Var(SourceMeta, Var<Name, Debruijn>), // 4.
     /// Dependent function types
     Pi(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 5.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 4.
+    Lam(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 6.
     /// Term application
-    App(SourceMeta, RcTerm, RcTerm), // 6.
+    App(SourceMeta, RcTerm, RcTerm), // 7.
 }
 
 impl RcTerm {
@@ -245,6 +315,7 @@ impl RcTerm {
         match *self.inner {
             Term::Ann(meta, _, _)
             | Term::Universe(meta, _)
+            | Term::Constant(meta, _)
             | Term::Var(meta, _)
             | Term::Lam(meta, _)
             | Term::Pi(meta, _)
@@ -265,20 +336,23 @@ impl fmt::Display for Term {
 ///
 /// ```text
 /// v,V ::= Typeᵢ       1. universes
-///       | Πx:V₁.V₂    2. dependent function types
-///       | λx:V.v      3. lambda abstractions
-///       | n           4. neutral terms
+///       | c           2. constants
+///       | Πx:V₁.V₂    3. dependent function types
+///       | λx:V.v      4. lambda abstractions
+///       | n           5. neutral terms
 /// ```
 #[derive(Debug, Clone, PartialEq, AlphaEq, Bound)]
 pub enum Value {
     /// Universes
     Universe(Level), // 1.
+    /// Constants
+    Constant(Constant), // 2.
     /// A pi type
-    Pi(Scope<Named<Name, RcValue>, RcValue>), // 2.
+    Pi(Scope<Named<Name, RcValue>, RcValue>), // 3.
     /// A lambda abstraction
-    Lam(Scope<Named<Name, RcValue>, RcValue>), // 3.
+    Lam(Scope<Named<Name, RcValue>, RcValue>), // 4.
     /// Neutral terms
-    Neutral(RcNeutral), // 4.
+    Neutral(RcNeutral), // 5.
 }
 
 impl fmt::Display for Value {
@@ -339,6 +413,7 @@ impl<'a> From<&'a RcValue> for RcTerm {
 
         match *src.inner {
             Value::Universe(level) => Term::Universe(meta, level).into(),
+            Value::Constant(ref c) => Term::Constant(meta, c.clone()).into(),
             Value::Pi(ref scope) => {
                 let (param, body) = scope.clone().unbind();
                 let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
@@ -445,6 +520,42 @@ impl Context {
 
     pub fn lookup_binder(&self, name: &Name) -> Option<&Binder> {
         self.binders.iter().find(|binder| binder.name() == name)
+    }
+}
+
+impl Default for Context {
+    fn default() -> Context {
+        Context::new()
+            .extend_let(
+                Name::user("String"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::StringType).into(),
+            )
+            .extend_let(
+                Name::user("Char"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::CharType).into(),
+            )
+            .extend_let(
+                Name::user("U32"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::U32Type).into(),
+            )
+            .extend_let(
+                Name::user("U64"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::U64Type).into(),
+            )
+            .extend_let(
+                Name::user("F32"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::F32Type).into(),
+            )
+            .extend_let(
+                Name::user("F64"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::F64Type).into(),
+            )
     }
 }
 

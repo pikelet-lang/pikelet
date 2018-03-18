@@ -174,10 +174,20 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
                 core::RawTerm::Universe(meta, core::Level(level.unwrap_or(0))).into()
             },
             concrete::Term::Hole(_) => core::RawTerm::Hole(meta).into(),
+            concrete::Term::String(_, ref value) => {
+                core::RawTerm::Constant(meta, core::RawConstant::String(value.clone())).into()
+            },
+            concrete::Term::Char(_, value) => {
+                core::RawTerm::Constant(meta, core::RawConstant::Char(value)).into()
+            },
+            concrete::Term::Int(_, value) => {
+                core::RawTerm::Constant(meta, core::RawConstant::Int(value)).into()
+            },
+            concrete::Term::Float(_, value) => {
+                core::RawTerm::Constant(meta, core::RawConstant::Float(value)).into()
+            },
             concrete::Term::Var(_, ref x) => {
-                let var = Var::Free(core::Name::user(x.clone()));
-
-                core::RawTerm::Var(meta, var).into()
+                core::RawTerm::Var(meta, Var::Free(core::Name::user(x.clone()))).into()
             },
             concrete::Term::Pi(_, (ref names, ref ann), ref body) => pi_to_core(names, ann, body),
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),

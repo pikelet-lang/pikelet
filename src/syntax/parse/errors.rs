@@ -6,14 +6,12 @@ use std::fmt;
 
 use syntax::parse::{LexerError, Token};
 
-#[derive(Fail, Debug, Clone, PartialEq, Eq)]
+#[derive(Fail, Debug, Clone, PartialEq)]
 pub enum ParseError {
     #[fail(display = "{}", _0)]
     Lexer(#[cause] LexerError),
     #[fail(display = "An identifier was expected when parsing a pi type.")]
     IdentifierExpectedInPiType { span: ByteSpan },
-    #[fail(display = "An integer literal {} was too large for the target type.", value)]
-    IntegerLiteralOverflow { span: ByteSpan, value: String },
     #[fail(display = "Unknown repl command `:{}` found.", command)]
     UnknownReplCommand { span: ByteSpan, command: String },
     #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
@@ -72,7 +70,6 @@ impl ParseError {
         match *self {
             ParseError::Lexer(ref err) => err.span(),
             ParseError::IdentifierExpectedInPiType { span }
-            | ParseError::IntegerLiteralOverflow { span, .. }
             | ParseError::UnknownReplCommand { span, .. }
             | ParseError::UnexpectedToken { span, .. }
             | ParseError::ExtraToken { span, .. } => span,
@@ -89,10 +86,6 @@ impl ParseError {
             ).with_label(
                 Label::new_primary(span).with_message("ill-formed dependent function type"),
             ),
-            ParseError::IntegerLiteralOverflow { span, ref value } => {
-                Diagnostic::new_error(format!("integer literal overflow with value `{}`", value))
-                    .with_label(Label::new_primary(span).with_message("overflowing literal"))
-            },
             ParseError::UnknownReplCommand { span, ref command } => {
                 Diagnostic::new_error(format!("unknown repl command `:{}`", command))
                     .with_label(Label::new_primary(span).with_message("unexpected command"))
