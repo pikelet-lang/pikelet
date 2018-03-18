@@ -169,13 +169,13 @@ impl RcRawTerm {
             },
             RawTerm::Universe(_, _) | RawTerm::Hole(_) => {},
             RawTerm::Var(_, ref var) => on_var(var),
-            RawTerm::Pi(_, ref pi) => {
-                pi.unsafe_binder.inner.visit_vars(on_var);
-                pi.unsafe_body.visit_vars(on_var);
+            RawTerm::Pi(_, ref scope) => {
+                scope.unsafe_binder.inner.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
-            RawTerm::Lam(_, ref lam) => {
-                lam.unsafe_binder.inner.visit_vars(on_var);
-                lam.unsafe_body.visit_vars(on_var);
+            RawTerm::Lam(_, ref scope) => {
+                scope.unsafe_binder.inner.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
@@ -339,17 +339,17 @@ impl<'a> From<&'a RcValue> for RcTerm {
 
         match *src.inner {
             Value::Universe(level) => Term::Universe(meta, level).into(),
-            Value::Lam(ref lam) => {
-                let (param, body) = lam.clone().unbind();
-                let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
-
-                Term::Lam(meta, Scope::bind(param, RcTerm::from(&body))).into()
-            },
-            Value::Pi(ref pi) => {
-                let (param, body) = pi.clone().unbind();
+            Value::Pi(ref scope) => {
+                let (param, body) = scope.clone().unbind();
                 let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
 
                 Term::Pi(meta, Scope::bind(param, RcTerm::from(&body))).into()
+            },
+            Value::Lam(ref scope) => {
+                let (param, body) = scope.clone().unbind();
+                let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
+
+                Term::Lam(meta, Scope::bind(param, RcTerm::from(&body))).into()
             },
             Value::Neutral(ref n) => RcTerm::from(n),
         }

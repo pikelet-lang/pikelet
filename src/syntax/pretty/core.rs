@@ -115,20 +115,20 @@ impl ToDoc for RawTerm {
             RawTerm::Universe(_, level) => pretty_universe(options, level),
             RawTerm::Hole(_) => Doc::text("_"),
             RawTerm::Var(_, ref var) => pretty_var(options, var),
-            RawTerm::Lam(_, ref lam) => pretty_lam(
+            RawTerm::Lam(_, ref scope) => pretty_lam(
                 options,
-                &lam.unsafe_binder.name,
-                match *lam.unsafe_binder.inner.inner {
+                &scope.unsafe_binder.name,
+                match *scope.unsafe_binder.inner.inner {
                     RawTerm::Hole(_) => None,
-                    _ => Some(&lam.unsafe_binder.inner),
+                    _ => Some(&scope.unsafe_binder.inner),
                 },
-                &lam.unsafe_body,
+                &scope.unsafe_body,
             ),
-            RawTerm::Pi(_, ref pi) => pretty_pi(
+            RawTerm::Pi(_, ref scope) => pretty_pi(
                 options,
-                &pi.unsafe_binder.name,
-                &pi.unsafe_binder.inner,
-                &pi.unsafe_body,
+                &scope.unsafe_binder.name,
+                &scope.unsafe_binder.inner,
+                &scope.unsafe_body,
             ),
             RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
         }
@@ -147,17 +147,17 @@ impl ToDoc for Term {
             Term::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
             Term::Universe(_, level) => pretty_universe(options, level),
             Term::Var(_, ref var) => pretty_var(options, var),
-            Term::Lam(_, ref lam) => pretty_lam(
+            Term::Lam(_, ref scope) => pretty_lam(
                 options,
-                &lam.unsafe_binder.name,
-                Some(&lam.unsafe_binder.inner),
-                &lam.unsafe_body,
+                &scope.unsafe_binder.name,
+                Some(&scope.unsafe_binder.inner),
+                &scope.unsafe_body,
             ),
-            Term::Pi(_, ref pi) => pretty_pi(
+            Term::Pi(_, ref scope) => pretty_pi(
                 options,
-                &pi.unsafe_binder.name,
-                &pi.unsafe_binder.inner,
-                &pi.unsafe_body,
+                &scope.unsafe_binder.name,
+                &scope.unsafe_binder.inner,
+                &scope.unsafe_body,
             ),
             Term::App(_, ref f, ref a) => pretty_app(options, f, a),
         }
@@ -174,17 +174,17 @@ impl ToDoc for Value {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
             Value::Universe(level) => pretty_universe(options, level),
-            Value::Lam(ref lam) => pretty_lam(
+            Value::Lam(ref scope) => pretty_lam(
                 options,
-                &lam.unsafe_binder.name,
-                Some(&lam.unsafe_binder.inner),
-                &lam.unsafe_body,
+                &scope.unsafe_binder.name,
+                Some(&scope.unsafe_binder.inner),
+                &scope.unsafe_body,
             ),
-            Value::Pi(ref pi) => pretty_pi(
+            Value::Pi(ref scope) => pretty_pi(
                 options,
-                &pi.unsafe_binder.name,
-                &pi.unsafe_binder.inner,
-                &pi.unsafe_body,
+                &scope.unsafe_binder.name,
+                &scope.unsafe_binder.inner,
+                &scope.unsafe_body,
             ),
             Value::Neutral(ref n) => n.to_doc(options),
         }

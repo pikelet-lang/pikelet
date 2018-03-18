@@ -192,8 +192,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         //  2.  Γ, Πx:V ⊢ T₂ ⇒ V₂
         // ─────────────────────────────────── (EVAL/PI)
         //      Γ ⊢ Πx:T₁.T₂ ⇒ Πx:V₁.V₂
-        Term::Pi(_, ref pi) => {
-            let (param, body) = pi.clone().unbind();
+        Term::Pi(_, ref scope) => {
+            let (param, body) = scope.clone().unbind();
 
             let ann = normalize(context, &param.inner)?; // 1.
             let body_context = context.extend_pi(param.name.clone(), ann.clone());
@@ -206,8 +206,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         //  2.  Γ, λx:V ⊢ t ⇒ v
         // ──────────────────────────────── (EVAL/LAM)
         //      Γ ⊢ λx:T.t ⇒ λx:V.v
-        Term::Lam(_, ref lam) => {
-            let (param, body) = lam.clone().unbind();
+        Term::Lam(_, ref scope) => {
+            let (param, body) = scope.clone().unbind();
 
             let ann = normalize(context, &param.inner)?; // 1.
             let body_context = context.extend_lam(param.name.clone(), ann.clone());
@@ -227,9 +227,9 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let fn_value = normalize(context, fn_expr)?; // 1.
 
             match *fn_value.inner {
-                Value::Lam(ref lam) => {
+                Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
-                    let (param, body) = lam.clone().unbind();
+                    let (param, body) = scope.clone().unbind();
 
                     let body_context = context.extend_let(param.name, param.inner, arg.clone());
                     normalize(&body_context, &RcTerm::from(&body)) // 2.
@@ -262,9 +262,9 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
         //  1.  Γ, Πx:V₁ ⊢ r ↑ V₂ ⤳ t
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.r ↑ Πx:V₁.V₂ ⤳ λx:V₁.t
-        (&RawTerm::Lam(meta, ref lam), &Value::Pi(ref pi)) => {
+        (&RawTerm::Lam(meta, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let (lam_param, lam_body, pi_param, pi_body) =
-                nameless::unbind2(lam.clone(), pi.clone());
+                nameless::unbind2(lam_scope.clone(), pi_scope.clone());
 
             // Elaborate the hole, if it exists
             if let RawTerm::Hole(_) = *lam_param.inner.inner {
@@ -413,8 +413,8 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         //  4.  k = max(i, j)
         // ────────────────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:R₁.R₂ ↓ Typeₖ ⤳ Πx:T₁.T₂
-        RawTerm::Pi(meta, ref pi) => {
-            let (param, body) = pi.clone().unbind();
+        RawTerm::Pi(meta, ref scope) => {
+            let (param, body) = scope.clone().unbind();
 
             let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
             let simp_ann = normalize(context, &elab_ann)?; // 2.
@@ -433,8 +433,8 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         //  3.  Γ, λx:V₁ ⊢ r ↓ V₂ ⤳ t
         // ───────────────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:R.r ↓ Πx:V₁.V₂ ⤳ λx:T.t
-        RawTerm::Lam(meta, ref lam) => {
-            let (param, body) = lam.clone().unbind();
+        RawTerm::Lam(meta, ref scope) => {
+            let (param, body) = scope.clone().unbind();
 
             // Check for holes before entering to ensure we get a nice error
             if let RawTerm::Hole(_) = *param.inner.inner {
@@ -468,18 +468,18 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?; // 1.
 
             match *fn_ty.inner {
-                Value::Pi(ref pi) => {
-                    let (pi_param, pi_body) = pi.clone().unbind();
+                Value::Pi(ref scope) => {
+                    let (param, body) = scope.clone().unbind();
 
-                    let arg_expr = check(context, arg_expr, &pi_param.inner)?; // 2.
+                    let arg_expr = check(context, arg_expr, &param.inner)?; // 2.
 
                     // 3.
-                    let pi_body = normalize(
-                        &context.extend_let(pi_param.name, pi_param.inner, arg_expr.clone()),
-                        &RcTerm::from(&pi_body),
+                    let body = normalize(
+                        &context.extend_let(param.name, param.inner, arg_expr.clone()),
+                        &RcTerm::from(&body),
                     )?;
 
-                    Ok((Term::App(meta, elab_fn_expr, arg_expr).into(), pi_body))
+                    Ok((Term::App(meta, elab_fn_expr, arg_expr).into(), body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: fn_expr.span(),

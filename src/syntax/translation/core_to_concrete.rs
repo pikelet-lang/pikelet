@@ -92,8 +92,8 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 // TODO: Better message
                 panic!("Tried to convert a term that was not locally closed");
             },
-            core::RawTerm::Pi(_, ref pi) => {
-                let (param, body) = pi.clone().unbind();
+            core::RawTerm::Pi(_, ref scope) => {
+                let (param, body) = scope.clone().unbind();
                 if body.free_vars().contains(&param.name) {
                     // use name if it is present, and not used in the current scope
                     // otherwise create a pretty name
@@ -115,8 +115,8 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                     )
                 }
             },
-            core::RawTerm::Lam(_, ref lam) => {
-                let (_param, _body) = lam.clone().unbind();
+            core::RawTerm::Lam(_, ref scope) => {
+                let (_param, _body) = scope.clone().unbind();
                 // use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 // add the used name to the environment

@@ -63,10 +63,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone)]
 pub enum EvalError {
-    ArgumentCountMismatch {
-        expected: usize,
-        given: usize,
-    },
+    ArgumentCountMismatch { expected: usize, given: usize },
 }
 
 pub fn eval(env: &Rc<Env>, expr: &Rc<Expr>) -> Result<Rc<Expr>, EvalError> {
