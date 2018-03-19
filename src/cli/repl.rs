@@ -10,6 +10,7 @@ use term_size;
 
 use semantics;
 use syntax::parse;
+use syntax::core::Context;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -53,6 +54,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 
     let mut rl = Editor::<()>::new();
     let mut codemap = CodeMap::new();
+    let context = Context::default();
 
     if let Some(ref history_file) = opts.history_file {
         rl.load_history(&history_file)?;
@@ -77,7 +79,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                 }
 
                 let filename = FileName::virtual_("repl");
-                match eval_print(&codemap.add_filemap(filename, line)) {
+                match eval_print(&context, &codemap.add_filemap(filename, line)) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
@@ -108,11 +110,11 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
+fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use std::usize;
 
     use syntax::concrete::ReplCommand;
-    use syntax::core::{Context, RcTerm, SourceMeta, Term};
+    use syntax::core::{RcTerm, SourceMeta, Term};
     use syntax::translation::ToCore;
 
     fn term_width() -> usize {
@@ -133,9 +135,8 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
 
         ReplCommand::Eval(parse_term) => {
             let raw_term = parse_term.to_core();
-            let context = Context::default();
-            let (term, inferred) = semantics::infer(&context, &raw_term)?;
-            let evaluated = semantics::normalize(&context, &term)?;
+            let (term, inferred) = semantics::infer(context, &raw_term)?;
+            let evaluated = semantics::normalize(context, &term)?;
 
             println!(
                 "{term:width$}",
@@ -149,8 +150,7 @@ fn eval_print(filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
         },
         ReplCommand::TypeOf(parse_term) => {
             let raw_term = parse_term.to_core();
-            let context = Context::new();
-            let (_, inferred) = semantics::infer(&context, &raw_term)?;
+            let (_, inferred) = semantics::infer(context, &raw_term)?;
 
             println!("{term:width$}", term = inferred, width = term_width());
         },
