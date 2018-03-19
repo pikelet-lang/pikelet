@@ -360,8 +360,7 @@ mod to_core {
                                 Scope::bind(
                                     Named::new(
                                         Name::user("_"),
-                                        RawTerm::Universe(SourceMeta::default(), Level(0))
-                                            .into()
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
                                     ),
                                     RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
                                 )
@@ -464,8 +463,7 @@ mod to_core {
                                 Scope::bind(
                                     Named::new(
                                         Name::user("_"),
-                                        RawTerm::Universe(SourceMeta::default(), Level(0))
-                                            .into()
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
                                     ),
                                     RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
                                 )
@@ -552,8 +550,7 @@ mod to_core {
                                 Scope::bind(
                                     Named::new(
                                         Name::user("_"),
-                                        RawTerm::Universe(SourceMeta::default(), Level(0))
-                                            .into()
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
                                     ),
                                     RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
                                 )

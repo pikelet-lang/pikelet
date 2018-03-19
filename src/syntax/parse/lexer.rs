@@ -73,14 +73,12 @@ impl LexerError {
                 Diagnostic::new_error("unterminated string literal")
                     .with_label(Label::new_primary(span))
             },
-            LexerError::UnterminatedCharLiteral { span } => {
-                Diagnostic::new_error("unterminated character literal")
-                    .with_label(Label::new_primary(span))
-            },
-            LexerError::EmptyCharLiteral { span } => {
-                Diagnostic::new_error("empty character literal")
-                    .with_label(Label::new_primary(span))
-            },
+            LexerError::UnterminatedCharLiteral { span } => Diagnostic::new_error(
+                "unterminated character literal",
+            ).with_label(Label::new_primary(span)),
+            LexerError::EmptyCharLiteral { span } => Diagnostic::new_error(
+                "empty character literal",
+            ).with_label(Label::new_primary(span)),
             LexerError::UnknownEscapeCode { start, found } => {
                 let char_span = ByteSpan::from_offset(start, ByteOffset::from_char_utf8(found));
                 Diagnostic::new_error(format!("unknown escape code \\{}", found))
