@@ -16,9 +16,6 @@ use AlphaEq;
 pub struct Debruijn(pub u32);
 
 impl Debruijn {
-    /// The debruijn index of the current binder
-    pub const ZERO: Debruijn = Debruijn(0);
-
     /// Move the current debruijn index into an inner binder
     pub fn succ(self) -> Debruijn {
         Debruijn(self.0 + 1)
@@ -26,7 +23,7 @@ impl Debruijn {
 
     pub fn pred(self) -> Option<Debruijn> {
         match self {
-            Debruijn::ZERO => None,
+            Debruijn(0) => None,
             Debruijn(i) => Some(Debruijn(i - 1)),
         }
     }

@@ -185,14 +185,14 @@ pub trait Bound {
     where
         B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
     {
-        self.close_at(Debruijn::ZERO, binder);
+        self.close_at(Debruijn(0), binder);
     }
 
     fn open<B>(&mut self, binder: &B)
     where
         B: Binder<FreeName = Self::FreeName, BoundName = Self::BoundName>,
     {
-        self.open_at(Debruijn::ZERO, binder);
+        self.open_at(Debruijn(0), binder);
     }
 
     fn close_at<B>(&mut self, index: Debruijn, binder: &B)

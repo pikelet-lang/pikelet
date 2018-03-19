@@ -53,8 +53,6 @@ impl AlphaEq for SourceMeta {
 pub struct Level(pub u32);
 
 impl Level {
-    pub const ZERO: Level = Level(0);
-
     pub fn succ(self) -> Level {
         Level(self.0 + 1)
     }
@@ -546,62 +544,62 @@ impl Default for Context {
         Context::new()
             .extend_let(
                 Name::user("String"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::StringType).into(),
             )
             .extend_let(
                 Name::user("Char"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::CharType).into(),
             )
             .extend_let(
                 Name::user("U8"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::U8Type).into(),
             )
             .extend_let(
                 Name::user("U16"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::U16Type).into(),
             )
             .extend_let(
                 Name::user("U32"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::U32Type).into(),
             )
             .extend_let(
                 Name::user("U64"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::U64Type).into(),
             )
             .extend_let(
                 Name::user("I8"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::I8Type).into(),
             )
             .extend_let(
                 Name::user("I16"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::I16Type).into(),
             )
             .extend_let(
                 Name::user("I32"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::I32Type).into(),
             )
             .extend_let(
                 Name::user("I64"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::I64Type).into(),
             )
             .extend_let(
                 Name::user("F32"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::F32Type).into(),
             )
             .extend_let(
                 Name::user("F64"),
-                Value::Universe(Level::ZERO).into(),
+                Value::Universe(Level(0)).into(),
                 Term::Constant(SourceMeta::default(), Constant::F64Type).into(),
             )
     }

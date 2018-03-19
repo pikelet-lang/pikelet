@@ -44,7 +44,7 @@ mod normalize {
 
         assert_alpha_eq!(
             normalize(&context, &parse_infer(r"Type")).unwrap(),
-            Value::Universe(Level::ZERO).into()
+            Value::Universe(Level(0)).into()
         );
     }
 
@@ -57,7 +57,7 @@ mod normalize {
         assert_alpha_eq!(
             normalize(&context, &parse_infer(r"\x : Type => x")).unwrap(),
             Value::Lam(Scope::bind(
-                Named::new(x.clone(), Value::Universe(Level::ZERO).into()),
+                Named::new(x.clone(), Value::Universe(Level(0)).into()),
                 Neutral::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -72,7 +72,7 @@ mod normalize {
         assert_alpha_eq!(
             normalize(&context, &parse_infer(r"(x : Type) -> x")).unwrap(),
             Value::Pi(Scope::bind(
-                Named::new(x.clone(), Value::Universe(Level::ZERO).into()),
+                Named::new(x.clone(), Value::Universe(Level(0)).into()),
                 Neutral::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -85,8 +85,8 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(Scope::bind(
-            Named::new(Name::user("_"), Value::Universe(Level::ZERO).into()),
-            Value::Universe(Level::ZERO).into(),
+            Named::new(Name::user("_"), Value::Universe(Level(0)).into()),
+            Value::Universe(Level(0)).into(),
         )).into();
 
         assert_alpha_eq!(
@@ -97,7 +97,7 @@ mod normalize {
             Value::Lam(Scope::bind(
                 Named::new(x.clone(), ty_arr),
                 Value::Lam(Scope::bind(
-                    Named::new(y.clone(), Value::Universe(Level::ZERO).into()),
+                    Named::new(y.clone(), Value::Universe(Level(0)).into()),
                     Neutral::App(
                         Neutral::Var(Var::Free(x)).into(),
                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
@@ -114,8 +114,8 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(Scope::bind(
-            Named::new(Name::user("_"), Value::Universe(Level::ZERO).into()),
-            Value::Universe(Level::ZERO).into(),
+            Named::new(Name::user("_"), Value::Universe(Level(0)).into()),
+            Value::Universe(Level(0)).into(),
         )).into();
 
         assert_alpha_eq!(
@@ -126,7 +126,7 @@ mod normalize {
             Value::Pi(Scope::bind(
                 Named::new(x.clone(), ty_arr),
                 Value::Pi(Scope::bind(
-                    Named::new(y.clone(), Value::Universe(Level::ZERO).into()),
+                    Named::new(y.clone(), Value::Universe(Level(0)).into()),
                     Neutral::App(
                         Neutral::Var(Var::Free(x)).into(),
                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
@@ -327,7 +327,7 @@ mod infer {
             Err(TypeError::ArgAppliedToNonFunction {
                 fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
                 arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
-                found: Value::Universe(Level::ZERO.succ()).into(),
+                found: Value::Universe(Level(0).succ()).into(),
             }),
         )
     }
