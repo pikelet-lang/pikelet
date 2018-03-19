@@ -89,8 +89,14 @@ pub enum RawConstant {
     Float(f64),
     StringType,
     CharType,
+    U8Type,
+    U16Type,
     U32Type,
     U64Type,
+    I8Type,
+    I16Type,
+    I32Type,
+    I64Type,
     F32Type,
     F64Type,
 }
@@ -114,14 +120,26 @@ impl Bound for RawConstant {
 pub enum Constant {
     String(String),
     Char(char),
+    U8(u8),
+    U16(u16),
     U32(u32),
     U64(u64),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
     F32(f32),
     F64(f64),
     StringType,
     CharType,
+    U8Type,
+    U16Type,
     U32Type,
     U64Type,
+    I8Type,
+    I16Type,
+    I32Type,
+    I64Type,
     F32Type,
     F64Type,
 }
@@ -537,6 +555,16 @@ impl Default for Context {
                 Term::Constant(SourceMeta::default(), Constant::CharType).into(),
             )
             .extend_let(
+                Name::user("U8"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::U8Type).into(),
+            )
+            .extend_let(
+                Name::user("U16"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::U16Type).into(),
+            )
+            .extend_let(
                 Name::user("U32"),
                 Value::Universe(Level::ZERO).into(),
                 Term::Constant(SourceMeta::default(), Constant::U32Type).into(),
@@ -545,6 +573,26 @@ impl Default for Context {
                 Name::user("U64"),
                 Value::Universe(Level::ZERO).into(),
                 Term::Constant(SourceMeta::default(), Constant::U64Type).into(),
+            )
+            .extend_let(
+                Name::user("I8"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::I8Type).into(),
+            )
+            .extend_let(
+                Name::user("I16"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::I16Type).into(),
+            )
+            .extend_let(
+                Name::user("I32"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::I32Type).into(),
+            )
+            .extend_let(
+                Name::user("I64"),
+                Value::Universe(Level::ZERO).into(),
+                Term::Constant(SourceMeta::default(), Constant::I64Type).into(),
             )
             .extend_let(
                 Name::user("F32"),

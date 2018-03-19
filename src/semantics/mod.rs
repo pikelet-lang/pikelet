@@ -264,8 +264,14 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
     fn check_const(c: &RawConstant, c_ty: &Constant) -> Option<Constant> {
         match (c, c_ty) {
             // FIXME: overflow?
+            (&RawConstant::Int(value), &Constant::U8Type) => Some(Constant::U8(value as u8)),
+            (&RawConstant::Int(value), &Constant::U16Type) => Some(Constant::U16(value as u16)),
             (&RawConstant::Int(value), &Constant::U32Type) => Some(Constant::U32(value as u32)),
             (&RawConstant::Int(value), &Constant::U64Type) => Some(Constant::U64(value)),
+            (&RawConstant::Int(value), &Constant::I8Type) => Some(Constant::I8(value as i8)),
+            (&RawConstant::Int(value), &Constant::I16Type) => Some(Constant::I16(value as i16)),
+            (&RawConstant::Int(value), &Constant::I32Type) => Some(Constant::I32(value as i32)),
+            (&RawConstant::Int(value), &Constant::I64Type) => Some(Constant::I64(value as i64)),
             (&RawConstant::Int(value), &Constant::F32Type) => Some(Constant::F32(value as f32)),
             (&RawConstant::Int(value), &Constant::F64Type) => Some(Constant::F64(value as f64)),
             (&RawConstant::Float(value), &Constant::F32Type) => Some(Constant::F32(value as f32)),
@@ -387,8 +393,14 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             RawC::Float(_) => return Err(TypeError::AmbiguousFloatLiteral { span: meta.span }),
             RawC::StringType => (C::StringType, Value::Universe(Level::ZERO)),
             RawC::CharType => (C::CharType, Value::Universe(Level::ZERO)),
+            RawC::U8Type => (C::U8Type, Value::Universe(Level::ZERO)),
+            RawC::U16Type => (C::U16Type, Value::Universe(Level::ZERO)),
             RawC::U32Type => (C::U32Type, Value::Universe(Level::ZERO)),
             RawC::U64Type => (C::U64Type, Value::Universe(Level::ZERO)),
+            RawC::I8Type => (C::I8Type, Value::Universe(Level::ZERO)),
+            RawC::I16Type => (C::I16Type, Value::Universe(Level::ZERO)),
+            RawC::I32Type => (C::I32Type, Value::Universe(Level::ZERO)),
+            RawC::I64Type => (C::I64Type, Value::Universe(Level::ZERO)),
             RawC::F32Type => (C::F32Type, Value::Universe(Level::ZERO)),
             RawC::F64Type => (C::F64Type, Value::Universe(Level::ZERO)),
         };
