@@ -1,5 +1,6 @@
 use codespan::ByteSpan;
 use nameless::Var;
+use std::collections::HashSet;
 
 use syntax::concrete;
 use syntax::core;
@@ -7,13 +8,39 @@ use syntax::core;
 /// An environment used to reconstruct concrete terms
 pub struct Env {
     // precedence: ?,
-    // used_names: HashSet<String>,
+    #[allow(dead_code)]
+    used_names: HashSet<String>,
     // mappings: HashMap<Name, String>,
 }
 
+const USED_NAMES: &[&str] = &[
+    // Keywords
+    "as",
+    "_",
+    "module",
+    "import",
+    "Type",
+
+    // Primitives
+    "String",
+    "Char",
+    "U8",
+    "U16",
+    "U32",
+    "U64",
+    "I8",
+    "I16",
+    "I32",
+    "I64",
+    "F32",
+    "F64",
+];
+
 impl Default for Env {
     fn default() -> Env {
-        Env {}
+        Env {
+            used_names: USED_NAMES.iter().map(|&n| String::from(n)).collect(),
+        }
     }
 }
 
@@ -80,14 +107,30 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 concrete::Term::Universe(meta.span, level.to_concrete(env))
             },
             core::RawTerm::Hole(meta) => concrete::Term::Hole(meta.span),
-            core::RawTerm::Constant(meta, ref c) => match *c {
-                core::RawConstant::String(ref value) => {
-                    concrete::Term::String(meta.span, value.clone())
-                },
-                core::RawConstant::Char(value) => concrete::Term::Char(meta.span, value),
-                core::RawConstant::Int(value) => concrete::Term::Int(meta.span, value),
-                core::RawConstant::Float(value) => concrete::Term::Float(meta.span, value),
-                _ => unimplemented!("primitive types"),
+            core::RawTerm::Constant(meta, ref c) => {
+                let span = meta.span;
+                match *c {
+                    core::RawConstant::String(ref value) => {
+                        concrete::Term::String(meta.span, value.clone())
+                    },
+                    core::RawConstant::Char(value) => concrete::Term::Char(span, value),
+                    core::RawConstant::Int(value) => concrete::Term::Int(span, value),
+                    core::RawConstant::Float(value) => concrete::Term::Float(span, value),
+                    core::RawConstant::StringType => {
+                        concrete::Term::Var(span, String::from("String"))
+                    },
+                    core::RawConstant::CharType => concrete::Term::Var(span, String::from("Char")),
+                    core::RawConstant::U8Type => concrete::Term::Var(span, String::from("U8")),
+                    core::RawConstant::U16Type => concrete::Term::Var(span, String::from("U16")),
+                    core::RawConstant::U32Type => concrete::Term::Var(span, String::from("U32")),
+                    core::RawConstant::U64Type => concrete::Term::Var(span, String::from("U64")),
+                    core::RawConstant::I8Type => concrete::Term::Var(span, String::from("I8")),
+                    core::RawConstant::I16Type => concrete::Term::Var(span, String::from("I16")),
+                    core::RawConstant::I32Type => concrete::Term::Var(span, String::from("I32")),
+                    core::RawConstant::I64Type => concrete::Term::Var(span, String::from("I64")),
+                    core::RawConstant::F32Type => concrete::Term::Var(span, String::from("F32")),
+                    core::RawConstant::F64Type => concrete::Term::Var(span, String::from("F64")),
+                }
             },
             core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.to_string()) // FIXME
