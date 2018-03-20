@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::Var;
+use nameless::{self, Var};
 use std::collections::HashSet;
 
 use syntax::concrete;
@@ -145,7 +145,7 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 panic!("Tried to convert a term that was not locally closed");
             },
             core::RawTerm::Pi(_, ref scope) => {
-                let (param, body) = scope.clone().unbind();
+                let (param, body) = nameless::unbind(scope.clone());
                 if body.free_vars().contains(&param.name) {
                     // use name if it is present, and not used in the current scope
                     // otherwise create a pretty name
@@ -168,7 +168,7 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 }
             },
             core::RawTerm::Lam(_, ref scope) => {
-                let (_param, _body) = scope.clone().unbind();
+                let (_param, _body) = nameless::unbind(scope.clone());
                 // use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 // add the used name to the environment
