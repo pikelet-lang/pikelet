@@ -15,38 +15,38 @@ fn parse(src: &str) -> RcRawTerm {
     concrete_term.to_core()
 }
 
-mod alpha_eq {
+mod term_eq {
     use super::*;
 
     #[test]
     fn var() {
-        assert_alpha_eq!(parse(r"x"), parse(r"x"));
+        assert_term_eq!(parse(r"x"), parse(r"x"));
     }
 
     #[test]
     #[should_panic]
     fn var_diff() {
-        assert_alpha_eq!(parse(r"x"), parse(r"y"));
+        assert_term_eq!(parse(r"x"), parse(r"y"));
     }
 
     #[test]
     fn ty() {
-        assert_alpha_eq!(parse(r"Type"), parse(r"Type"));
+        assert_term_eq!(parse(r"Type"), parse(r"Type"));
     }
 
     #[test]
     fn lam() {
-        assert_alpha_eq!(parse(r"\x : Type => x"), parse(r"\a : Type => a"));
+        assert_term_eq!(parse(r"\x : Type => x"), parse(r"\a : Type => a"));
     }
 
     #[test]
     fn pi() {
-        assert_alpha_eq!(parse(r"(x : Type) -> x"), parse(r"(a : Type) -> a"));
+        assert_term_eq!(parse(r"(x : Type) -> x"), parse(r"(a : Type) -> a"));
     }
 
     #[test]
     fn lam_app() {
-        assert_alpha_eq!(
+        assert_term_eq!(
             parse(r"\x : Type -> Type => x Type"),
             parse(r"\a : Type -> Type => a Type")
         );
@@ -54,7 +54,7 @@ mod alpha_eq {
 
     #[test]
     fn pi_app() {
-        assert_alpha_eq!(
+        assert_term_eq!(
             parse(r"(x : Type -> Type) -> x Type"),
             parse(r"(a : Type -> Type) -> a Type")
         );
@@ -62,7 +62,7 @@ mod alpha_eq {
 
     #[test]
     fn lam_lam_app() {
-        assert_alpha_eq!(
+        assert_term_eq!(
             parse(r"\x : Type -> Type => \y : Type => x y"),
             parse(r"\a : Type -> Type => \b : Type => a b"),
         );
@@ -70,7 +70,7 @@ mod alpha_eq {
 
     #[test]
     fn pi_pi_app() {
-        assert_alpha_eq!(
+        assert_term_eq!(
             parse(r"(x : Type -> Type) -> (y : Type) -> x y"),
             parse(r"(a : Type -> Type) -> (b : Type) -> a b"),
         );

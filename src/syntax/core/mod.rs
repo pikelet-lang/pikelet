@@ -1,8 +1,8 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, AlphaEq, Debruijn, Named, Scope, Var};
-use nameless::{Pattern as BPattern, Term as BTerm};
+use nameless::{self, Embed, Scope, ScopeState, Var};
+use nameless::{BoundPattern, BoundTerm};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -27,13 +27,24 @@ pub struct SourceMeta {
 }
 
 // TODO: Derive this
-impl BTerm for SourceMeta {
-    type FreeName = Name;
-    type BoundName = Debruijn;
+impl BoundTerm for SourceMeta {
+    type Free = Name;
 
-    fn close_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {
+    fn term_eq(&self, _: &SourceMeta) -> bool {
+        true
     }
-    fn open_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {}
+
+    fn close_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
+
+    fn open_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
 }
 
 impl Default for SourceMeta {
@@ -44,14 +55,8 @@ impl Default for SourceMeta {
     }
 }
 
-impl AlphaEq for SourceMeta {
-    fn alpha_eq(&self, _: &SourceMeta) -> bool {
-        true
-    }
-}
-
 /// A universe level
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, AlphaEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Level(pub u32);
 
 impl Level {
@@ -61,13 +66,24 @@ impl Level {
 }
 
 // TODO: Derive this
-impl BTerm for Level {
-    type FreeName = Name;
-    type BoundName = Debruijn;
+impl BoundTerm for Level {
+    type Free = Name;
 
-    fn close_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {
+    fn term_eq(&self, other: &Level) -> bool {
+        self == other
     }
-    fn open_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {}
+
+    fn close_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
+
+    fn open_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
 }
 
 impl fmt::Display for Level {
@@ -82,7 +98,7 @@ impl fmt::Display for Level {
 ///
 /// We could church encode all the things, but that would be prohibitively
 /// expensive computationally!
-#[derive(Debug, Clone, PartialEq, PartialOrd, AlphaEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum RawConstant {
     String(String),
     Char(char),
@@ -103,13 +119,24 @@ pub enum RawConstant {
 }
 
 // TODO: Derive this
-impl BTerm for RawConstant {
-    type FreeName = Name;
-    type BoundName = Debruijn;
+impl BoundTerm for RawConstant {
+    type Free = Name;
 
-    fn close_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {
+    fn term_eq(&self, other: &RawConstant) -> bool {
+        self == other
     }
-    fn open_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {}
+
+    fn close_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
+
+    fn open_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
 }
 
 /// Primitive constants
@@ -118,7 +145,7 @@ impl BTerm for RawConstant {
 ///
 /// We could church encode all the things, but that would be prohibitively
 /// expensive computationally!
-#[derive(Debug, Clone, PartialEq, PartialOrd, AlphaEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Constant {
     String(String),
     Char(char),
@@ -147,13 +174,24 @@ pub enum Constant {
 }
 
 // TODO: Derive this
-impl BTerm for Constant {
-    type FreeName = Name;
-    type BoundName = Debruijn;
+impl BoundTerm for Constant {
+    type Free = Name;
 
-    fn close_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {
+    fn term_eq(&self, other: &Constant) -> bool {
+        self == other
     }
-    fn open_at<P: BPattern<FreeName = Name, BoundName = Debruijn>>(&mut self, _: Debruijn, _: &P) {}
+
+    fn close_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
+
+    fn open_term<P>(&mut self, _: ScopeState, _: &P)
+    where
+        P: BoundPattern<Free = Name>,
+    {
+    }
 }
 
 /// A module definition
@@ -205,7 +243,7 @@ impl fmt::Display for RawDefinition {
 ///       | λx:R.r      7. lambda abstractions
 ///       | R₁ R₂       8. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, Term)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum RawTerm {
     /// A term annotated with a type
     Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
@@ -216,11 +254,11 @@ pub enum RawTerm {
     /// A hole
     Hole(SourceMeta), // 4.
     /// A variable
-    Var(SourceMeta, Var<Name, Debruijn>), // 5.
+    Var(SourceMeta, Var<Name>), // 5.
     /// Dependent function types
-    Pi(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 6.
+    Pi(SourceMeta, Scope<(Name, Embed<RcRawTerm>), RcRawTerm>), // 6.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, RcRawTerm>, RcRawTerm>), // 7.
+    Lam(SourceMeta, Scope<(Name, Embed<RcRawTerm>), RcRawTerm>), // 7.
     /// RawTerm application
     App(SourceMeta, RcRawTerm, RcRawTerm), // 8.
 }
@@ -249,7 +287,7 @@ impl fmt::Display for RawTerm {
 }
 
 impl RcRawTerm {
-    fn visit_vars<F: FnMut(&Var<Name, Debruijn>)>(&self, on_var: &mut F) {
+    fn visit_vars<F: FnMut(&Var<Name>)>(&self, on_var: &mut F) {
         match *self.inner {
             RawTerm::Ann(_, ref expr, ref ty) => {
                 expr.visit_vars(on_var);
@@ -258,11 +296,11 @@ impl RcRawTerm {
             RawTerm::Universe(_, _) | RawTerm::Hole(_) | RawTerm::Constant(_, _) => {},
             RawTerm::Var(_, ref var) => on_var(var),
             RawTerm::Pi(_, ref scope) => {
-                scope.unsafe_pattern.inner.visit_vars(on_var);
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
                 scope.unsafe_body.visit_vars(on_var);
             },
             RawTerm::Lam(_, ref scope) => {
-                scope.unsafe_pattern.inner.visit_vars(on_var);
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
                 scope.unsafe_body.visit_vars(on_var);
             },
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {
@@ -275,7 +313,7 @@ impl RcRawTerm {
     pub fn free_vars(&self) -> HashSet<Name> {
         let mut free_vars = HashSet::new();
         self.visit_vars(&mut |var| match *var {
-            Var::Bound(_) => {},
+            Var::Bound(_, _) => {},
             Var::Free(ref name) => {
                 free_vars.insert(name.clone());
             },
@@ -313,7 +351,7 @@ pub struct Definition {
 ///       | λx:T.t      6. lambda abstractions
 ///       | t₁ t₂       7. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, Term)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
     Ann(SourceMeta, RcTerm, RcTerm), // 1.
@@ -322,11 +360,11 @@ pub enum Term {
     /// Constants
     Constant(SourceMeta, Constant), // 3.
     /// A variable
-    Var(SourceMeta, Var<Name, Debruijn>), // 4.
+    Var(SourceMeta, Var<Name>), // 4.
     /// Dependent function types
-    Pi(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 5.
+    Pi(SourceMeta, Scope<(Name, Embed<RcTerm>), RcTerm>), // 5.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<Named<Name, RcTerm>, RcTerm>), // 6.
+    Lam(SourceMeta, Scope<(Name, Embed<RcTerm>), RcTerm>), // 6.
     /// Term application
     App(SourceMeta, RcTerm, RcTerm), // 7.
 }
@@ -362,16 +400,16 @@ impl fmt::Display for Term {
 ///       | λx:V.v      4. lambda abstractions
 ///       | n           5. neutral terms
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, Term)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Value {
     /// Universes
     Universe(Level), // 1.
     /// Constants
     Constant(Constant), // 2.
     /// A pi type
-    Pi(Scope<Named<Name, RcValue>, RcValue>), // 3.
+    Pi(Scope<(Name, Embed<RcValue>), RcValue>), // 3.
     /// A lambda abstraction
-    Lam(Scope<Named<Name, RcValue>, RcValue>), // 4.
+    Lam(Scope<(Name, Embed<RcValue>), RcValue>), // 4.
     /// Neutral terms
     Neutral(RcNeutral), // 5.
 }
@@ -393,10 +431,10 @@ impl fmt::Display for Value {
 /// n,N ::= x           1. variables
 ///       | n t         2. term application
 /// ```
-#[derive(Debug, Clone, PartialEq, AlphaEq, Term)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
     /// Variables
-    Var(Var<Name, Debruijn>), // 1.
+    Var(Var<Name>), // 1.
     /// RawTerm application
     App(RcNeutral, RcTerm), // 2.
 }
@@ -436,14 +474,14 @@ impl<'a> From<&'a RcValue> for RcTerm {
             Value::Universe(level) => Term::Universe(meta, level).into(),
             Value::Constant(ref c) => Term::Constant(meta, c.clone()).into(),
             Value::Pi(ref scope) => {
-                let (param, body) = nameless::unbind(scope.clone());
-                let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
+                let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
+                let param = (name, Embed(RcTerm::from(&param_ann)));
 
                 Term::Pi(meta, Scope::bind(param, RcTerm::from(&body))).into()
             },
             Value::Lam(ref scope) => {
-                let (param, body) = nameless::unbind(scope.clone());
-                let param = Named::new(param.name.clone(), RcTerm::from(&param.inner));
+                let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
+                let param = (name, Embed(RcTerm::from(&param_ann)));
 
                 Term::Lam(meta, Scope::bind(param, RcTerm::from(&body))).into()
             },

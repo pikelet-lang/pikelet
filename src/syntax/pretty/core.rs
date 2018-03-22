@@ -1,6 +1,6 @@
 //! Pretty printing for the core syntax
 
-use nameless::{Debruijn, Var};
+use nameless::Var;
 use pretty::Doc;
 
 use syntax::core::{Binder, Constant, Context, Level, Name, Neutral, RawConstant, RawDefinition,
@@ -84,7 +84,7 @@ fn pretty_const(c: &Constant) -> StaticDoc {
     }
 }
 
-fn pretty_var(options: Options, var: &Var<Name, Debruijn>) -> StaticDoc {
+fn pretty_var(options: Options, var: &Var<Name>) -> StaticDoc {
     match options.debug_indices {
         true => Doc::text(format!("{:#}", var)),
         false => Doc::as_string(var),
@@ -168,17 +168,17 @@ impl ToDoc for RawTerm {
             RawTerm::Var(_, ref var) => pretty_var(options, var),
             RawTerm::Lam(_, ref scope) => pretty_lam(
                 options,
-                &scope.unsafe_pattern.name,
-                match *scope.unsafe_pattern.inner.inner {
+                &scope.unsafe_pattern.0,
+                match *(scope.unsafe_pattern.1).0.inner {
                     RawTerm::Hole(_) => None,
-                    _ => Some(&scope.unsafe_pattern.inner),
+                    _ => Some(&(scope.unsafe_pattern.1).0),
                 },
                 &scope.unsafe_body,
             ),
             RawTerm::Pi(_, ref scope) => pretty_pi(
                 options,
-                &scope.unsafe_pattern.name,
-                &scope.unsafe_pattern.inner,
+                &scope.unsafe_pattern.0,
+                &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
             RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
@@ -201,14 +201,14 @@ impl ToDoc for Term {
             Term::Var(_, ref var) => pretty_var(options, var),
             Term::Lam(_, ref scope) => pretty_lam(
                 options,
-                &scope.unsafe_pattern.name,
-                Some(&scope.unsafe_pattern.inner),
+                &scope.unsafe_pattern.0,
+                Some(&(scope.unsafe_pattern.1).0),
                 &scope.unsafe_body,
             ),
             Term::Pi(_, ref scope) => pretty_pi(
                 options,
-                &scope.unsafe_pattern.name,
-                &scope.unsafe_pattern.inner,
+                &scope.unsafe_pattern.0,
+                &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
             Term::App(_, ref f, ref a) => pretty_app(options, f, a),
@@ -229,14 +229,14 @@ impl ToDoc for Value {
             Value::Constant(ref c) => pretty_const(c),
             Value::Lam(ref scope) => pretty_lam(
                 options,
-                &scope.unsafe_pattern.name,
-                Some(&scope.unsafe_pattern.inner),
+                &scope.unsafe_pattern.0,
+                Some(&(scope.unsafe_pattern.1).0),
                 &scope.unsafe_body,
             ),
             Value::Pi(ref scope) => pretty_pi(
                 options,
-                &scope.unsafe_pattern.name,
-                &scope.unsafe_pattern.inner,
+                &scope.unsafe_pattern.0,
+                &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
             Value::Neutral(ref n) => n.to_doc(options),

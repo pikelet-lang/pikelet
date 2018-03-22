@@ -34,7 +34,7 @@ mod normalize {
             Err(InternalError::UndefinedName {
                 var_span: ByteSpan::default(),
                 name: x,
-            }),
+            },),
         );
     }
 
@@ -42,7 +42,7 @@ mod normalize {
     fn ty() {
         let context = Context::new();
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(r"Type")).unwrap(),
             Value::Universe(Level(0)).into()
         );
@@ -54,10 +54,10 @@ mod normalize {
 
         let x = Name::user("x");
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(r"\x : Type => x")).unwrap(),
             Value::Lam(Scope::bind(
-                Named::new(x.clone(), Value::Universe(Level(0)).into()),
+                (x.clone(), Embed(Value::Universe(Level(0)).into())),
                 Neutral::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -69,10 +69,10 @@ mod normalize {
 
         let x = Name::user("x");
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(r"(x : Type) -> x")).unwrap(),
             Value::Pi(Scope::bind(
-                Named::new(x.clone(), Value::Universe(Level(0)).into()),
+                (x.clone(), Embed(Value::Universe(Level(0)).into())),
                 Neutral::Var(Var::Free(x)).into(),
             )).into(),
         );
@@ -85,19 +85,19 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(Scope::bind(
-            Named::new(Name::user("_"), Value::Universe(Level(0)).into()),
+            (Name::user("_"), Embed(Value::Universe(Level(0)).into())),
             Value::Universe(Level(0)).into(),
         )).into();
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(
                 &context,
                 &parse_infer(r"\(x : Type -> Type) (y : Type) => x y")
             ).unwrap(),
             Value::Lam(Scope::bind(
-                Named::new(x.clone(), ty_arr),
+                (x.clone(), Embed(ty_arr)),
                 Value::Lam(Scope::bind(
-                    Named::new(y.clone(), Value::Universe(Level(0)).into()),
+                    (y.clone(), Embed(Value::Universe(Level(0)).into())),
                     Neutral::App(
                         Neutral::Var(Var::Free(x)).into(),
                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
@@ -114,19 +114,19 @@ mod normalize {
         let x = Name::user("x");
         let y = Name::user("y");
         let ty_arr: RcValue = Value::Pi(Scope::bind(
-            Named::new(Name::user("_"), Value::Universe(Level(0)).into()),
+            (Name::user("_"), Embed(Value::Universe(Level(0)).into())),
             Value::Universe(Level(0)).into(),
         )).into();
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(
                 &context,
                 &parse_infer(r"(x : Type -> Type) -> (y : Type) -> x y")
             ).unwrap(),
             Value::Pi(Scope::bind(
-                Named::new(x.clone(), ty_arr),
+                (x.clone(), Embed(ty_arr)),
                 Value::Pi(Scope::bind(
-                    Named::new(y.clone(), Value::Universe(Level(0)).into()),
+                    (y.clone(), Embed(Value::Universe(Level(0)).into())),
                     Neutral::App(
                         Neutral::Var(Var::Free(x)).into(),
                         Term::Var(SourceMeta::default(), Var::Free(y)).into(),
@@ -145,7 +145,7 @@ mod normalize {
         let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
         let expected_expr = r"\x : Type => x";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(given_expr)).unwrap(),
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -159,7 +159,7 @@ mod normalize {
         let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
         let expected_expr = r"Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(given_expr)).unwrap(),
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -174,7 +174,7 @@ mod normalize {
         let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
         let expected_expr = r"Type -> Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(given_expr)).unwrap(),
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -192,7 +192,7 @@ mod normalize {
         ";
         let expected_expr = r"\(a : Type) (x : a) => x";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(given_expr)).unwrap(),
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -213,7 +213,7 @@ mod normalize {
         ";
         let expected_expr = r"\(a : Type) (x : a) => x";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             normalize(&context, &parse_infer(given_expr)).unwrap(),
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -235,7 +235,7 @@ mod infer {
             Err(TypeError::UndefinedName {
                 var_span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
                 name: x,
-            }),
+            },),
         );
     }
 
@@ -246,7 +246,7 @@ mod infer {
         let expected_ty = r"Type 1";
         let given_expr = r"Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -259,7 +259,7 @@ mod infer {
         let expected_ty = r"Type 1";
         let given_expr = r"Type 0 : Type 1 : Type 2 : Type 3"; //... Type ∞       ...+:｡(ﾉ･ω･)ﾉﾞ
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -272,7 +272,7 @@ mod infer {
         let expected_ty = r"Type -> Type";
         let given_expr = r"(\a => a) : Type -> Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -285,7 +285,7 @@ mod infer {
         let expected_ty = r"(Type -> Type) -> (Type -> Type)";
         let given_expr = r"(\a => a) : (Type -> Type) -> (Type -> Type)";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -310,7 +310,7 @@ mod infer {
         let expected_ty = r"Type 1";
         let given_expr = r"(\a : Type 1 => a) Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -328,7 +328,7 @@ mod infer {
                 fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
                 arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
                 found: Value::Universe(Level(0).succ()).into(),
-            }),
+            },),
         )
     }
 
@@ -339,7 +339,7 @@ mod infer {
         let expected_ty = r"(a : Type) -> Type";
         let given_expr = r"\a : Type => a";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -352,7 +352,7 @@ mod infer {
         let expected_ty = r"Type 1";
         let given_expr = r"(a : Type) -> a";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -365,7 +365,7 @@ mod infer {
         let expected_ty = r"(a : Type) -> a -> a";
         let given_expr = r"\(a : Type) (x : a) => x";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -378,7 +378,7 @@ mod infer {
         let expected_ty = r"(a : Type) -> a -> a";
         let given_expr = r"(\a (x : a) => x) : (A : Type) -> A -> A";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -393,7 +393,7 @@ mod infer {
         let expected_expr = r"Type -> Type";
         let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -407,7 +407,7 @@ mod infer {
         let expected_expr = r"Type 1";
         let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_expr)).unwrap(),
         );
@@ -420,7 +420,7 @@ mod infer {
         let expected_ty = r"Type 1";
         let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -433,7 +433,7 @@ mod infer {
         let expected_ty = r"Type -> Type";
         let given_expr = r"(\(a : Type 1) (x : a) => x) (Type -> Type) (\x => x)";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -446,7 +446,7 @@ mod infer {
         let expected_ty = r"(a b : Type) -> (a -> b) -> a -> b";
         let given_expr = r"\(a b : Type) (f : a -> b) (x : a) => f x";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -459,7 +459,7 @@ mod infer {
         let expected_ty = r"(a b : Type) -> a -> b -> a";
         let given_expr = r"\(a b : Type) (x : a) (y : b) => x";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -472,7 +472,7 @@ mod infer {
         let expected_ty = r"(a b : Type) -> a -> b -> b";
         let given_expr = r"\(a b : Type) (x : a) (y : b) => y";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -485,7 +485,7 @@ mod infer {
         let expected_ty = r"(a b c : Type) -> (a -> b -> c) -> (b -> a -> c)";
         let given_expr = r"\(a b c : Type) (f : a -> b -> c) (y : b) (x : a) => f x y";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -498,7 +498,7 @@ mod infer {
         let expected_ty = r"(a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c)";
         let given_expr = r"\(a b c : Type) (f : b -> c) (g : a -> b) (x : a) => f (g x)";
 
-        assert_alpha_eq!(
+        assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
             normalize(&context, &parse_infer(expected_ty)).unwrap(),
         );
@@ -514,7 +514,7 @@ mod infer {
             let expected_ty = r"Type -> Type -> Type 1";
             let given_expr = r"\(p q : Type) => (c : Type) -> (p -> q -> c) -> c";
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 infer(&context, &parse(given_expr)).unwrap().1,
                 normalize(&context, &parse_infer(expected_ty)).unwrap(),
             );
@@ -533,7 +533,7 @@ mod infer {
                     \c : Type => \f : (p -> q -> c) => f x y
             ";
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 infer(&context, &parse(given_expr)).unwrap().1,
                 normalize(&context, &parse_infer(expected_ty)).unwrap(),
             );
@@ -552,7 +552,7 @@ mod infer {
                     pq p (\x y => x)
             ";
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 infer(&context, &parse(given_expr)).unwrap().1,
                 normalize(&context, &parse_infer(expected_ty)).unwrap(),
             );
@@ -570,7 +570,7 @@ mod infer {
                     pq q (\x y => y)
             ";
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 infer(&context, &parse(given_expr)).unwrap().1,
                 normalize(&context, &parse_infer(expected_ty)).unwrap(),
             );

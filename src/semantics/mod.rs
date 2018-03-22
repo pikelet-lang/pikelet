@@ -81,7 +81,7 @@
 //! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
 
 use codespan::ByteSpan;
-use nameless::{self, AlphaEq, Named, Scope, Var};
+use nameless::{self, BoundTerm, Embed, Scope, Var};
 
 use syntax::core::{Binder, Context, Definition, Level, Module, Name, Neutral, RawModule, RawTerm,
                    RcRawTerm, RcTerm, RcType, RcValue, Term, Value};
@@ -183,10 +183,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
+            Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: term.span(),
-                name: index.name.clone(),
-                index: index.inner,
+                name: name.clone(),
+                index: index,
             }),
         },
 
@@ -195,13 +195,13 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ─────────────────────────────────── (EVAL/PI)
         //      Γ ⊢ Πx:T₁.T₂ ⇒ Πx:V₁.V₂
         Term::Pi(_, ref scope) => {
-            let (param, body) = nameless::unbind(scope.clone());
+            let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-            let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend_pi(param.name.clone(), ann.clone());
+            let ann = normalize(context, &param_ann)?; // 1.
+            let body_context = context.extend_pi(name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Value::Pi(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
+            Ok(Value::Pi(Scope::bind((name, Embed(ann)), body)).into())
         },
 
         //  1.  Γ ⊢ T ⇒ V
@@ -209,13 +209,13 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // ──────────────────────────────── (EVAL/LAM)
         //      Γ ⊢ λx:T.t ⇒ λx:V.v
         Term::Lam(_, ref scope) => {
-            let (param, body) = nameless::unbind(scope.clone());
+            let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-            let ann = normalize(context, &param.inner)?; // 1.
-            let body_context = context.extend_lam(param.name.clone(), ann.clone());
+            let ann = normalize(context, &param_ann)?; // 1.
+            let body_context = context.extend_lam(name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Value::Lam(Scope::bind(Named::new(param.name.clone(), ann), body)).into())
+            Ok(Value::Lam(Scope::bind((name, Embed(ann)), body)).into())
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -231,9 +231,9 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             match *fn_value.inner {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
-                    let (param, body) = nameless::unbind(scope.clone());
+                    let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-                    let body_context = context.extend_let(param.name, param.inner, arg.clone());
+                    let body_context = context.extend_let(name, param_ann, arg.clone());
                     normalize(&body_context, &RcTerm::from(&body)) // 2.
                 },
                 Value::Neutral(ref fn_expr) => {
@@ -289,13 +289,13 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
         // ────────────────────────────────────── (CHECK/LAM)
         //      Γ ⊢ λx.r ↑ Πx:V₁.V₂ ⤳ λx:V₁.t
         (&RawTerm::Lam(meta, ref lam_scope), &Value::Pi(ref pi_scope)) => {
-            let (lam_param, lam_body, pi_param, pi_body) =
+            let ((lam_name, Embed(lam_ann)), lam_body, (pi_name, Embed(pi_ann)), pi_body) =
                 nameless::unbind2(lam_scope.clone(), pi_scope.clone());
 
             // Elaborate the hole, if it exists
-            if let RawTerm::Hole(_) = *lam_param.inner.inner {
-                let body_context = context.extend_pi(pi_param.name, pi_param.inner.clone());
-                let elab_param = Named::new(lam_param.name, RcTerm::from(&pi_param.inner));
+            if let RawTerm::Hole(_) = *lam_ann.inner {
+                let body_context = context.extend_pi(pi_name, pi_ann.clone());
+                let elab_param = (lam_name, Embed(RcTerm::from(&pi_ann)));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
                 return Ok(Term::Lam(meta, Scope::bind(elab_param, elab_lam_body)).into());
@@ -340,7 +340,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 
     let (elab_term, inferred_ty) = infer(context, term)?; // 1.
 
-    match RcType::alpha_eq(&inferred_ty, expected) {
+    match RcType::term_eq(&inferred_ty, expected) {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
             span: term.span(),
@@ -463,10 +463,10 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(ref index) => Err(InternalError::UnsubstitutedDebruijnIndex {
+            Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: term.span(),
-                name: index.name.clone(),
-                index: index.inner,
+                name: name.clone(),
+                index: index,
             }.into()),
         },
 
@@ -477,14 +477,14 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         // ────────────────────────────────────────── (INFER/PI)
         //      Γ ⊢ Πx:R₁.R₂ ↓ Typeₖ ⤳ Πx:T₁.T₂
         RawTerm::Pi(meta, ref scope) => {
-            let (param, body) = nameless::unbind(scope.clone());
+            let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-            let (elab_ann, level_ann) = infer_universe(context, &param.inner)?; // 1.
+            let (elab_ann, level_ann) = infer_universe(context, &param_ann)?; // 1.
             let simp_ann = normalize(context, &elab_ann)?; // 2.
-            let body_context = context.extend_pi(param.name.clone(), simp_ann);
+            let body_context = context.extend_pi(name.clone(), simp_ann);
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
-            let elab_param = Named::new(param.name.clone(), elab_ann);
+            let elab_param = (name, Embed(elab_ann));
             let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body)).into();
             let level = cmp::max(level_ann, level_body); // 4.
 
@@ -497,24 +497,24 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         // ───────────────────────────────────────── (INFER/LAM)
         //      Γ ⊢ λx:R.r ↓ Πx:V₁.V₂ ⤳ λx:T.t
         RawTerm::Lam(meta, ref scope) => {
-            let (param, body) = nameless::unbind(scope.clone());
+            let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
             // Check for holes before entering to ensure we get a nice error
-            if let RawTerm::Hole(_) = *param.inner.inner {
+            if let RawTerm::Hole(_) = *param_ann.inner {
                 return Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: param.span(),
                     var_span: None,
-                    name: param.name.clone(),
+                    name: name.clone(),
                 });
             }
 
-            let (lam_ann, _) = infer_universe(context, &param.inner)?; // 1.
+            let (lam_ann, _) = infer_universe(context, &param_ann)?; // 1.
             let pi_ann = normalize(context, &lam_ann)?; // 2.
-            let body_ctx = context.extend_lam(param.name.clone(), pi_ann.clone());
+            let body_ctx = context.extend_lam(name.clone(), pi_ann.clone());
             let (lam_body, pi_body) = infer(&body_ctx, &body)?; // 3.
 
-            let lam_param = Named::new(param.name.clone(), lam_ann);
-            let pi_param = Named::new(param.name.clone(), pi_ann);
+            let lam_param = (name.clone(), Embed(lam_ann));
+            let pi_param = (name.clone(), Embed(pi_ann));
 
             Ok((
                 Term::Lam(meta, Scope::bind(lam_param, lam_body)).into(),
@@ -532,13 +532,13 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
 
             match *fn_ty.inner {
                 Value::Pi(ref scope) => {
-                    let (param, body) = nameless::unbind(scope.clone());
+                    let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-                    let arg_expr = check(context, arg_expr, &param.inner)?; // 2.
+                    let arg_expr = check(context, arg_expr, &param_ann)?; // 2.
 
                     // 3.
                     let body = normalize(
-                        &context.extend_let(param.name, param.inner, arg_expr.clone()),
+                        &context.extend_let(name, param_ann, arg_expr.clone()),
                         &RcTerm::from(&body),
                     )?;
 

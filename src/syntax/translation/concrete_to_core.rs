@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::{GenId, Named, Scope, Var};
+use nameless::{Embed, GenId, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
@@ -34,10 +34,7 @@ fn pi_to_core(
             core::SourceMeta {
                 span: span.to(term.span()),
             },
-            Scope::bind(
-                Named::new(core::Name::user(name.clone()), ann.clone()),
-                term,
-            ),
+            Scope::bind((core::Name::user(name.clone()), Embed(ann.clone())), term),
         ).into();
     }
 
@@ -71,7 +68,7 @@ fn lam_to_core(
                 None => core::RawTerm::Hole(core::SourceMeta::default()).into(),
                 Some(ref ann) => ann.to_core(),
             };
-            term = core::RawTerm::Lam(meta, Scope::bind(Named::new(name, ann), term)).into();
+            term = core::RawTerm::Lam(meta, Scope::bind((name, Embed(ann)), term)).into();
         }
     }
 
@@ -196,7 +193,7 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
                 let ann = ann.to_core();
                 let body = body.to_core();
 
-                core::RawTerm::Pi(meta, Scope::bind(Named::new(name, ann), body)).into()
+                core::RawTerm::Pi(meta, Scope::bind((name, Embed(ann)), body)).into()
             },
             concrete::Term::App(ref fn_expr, ref arg) => {
                 let fn_expr = fn_expr.to_core();
@@ -250,7 +247,7 @@ mod to_core {
 
         #[test]
         fn var() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"x"),
                 RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("x"))).into()
             );
@@ -258,7 +255,7 @@ mod to_core {
 
         #[test]
         fn var_kebab_case() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"or-elim"),
                 RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("or-elim"))).into(),
             );
@@ -266,7 +263,7 @@ mod to_core {
 
         #[test]
         fn ty() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"Type"),
                 RawTerm::Universe(SourceMeta::default(), Level(0)).into()
             );
@@ -274,7 +271,7 @@ mod to_core {
 
         #[test]
         fn ty_level() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"Type 2"),
                 RawTerm::Universe(SourceMeta::default(), Level(0).succ().succ()).into()
             );
@@ -282,7 +279,7 @@ mod to_core {
 
         #[test]
         fn ann() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"Type : Type"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -294,7 +291,7 @@ mod to_core {
 
         #[test]
         fn ann_ann_left() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"Type : Type : Type"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -310,7 +307,7 @@ mod to_core {
 
         #[test]
         fn ann_ann_right() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"Type : (Type : Type)"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -326,7 +323,7 @@ mod to_core {
 
         #[test]
         fn ann_ann_ann() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"(Type : Type) : (Type : Type)"),
                 RawTerm::Ann(
                     SourceMeta::default(),
@@ -348,23 +345,28 @@ mod to_core {
         fn lam_ann() {
             let x = Name::user("x");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"\x : Type -> Type => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Pi(
-                                SourceMeta::default(),
-                                Scope::bind(
-                                    Named::new(
-                                        Name::user("_"),
-                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
-                                    ),
-                                    RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                                )
-                            ).into()
+                            Embed(
+                                RawTerm::Pi(
+                                    SourceMeta::default(),
+                                    Scope::bind(
+                                        (
+                                            Name::user("_"),
+                                            Embed(
+                                                RawTerm::Universe(SourceMeta::default(), Level(0))
+                                                    .into()
+                                            )
+                                        ),
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
+                                    )
+                                ).into()
+                            )
                         ),
                         RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                     )
@@ -377,23 +379,25 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"\x : (\y => y) => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Lam(
-                                SourceMeta::default(),
-                                Scope::bind(
-                                    Named::new(
-                                        y.clone(),
-                                        RawTerm::Hole(SourceMeta::default()).into()
-                                    ),
-                                    RawTerm::Var(SourceMeta::default(), Var::Free(y)).into(),
-                                )
-                            ).into(),
+                            Embed(
+                                RawTerm::Lam(
+                                    SourceMeta::default(),
+                                    Scope::bind(
+                                        (
+                                            y.clone(),
+                                            Embed(RawTerm::Hole(SourceMeta::default()).into())
+                                        ),
+                                        RawTerm::Var(SourceMeta::default(), Var::Free(y)).into(),
+                                    )
+                                ).into()
+                            ),
                         ),
                         RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                     )
@@ -406,21 +410,23 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"\(x y : Type) => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                            Embed(RawTerm::Universe(SourceMeta::default(), Level(0)).into())
                         ),
                         RawTerm::Lam(
                             SourceMeta::default(),
                             Scope::bind(
-                                Named::new(
+                                (
                                     y,
-                                    RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                                    Embed(
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                                    )
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                             )
@@ -432,14 +438,14 @@ mod to_core {
 
         #[test]
         fn arrow() {
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"Type -> Type"),
                 RawTerm::Pi(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             Name::user("_"),
-                            RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                            Embed(RawTerm::Universe(SourceMeta::default(), Level(0)).into())
                         ),
                         RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
                     )
@@ -451,23 +457,28 @@ mod to_core {
         fn pi() {
             let x = Name::user("x");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"(x : Type -> Type) -> x"),
                 RawTerm::Pi(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Pi(
-                                SourceMeta::default(),
-                                Scope::bind(
-                                    Named::new(
-                                        Name::user("_"),
-                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
-                                    ),
-                                    RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                                )
-                            ).into(),
+                            Embed(
+                                RawTerm::Pi(
+                                    SourceMeta::default(),
+                                    Scope::bind(
+                                        (
+                                            Name::user("_"),
+                                            Embed(
+                                                RawTerm::Universe(SourceMeta::default(), Level(0))
+                                                    .into()
+                                            )
+                                        ),
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
+                                    )
+                                ).into()
+                            ),
                         ),
                         RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                     )
@@ -480,21 +491,23 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"(x y : Type) -> x"),
                 RawTerm::Pi(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                            Embed(RawTerm::Universe(SourceMeta::default(), Level(0)).into())
                         ),
                         RawTerm::Pi(
                             SourceMeta::default(),
                             Scope::bind(
-                                Named::new(
+                                (
                                     y,
-                                    RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                                    Embed(
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                                    )
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                             )
@@ -508,22 +521,24 @@ mod to_core {
         fn pi_arrow() {
             let x = Name::user("x");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"(x : Type) -> x -> x"),
                 RawTerm::Pi(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                            Embed(RawTerm::Universe(SourceMeta::default(), Level(0)).into())
                         ),
                         RawTerm::Pi(
                             SourceMeta::default(),
                             Scope::bind(
-                                Named::new(
+                                (
                                     Name::user("_"),
-                                    RawTerm::Var(SourceMeta::default(), Var::Free(x.clone()))
-                                        .into()
+                                    Embed(
+                                        RawTerm::Var(SourceMeta::default(), Var::Free(x.clone()))
+                                            .into()
+                                    )
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                             )
@@ -538,30 +553,37 @@ mod to_core {
             let x = Name::user("x");
             let y = Name::user("y");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"\(x : Type -> Type) (y : Type) => x y"),
                 RawTerm::Lam(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             x.clone(),
-                            RawTerm::Pi(
-                                SourceMeta::default(),
-                                Scope::bind(
-                                    Named::new(
-                                        Name::user("_"),
-                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
-                                    ),
-                                    RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                                )
-                            ).into(),
+                            Embed(
+                                RawTerm::Pi(
+                                    SourceMeta::default(),
+                                    Scope::bind(
+                                        (
+                                            Name::user("_"),
+                                            Embed(
+                                                RawTerm::Universe(SourceMeta::default(), Level(0))
+                                                    .into()
+                                            )
+                                        ),
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
+                                    )
+                                ).into()
+                            ),
                         ),
                         RawTerm::Lam(
                             SourceMeta::default(),
                             Scope::bind(
-                                Named::new(
+                                (
                                     y.clone(),
-                                    RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                                    Embed(
+                                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                                    )
                                 ),
                                 RawTerm::App(
                                     SourceMeta::default(),
@@ -580,21 +602,21 @@ mod to_core {
             let x = Name::user("x");
             let a = Name::user("a");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"\(a : Type) (x : a) => x"),
                 RawTerm::Lam(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             a.clone(),
-                            RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                            Embed(RawTerm::Universe(SourceMeta::default(), Level(0)).into())
                         ),
                         RawTerm::Lam(
                             SourceMeta::default(),
                             Scope::bind(
-                                Named::new(
+                                (
                                     x.clone(),
-                                    RawTerm::Var(SourceMeta::default(), Var::Free(a)).into()
+                                    Embed(RawTerm::Var(SourceMeta::default(), Var::Free(a)).into())
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(x)).into(),
                             )
@@ -608,22 +630,24 @@ mod to_core {
         fn id_ty() {
             let a = Name::user("a");
 
-            assert_alpha_eq!(
+            assert_term_eq!(
                 parse(r"(a : Type) -> a -> a"),
                 RawTerm::Pi(
                     SourceMeta::default(),
                     Scope::bind(
-                        Named::new(
+                        (
                             a.clone(),
-                            RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                            Embed(RawTerm::Universe(SourceMeta::default(), Level(0)).into())
                         ),
                         RawTerm::Pi(
                             SourceMeta::default(),
                             Scope::bind(
-                                Named::new(
+                                (
                                     Name::user("_"),
-                                    RawTerm::Var(SourceMeta::default(), Var::Free(a.clone()))
-                                        .into()
+                                    Embed(
+                                        RawTerm::Var(SourceMeta::default(), Var::Free(a.clone()))
+                                            .into()
+                                    )
                                 ),
                                 RawTerm::Var(SourceMeta::default(), Var::Free(a)).into(),
                             )
@@ -638,7 +662,7 @@ mod to_core {
 
             #[test]
             fn lam_args() {
-                assert_alpha_eq!(
+                assert_term_eq!(
                     parse(r"\x (y : Type) z => x"),
                     parse(r"\x => \y : Type => \z => x"),
                 );
@@ -646,7 +670,7 @@ mod to_core {
 
             #[test]
             fn lam_args_multi() {
-                assert_alpha_eq!(
+                assert_term_eq!(
                     parse(r"\(x : Type) (y : Type) z => x"),
                     parse(r"\(x y : Type) z => x"),
                 );
@@ -654,7 +678,7 @@ mod to_core {
 
             #[test]
             fn pi_args() {
-                assert_alpha_eq!(
+                assert_term_eq!(
                     parse(r"(a : Type) -> (x y z : a) -> x"),
                     parse(r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
                 );
@@ -662,7 +686,7 @@ mod to_core {
 
             #[test]
             fn arrow() {
-                assert_alpha_eq!(
+                assert_term_eq!(
                     parse(r"(a : Type) -> a -> a"),
                     parse(r"(a : Type) -> (x : a) -> a"),
                 )

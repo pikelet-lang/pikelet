@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::{self, Var};
+use nameless::{self, Embed, Var};
 use std::collections::HashSet;
 
 use syntax::concrete;
@@ -135,18 +135,18 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
             core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.to_string()) // FIXME
             },
-            core::RawTerm::Var(_, Var::Free(core::Name::Gen(ref _gen))) => {
+            core::RawTerm::Var(_, Var::Free(core::Name::Gen(ref _name, ref _gen))) => {
                 // TODO: use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 unimplemented!()
             },
-            core::RawTerm::Var(_, Var::Bound(_)) => {
+            core::RawTerm::Var(_, Var::Bound(_, _)) => {
                 // TODO: Better message
                 panic!("Tried to convert a term that was not locally closed");
             },
             core::RawTerm::Pi(_, ref scope) => {
-                let (param, body) = nameless::unbind(scope.clone());
-                if body.free_vars().contains(&param.name) {
+                let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
+                if body.free_vars().contains(&name) {
                     // use name if it is present, and not used in the current scope
                     // otherwise create a pretty name
                     // add the used name to the environment
@@ -162,7 +162,7 @@ impl ToConcrete<concrete::Term> for core::RcRawTerm {
                 } else {
                     // The body is not dependent on the parameter - so let's use an arrow instead!
                     concrete::Term::Arrow(
-                        Box::new(param.inner.to_concrete(env)),
+                        Box::new(param_ann.to_concrete(env)),
                         Box::new(body.to_concrete(env)),
                     )
                 }

@@ -2,7 +2,7 @@
 
 use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
-use nameless::Debruijn;
+use nameless::Bound;
 use std::fmt;
 
 use syntax::core::{Name, RcType};
@@ -14,7 +14,7 @@ pub enum InternalError {
     UnsubstitutedDebruijnIndex {
         span: ByteSpan,
         name: Name,
-        index: Debruijn,
+        index: Bound,
     },
     #[fail(display = "Undefined name `{}`.", name)]
     UndefinedName { var_span: ByteSpan, name: Name },
