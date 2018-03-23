@@ -6,16 +6,16 @@ use syntax::parse;
 
 use super::*;
 
-fn parse(src: &str) -> RcRawTerm {
+fn parse(src: &str) -> Rc<RawTerm> {
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
     let (concrete_term, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
-    concrete_term.to_core()
+    Rc::new(concrete_term.to_core())
 }
 
-fn parse_infer(src: &str) -> RcTerm {
+fn parse_infer(src: &str) -> Rc<Term> {
     infer(&Context::new(), &parse(src)).unwrap().0
 }
 
@@ -44,7 +44,7 @@ mod normalize {
 
         assert_term_eq!(
             normalize(&context, &parse_infer(r"Type")).unwrap(),
-            Value::Universe(Level(0)).into()
+            Rc::new(Value::Universe(Level(0)))
         );
     }
 
@@ -56,10 +56,10 @@ mod normalize {
 
         assert_term_eq!(
             normalize(&context, &parse_infer(r"\x : Type => x")).unwrap(),
-            Value::Lam(Scope::bind(
-                (x.clone(), Embed(Value::Universe(Level(0)).into())),
-                Neutral::Var(Var::Free(x)).into(),
-            )).into(),
+            Rc::new(Value::Lam(Scope::bind(
+                (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
+                Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
+            ))),
         );
     }
 
@@ -71,10 +71,10 @@ mod normalize {
 
         assert_term_eq!(
             normalize(&context, &parse_infer(r"(x : Type) -> x")).unwrap(),
-            Value::Pi(Scope::bind(
-                (x.clone(), Embed(Value::Universe(Level(0)).into())),
-                Neutral::Var(Var::Free(x)).into(),
-            )).into(),
+            Rc::new(Value::Pi(Scope::bind(
+                (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
+                Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
+            ))),
         );
     }
 
@@ -84,26 +84,26 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty_arr: RcValue = Value::Pi(Scope::bind(
-            (Name::user("_"), Embed(Value::Universe(Level(0)).into())),
-            Value::Universe(Level(0)).into(),
-        )).into();
+        let ty_arr = Rc::new(Value::Pi(Scope::bind(
+            (Name::user("_"), Embed(Rc::new(Value::Universe(Level(0))))),
+            Rc::new(Value::Universe(Level(0))),
+        )));
 
         assert_term_eq!(
             normalize(
                 &context,
                 &parse_infer(r"\(x : Type -> Type) (y : Type) => x y")
             ).unwrap(),
-            Value::Lam(Scope::bind(
+            Rc::new(Value::Lam(Scope::bind(
                 (x.clone(), Embed(ty_arr)),
-                Value::Lam(Scope::bind(
-                    (y.clone(), Embed(Value::Universe(Level(0)).into())),
-                    Neutral::App(
-                        Neutral::Var(Var::Free(x)).into(),
-                        Term::Var(SourceMeta::default(), Var::Free(y)).into(),
-                    ).into(),
-                )).into(),
-            )).into(),
+                Rc::new(Value::Lam(Scope::bind(
+                    (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
+                    Rc::new(Value::from(Neutral::App(
+                        Rc::new(Neutral::Var(Var::Free(x))),
+                        Rc::new(Term::Var(SourceMeta::default(), Var::Free(y))),
+                    ))),
+                ))),
+            ))),
         );
     }
 
@@ -113,26 +113,26 @@ mod normalize {
 
         let x = Name::user("x");
         let y = Name::user("y");
-        let ty_arr: RcValue = Value::Pi(Scope::bind(
-            (Name::user("_"), Embed(Value::Universe(Level(0)).into())),
-            Value::Universe(Level(0)).into(),
-        )).into();
+        let ty_arr = Rc::new(Value::Pi(Scope::bind(
+            (Name::user("_"), Embed(Rc::new(Value::Universe(Level(0))))),
+            Rc::new(Value::Universe(Level(0))),
+        )));
 
         assert_term_eq!(
             normalize(
                 &context,
                 &parse_infer(r"(x : Type -> Type) -> (y : Type) -> x y")
             ).unwrap(),
-            Value::Pi(Scope::bind(
+            Rc::new(Value::Pi(Scope::bind(
                 (x.clone(), Embed(ty_arr)),
-                Value::Pi(Scope::bind(
-                    (y.clone(), Embed(Value::Universe(Level(0)).into())),
-                    Neutral::App(
-                        Neutral::Var(Var::Free(x)).into(),
-                        Term::Var(SourceMeta::default(), Var::Free(y)).into(),
-                    ).into(),
-                )).into(),
-            )).into(),
+                Rc::new(Value::Pi(Scope::bind(
+                    (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
+                    Rc::new(Value::from(Neutral::App(
+                        Rc::new(Neutral::Var(Var::Free(x))),
+                        Rc::new(Term::Var(SourceMeta::default(), Var::Free(y))),
+                    ))),
+                ))),
+            ))),
         );
     }
 

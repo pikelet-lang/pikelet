@@ -4,7 +4,7 @@ use nameless::Var;
 use pretty::Doc;
 
 use syntax::core::{Binder, Constant, Context, Level, Name, Neutral, RawConstant, RawDefinition,
-                   RawModule, RawTerm, RcNeutral, RcRawTerm, RcTerm, RcValue, Term, Value};
+                   RawModule, RawTerm, Term, Value};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
 
@@ -169,7 +169,7 @@ impl ToDoc for RawTerm {
             RawTerm::Lam(_, ref scope) => pretty_lam(
                 options,
                 &scope.unsafe_pattern.0,
-                match *(scope.unsafe_pattern.1).0.inner {
+                match *(scope.unsafe_pattern.1).0 {
                     RawTerm::Hole(_) => None,
                     _ => Some(&(scope.unsafe_pattern.1).0),
                 },
@@ -183,12 +183,6 @@ impl ToDoc for RawTerm {
             ),
             RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
         }
-    }
-}
-
-impl ToDoc for RcRawTerm {
-    fn to_doc(&self, options: Options) -> StaticDoc {
-        self.inner.to_doc(options)
     }
 }
 
@@ -216,12 +210,6 @@ impl ToDoc for Term {
     }
 }
 
-impl ToDoc for RcTerm {
-    fn to_doc(&self, options: Options) -> StaticDoc {
-        self.inner.to_doc(options)
-    }
-}
-
 impl ToDoc for Value {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
@@ -244,24 +232,12 @@ impl ToDoc for Value {
     }
 }
 
-impl ToDoc for RcValue {
-    fn to_doc(&self, options: Options) -> StaticDoc {
-        self.inner.to_doc(options)
-    }
-}
-
 impl ToDoc for Neutral {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
             Neutral::Var(ref var) => pretty_var(options, var),
             Neutral::App(ref fn_term, ref arg_term) => pretty_app(options, fn_term, arg_term),
         }
-    }
-}
-
-impl ToDoc for RcNeutral {
-    fn to_doc(&self, options: Options) -> StaticDoc {
-        self.inner.to_doc(options)
     }
 }
 
@@ -313,7 +289,7 @@ impl ToDoc for Context {
 
 impl ToDoc for RawDefinition {
     fn to_doc(&self, options: Options) -> StaticDoc {
-        match *self.ann.inner {
+        match *self.ann {
             RawTerm::Hole(_) => Doc::nil(),
             ref ann => Doc::group(
                 Doc::as_string(&self.name)

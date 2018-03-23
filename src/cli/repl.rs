@@ -112,9 +112,10 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use std::usize;
+    use std::rc::Rc;
 
     use syntax::concrete::ReplCommand;
-    use syntax::core::{RcTerm, SourceMeta, Term};
+    use syntax::core::{SourceMeta, Term};
     use syntax::translation::ToCore;
 
     fn term_width() -> usize {
@@ -134,7 +135,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         },
 
         ReplCommand::Eval(parse_term) => {
-            let raw_term = parse_term.to_core();
+            let raw_term = Rc::new(parse_term.to_core());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
             let evaluated = semantics::normalize(context, &term)?;
 
@@ -142,14 +143,14 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
                 "{term:width$}",
                 term = Term::Ann(
                     SourceMeta::default(),
-                    RcTerm::from(&evaluated),
-                    RcTerm::from(&inferred),
+                    Rc::new(Term::from(&*evaluated)),
+                    Rc::new(Term::from(&*inferred)),
                 ),
                 width = term_width(),
             );
         },
         ReplCommand::TypeOf(parse_term) => {
-            let raw_term = parse_term.to_core();
+            let raw_term = Rc::new(parse_term.to_core());
             let (_, inferred) = semantics::infer(context, &raw_term)?;
 
             println!("{term:width$}", term = inferred, width = term_width());

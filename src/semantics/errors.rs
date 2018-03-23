@@ -4,8 +4,9 @@ use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use nameless::Bound;
 use std::fmt;
+use std::rc::Rc;
 
-use syntax::core::{Name, RcType};
+use syntax::core::{Name, Type};
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -58,7 +59,7 @@ pub enum TypeError {
     ArgAppliedToNonFunction {
         fn_span: ByteSpan,
         arg_span: ByteSpan,
-        found: RcType,
+        found: Rc<Type>,
     },
     FunctionParamNeedsAnnotation {
         param_span: ByteSpan,
@@ -73,20 +74,20 @@ pub enum TypeError {
     },
     UnableToElaborateHole {
         span: ByteSpan,
-        expected: Option<RcType>,
+        expected: Option<Rc<Type>>,
     },
     Mismatch {
         span: ByteSpan,
-        found: RcType,
-        expected: RcType,
+        found: Rc<Type>,
+        expected: Rc<Type>,
     },
     UnexpectedFunction {
         span: ByteSpan,
-        expected: RcType,
+        expected: Rc<Type>,
     },
     ExpectedUniverse {
         span: ByteSpan,
-        found: RcType,
+        found: Rc<Type>,
     },
     UndefinedName {
         var_span: ByteSpan,

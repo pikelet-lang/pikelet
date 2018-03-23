@@ -10,9 +10,6 @@ use std::usize;
 
 use syntax::pretty::{self, ToDoc};
 
-#[macro_use]
-mod macros;
-
 mod name;
 #[cfg(test)]
 mod tests;
@@ -163,9 +160,9 @@ pub struct RawDefinition {
     /// The name of the declaration
     pub name: String,
     /// The body of the definition
-    pub term: RcRawTerm,
+    pub term: Rc<RawTerm>,
     /// An optional type annotation to aid in type inference
-    pub ann: RcRawTerm,
+    pub ann: Rc<RawTerm>,
 }
 
 impl fmt::Display for RawDefinition {
@@ -194,7 +191,7 @@ impl fmt::Display for RawDefinition {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum RawTerm {
     /// A term annotated with a type
-    Ann(SourceMeta, RcRawTerm, RcRawTerm), // 1.
+    Ann(SourceMeta, Rc<RawTerm>, Rc<RawTerm>), // 1.
     /// Universes
     Universe(SourceMeta, Level), // 2.
     /// Constants
@@ -204,16 +201,16 @@ pub enum RawTerm {
     /// A variable
     Var(SourceMeta, Var<Name>), // 5.
     /// Dependent function types
-    Pi(SourceMeta, Scope<(Name, Embed<RcRawTerm>), RcRawTerm>), // 6.
+    Pi(SourceMeta, Scope<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 6.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<(Name, Embed<RcRawTerm>), RcRawTerm>), // 7.
+    Lam(SourceMeta, Scope<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 7.
     /// RawTerm application
-    App(SourceMeta, RcRawTerm, RcRawTerm), // 8.
+    App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>), // 8.
 }
 
-impl RcRawTerm {
+impl RawTerm {
     pub fn span(&self) -> ByteSpan {
-        match *self.inner {
+        match *self {
             RawTerm::Ann(meta, _, _)
             | RawTerm::Universe(meta, _)
             | RawTerm::Hole(meta)
@@ -234,9 +231,9 @@ impl fmt::Display for RawTerm {
     }
 }
 
-impl RcRawTerm {
+impl RawTerm {
     fn visit_vars<F: FnMut(&Var<Name>)>(&self, on_var: &mut F) {
-        match *self.inner {
+        match *self {
             RawTerm::Ann(_, ref expr, ref ty) => {
                 expr.visit_vars(on_var);
                 ty.visit_vars(on_var);
@@ -283,9 +280,9 @@ pub struct Definition {
     /// The name of the definition
     pub name: String,
     /// The elaborated value
-    pub term: RcTerm,
+    pub term: Rc<Term>,
     /// The type of the definition
-    pub ann: RcType,
+    pub ann: Rc<Type>,
 }
 
 /// The core term syntax
@@ -302,7 +299,7 @@ pub struct Definition {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(SourceMeta, RcTerm, RcTerm), // 1.
+    Ann(SourceMeta, Rc<Term>, Rc<Term>), // 1.
     /// Universes
     Universe(SourceMeta, Level), // 2.
     /// Constants
@@ -310,16 +307,16 @@ pub enum Term {
     /// A variable
     Var(SourceMeta, Var<Name>), // 4.
     /// Dependent function types
-    Pi(SourceMeta, Scope<(Name, Embed<RcTerm>), RcTerm>), // 5.
+    Pi(SourceMeta, Scope<(Name, Embed<Rc<Term>>), Rc<Term>>), // 5.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<(Name, Embed<RcTerm>), RcTerm>), // 6.
+    Lam(SourceMeta, Scope<(Name, Embed<Rc<Term>>), Rc<Term>>), // 6.
     /// Term application
-    App(SourceMeta, RcTerm, RcTerm), // 7.
+    App(SourceMeta, Rc<Term>, Rc<Term>), // 7.
 }
 
-impl RcTerm {
+impl Term {
     pub fn span(&self) -> ByteSpan {
-        match *self.inner {
+        match *self {
             Term::Ann(meta, _, _)
             | Term::Universe(meta, _)
             | Term::Constant(meta, _)
@@ -359,11 +356,11 @@ pub enum Value {
     /// Constants
     Constant(Constant), // 2.
     /// A pi type
-    Pi(Scope<(Name, Embed<RcValue>), RcValue>), // 3.
+    Pi(Scope<(Name, Embed<Rc<Value>>), Rc<Value>>), // 3.
     /// A lambda abstraction
-    Lam(Scope<(Name, Embed<RcValue>), RcValue>), // 4.
+    Lam(Scope<(Name, Embed<Rc<Value>>), Rc<Value>>), // 4.
     /// Neutral terms
-    Neutral(RcNeutral), // 5.
+    Neutral(Rc<Neutral>), // 5.
 }
 
 impl fmt::Display for Value {
@@ -388,7 +385,7 @@ pub enum Neutral {
     /// Variables
     Var(Var<Name>), // 1.
     /// RawTerm application
-    App(RcNeutral, RcTerm), // 2.
+    App(Rc<Neutral>, Rc<Term>), // 2.
 }
 
 impl fmt::Display for Neutral {
@@ -399,57 +396,47 @@ impl fmt::Display for Neutral {
     }
 }
 
-// Wrapper types
-
-make_wrapper!(RcRawTerm, Rc, RawTerm);
-make_wrapper!(RcTerm, Rc, Term);
-make_wrapper!(RcValue, Rc, Value);
-make_wrapper!(RcNeutral, Rc, Neutral);
-
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
 
-/// Types are at the term level, so this is just an alias
-pub type RcType = RcValue;
-
-impl From<Neutral> for RcValue {
-    fn from(src: Neutral) -> RcValue {
-        Value::Neutral(src.into()).into()
+impl From<Neutral> for Value {
+    fn from(src: Neutral) -> Value {
+        Value::Neutral(Rc::new(src))
     }
 }
 
-impl<'a> From<&'a RcValue> for RcTerm {
-    fn from(src: &'a RcValue) -> RcTerm {
+impl<'a> From<&'a Value> for Term {
+    fn from(src: &'a Value) -> Term {
         let meta = SourceMeta::default();
 
-        match *src.inner {
-            Value::Universe(level) => Term::Universe(meta, level).into(),
-            Value::Constant(ref c) => Term::Constant(meta, c.clone()).into(),
+        match *src {
+            Value::Universe(level) => Term::Universe(meta, level),
+            Value::Constant(ref c) => Term::Constant(meta, c.clone()),
             Value::Pi(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
-                let param = (name, Embed(RcTerm::from(&param_ann)));
+                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Pi(meta, Scope::bind(param, RcTerm::from(&body))).into()
+                Term::Pi(meta, Scope::bind(param, Rc::new(Term::from(&*body))))
             },
             Value::Lam(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
-                let param = (name, Embed(RcTerm::from(&param_ann)));
+                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Lam(meta, Scope::bind(param, RcTerm::from(&body))).into()
+                Term::Lam(meta, Scope::bind(param, Rc::new(Term::from(&*body))))
             },
-            Value::Neutral(ref n) => RcTerm::from(n),
+            Value::Neutral(ref n) => Term::from(&**n),
         }
     }
 }
 
-impl<'a> From<&'a RcNeutral> for RcTerm {
-    fn from(src: &'a RcNeutral) -> RcTerm {
+impl<'a> From<&'a Neutral> for Term {
+    fn from(src: &'a Neutral) -> Term {
         let meta = SourceMeta::default();
 
-        match *src.inner {
-            Neutral::Var(ref var) => Term::Var(meta, var.clone()).into(),
+        match *src {
+            Neutral::Var(ref var) => Term::Var(meta, var.clone()),
             Neutral::App(ref fn_expr, ref arg_expr) => {
-                Term::App(meta, RcTerm::from(fn_expr), arg_expr.clone()).into()
+                Term::App(meta, Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
             },
         }
     }
@@ -465,14 +452,14 @@ impl<'a> From<&'a RcNeutral> for RcTerm {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Binder {
     /// A type introduced after entering a lambda abstraction
-    Lam { name: Name, ann: RcType }, // 1.
+    Lam { name: Name, ann: Rc<Type> }, // 1.
     /// A type introduced after entering a pi type
-    Pi { name: Name, ann: RcType }, // 2.
+    Pi { name: Name, ann: Rc<Type> }, // 2.
     /// A value and type binding that was introduced by passing over a let binding
     Let {
         name: Name,
-        ann: RcType,
-        value: RcTerm,
+        ann: Rc<Type>,
+        value: Rc<Term>,
     }, // 3.
 }
 
@@ -517,15 +504,15 @@ impl Context {
         }
     }
 
-    pub fn extend_lam(&self, name: Name, ann: RcType) -> Context {
+    pub fn extend_lam(&self, name: Name, ann: Rc<Type>) -> Context {
         self.extend(Binder::Lam { name, ann })
     }
 
-    pub fn extend_pi(&self, name: Name, ann: RcType) -> Context {
+    pub fn extend_pi(&self, name: Name, ann: Rc<Type>) -> Context {
         self.extend(Binder::Pi { name, ann })
     }
 
-    pub fn extend_let(&self, name: Name, ann: RcType, value: RcTerm) -> Context {
+    pub fn extend_let(&self, name: Name, ann: Rc<Type>, value: Rc<Term>) -> Context {
         self.extend(Binder::Let { name, ann, value })
     }
 

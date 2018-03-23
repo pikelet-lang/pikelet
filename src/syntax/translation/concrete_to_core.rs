@@ -1,5 +1,6 @@
 use codespan::ByteSpan;
 use nameless::{Embed, GenId, Scope, Var};
+use std::rc::Rc;
 
 use syntax::concrete;
 use syntax::core;
@@ -24,8 +25,8 @@ fn pi_to_core(
     param_names: &[(ByteSpan, String)],
     ann: &concrete::Term,
     body: &concrete::Term,
-) -> core::RcRawTerm {
-    let ann = ann.to_core();
+) -> core::RawTerm {
+    let ann = Rc::new(ann.to_core());
     let mut term = body.to_core();
 
     for &(span, ref name) in param_names.iter().rev() {
@@ -34,7 +35,10 @@ fn pi_to_core(
             core::SourceMeta {
                 span: span.to(term.span()),
             },
-            Scope::bind((core::Name::user(name.clone()), Embed(ann.clone())), term),
+            Scope::bind(
+                (core::Name::user(name.clone()), Embed(ann.clone())),
+                Rc::new(term),
+            ),
         ).into();
     }
 
@@ -55,7 +59,7 @@ fn pi_to_core(
 fn lam_to_core(
     params: &[(Vec<(ByteSpan, String)>, Option<Box<concrete::Term>>)],
     body: &concrete::Term,
-) -> core::RcRawTerm {
+) -> core::RawTerm {
     let mut term = body.to_core();
 
     for &(ref names, ref ann) in params.iter().rev() {
@@ -65,10 +69,10 @@ fn lam_to_core(
                 span: span.to(term.span()),
             };
             let ann = match *ann {
-                None => core::RawTerm::Hole(core::SourceMeta::default()).into(),
-                Some(ref ann) => ann.to_core(),
+                None => Rc::new(core::RawTerm::Hole(core::SourceMeta::default())),
+                Some(ref ann) => Rc::new(ann.to_core()),
             };
-            term = core::RawTerm::Lam(meta, Scope::bind((name, Embed(ann)), term)).into();
+            term = core::RawTerm::Lam(meta, Scope::bind((name, Embed(ann)), Rc::new(term))).into();
         }
     }
 
@@ -100,10 +104,11 @@ impl ToCore<core::RawModule> for concrete::Module {
                             ..
                         } => match prev_claim.take() {
                             Some((name, ann)) => {
-                                let term = core::RawTerm::Hole(core::SourceMeta::default()).into();
+                                let term =
+                                    Rc::new(core::RawTerm::Hole(core::SourceMeta::default()));
                                 definitions.push(core::RawDefinition { name, term, ann });
                             },
-                            None => prev_claim = Some((name.clone(), ann.to_core())),
+                            None => prev_claim = Some((name.clone(), Rc::new(ann.to_core()))),
                         },
                         concrete::Declaration::Definition {
                             name: (_, ref name),
@@ -116,26 +121,26 @@ impl ToCore<core::RawModule> for concrete::Module {
                             match prev_claim.take() {
                                 None => definitions.push(core::RawDefinition {
                                     name: name.clone(),
-                                    ann: core::RawTerm::Hole(default_meta).into(),
-                                    term: lam_to_core(params, body),
+                                    ann: Rc::new(core::RawTerm::Hole(default_meta)),
+                                    term: Rc::new(lam_to_core(params, body)),
                                 }),
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
                                             ann,
-                                            term: lam_to_core(params, body),
+                                            term: Rc::new(lam_to_core(params, body)),
                                         });
                                     } else {
                                         definitions.push(core::RawDefinition {
                                             name: claim_name.clone(),
                                             ann,
-                                            term: core::RawTerm::Hole(default_meta).into(),
+                                            term: Rc::new(core::RawTerm::Hole(default_meta)),
                                         });
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
-                                            ann: core::RawTerm::Hole(default_meta).into(),
-                                            term: lam_to_core(params, body),
+                                            ann: Rc::new(core::RawTerm::Hole(default_meta)),
+                                            term: Rc::new(lam_to_core(params, body)),
                                         });
                                     }
                                 },
@@ -155,9 +160,9 @@ impl ToCore<core::RawModule> for concrete::Module {
     }
 }
 
-impl ToCore<core::RcRawTerm> for concrete::Term {
+impl ToCore<core::RawTerm> for concrete::Term {
     /// Convert a term in the concrete syntax into a core term
-    fn to_core(&self) -> core::RcRawTerm {
+    fn to_core(&self) -> core::RawTerm {
         let meta = core::SourceMeta { span: self.span() };
         match *self {
             concrete::Term::Parens(_, ref term) => term.to_core(),
@@ -190,14 +195,14 @@ impl ToCore<core::RcRawTerm> for concrete::Term {
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
                 let name = core::Name::from(GenId::fresh());
-                let ann = ann.to_core();
-                let body = body.to_core();
+                let ann = Rc::new(ann.to_core());
+                let body = Rc::new(body.to_core());
 
                 core::RawTerm::Pi(meta, Scope::bind((name, Embed(ann)), body)).into()
             },
             concrete::Term::App(ref fn_expr, ref arg) => {
-                let fn_expr = fn_expr.to_core();
-                let arg = arg.to_core();
+                let fn_expr = Rc::new(fn_expr.to_core());
+                let arg = Rc::new(arg.to_core());
 
                 core::RawTerm::App(meta, fn_expr, arg).into()
             },
@@ -215,7 +220,7 @@ mod to_core {
 
     use super::*;
 
-    fn parse(src: &str) -> core::RcRawTerm {
+    fn parse(src: &str) -> core::RawTerm {
         let mut codemap = CodeMap::new();
         let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
 
@@ -249,7 +254,7 @@ mod to_core {
         fn var() {
             assert_term_eq!(
                 parse(r"x"),
-                RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("x"))).into()
+                RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("x"))),
             );
         }
 
@@ -257,7 +262,7 @@ mod to_core {
         fn var_kebab_case() {
             assert_term_eq!(
                 parse(r"or-elim"),
-                RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("or-elim"))).into(),
+                RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("or-elim"))),
             );
         }
 
@@ -265,7 +270,7 @@ mod to_core {
         fn ty() {
             assert_term_eq!(
                 parse(r"Type"),
-                RawTerm::Universe(SourceMeta::default(), Level(0)).into()
+                RawTerm::Universe(SourceMeta::default(), Level(0)),
             );
         }
 
@@ -273,7 +278,7 @@ mod to_core {
         fn ty_level() {
             assert_term_eq!(
                 parse(r"Type 2"),
-                RawTerm::Universe(SourceMeta::default(), Level(0).succ().succ()).into()
+                RawTerm::Universe(SourceMeta::default(), Level(0).succ().succ()),
             );
         }
 
@@ -283,9 +288,9 @@ mod to_core {
                 parse(r"Type : Type"),
                 RawTerm::Ann(
                     SourceMeta::default(),
-                    RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                    RawTerm::Universe(SourceMeta::default(), Level(0)).into()
-                ).into(),
+                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                ),
             );
         }
 
@@ -295,13 +300,13 @@ mod to_core {
                 parse(r"Type : Type : Type"),
                 RawTerm::Ann(
                     SourceMeta::default(),
-                    RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                    RawTerm::Ann(
+                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    Rc::new(RawTerm::Ann(
                         SourceMeta::default(),
-                        RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
-                    ).into(),
-                ).into(),
+                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    )),
+                ),
             );
         }
 
@@ -311,13 +316,13 @@ mod to_core {
                 parse(r"Type : (Type : Type)"),
                 RawTerm::Ann(
                     SourceMeta::default(),
-                    RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                    RawTerm::Ann(
+                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    Rc::new(RawTerm::Ann(
                         SourceMeta::default(),
-                        RawTerm::Universe(SourceMeta::default(), Level(0)).into(),
-                        RawTerm::Universe(SourceMeta::default(), Level(0)).into()
-                    ).into(),
-                ).into(),
+                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    )),
+                ),
             );
         }
 

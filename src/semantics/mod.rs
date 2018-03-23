@@ -82,9 +82,10 @@
 
 use codespan::ByteSpan;
 use nameless::{self, BoundTerm, Embed, Scope, Var};
+use std::rc::Rc;
 
 use syntax::core::{Binder, Context, Definition, Level, Module, Name, Neutral, RawModule, RawTerm,
-                   RcRawTerm, RcTerm, RcType, RcValue, Term, Value};
+                   Term, Type, Value};
 
 #[cfg(test)]
 mod tests;
@@ -99,7 +100,7 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
 
     for definition in &module.definitions {
         let name = definition.name.clone();
-        let (term, ann) = match *definition.ann.inner {
+        let (term, ann) = match *definition.ann {
             // We don't have a type annotation available to us! Instead we will
             // attempt to infer it based on the body of the definition
             RawTerm::Hole(_) => infer(&context, &definition.term)?,
@@ -133,8 +134,8 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
 /// ```text
 /// Γ ⊢ t ⇒ v
 /// ```
-pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalError> {
-    match *term.inner {
+pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
+    match **term {
         //  1.  Γ ⊢ t ⇒ v
         // ─────────────────────── (EVAL/ANN)
         //      Γ ⊢ t:T ⇒ v
@@ -163,7 +164,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                 // ───────────────────── (EVAL/VAR-PI)
                 //      Γ ⊢ x ⇒ x
                 Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
-                    Ok(Neutral::Var(var.clone()).into())
+                    Ok(Value::from(Neutral::Var(var.clone())).into())
                 },
 
                 // We have a value in scope, let's use that!
@@ -228,16 +229,16 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::App(_, ref fn_expr, ref arg) => {
             let fn_value = normalize(context, fn_expr)?; // 1.
 
-            match *fn_value.inner {
+            match *fn_value {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
                     let body_context = context.extend_let(name, param_ann, arg.clone());
-                    normalize(&body_context, &RcTerm::from(&body)) // 2.
+                    normalize(&body_context, &Rc::new(Term::from(&*body))) // 2.
                 },
                 Value::Neutral(ref fn_expr) => {
-                    Ok(Neutral::App(fn_expr.clone(), arg.clone()).into())
+                    Ok(Value::from(Neutral::App(fn_expr.clone(), arg.clone())).into())
                 },
                 _ => Err(InternalError::ArgumentAppliedToNonFunction {
                     span: fn_expr.span(),
@@ -255,7 +256,11 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 /// ```text
 /// Γ ⊢ r ↑ V ⤳ t
 /// ```
-pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<RcTerm, TypeError> {
+pub fn check(
+    context: &Context,
+    term: &Rc<RawTerm>,
+    expected: &Rc<Type>,
+) -> Result<Rc<Term>, TypeError> {
     use syntax::core::{Constant, RawConstant};
 
     /// ```text
@@ -280,7 +285,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
         }
     }
 
-    match (&*term.inner, &*expected.inner) {
+    match (&**term, &**expected) {
         // We infer the type of the argument (`τ₁`) of the lambda from the
         // supplied pi type, then 'push' it into the elaborated term, along with
         // the elaborated body (`v`).
@@ -293,9 +298,9 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
                 nameless::unbind2(lam_scope.clone(), pi_scope.clone());
 
             // Elaborate the hole, if it exists
-            if let RawTerm::Hole(_) = *lam_ann.inner {
+            if let RawTerm::Hole(_) = *lam_ann {
                 let body_context = context.extend_pi(pi_name, pi_ann.clone());
-                let elab_param = (lam_name, Embed(RcTerm::from(&pi_ann)));
+                let elab_param = (lam_name, Embed(Rc::new(Term::from(&*pi_ann))));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
                 return Ok(Term::Lam(meta, Scope::bind(elab_param, elab_lam_body)).into());
@@ -340,7 +345,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 
     let (elab_term, inferred_ty) = infer(context, term)?; // 1.
 
-    match RcType::term_eq(&inferred_ty, expected) {
+    match Type::term_eq(&inferred_ty, expected) {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
             span: term.span(),
@@ -358,7 +363,7 @@ pub fn check(context: &Context, term: &RcRawTerm, expected: &RcType) -> Result<R
 /// ```text
 /// Γ ⊢ r ↓ V ⤳ t
 /// ```
-pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), TypeError> {
+pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
     use std::cmp;
 
     use syntax::core::{RawConstant, SourceMeta};
@@ -369,9 +374,12 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
     /// ```text
     /// Γ ⊢ R ↓ Typeᵢ ⤳ T
     /// ```
-    fn infer_universe(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, Level), TypeError> {
+    fn infer_universe(
+        context: &Context,
+        term: &Rc<RawTerm>,
+    ) -> Result<(Rc<Term>, Level), TypeError> {
         let (elab, ty) = infer(context, term)?;
-        match *ty.inner {
+        match *ty {
             Value::Universe(level) => Ok((elab, level)),
             _ => Err(TypeError::ExpectedUniverse {
                 span: term.span(),
@@ -383,7 +391,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
     /// ```text
     /// Γ ⊢ r ↓ c ⤳ t
     /// ```
-    fn infer_const(meta: SourceMeta, c: &RawConstant) -> Result<(RcTerm, RcType), TypeError> {
+    fn infer_const(meta: SourceMeta, c: &RawConstant) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
         use syntax::core::{Constant as C, RawConstant as RawC};
 
         let (term, ty) = match *c {
@@ -408,7 +416,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         Ok((Term::Constant(meta, term).into(), ty.into()))
     }
 
-    match *term.inner {
+    match **term {
         //  1.  Γ ⊢ R ↓ Typeᵢ ⤳ T
         //  2.  Γ ⊢ T ⇒ V
         //  3.  Γ ⊢ r ↑ V ⤳ t
@@ -500,7 +508,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
             // Check for holes before entering to ensure we get a nice error
-            if let RawTerm::Hole(_) = *param_ann.inner {
+            if let RawTerm::Hole(_) = *param_ann {
                 return Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: param.span(),
                     var_span: None,
@@ -530,7 +538,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
         RawTerm::App(meta, ref fn_expr, ref arg_expr) => {
             let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?; // 1.
 
-            match *fn_ty.inner {
+            match *fn_ty {
                 Value::Pi(ref scope) => {
                     let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
@@ -539,7 +547,7 @@ pub fn infer(context: &Context, term: &RcRawTerm) -> Result<(RcTerm, RcType), Ty
                     // 3.
                     let body = normalize(
                         &context.extend_let(name, param_ann, arg_expr.clone()),
-                        &RcTerm::from(&body),
+                        &Rc::new(Term::from(&*body)),
                     )?;
 
                     Ok((Term::App(meta, elab_fn_expr, arg_expr).into(), body))

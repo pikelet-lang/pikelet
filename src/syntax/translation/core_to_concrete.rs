@@ -95,10 +95,10 @@ impl ToConcrete<Option<u32>> for core::Level {
     }
 }
 
-impl ToConcrete<concrete::Term> for core::RcRawTerm {
+impl ToConcrete<concrete::Term> for core::RawTerm {
     fn to_concrete(&self, env: &Env) -> concrete::Term {
         // FIXME: add concrete::Term::Paren where needed
-        match *self.inner {
+        match *self {
             core::RawTerm::Ann(_, ref term, ref ty) => concrete::Term::Ann(
                 Box::new(term.to_concrete(env)),
                 Box::new(ty.to_concrete(env)),
