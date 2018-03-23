@@ -1,8 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, Embed, Scope, ScopeState, Var};
-use nameless::{BoundPattern, BoundTerm};
+use nameless::{self, Embed, Scope, Var, BoundTerm};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -26,24 +25,11 @@ pub struct SourceMeta {
     pub span: ByteSpan,
 }
 
-// TODO: Derive this
 impl BoundTerm for SourceMeta {
     type Free = Name;
 
     fn term_eq(&self, _: &SourceMeta) -> bool {
         true
-    }
-
-    fn close_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
-    }
-
-    fn open_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
     }
 }
 
@@ -65,24 +51,11 @@ impl Level {
     }
 }
 
-// TODO: Derive this
 impl BoundTerm for Level {
     type Free = Name;
 
     fn term_eq(&self, other: &Level) -> bool {
         self == other
-    }
-
-    fn close_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
-    }
-
-    fn open_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
     }
 }
 
@@ -118,24 +91,11 @@ pub enum RawConstant {
     F64Type,
 }
 
-// TODO: Derive this
 impl BoundTerm for RawConstant {
     type Free = Name;
 
     fn term_eq(&self, other: &RawConstant) -> bool {
         self == other
-    }
-
-    fn close_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
-    }
-
-    fn open_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
     }
 }
 
@@ -179,18 +139,6 @@ impl BoundTerm for Constant {
 
     fn term_eq(&self, other: &Constant) -> bool {
         self == other
-    }
-
-    fn close_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
-    }
-
-    fn open_term<P>(&mut self, _: ScopeState, _: &P)
-    where
-        P: BoundPattern<Free = Name>,
-    {
     }
 }
 
