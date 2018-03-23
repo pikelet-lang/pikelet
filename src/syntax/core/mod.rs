@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, Embed, Scope, Var, BoundTerm};
+use nameless::{self, BoundTerm, Embed, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -340,6 +340,10 @@ impl fmt::Display for Term {
 }
 
 /// Normal forms
+///
+/// These are either in _weak head normal form_ (they cannot be reduced further)
+/// or are _neutral terms_ (there is a possibility of reducing further depending
+/// on the bindings given in the context)
 ///
 /// ```text
 /// v,V ::= Typeᵢ       1. universes
