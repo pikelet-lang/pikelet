@@ -1,9 +1,9 @@
 //! Pretty printing for the core syntax
 
-use nameless::Var;
+use nameless::{Name, Var};
 use pretty::Doc;
 
-use syntax::core::{Binder, Constant, Context, Level, Name, Neutral, RawConstant, RawDefinition,
+use syntax::core::{Binder, Constant, Context, Level, Neutral, RawConstant, RawDefinition,
                    RawModule, RawTerm, Term, Value};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
@@ -84,7 +84,7 @@ fn pretty_const(c: &Constant) -> StaticDoc {
     }
 }
 
-fn pretty_var(options: Options, var: &Var<Name>) -> StaticDoc {
+fn pretty_var(options: Options, var: &Var) -> StaticDoc {
     match options.debug_indices {
         true => Doc::text(format!("{:#}", var)),
         false => Doc::as_string(var),

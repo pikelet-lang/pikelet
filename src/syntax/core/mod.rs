@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, BoundTerm, Embed, Scope, Var};
+use nameless::{self, BoundTerm, Embed, Name, Scope, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -10,11 +10,8 @@ use std::usize;
 
 use syntax::pretty::{self, ToDoc};
 
-mod name;
 #[cfg(test)]
 mod tests;
-
-pub use self::name::{Ident, Name};
 
 /// Source metadata that should be ignored when checking for alpha equality
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -23,8 +20,6 @@ pub struct SourceMeta {
 }
 
 impl BoundTerm for SourceMeta {
-    type Free = Name;
-
     fn term_eq(&self, _: &SourceMeta) -> bool {
         true
     }
@@ -49,8 +44,6 @@ impl Level {
 }
 
 impl BoundTerm for Level {
-    type Free = Name;
-
     fn term_eq(&self, other: &Level) -> bool {
         self == other
     }
@@ -89,8 +82,6 @@ pub enum RawConstant {
 }
 
 impl BoundTerm for RawConstant {
-    type Free = Name;
-
     fn term_eq(&self, other: &RawConstant) -> bool {
         self == other
     }
@@ -132,8 +123,6 @@ pub enum Constant {
 
 // TODO: Derive this
 impl BoundTerm for Constant {
-    type Free = Name;
-
     fn term_eq(&self, other: &Constant) -> bool {
         self == other
     }
@@ -199,7 +188,7 @@ pub enum RawTerm {
     /// A hole
     Hole(SourceMeta), // 4.
     /// A variable
-    Var(SourceMeta, Var<Name>), // 5.
+    Var(SourceMeta, Var), // 5.
     /// Dependent function types
     Pi(SourceMeta, Scope<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 6.
     /// Lambda abstractions
@@ -232,7 +221,7 @@ impl fmt::Display for RawTerm {
 }
 
 impl RawTerm {
-    fn visit_vars<F: FnMut(&Var<Name>)>(&self, on_var: &mut F) {
+    fn visit_vars<F: FnMut(&Var)>(&self, on_var: &mut F) {
         match *self {
             RawTerm::Ann(_, ref expr, ref ty) => {
                 expr.visit_vars(on_var);
@@ -305,7 +294,7 @@ pub enum Term {
     /// Constants
     Constant(SourceMeta, Constant), // 3.
     /// A variable
-    Var(SourceMeta, Var<Name>), // 4.
+    Var(SourceMeta, Var), // 4.
     /// Dependent function types
     Pi(SourceMeta, Scope<(Name, Embed<Rc<Term>>), Rc<Term>>), // 5.
     /// Lambda abstractions
@@ -383,7 +372,7 @@ impl fmt::Display for Value {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
     /// Variables
-    Var(Var<Name>), // 1.
+    Var(Var), // 1.
     /// RawTerm application
     App(Rc<Neutral>, Rc<Term>), // 2.
 }

@@ -2,11 +2,11 @@
 
 use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
-use nameless::Bound;
+use nameless::{Bound, Name};
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::core::{Name, Type};
+use syntax::core::Type;
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]

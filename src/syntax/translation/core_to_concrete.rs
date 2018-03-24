@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::{self, Embed, Var};
+use nameless::{self, Embed, Name, Var};
 use std::collections::HashSet;
 
 use syntax::concrete;
@@ -132,10 +132,10 @@ impl ToConcrete<concrete::Term> for core::RawTerm {
                     core::RawConstant::F64Type => concrete::Term::Var(span, String::from("F64")),
                 }
             },
-            core::RawTerm::Var(meta, Var::Free(core::Name::User(ref name))) => {
+            core::RawTerm::Var(meta, Var::Free(Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.to_string()) // FIXME
             },
-            core::RawTerm::Var(_, Var::Free(core::Name::Gen(ref _name, ref _gen))) => {
+            core::RawTerm::Var(_, Var::Free(Name::Gen(ref _name, ref _gen))) => {
                 // TODO: use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 unimplemented!()

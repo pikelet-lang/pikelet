@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::{Embed, GenId, Scope, Var};
+use nameless::{Embed, GenId, Name, Scope, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -36,7 +36,7 @@ fn pi_to_core(
                 span: span.to(term.span()),
             },
             Scope::bind(
-                (core::Name::user(name.clone()), Embed(ann.clone())),
+                (Name::user(name.clone()), Embed(ann.clone())),
                 Rc::new(term),
             ),
         ).into();
@@ -64,7 +64,7 @@ fn lam_to_core(
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(span, ref name) in names.iter().rev() {
-            let name = core::Name::user(name.clone());
+            let name = Name::user(name.clone());
             let meta = core::SourceMeta {
                 span: span.to(term.span()),
             };
@@ -189,12 +189,12 @@ impl ToCore<core::RawTerm> for concrete::Term {
                 core::RawTerm::Constant(meta, core::RawConstant::Float(value)).into()
             },
             concrete::Term::Var(_, ref x) => {
-                core::RawTerm::Var(meta, Var::Free(core::Name::user(x.clone()))).into()
+                core::RawTerm::Var(meta, Var::Free(Name::user(x.clone()))).into()
             },
             concrete::Term::Pi(_, (ref names, ref ann), ref body) => pi_to_core(names, ann, body),
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
-                let name = core::Name::from(GenId::fresh());
+                let name = Name::from(GenId::fresh());
                 let ann = Rc::new(ann.to_core());
                 let body = Rc::new(body.to_core());
 
@@ -248,7 +248,7 @@ mod to_core {
     mod term {
         use super::*;
 
-        use syntax::core::{Level, Name, RawTerm, SourceMeta};
+        use syntax::core::{Level, RawTerm, SourceMeta};
 
         #[test]
         fn var() {

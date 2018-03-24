@@ -81,11 +81,11 @@
 //! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
 
 use codespan::ByteSpan;
-use nameless::{self, BoundTerm, Embed, Scope, Var};
+use nameless::{self, BoundTerm, Embed, Name, Scope, Var};
 use std::rc::Rc;
 
-use syntax::core::{Binder, Context, Definition, Level, Module, Name, Neutral, RawModule, RawTerm,
-                   Term, Type, Value};
+use syntax::core::{Binder, Context, Definition, Level, Module, Neutral, RawModule, RawTerm, Term,
+                   Type, Value};
 
 #[cfg(test)]
 mod tests;
