@@ -5,7 +5,7 @@
 
 [travis-badge]: https://travis-ci.org/brendanzab/pikelet.svg?branch=master
 [travis-url]: https://travis-ci.org/brendanzab/pikelet
-[gitter-badge]: https://badges.gitter.im/gluon-lang/gluon.svg
+[gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
 
 This is an implementation of a small [dependently typed][dependent-type-wikipedia]
