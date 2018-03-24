@@ -1,7 +1,7 @@
 use codespan::{ByteSpan, FileMap};
 use codespan_reporting::{Diagnostic, Label};
-use std::{fmt, u64};
 use std::str::{CharIndices, FromStr};
+use std::{fmt, u64};
 
 use codespan::{ByteIndex, ByteOffset, RawOffset};
 use unicode_xid::UnicodeXID;
@@ -460,8 +460,8 @@ impl<'input> Iterator for Lexer<'input> {
 
 #[cfg(test)]
 mod tests {
-    use codespan::{CodeMap, FileName};
     use codespan::RawIndex;
+    use codespan::{CodeMap, FileName};
 
     use super::*;
 

@@ -87,9 +87,9 @@ use std::rc::Rc;
 use syntax::core::{Binder, Context, Definition, Level, Module, Neutral, RawModule, RawTerm, Term,
                    Type, Value};
 
+mod errors;
 #[cfg(test)]
 mod tests;
-mod errors;
 
 pub use self::errors::{InternalError, TypeError};
 

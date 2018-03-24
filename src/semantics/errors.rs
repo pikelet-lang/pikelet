@@ -38,7 +38,7 @@ impl InternalError {
                 span,
                 ref name,
                 index,
-            } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index,))
+            } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index))
                 .with_label(Label::new_primary(span).with_message("index found here")),
             InternalError::UndefinedName { ref name, var_span } => {
                 Diagnostic::new_bug(format!("cannot find `{}` in scope", name)).with_label(
@@ -182,7 +182,7 @@ impl fmt::Display for TypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TypeError::ArgAppliedToNonFunction { ref found, .. } => {
-                write!(f, "Applied an argument to a non-function type `{}`", found,)
+                write!(f, "Applied an argument to a non-function type `{}`", found)
             },
             TypeError::FunctionParamNeedsAnnotation { ref name, .. } => write!(
                 f,
@@ -194,12 +194,12 @@ impl fmt::Display for TypeError {
                 write!(f, "Ambiguous floating point literal")
             },
             TypeError::UnableToElaborateHole { expected: None, .. } => {
-                write!(f, "Unable to elaborate hole",)
+                write!(f, "Unable to elaborate hole")
             },
             TypeError::UnableToElaborateHole {
                 expected: Some(ref ty),
                 ..
-            } => write!(f, "Unable to elaborate hole, expected: `{}`", ty,),
+            } => write!(f, "Unable to elaborate hole, expected: `{}`", ty),
             TypeError::Mismatch {
                 ref found,
                 ref expected,
@@ -210,10 +210,10 @@ impl fmt::Display for TypeError {
                 found, expected,
             ),
             TypeError::UnexpectedFunction { ref expected, .. } => {
-                write!(f, "Found a function but expected `{}`", expected,)
+                write!(f, "Found a function but expected `{}`", expected)
             },
             TypeError::ExpectedUniverse { ref found, .. } => {
-                write!(f, "Found `{}` but a universe was expected", found,)
+                write!(f, "Found `{}` but a universe was expected", found)
             },
             TypeError::UndefinedName { ref name, .. } => write!(f, "Undefined name `{}`", name),
             TypeError::Internal(ref err) => write!(f, "Internal error - this is a bug! {}", err),

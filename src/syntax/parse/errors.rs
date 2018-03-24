@@ -1,7 +1,7 @@
-use lalrpop_util::ParseError as LalrpopError;
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 use codespan_reporting::{Diagnostic, Label};
+use lalrpop_util::ParseError as LalrpopError;
 use std::fmt;
 
 use syntax::parse::{LexerError, Token};

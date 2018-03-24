@@ -1,8 +1,8 @@
 use codespan::{ByteIndex, CodeMap, FileName};
 
 use syntax::core::SourceMeta;
-use syntax::translation::ToCore;
 use syntax::parse;
+use syntax::translation::ToCore;
 
 use super::*;
 
@@ -579,8 +579,8 @@ mod infer {
 }
 
 mod check_module {
-    use library;
     use codespan_reporting;
+    use library;
 
     use super::*;
 

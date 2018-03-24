@@ -1,16 +1,16 @@
 //! The REPL (Read-Eval-Print-Loop)
 
-use failure::Error;
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting;
+use failure::Error;
+use rustyline::Editor;
+use rustyline::error::ReadlineError;
 use std::path::PathBuf;
 use term_size;
 
 use semantics;
-use syntax::parse;
 use syntax::core::Context;
+use syntax::parse;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -111,8 +111,8 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 }
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
-    use std::usize;
     use std::rc::Rc;
+    use std::usize;
 
     use syntax::concrete::ReplCommand;
     use syntax::core::{SourceMeta, Term};

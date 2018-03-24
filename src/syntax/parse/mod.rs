@@ -1,17 +1,17 @@
 //! Parser utilities
 
-use lalrpop_util::ParseError as LalrpopError;
 use codespan::FileMap;
+use lalrpop_util::ParseError as LalrpopError;
 
 use syntax::concrete;
 use syntax::parse::lexer::Lexer;
 
+mod errors;
 mod grammar;
 mod lexer;
-mod errors;
 
-pub use self::lexer::{LexerError, Token};
 pub use self::errors::{ExpectedTokens, ParseError};
+pub use self::lexer::{LexerError, Token};
 
 // TODO: DRY up these wrappers...
 
@@ -53,8 +53,8 @@ pub fn term<'input>(filemap: &'input FileMap) -> (concrete::Term, Vec<ParseError
 
 #[cfg(test)]
 mod tests {
-    use codespan::{CodeMap, FileName};
     use codespan::{ByteIndex, ByteSpan};
+    use codespan::{CodeMap, FileName};
 
     use super::*;
 
