@@ -10,9 +10,6 @@ use std::usize;
 
 use syntax::pretty::{self, ToDoc};
 
-#[cfg(test)]
-mod tests;
-
 /// Source metadata that should be ignored when checking for alpha equality
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SourceMeta {
