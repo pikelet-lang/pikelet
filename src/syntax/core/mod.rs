@@ -515,63 +515,63 @@ impl Default for Context {
         Context::new()
             .extend_let(
                 Name::user("String"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::StringType).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::StringType)),
             )
             .extend_let(
                 Name::user("Char"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::CharType).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::CharType)),
             )
             .extend_let(
                 Name::user("U8"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::U8Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::U8Type)),
             )
             .extend_let(
                 Name::user("U16"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::U16Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::U16Type)),
             )
             .extend_let(
                 Name::user("U32"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::U32Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::U32Type)),
             )
             .extend_let(
                 Name::user("U64"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::U64Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::U64Type)),
             )
             .extend_let(
                 Name::user("I8"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::I8Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::I8Type)),
             )
             .extend_let(
                 Name::user("I16"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::I16Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::I16Type)),
             )
             .extend_let(
                 Name::user("I32"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::I32Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::I32Type)),
             )
             .extend_let(
                 Name::user("I64"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::I64Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::I64Type)),
             )
             .extend_let(
                 Name::user("F32"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::F32Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::F32Type)),
             )
             .extend_let(
                 Name::user("F64"),
-                Value::Universe(Level(0)).into(),
-                Term::Constant(SourceMeta::default(), Constant::F64Type).into(),
+                Rc::new(Value::Universe(Level(0))),
+                Rc::new(Term::Constant(SourceMeta::default(), Constant::F64Type)),
             )
     }
 }

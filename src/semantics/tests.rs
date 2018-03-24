@@ -27,7 +27,7 @@ mod normalize {
         let context = Context::new();
 
         let x = Name::user("x");
-        let var = Term::Var(SourceMeta::default(), Var::Free(x.clone())).into();
+        let var = Rc::new(Term::Var(SourceMeta::default(), Var::Free(x.clone())));
 
         assert_eq!(
             normalize(&context, &var),
@@ -327,7 +327,7 @@ mod infer {
             Err(TypeError::ArgAppliedToNonFunction {
                 fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
                 arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
-                found: Value::Universe(Level(0).succ()).into(),
+                found: Rc::new(Value::Universe(Level(0).succ())),
             },),
         )
     }

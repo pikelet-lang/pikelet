@@ -145,9 +145,9 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
         // ─────────────────── (EVAL/TYPE)
         //  Γ ⊢ Type ⇒ Type
-        Term::Universe(_, level) => Ok(Value::Universe(level).into()),
+        Term::Universe(_, level) => Ok(Rc::new(Value::Universe(level))),
 
-        Term::Constant(_, ref c) => Ok(Value::Constant(c.clone()).into()),
+        Term::Constant(_, ref c) => Ok(Rc::new(Value::Constant(c.clone()))),
 
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
@@ -164,7 +164,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 // ───────────────────── (EVAL/VAR-PI)
                 //      Γ ⊢ x ⇒ x
                 Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
-                    Ok(Value::from(Neutral::Var(var.clone())).into())
+                    Ok(Rc::new(Value::from(Neutral::Var(var.clone()))))
                 },
 
                 // We have a value in scope, let's use that!
@@ -202,7 +202,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             let body_context = context.extend_pi(name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Value::Pi(Scope::bind((name, Embed(ann)), body)).into())
+            Ok(Rc::new(Value::Pi(Scope::bind((name, Embed(ann)), body))))
         },
 
         //  1.  Γ ⊢ T ⇒ V
@@ -216,7 +216,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             let body_context = context.extend_lam(name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Value::Lam(Scope::bind((name, Embed(ann)), body)).into())
+            Ok(Rc::new(Value::Lam(Scope::bind((name, Embed(ann)), body))))
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -237,9 +237,10 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                     let body_context = context.extend_let(name, param_ann, arg.clone());
                     normalize(&body_context, &Rc::new(Term::from(&*body))) // 2.
                 },
-                Value::Neutral(ref fn_expr) => {
-                    Ok(Value::from(Neutral::App(fn_expr.clone(), arg.clone())).into())
-                },
+                Value::Neutral(ref fn_expr) => Ok(Rc::new(Value::from(Neutral::App(
+                    fn_expr.clone(),
+                    arg.clone(),
+                )))),
                 _ => Err(InternalError::ArgumentAppliedToNonFunction {
                     span: fn_expr.span(),
                 }),
@@ -303,7 +304,10 @@ pub fn check(
                 let elab_param = (lam_name, Embed(Rc::new(Term::from(&*pi_ann))));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
 
-                return Ok(Term::Lam(meta, Scope::bind(elab_param, elab_lam_body)).into());
+                return Ok(Rc::new(Term::Lam(
+                    meta,
+                    Scope::bind(elab_param, elab_lam_body),
+                )));
             }
 
             // TODO: We might want to optimise for this case, rather than
@@ -311,7 +315,7 @@ pub fn check(
         },
         (&RawTerm::Constant(meta, ref c), &Value::Constant(ref c_ty)) => {
             if let Some(c) = check_const(c, c_ty) {
-                return Ok(Term::Constant(meta, c).into());
+                return Ok(Rc::new(Term::Constant(meta, c)));
             }
         },
         (&RawTerm::Lam(_, _), _) => {
@@ -413,7 +417,7 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             RawC::F64Type => (C::F64Type, Value::Universe(Level(0))),
         };
 
-        Ok((Term::Constant(meta, term).into(), ty.into()))
+        Ok((Rc::new(Term::Constant(meta, term)), Rc::new(ty)))
     }
 
     match **term {
@@ -426,14 +430,15 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             let (elab_ty, _) = infer_universe(context, ty)?; // 1.
             let simp_ty = normalize(context, &elab_ty)?; // 2.
             let elab_expr = check(context, expr, &simp_ty)?; // 3.
-            Ok((Term::Ann(meta, elab_expr, elab_ty).into(), simp_ty))
+
+            Ok((Rc::new(Term::Ann(meta, elab_expr, elab_ty)), simp_ty))
         },
 
         // ───────────────────────────────── (INFER/TYPE)
         //  Γ ⊢ Typeᵢ ↓ Typeᵢ₊₁ ⤳ Typeᵢ
         RawTerm::Universe(meta, level) => Ok((
-            Term::Universe(meta, level).into(),
-            Value::Universe(level.succ()).into(),
+            Rc::new(Term::Universe(meta, level)),
+            Rc::new(Value::Universe(level.succ())),
         )),
 
         RawTerm::Hole(meta) => Err(TypeError::UnableToElaborateHole {
@@ -459,7 +464,7 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
                 Some(&Binder::Lam { ann: ref ty, .. })
                 | Some(&Binder::Pi { ann: ref ty, .. })
                 | Some(&Binder::Let { ann: ref ty, .. }) => {
-                    Ok((Term::Var(meta, var.clone()).into(), ty.clone()))
+                    Ok((Rc::new(Term::Var(meta, var.clone())), ty.clone()))
                 },
 
                 None => Err(TypeError::UndefinedName {
@@ -493,10 +498,10 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
             let elab_param = (name, Embed(elab_ann));
-            let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body)).into();
+            let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body));
             let level = cmp::max(level_ann, level_body); // 4.
 
-            Ok((elab_pi, Value::Universe(level).into()))
+            Ok((Rc::new(elab_pi), Rc::new(Value::Universe(level))))
         },
 
         //  1.  Γ ⊢ R ↓ Typeᵢ ⤳ T
@@ -525,8 +530,8 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             let pi_param = (name.clone(), Embed(pi_ann));
 
             Ok((
-                Term::Lam(meta, Scope::bind(lam_param, lam_body)).into(),
-                Value::Pi(Scope::bind(pi_param, pi_body)).into(),
+                Rc::new(Term::Lam(meta, Scope::bind(lam_param, lam_body))),
+                Rc::new(Value::Pi(Scope::bind(pi_param, pi_body))),
             ))
         },
 
@@ -550,7 +555,7 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
                         &Rc::new(Term::from(&*body)),
                     )?;
 
-                    Ok((Term::App(meta, elab_fn_expr, arg_expr).into(), body))
+                    Ok((Rc::new(Term::App(meta, elab_fn_expr, arg_expr)), body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: fn_expr.span(),
