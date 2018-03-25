@@ -81,7 +81,7 @@
 //! [axiom-wikipedia]: https://en.wikipedia.org/wiki/Axiom
 
 use codespan::ByteSpan;
-use nameless::{self, BoundTerm, Embed, Name, Scope, Var};
+use nameless::{self, BoundTerm, Embed, Name, Var};
 use std::rc::Rc;
 
 use syntax::core::{Binder, Context, Definition, Level, Module, Neutral, RawModule, RawTerm, Term,
@@ -202,7 +202,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             let body_context = context.extend_pi(name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?; // 2.
 
-            Ok(Rc::new(Value::Pi(Scope::bind((name, Embed(ann)), body))))
+            Ok(Rc::new(Value::Pi(nameless::bind((name, Embed(ann)), body))))
         },
 
         //  1.  Γ ⊢ T ⇒ V
@@ -213,10 +213,10 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
             let ann = normalize(context, &param_ann)?; // 1.
-            let body_context = context.extend_lam(name.clone(), ann.clone());
-            let body = normalize(&body_context, &body)?; // 2.
+            let param = (name.clone(), Embed(ann.clone()));
+            let body = normalize(&context.extend_lam(name, ann), &body)?; // 2.
 
-            Ok(Rc::new(Value::Lam(Scope::bind((name, Embed(ann)), body))))
+            Ok(Rc::new(Value::Lam(nameless::bind(param, body))))
         },
 
         // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
@@ -306,7 +306,7 @@ pub fn check(
 
                 return Ok(Rc::new(Term::Lam(
                     meta,
-                    Scope::bind(elab_param, elab_lam_body),
+                    nameless::bind(elab_param, elab_lam_body),
                 )));
             }
 
@@ -498,7 +498,7 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
 
             let elab_param = (name, Embed(elab_ann));
-            let elab_pi = Term::Pi(meta, Scope::bind(elab_param, elab_body));
+            let elab_pi = Term::Pi(meta, nameless::bind(elab_param, elab_body));
             let level = cmp::max(level_ann, level_body); // 4.
 
             Ok((Rc::new(elab_pi), Rc::new(Value::Universe(level))))
@@ -530,8 +530,8 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             let pi_param = (name.clone(), Embed(pi_ann));
 
             Ok((
-                Rc::new(Term::Lam(meta, Scope::bind(lam_param, lam_body))),
-                Rc::new(Value::Pi(Scope::bind(pi_param, pi_body))),
+                Rc::new(Term::Lam(meta, nameless::bind(lam_param, lam_body))),
+                Rc::new(Value::Pi(nameless::bind(pi_param, pi_body))),
             ))
         },
 

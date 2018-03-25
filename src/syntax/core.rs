@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, BoundTerm, Embed, Name, Scope, Var};
+use nameless::{self, Bind, BoundTerm, Embed, Name, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -31,18 +31,12 @@ impl Default for SourceMeta {
 }
 
 /// A universe level
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, BoundTerm)]
 pub struct Level(pub u32);
 
 impl Level {
     pub fn succ(self) -> Level {
         Level(self.0 + 1)
-    }
-}
-
-impl BoundTerm for Level {
-    fn term_eq(&self, other: &Level) -> bool {
-        self == other
     }
 }
 
@@ -58,7 +52,7 @@ impl fmt::Display for Level {
 ///
 /// We could church encode all the things, but that would be prohibitively
 /// expensive computationally!
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
 pub enum RawConstant {
     String(String),
     Char(char),
@@ -78,19 +72,13 @@ pub enum RawConstant {
     F64Type,
 }
 
-impl BoundTerm for RawConstant {
-    fn term_eq(&self, other: &RawConstant) -> bool {
-        self == other
-    }
-}
-
 /// Primitive constants
 ///
 /// These are either the literal values or the types that describe them.
 ///
 /// We could church encode all the things, but that would be prohibitively
 /// expensive computationally!
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
 pub enum Constant {
     String(String),
     Char(char),
@@ -116,13 +104,6 @@ pub enum Constant {
     I64Type,
     F32Type,
     F64Type,
-}
-
-// TODO: Derive this
-impl BoundTerm for Constant {
-    fn term_eq(&self, other: &Constant) -> bool {
-        self == other
-    }
 }
 
 /// A module definition
@@ -187,9 +168,9 @@ pub enum RawTerm {
     /// A variable
     Var(SourceMeta, Var), // 5.
     /// Dependent function types
-    Pi(SourceMeta, Scope<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 6.
+    Pi(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 6.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 7.
+    Lam(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 7.
     /// RawTerm application
     App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>), // 8.
 }
@@ -293,9 +274,9 @@ pub enum Term {
     /// A variable
     Var(SourceMeta, Var), // 4.
     /// Dependent function types
-    Pi(SourceMeta, Scope<(Name, Embed<Rc<Term>>), Rc<Term>>), // 5.
+    Pi(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>), // 5.
     /// Lambda abstractions
-    Lam(SourceMeta, Scope<(Name, Embed<Rc<Term>>), Rc<Term>>), // 6.
+    Lam(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>), // 6.
     /// Term application
     App(SourceMeta, Rc<Term>, Rc<Term>), // 7.
 }
@@ -342,9 +323,9 @@ pub enum Value {
     /// Constants
     Constant(Constant), // 2.
     /// A pi type
-    Pi(Scope<(Name, Embed<Rc<Value>>), Rc<Value>>), // 3.
+    Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>), // 3.
     /// A lambda abstraction
-    Lam(Scope<(Name, Embed<Rc<Value>>), Rc<Value>>), // 4.
+    Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>), // 4.
     /// Neutral terms
     Neutral(Rc<Neutral>), // 5.
 }
@@ -402,13 +383,13 @@ impl<'a> From<&'a Value> for Term {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Pi(meta, Scope::bind(param, Rc::new(Term::from(&*body))))
+                Term::Pi(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
             },
             Value::Lam(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Lam(meta, Scope::bind(param, Rc::new(Term::from(&*body))))
+                Term::Lam(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
             },
             Value::Neutral(ref n) => Term::from(&**n),
         }

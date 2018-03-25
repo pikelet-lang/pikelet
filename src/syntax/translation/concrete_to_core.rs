@@ -1,5 +1,5 @@
 use codespan::ByteSpan;
-use nameless::{Embed, GenId, Name, Scope, Var};
+use nameless::{self, Embed, GenId, Name, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -35,7 +35,7 @@ fn pi_to_core(
             core::SourceMeta {
                 span: span.to(term.span()),
             },
-            Scope::bind(
+            nameless::bind(
                 (Name::user(name.clone()), Embed(ann.clone())),
                 Rc::new(term),
             ),
@@ -72,7 +72,7 @@ fn lam_to_core(
                 None => Rc::new(core::RawTerm::Hole(core::SourceMeta::default())),
                 Some(ref ann) => Rc::new(ann.to_core()),
             };
-            term = core::RawTerm::Lam(meta, Scope::bind((name, Embed(ann)), Rc::new(term)));
+            term = core::RawTerm::Lam(meta, nameless::bind((name, Embed(ann)), Rc::new(term)));
         }
     }
 
@@ -198,7 +198,7 @@ impl ToCore<core::RawTerm> for concrete::Term {
                 let ann = Rc::new(ann.to_core());
                 let body = Rc::new(body.to_core());
 
-                core::RawTerm::Pi(meta, Scope::bind((name, Embed(ann)), body))
+                core::RawTerm::Pi(meta, nameless::bind((name, Embed(ann)), body))
             },
             concrete::Term::App(ref fn_expr, ref arg) => {
                 let fn_expr = Rc::new(fn_expr.to_core());
@@ -352,12 +352,12 @@ mod to_core {
                 parse(r"\x : Type -> Type => x"),
                 Rc::new(RawTerm::Lam(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Pi(
                                 SourceMeta::default(),
-                                Scope::bind(
+                                nameless::bind(
                                     (
                                         Name::user("_"),
                                         Embed(Rc::new(RawTerm::Universe(
@@ -384,12 +384,12 @@ mod to_core {
                 parse(r"\x : (\y => y) => x"),
                 Rc::new(RawTerm::Lam(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Lam(
                                 SourceMeta::default(),
-                                Scope::bind(
+                                nameless::bind(
                                     (
                                         Name::user("y"),
                                         Embed(Rc::new(RawTerm::Hole(SourceMeta::default()))),
@@ -416,14 +416,14 @@ mod to_core {
                 parse(r"\(x y : Type) => x"),
                 Rc::new(RawTerm::Lam(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Lam(
                             SourceMeta::default(),
-                            Scope::bind(
+                            nameless::bind(
                                 (
                                     Name::user("y"),
                                     Embed(Rc::new(RawTerm::Universe(
@@ -448,7 +448,7 @@ mod to_core {
                 parse(r"Type -> Type"),
                 Rc::new(RawTerm::Pi(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("_"),
                             Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
@@ -465,12 +465,12 @@ mod to_core {
                 parse(r"(x : Type -> Type) -> x"),
                 Rc::new(RawTerm::Pi(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Pi(
                                 SourceMeta::default(),
-                                Scope::bind(
+                                nameless::bind(
                                     (
                                         Name::user("_"),
                                         Embed(Rc::new(RawTerm::Universe(
@@ -497,14 +497,14 @@ mod to_core {
                 parse(r"(x y : Type) -> x"),
                 Rc::new(RawTerm::Pi(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Pi(
                             SourceMeta::default(),
-                            Scope::bind(
+                            nameless::bind(
                                 (
                                     Name::user("y"),
                                     Embed(Rc::new(RawTerm::Universe(
@@ -529,14 +529,14 @@ mod to_core {
                 parse(r"(x : Type) -> x -> x"),
                 Rc::new(RawTerm::Pi(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Pi(
                             SourceMeta::default(),
-                            Scope::bind(
+                            nameless::bind(
                                 (
                                     Name::user("_"),
                                     Embed(Rc::new(RawTerm::Var(
@@ -561,12 +561,12 @@ mod to_core {
                 parse(r"\(x : Type -> Type) (y : Type) => x y"),
                 Rc::new(RawTerm::Lam(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Pi(
                                 SourceMeta::default(),
-                                Scope::bind(
+                                nameless::bind(
                                     (
                                         Name::user("_"),
                                         Embed(Rc::new(RawTerm::Universe(
@@ -580,7 +580,7 @@ mod to_core {
                         ),
                         Rc::new(RawTerm::Lam(
                             SourceMeta::default(),
-                            Scope::bind(
+                            nameless::bind(
                                 (
                                     Name::user("y"),
                                     Embed(Rc::new(RawTerm::Universe(
@@ -614,14 +614,14 @@ mod to_core {
                 parse(r"\(a : Type) (x : a) => x"),
                 Rc::new(RawTerm::Lam(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             a.clone(),
                             Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Lam(
                             SourceMeta::default(),
-                            Scope::bind(
+                            nameless::bind(
                                 (
                                     Name::user("x"),
                                     Embed(Rc::new(RawTerm::Var(
@@ -646,14 +646,14 @@ mod to_core {
                 parse(r"(a : Type) -> a -> a"),
                 Rc::new(RawTerm::Pi(
                     SourceMeta::default(),
-                    Scope::bind(
+                    nameless::bind(
                         (
                             Name::user("a"),
                             Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Pi(
                             SourceMeta::default(),
-                            Scope::bind(
+                            nameless::bind(
                                 (
                                     Name::user("_"),
                                     Embed(Rc::new(RawTerm::Var(
