@@ -176,8 +176,8 @@
 </li>
 </ul>
 <a class="header" href="appendix00-01-semantics.html#introduction" id="introduction"><h2>Introduction</h2></a>
-<p>At its core, Pikelet is a simple dependently typed lambda calculus with a
-stratified universe hierarchy.</p>
+<p>At its core, Pikelet is a dependently typed lambda calculus with a stratified
+universe hierarchy.</p>
 <blockquote>
 <p><strong>Note:</strong>
 This document is intended for those who are interested in looking deeper into the formal foundations of Pikelet.
@@ -210,17 +210,20 @@ We will however make an effort to explain some of the notation we use here, and 
 \newcommand{\nexpr}{n}
 \newcommand{\ntype}{N}
 \
-% Type constructors
+% Term and Type constructors
+\newcommand{\const}{c}
 \newcommand{\Type}{\mathsf{Type}}
 \newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
+\newcommand{\lam}[2]{ \lambda #1 . #2 }
 \
 \begin{array}{rrll}
 \rexpr,\rtype   &amp; ::= &amp; x                               &amp; \text{variables} \\
 &amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
 &amp;   | &amp; ?                               &amp; \text{holes} \\
+&amp;   | &amp; \const                          &amp; \text{constants} \\
 &amp;   | &amp; \rexpr : \rtype                 &amp; \text{term annotated with a type} \\
 &amp;   | &amp; \Arrow{(x:\rtype_1)}{\rtype_2}  &amp; \text{dependent function type} \\
-&amp;   | &amp; \lambda x:\rtype.\rexpr         &amp; \text{functions} \\
+&amp;   | &amp; \lam{x:\rtype}{\rexpr}          &amp; \text{functions} \\
 &amp;   | &amp; \rexpr_1 ~ \rexpr_2             &amp; \text{function application} \\
 \\
 \end{array}
@@ -228,7 +231,7 @@ We will however make an effort to explain some of the notation we use here, and 
 <p>\[
 \begin{array}{lrll}
 \Arrow{\rtype_1}{\rtype_2} &amp; := &amp; \Arrow{(x:\rtype_1)}{\rtype_2}  &amp; \text{non-dependent function types} \\
-\lambda x.\rexpr           &amp; := &amp; \lambda x:?.\rexpr              &amp; \text{functions (without an annotation)} \\
+\lam{x}{\rexpr}            &amp; := &amp; \lam{x:?}{\rexpr}               &amp; \text{functions (without an annotation)} \\
 \end{array}
 \]</p>
 <a class="header" href="appendix00-01-semantics.html#terms" id="terms"><h3>Terms</h3></a>
@@ -237,9 +240,10 @@ We will however make an effort to explain some of the notation we use here, and 
 \begin{array}{rrll}
 \texpr,\ttype   &amp; ::= &amp; x                               &amp; \text{variables} \\
 &amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \const                          &amp; \text{constants} \\
 &amp;   | &amp; \texpr : \ttype                 &amp; \text{term annotated with a type} \\
 &amp;   | &amp; \Arrow{(x:\ttype_1)}{\ttype_2}  &amp; \text{dependent function type} \\
-&amp;   | &amp; \lambda x:\ttype.\texpr         &amp; \text{functions} \\
+&amp;   | &amp; \lam{x:\ttype}{\texpr}          &amp; \text{functions} \\
 &amp;   | &amp; \texpr_1 ~ \texpr_2             &amp; \text{function application} \\
 \\
 \end{array}
@@ -257,8 +261,9 @@ and neutral terms (\(\nexpr\)):</p>
 &amp;   | &amp; \nexpr ~ \texpr                 &amp; \text{function application} \\
 \\
 \wexpr,\wtype   &amp; ::= &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \const                          &amp; \text{constants} \\
 &amp;   | &amp; \Arrow{(x:\vtype_1)}{\vtype_2}  &amp; \text{dependent function type} \\
-&amp;   | &amp; \lambda x:\vtype.\vexpr         &amp; \text{functions} \\
+&amp;   | &amp; \lam{x:\vtype}{\vexpr}          &amp; \text{functions} \\
 \\
 \end{array}
 \]</p>
@@ -278,13 +283,40 @@ even though we don't know the exact values these will eventually take during nor
 \end{array}
 \]</p>
 <a class="header" href="appendix00-01-semantics.html#semantics-1" id="semantics-1"><h2>Semantics</h2></a>
-<p>We'll be define a bidirectional type checking algorithm.
-To that end, the next sections will define the following judgements:</p>
+<p>We take a <em>bidirectional</em> approach to type checking, splitting it into two
+phases: type checking and type inference. This makes the flow of information
+through the type checker clear and relatively easy to reason about.
+Normalization happens after inference, and before types are fed back in to be
+used during type checkiong.</p>
+<p>With that in mind, the next sections will describe the following judgements:</p>
 <table><thead><tr><th> name                              </th><th> notation                                             </th><th> inputs                                   </th><th> outputs                    </th></tr></thead><tbody>
 <tr><td> <a href="appendix00-01-semantics.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
 <tr><td> <a href="appendix00-01-semantics.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
 <tr><td> <a href="appendix00-01-semantics.html#type-inference">type inference</a> </td><td> \(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vtype\), \(\texpr\) </td></tr>
 </tbody></table>
+<p>Normalization stands on its own, but both checking and inference are mutually
+dependent on each other. Care has been taken to design the judgments so that
+they are <em>syntax-directed</em>, meaning that an algorithm can be clearly derived
+from them.</p>
+<p>Here is a rough overview of how Pikelet terms are checked:</p>
+<pre><code>                (from parser)
+                      |
+                      v
+     +------------ RawTerm -----------+
+     |                                |
+     v                                v
+Type Inference &lt;- - - - - - -&gt; Type checking
+     |                                ^
+     |                                |
+   Term                             Value
+     |                                |
+     +-------&gt; Normalization ---------+
+     |
+     |
+     v
+ (to compiler)
+</code></pre>
+<!-- TODO: use SVG for this diagram -->
 <a class="header" href="appendix00-01-semantics.html#normalization" id="normalization"><h3>Normalization</h3></a>
 <p>\[
 \boxed{
@@ -302,19 +334,87 @@ To that end, the next sections will define the following judgements:</p>
 \eval{ \Gamma }{ \Type_i }{ \Type_i }
 }
 \\[2em]
+\rule{E-CONST}{}{
+\eval{ \Gamma }{ \const }{ \const }
+}
+\\[2em]
+\rule{E-VAR-ANN}{
+x : \vtype \in \Gamma
+}{
+\eval{ \Gamma }{ x }{ x }
+}
+\\[2em]
+\rule{E-VAR-DEF}{
+x : \vtype=\texpr \in \Gamma
+\qquad
+\eval{ \Gamma }{ \texpr }{ \vexpr }
+}{
+\eval{ \Gamma }{ x }{ \vexpr }
+}
+\\[2em]
+\rule{E-PI}{
+\eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+\qquad
+\eval{ \Gamma, x:\vtype_1 }{ \ttype_2 }{ \vtype_2 }
+}{
+\eval{ \Gamma }{ \Arrow{(x:\ttype_1)}{\ttype_2} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }
+}
+\\[2em]
+\rule{E-LAM}{
+\eval{ \Gamma }{ \ttype }{ \vtype }
+\qquad
+\eval{ \Gamma, x:\vtype }{ \texpr }{ \vexpr }
+}{
+\eval{ \Gamma }{ \lam{x:\ttype}{\texpr} }{ \lam{x:\vtype}{\vexpr} }
+}
+\\[2em]
+\rule{E-APP}{
+\eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
+\qquad
+\eval{ \Gamma, x:\vtype_1=\vexpr_2 }{ \vexpr_1 }{ \vexpr_1' }
+}{
+\eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_1' }
+}
+\\[2em]
 \end{array}
 \]</p>
 <a class="header" href="appendix00-01-semantics.html#type-checking" id="type-checking"><h3>Type checking</h3></a>
+<p>This judgement checks that the given term has the expected type and returns its
+elaborated form.</p>
 <p>\[
 \boxed{
 \check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
 }
+\\[2em]
+\begin{array}{cl}
+\rule{C-LAMBDA}{
+\infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
+}{
+\check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+}
+\\[2em]
+\rule{C-CONV}{
+\infer{ \Gamma }{ \rexpr }{ \vtype_2 }{ \texpr }
+\qquad
+\vtype_1 \equiv_{\alpha} \vtype_2
+}{
+\check{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+}
+\\[2em]
+\end{array}
 \]</p>
+<p>In C-CONV we flip the direction of the type checker, comparing the type of the
+expected term for <a href="https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence">alpha equivalence</a> with the inferred term.</p>
+<p>Note that we could change 2. to check for subtyping instead of alpha equivalence.
+This could be useful for implementing a cumulative universe hierarchy.</p>
 <a class="header" href="appendix00-01-semantics.html#type-inference" id="type-inference"><h3>Type inference</h3></a>
 <p>\[
 \boxed{
 \infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
 }
+\\[2em]
+\begin{array}{cl}
+\end{array}
 \]</p>
 
                     </main>
