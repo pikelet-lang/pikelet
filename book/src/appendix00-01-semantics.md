@@ -63,25 +63,26 @@ TODO: describe BNF syntax and natural deduction here
 \\newcommand{\const}{c}
 \\newcommand{\Type}{\mathsf{Type}}
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
+\\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \\newcommand{\lam}[2]{ \lambda #1 . #2 }
 \\
 \begin{array}{rrll}
-    \rexpr,\rtype   & ::= & x                               & \text{variables} \\\\
-                    &   | & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
-                    &   | & ?                               & \text{holes} \\\\
-                    &   | & \const                          & \text{constants} \\\\
-                    &   | & \rexpr : \rtype                 & \text{term annotated with a type} \\\\
-                    &   | & \Arrow{(x:\rtype_1)}{\rtype_2}  & \text{dependent function type} \\\\
-                    &   | & \lam{x:\rtype}{\rexpr}          & \text{functions} \\\\
-                    &   | & \rexpr_1 ~ \rexpr_2             & \text{function application} \\\\
+    \rexpr,\rtype   & ::= & x                           & \text{variables} \\\\
+                    &   | & \Type_i                     & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & ?                           & \text{holes} \\\\
+                    &   | & \const                      & \text{constants} \\\\
+                    &   | & \rexpr : \rtype             & \text{term annotated with a type} \\\\
+                    &   | & \Pi{x:\rtype_1}{\rtype_2}   & \text{dependent function type} \\\\
+                    &   | & \lam{x:\rtype}{\rexpr}      & \text{functions} \\\\
+                    &   | & \rexpr_1 ~ \rexpr_2         & \text{function application} \\\\
     \\\\
 \end{array}
 \\]
 
 \\[
 \begin{array}{lrll}
-    \Arrow{\rtype_1}{\rtype_2} & := & \Arrow{(x:\rtype_1)}{\rtype_2}  & \text{non-dependent function types} \\\\
-    \lam{x}{\rexpr}            & := & \lam{x:?}{\rexpr}               & \text{functions (without an annotation)} \\\\
+    \Arrow{\rtype_1}{\rtype_2} & := & \Pi{x:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
+    \lam{x}{\rexpr}            & := & \lam{x:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
 \end{array}
 \\]
 
@@ -91,13 +92,13 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 
 \\[
 \begin{array}{rrll}
-    \texpr,\ttype   & ::= & x                               & \text{variables} \\\\
-                    &   | & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
-                    &   | & \const                          & \text{constants} \\\\
-                    &   | & \texpr : \ttype                 & \text{term annotated with a type} \\\\
-                    &   | & \Arrow{(x:\ttype_1)}{\ttype_2}  & \text{dependent function type} \\\\
-                    &   | & \lam{x:\ttype}{\texpr}          & \text{functions} \\\\
-                    &   | & \texpr_1 ~ \texpr_2             & \text{function application} \\\\
+    \texpr,\ttype   & ::= & x                           & \text{variables} \\\\
+                    &   | & \Type_i                     & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \const                      & \text{constants} \\\\
+                    &   | & \texpr : \ttype             & \text{term annotated with a type} \\\\
+                    &   | & \Pi{x:\ttype_1}{\ttype_2}   & \text{dependent function type} \\\\
+                    &   | & \lam{x:\ttype}{\texpr}      & \text{functions} \\\\
+                    &   | & \texpr_1 ~ \texpr_2         & \text{function application} \\\\
     \\\\
 \end{array}
 \\]
@@ -110,16 +111,16 @@ and neutral terms (\\(\nexpr\\)):
 
 \\[
 \begin{array}{rrll}
-    \vexpr,\vtype   & ::= & \wexpr                          & \text{weak head normal forms} \\\\
-                    &   | & \nexpr                          & \text{neutral terms} \\\\
+    \vexpr,\vtype   & ::= & \wexpr                      & \text{weak head normal forms} \\\\
+                    &   | & \nexpr                      & \text{neutral terms} \\\\
     \\\\
-    \nexpr,\ntype   & ::= & x                               & \text{variables} \\\\
-                    &   | & \nexpr ~ \texpr                 & \text{function application} \\\\
+    \nexpr,\ntype   & ::= & x                           & \text{variables} \\\\
+                    &   | & \nexpr ~ \texpr             & \text{function application} \\\\
     \\\\
-    \wexpr,\wtype   & ::= & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
-                    &   | & \const                          & \text{constants} \\\\
-                    &   | & \Arrow{(x:\vtype_1)}{\vtype_2}  & \text{dependent function type} \\\\
-                    &   | & \lam{x:\vtype}{\vexpr}          & \text{functions} \\\\
+    \wexpr,\wtype   & ::= & \Type_i                     & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \const                      & \text{constants} \\\\
+                    &   | & \Pi{x:\vtype_1}{\vtype_2}   & \text{dependent function type} \\\\
+                    &   | & \lam{x:\vtype}{\vexpr}      & \text{functions} \\\\
     \\\\
 \end{array}
 \\]
@@ -242,7 +243,7 @@ in the context.
         \qquad
         \eval{ \Gamma, x:\vtype_1 }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \Gamma }{ \Arrow{(x:\ttype_1)}{\ttype_2} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }
+        \eval{ \Gamma }{ \Pi{x:\ttype_1}{\ttype_2} }{ \Pi{x:\vtype_1}{\vtype_2} }
     }
     \\\\[2em]
     \rule{E-LAM}{
@@ -278,7 +279,7 @@ elaborated form.
     \rule{C-LAM}{
         \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
     }{
-        \check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+        \check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
     }
     \\\\[2em]
     \rule{C-CONV}{
@@ -345,7 +346,7 @@ returns its elaborated form.
         \qquad
         \check{ \Gamma, x:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
     }{
-        \infer{ \Gamma }{ \Arrow{(x:\rtype_1)}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Arrow{(x:\ttype_1)}{\ttype_2} }
+        \infer{ \Gamma }{ \Pi{x:\rtype_1}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Pi{x:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
     \rule{I-LAM}{
@@ -355,11 +356,11 @@ returns its elaborated form.
         \qquad
         \check{ \Gamma, x:\vtype_1 }{ \rexpr}{ \vtype_2 }{ \texpr }
     }{
-        \infer{ \Gamma }{ \lam{x:\rtype}{\rexpr} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \lam{x:\ttype}{\texpr} }
+        \infer{ \Gamma }{ \lam{x:\rtype}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{I-APP}{
-        \infer{ \Gamma }{ \rexpr_1 }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \texpr_1 }
+        \infer{ \Gamma }{ \rexpr_1 }{ \Pi{x:\vtype_1}{\vtype_2} }{ \texpr_1 }
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
