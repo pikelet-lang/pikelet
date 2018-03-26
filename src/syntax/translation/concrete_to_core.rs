@@ -175,19 +175,19 @@ impl ToCore<core::RawTerm> for concrete::Term {
             concrete::Term::Universe(_, level) => {
                 core::RawTerm::Universe(meta, core::Level(level.unwrap_or(0)))
             },
+            concrete::Term::Literal(_, ref lit) => {
+                let c = match *lit {
+                    concrete::Literal::String(ref value) => {
+                        core::RawConstant::String(value.clone())
+                    },
+                    concrete::Literal::Char(value) => core::RawConstant::Char(value),
+                    concrete::Literal::Int(value) => core::RawConstant::Int(value),
+                    concrete::Literal::Float(value) => core::RawConstant::Float(value),
+                };
+
+                core::RawTerm::Constant(meta, c)
+            },
             concrete::Term::Hole(_) => core::RawTerm::Hole(meta),
-            concrete::Term::String(_, ref value) => {
-                core::RawTerm::Constant(meta, core::RawConstant::String(value.clone()))
-            },
-            concrete::Term::Char(_, value) => {
-                core::RawTerm::Constant(meta, core::RawConstant::Char(value))
-            },
-            concrete::Term::Int(_, value) => {
-                core::RawTerm::Constant(meta, core::RawConstant::Int(value))
-            },
-            concrete::Term::Float(_, value) => {
-                core::RawTerm::Constant(meta, core::RawConstant::Float(value))
-            },
             concrete::Term::Var(_, ref x) => {
                 core::RawTerm::Var(meta, Var::Free(Name::user(x.clone())))
             },

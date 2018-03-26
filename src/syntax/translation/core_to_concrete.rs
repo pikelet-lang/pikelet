@@ -111,11 +111,17 @@ impl ToConcrete<concrete::Term> for core::RawTerm {
                 let span = meta.span;
                 match *c {
                     core::RawConstant::String(ref value) => {
-                        concrete::Term::String(meta.span, value.clone())
+                        concrete::Term::Literal(span, concrete::Literal::String(value.clone()))
                     },
-                    core::RawConstant::Char(value) => concrete::Term::Char(span, value),
-                    core::RawConstant::Int(value) => concrete::Term::Int(span, value),
-                    core::RawConstant::Float(value) => concrete::Term::Float(span, value),
+                    core::RawConstant::Char(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Char(value))
+                    },
+                    core::RawConstant::Int(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Int(value))
+                    },
+                    core::RawConstant::Float(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Float(value))
+                    },
                     core::RawConstant::StringType => {
                         concrete::Term::Var(span, String::from("String"))
                     },
