@@ -276,10 +276,9 @@ elaborated form.
 \\]
 
 In C-CONV we flip the direction of the type checker, comparing the type of the
-expected term for [alpha equivalence] with the inferred term.
-
-Note that we could change 2. to check for subtyping instead of alpha equivalence.
-This could be useful for implementing a cumulative universe hierarchy.
+expected term for [alpha equivalence] with the inferred term. Note that we could
+alternatively check for subtyping instead of alpha equivalence. This could be
+useful for implementing a cumulative universe hierarchy.
 
 [alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
 
