@@ -18,8 +18,8 @@ A formalization of the semantics for type checking and normalizing Pikelet.
 
 ## Introduction
 
-At its core, Pikelet is a simple dependently typed lambda calculus with a
-stratified universe hierarchy.
+At its core, Pikelet is a dependently typed lambda calculus with a stratified
+universe hierarchy.
 
 > **Note:**
 > This document is intended for those who are interested in looking deeper into the formal foundations of Pikelet.
@@ -249,11 +249,39 @@ Type Inference <- - - - - - -> Type checking
 
 ### Type checking
 
+This judgement checks that the given term has the expected type and returns its
+elaborated form.
+
 \\[
 \boxed{
     \check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
 }
+\\\\[2em]
+\begin{array}{cl}
+    \rule{C-LAMBDA}{
+        \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
+    }{
+        \check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+    }
+    \\\\[2em]
+    \rule{C-CONV}{
+        \infer{ \Gamma }{ \rexpr }{ \vtype_2 }{ \texpr }
+        \qquad
+        \vtype_1 \equiv_{\alpha} \vtype_2
+    }{
+        \check{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+    }
+    \\\\[2em]
+\end{array}
 \\]
+
+In C-CONV we flip the direction of the type checker, comparing the type of the
+expected term for [alpha equivalence] with the inferred term.
+
+Note that we could change 2. to check for subtyping instead of alpha equivalence.
+This could be useful for implementing a cumulative universe hierarchy.
+
+[alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
 
 ### Type inference
 
@@ -261,4 +289,7 @@ Type Inference <- - - - - - -> Type checking
 \boxed{
     \infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
 }
+\\\\[2em]
+\begin{array}{cl}
+\end{array}
 \\]

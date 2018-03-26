@@ -255,13 +255,7 @@ pub fn check(
     }
 
     match (&**term, &**expected) {
-        // We infer the type of the argument (`τ₁`) of the lambda from the
-        // supplied pi type, then 'push' it into the elaborated term, along with
-        // the elaborated body (`v`).
-        //
-        //  1.  Γ, Πx:V₁ ⊢ r ↑ V₂ ⤳ t
-        // ────────────────────────────────────── (CHECK/LAM)
-        //      Γ ⊢ λx.r ↑ Πx:V₁.V₂ ⤳ λx:V₁.t
+        // C-LAM
         (&RawTerm::Lam(meta, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (pi_name, Embed(pi_ann)), pi_body) =
                 nameless::unbind2(lam_scope.clone(), pi_scope.clone());
@@ -301,20 +295,7 @@ pub fn check(
         _ => {},
     }
 
-    // Flip the direction of the type checker, comparing the type of the
-    // expected term for [alpha equivalence] with the inferred term.
-    //
-    //  1.  Γ ⊢ r ↓ V₂ ⤳ t
-    //  2.  V₁ ≡ V₂
-    // ─────────────────────── (CHECK/INFER)
-    //      Γ ⊢ r ↑ V₁ ⤳ t
-    //
-    // NOTE: We could change 2. to check for subtyping instead of alpha
-    // equivalence. This could be useful for implementing a cumulative
-    // universe hierarchy.
-    //
-    // [alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
-
+    // C-CONV
     let (elab_term, inferred_ty) = infer(context, term)?; // 1.
 
     match Type::term_eq(&inferred_ty, expected) {
