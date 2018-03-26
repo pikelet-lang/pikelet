@@ -13,7 +13,7 @@ install:
   - cargo install mdbook --vers "^0.1.3" # https://github.com/rust-lang-nursery/mdBook#installation
   - cargo build --verbose # https://docs.travis-ci.com/user/languages/rust/#Dependency-Management
 
-build:
+script:
   - cargo build --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
   - cargo test --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
   - mdbook build book
