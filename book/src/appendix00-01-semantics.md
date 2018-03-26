@@ -37,6 +37,8 @@ TODO: describe BNF syntax and natural deduction here
 \\[
 \\newcommand{\rule}[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } & \Tiny{\text{(#1)}} }
 \\
+\\DeclareMathOperator{\max}{max}
+\\
 % Judgements
 \\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
 \\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
@@ -186,6 +188,9 @@ Type Inference <- - - - - - -> Type checking
 
 ### Normalization
 
+Here we describe how we normalize elaborated terms under the assumptions
+in the context.
+
 \\[
 \boxed{
     \eval{ \Gamma }{ \texpr }{ \vexpr }
@@ -258,7 +263,7 @@ elaborated form.
 }
 \\\\[2em]
 \begin{array}{cl}
-    \rule{C-LAMBDA}{
+    \rule{C-LAM}{
         \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
     }{
         \check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
@@ -284,11 +289,72 @@ useful for implementing a cumulative universe hierarchy.
 
 ### Type inference
 
+Here we define a jugement that synthesizes a type from the given term and
+returns its elaborated form.
+
 \\[
 \boxed{
     \infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
 }
 \\\\[2em]
 \begin{array}{cl}
+    \rule{I-ANN}{
+        \infer{ \Gamma }{ \rtype }{ \Type_i }{ \ttype }
+        \qquad
+        \eval{ \Gamma }{ \ttype }{ \vtype }
+        \qquad
+        \check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+    }{
+        \infer{ \Gamma }{ \rexpr:\rtype }{ \Type_{i+1} }{ \texpr:\ttype }
+    }
+    \\\\[2em]
+    \rule{I-TYPE}{}{
+        \infer{ \Gamma }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
+    }
+    \\\\[2em]
+    \rule{I-VAR-ANN}{
+        x : \vtype \in \Gamma
+    }{
+        \infer{ \Gamma }{ x }{ \vtype }{ x }
+    }
+    \\\\[2em]
+    \rule{I-VAR-DEF}{
+        x : \vtype=\texpr \in \Gamma
+        \qquad
+        \infer{ \Gamma }{ \texpr }{ \vexpr }
+    }{
+        \infer{ \Gamma }{ x }{ \vtype }{ x }
+    }
+    \\\\[2em]
+    \rule{I-PI}{
+        \infer{ \Gamma }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
+        \qquad
+        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \qquad
+        \check{ \Gamma, x:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+    }{
+        \infer{ \Gamma }{ \Arrow{(x:\rtype_1)}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Arrow{(x:\ttype_1)}{\ttype_2} }
+    }
+    \\\\[2em]
+    \rule{I-LAM}{
+        \infer{ \Gamma }{ \rtype }{ \Type_i }{ \ttype }
+        \qquad
+        \eval{ \Gamma }{ \ttype }{ \vtype_1 }
+        \qquad
+        \check{ \Gamma, x:\vtype_1 }{ \rexpr}{ \vtype_2 }{ \texpr }
+    }{
+        \infer{ \Gamma }{ \lam{x:\rtype}{\rexpr} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \lam{x:\ttype}{\texpr} }
+    }
+    \\\\[2em]
+    \rule{I-APP}{
+        \infer{ \Gamma }{ \rexpr_1 }{ \Arrow{(x:\vtype_1)}{\vtype_2} }{ \texpr_1 }
+        \qquad
+        \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
+        \qquad
+        \eval{ \Gamma, x:\vtype_1=\texpr_2 }{ \vtype_2 }{ \vtype_2' }
+    }{
+        \infer{ \Gamma }{ \rexpr_1 ~ \rexpr_2 }{ \vtype_2' }{ \texpr_1 ~ \texpr_2 }
+    }
+    \\\\[2em]
 \end{array}
 \\]

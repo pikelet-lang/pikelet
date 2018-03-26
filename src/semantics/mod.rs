@@ -127,13 +127,6 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
 }
 
 /// Evaluate a term in a context
-///
-/// Normalizes (evaluates) a core term to its normal form under the assumptions
-/// in the context.
-///
-/// ```text
-/// Γ ⊢ t ⇒ v
-/// ```
 pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
     match **term {
         // E-ANN
@@ -218,13 +211,6 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 }
 
 /// Type checking of terms
-///
-/// Under the assumptions in the context, check that the given term has
-/// the expected type and return its elaborated form.
-///
-/// ```text
-/// Γ ⊢ r ↑ V ⤳ t
-/// ```
 pub fn check(
     context: &Context,
     term: &Rc<RawTerm>,
@@ -264,7 +250,7 @@ pub fn check(
             if let RawTerm::Hole(_) = *lam_ann {
                 let body_context = context.extend_pi(pi_name, pi_ann.clone());
                 let elab_param = (lam_name, Embed(Rc::new(Term::from(&*pi_ann))));
-                let elab_lam_body = check(&body_context, &lam_body, &pi_body)?; // 1.
+                let elab_lam_body = check(&body_context, &lam_body, &pi_body)?;
 
                 return Ok(Rc::new(Term::Lam(
                     meta,
@@ -273,7 +259,7 @@ pub fn check(
             }
 
             // TODO: We might want to optimise for this case, rather than
-            // falling through to `infer` and reunbinding at INFER/LAM
+            // falling through to `infer` and reunbinding at I-LAM
         },
         (&RawTerm::Constant(meta, ref c), &Value::Constant(ref c_ty)) => {
             if let Some(c) = check_const(c, c_ty) {
@@ -296,8 +282,7 @@ pub fn check(
     }
 
     // C-CONV
-    let (elab_term, inferred_ty) = infer(context, term)?; // 1.
-
+    let (elab_term, inferred_ty) = infer(context, term)?;
     match Type::term_eq(&inferred_ty, expected) {
         true => Ok(elab_term),
         false => Err(TypeError::Mismatch {
@@ -309,13 +294,6 @@ pub fn check(
 }
 
 /// Type inference of terms
-///
-/// Under the assumptions in the context, synthesize a type for the given term
-/// and return its elaborated form.
-///
-/// ```text
-/// Γ ⊢ r ↓ V ⤳ t
-/// ```
 pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
     use std::cmp;
 
@@ -323,10 +301,6 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
 
     /// Ensures that the given term is a universe, returning the level of that
     /// universe and its elaborated form.
-    ///
-    /// ```text
-    /// Γ ⊢ R ↓ Typeᵢ ⤳ T
-    /// ```
     fn infer_universe(
         context: &Context,
         term: &Rc<RawTerm>,
@@ -341,9 +315,6 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
         }
     }
 
-    /// ```text
-    /// Γ ⊢ r ↓ c ⤳ t
-    /// ```
     fn infer_const(meta: SourceMeta, c: &RawConstant) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
         use syntax::core::{Constant as C, RawConstant as RawC};
 
@@ -370,21 +341,16 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
     }
 
     match **term {
-        //  1.  Γ ⊢ R ↓ Typeᵢ ⤳ T
-        //  2.  Γ ⊢ T ⇒ V
-        //  3.  Γ ⊢ r ↑ V ⤳ t
-        // ───────────────────────────── (INFER/ANN)
-        //      Γ ⊢ r:R ↓ V ⤳ t:T
+        //  I-ANN
         RawTerm::Ann(meta, ref expr, ref ty) => {
-            let (elab_ty, _) = infer_universe(context, ty)?; // 1.
-            let simp_ty = normalize(context, &elab_ty)?; // 2.
-            let elab_expr = check(context, expr, &simp_ty)?; // 3.
+            let (elab_ty, _) = infer_universe(context, ty)?;
+            let simp_ty = normalize(context, &elab_ty)?;
+            let elab_expr = check(context, expr, &simp_ty)?;
 
             Ok((Rc::new(Term::Ann(meta, elab_expr, elab_ty)), simp_ty))
         },
 
-        // ───────────────────────────────── (INFER/TYPE)
-        //  Γ ⊢ Typeᵢ ↓ Typeᵢ₊₁ ⤳ Typeᵢ
+        // I-TYPE
         RawTerm::Universe(meta, level) => Ok((
             Rc::new(Term::Universe(meta, level)),
             Rc::new(Value::Universe(level.succ())),
@@ -397,19 +363,9 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
 
         RawTerm::Constant(meta, ref c) => infer_const(meta, c),
 
+        // I-VAR-ANN, I-VAR-DEF
         RawTerm::Var(meta, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
-                //  1.  λx:V ∈ Γ
-                // ─────────────────────── (INFER/VAR-LAM)
-                //      Γ ⊢ x ↓ V ⤳ x
-                //
-                //  2.  Πx:V ∈ Γ
-                // ─────────────────────── (INFER/VAR-PI)
-                //      Γ ⊢ x ↓ V ⤳ x
-                //
-                //  3.  let x:V = v ∈ Γ
-                // ─────────────────────── (INFER/VAR-LET)
-                //      Γ ⊢ x ↓ V ⤳ x
                 Some(&Binder::Lam { ann: ref ty, .. })
                 | Some(&Binder::Pi { ann: ref ty, .. })
                 | Some(&Binder::Let { ann: ref ty, .. }) => {
@@ -432,32 +388,23 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             }.into()),
         },
 
-        //  1.  Γ ⊢ R₁ ↓ Typeᵢ ⤳ T₁
-        //  2.  Γ ⊢ T₁ ⇒ T₁'
-        //  3.  Γ, Πx:T₁' ⊢ R₂ ↑ Typeⱼ ⤳ T₂
-        //  4.  k = max(i, j)
-        // ────────────────────────────────────────── (INFER/PI)
-        //      Γ ⊢ Πx:R₁.R₂ ↓ Typeₖ ⤳ Πx:T₁.T₂
+        // I-PI
         RawTerm::Pi(meta, ref scope) => {
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-            let (elab_ann, level_ann) = infer_universe(context, &param_ann)?; // 1.
-            let simp_ann = normalize(context, &elab_ann)?; // 2.
+            let (elab_ann, level_ann) = infer_universe(context, &param_ann)?;
+            let simp_ann = normalize(context, &elab_ann)?;
             let body_context = context.extend_pi(name.clone(), simp_ann);
-            let (elab_body, level_body) = infer_universe(&body_context, &body)?; // 3.
+            let (elab_body, level_body) = infer_universe(&body_context, &body)?;
 
             let elab_param = (name, Embed(elab_ann));
             let elab_pi = Term::Pi(meta, nameless::bind(elab_param, elab_body));
-            let level = cmp::max(level_ann, level_body); // 4.
+            let level = cmp::max(level_ann, level_body);
 
             Ok((Rc::new(elab_pi), Rc::new(Value::Universe(level))))
         },
 
-        //  1.  Γ ⊢ R ↓ Typeᵢ ⤳ T
-        //  2.  Γ ⊢ T ⇒ V₁
-        //  3.  Γ, λx:V₁ ⊢ r ↓ V₂ ⤳ t
-        // ───────────────────────────────────────── (INFER/LAM)
-        //      Γ ⊢ λx:R.r ↓ Πx:V₁.V₂ ⤳ λx:T.t
+        // I-LAM
         RawTerm::Lam(meta, ref scope) => {
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
@@ -470,10 +417,10 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
                 });
             }
 
-            let (lam_ann, _) = infer_universe(context, &param_ann)?; // 1.
-            let pi_ann = normalize(context, &lam_ann)?; // 2.
+            let (lam_ann, _) = infer_universe(context, &param_ann)?;
+            let pi_ann = normalize(context, &lam_ann)?;
             let body_ctx = context.extend_lam(name.clone(), pi_ann.clone());
-            let (lam_body, pi_body) = infer(&body_ctx, &body)?; // 3.
+            let (lam_body, pi_body) = infer(&body_ctx, &body)?;
 
             let lam_param = (name.clone(), Embed(lam_ann));
             let pi_param = (name.clone(), Embed(pi_ann));
@@ -484,21 +431,15 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             ))
         },
 
-        //  1.  Γ ⊢ r₁ ↓ Πx:V₁.V₂ ⤳ t₁
-        //  2.  Γ ⊢ r₂ ↑ V₁ ⤳ t₂
-        //  3.  Γ, let x:V₁ = t₂ ⊢ V₂ ⇒ V₂'
-        // ────────────────────────────────────── (INFER/APP)
-        //      Γ ⊢ r₁ r₂ ↓ V₂' ⤳ t₁ t₂
+        // I-APP
         RawTerm::App(meta, ref fn_expr, ref arg_expr) => {
-            let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?; // 1.
+            let (elab_fn_expr, fn_ty) = infer(context, fn_expr)?;
 
             match *fn_ty {
                 Value::Pi(ref scope) => {
                     let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-                    let arg_expr = check(context, arg_expr, &param_ann)?; // 2.
-
-                    // 3.
+                    let arg_expr = check(context, arg_expr, &param_ann)?;
                     let body = normalize(
                         &context.extend_let(name, param_ann, arg_expr.clone()),
                         &Rc::new(Term::from(&*body)),
