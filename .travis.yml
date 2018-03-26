@@ -28,6 +28,7 @@ deploy:
     local-dir: book/build
     on:
       branch: master
+      rust: stable
 
 notifications:
   webhooks:
