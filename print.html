@@ -1,0 +1,505 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Pikelet Language Book</title>
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="Documentation for the Pikelet Language">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <base href="">
+
+        <link rel="stylesheet" href="book.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+        <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
+
+        <link rel="shortcut icon" href="favicon.png">
+
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme -->
+        
+
+        
+        <!-- MathJax -->
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+
+        <!-- Fetch Clipboard.js from CDN but have a local fallback -->
+        <script src="https://cdn.jsdelivr.net/clipboard.js/1.6.1/clipboard.min.js"></script>
+        <script>
+            if (typeof Clipboard == 'undefined') {
+                document.write(unescape("%3Cscript src='clipboard.min.js'%3E%3C/script%3E"));
+            }
+        </script>
+
+        <noscript>
+            <style type="text/css">
+                .javascript-only {
+                    display: none;
+                }
+            </style>
+        </noscript>
+
+    </head>
+    <body class="light">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { } 
+            if (theme === null || theme === undefined) { theme = 'light'; }
+            document.body.className = theme;
+            document.querySelector('html').className = theme;
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <ol class="chapter"><li><a href="ch00-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="ch01-00-language.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="ch01-01-terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="ch01-02-declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="ch01-03-modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix00-00-appendix.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix00-01-semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix00-02-references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar" class="menu-bar">
+                    <div id="menu-bar-sticky-container">
+                        <div class="left-buttons javascript-only">
+                            <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                                <i class="fa fa-bars"></i>
+                            </button>
+                            <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                                <i class="fa fa-paint-brush"></i>
+                            </button>
+                            <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                                <li role="none"><button role="menuitem" class="theme" id="light">Light <span class="default">(default)</span></button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                                <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            </ul>
+                            
+                            <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                                <i class="fa fa-search"></i>
+                            </button>
+                            
+                        </div>
+
+                        <h1 class="menu-title">Pikelet Language Book</h1> 
+
+                        <div class="right-buttons">
+                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                                <i id="print-button" class="fa fa-print"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div id="searchbar-outer" class="searchbar-outer">
+                    <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                </div>
+                <div id="searchresults-outer" class="searchresults-outer">
+                    <div class="searchresults-header" id="searchresults-header"></div>
+                    <ul id="searchresults">
+                    </ul>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <a class="header" href="print.html#introduction" id="introduction"><h1>Introduction</h1></a>
+<p>Welcome to the Pikelet book!</p>
+<a class="header" href="print.html#language" id="language"><h1>Language</h1></a>
+<a class="header" href="print.html#terms" id="terms"><h1>Terms</h1></a>
+<a class="header" href="print.html#contents" id="contents"><h2>Contents</h2></a>
+<ul>
+<li><a href="print.html#comments">Comments</a></li>
+<li><a href="print.html#built-in-types-and-their-literals">Built-in types and their literals</a></li>
+<li><a href="print.html#type-annotations">Type annotations</a></li>
+<li><a href="print.html#types-of-types">Types of types</a></li>
+<li><a href="print.html#identifiers">Identifiers</a></li>
+<li><a href="print.html#functions">Functions</a>
+<ul>
+<li><a href="print.html#function-literals">Function literals</a></li>
+<li><a href="print.html#function-types">Function Types</a></li>
+<li><a href="print.html#function-application">Function application</a></li>
+<li><a href="print.html#syntactic-sugar">Syntactic sugar</a></li>
+</ul>
+</li>
+</ul>
+<a class="header" href="print.html#comments" id="comments"><h2>Comments</h2></a>
+<p>In Pikelet, line comments are proceeded by a double dash:</p>
+<pre><code class="language-pikelet">-- this is a comment!
+</code></pre>
+<p>Doc comments are proceeded by a triple pipe:</p>
+<pre><code class="language-pikelet">||| This is a doc comment!
+</code></pre>
+<a class="header" href="print.html#built-in-types-and-their-literals" id="built-in-types-and-their-literals"><h2>Built-in types and their literals</h2></a>
+<p>Pikelet has a number of fundamental types:</p>
+<table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
+<tr><td> <code>String</code> </td><td> <code>&quot;hello there!&quot;</code>                       </td></tr>
+<tr><td> <code>Char</code>   </td><td> <code>'a'</code>, <code>'b'</code>, ..., <code>'\n'</code>, <code>'\t'</code>, ... </td></tr>
+<tr><td> <code>U8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>U16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>U32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>U64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>F32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
+<tr><td> <code>F64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
+</tbody></table>
+<blockquote>
+<p><strong>Note:</strong> You can't do much with these built-in types yet. In the future we
+will add some primitive operations to allow you to maniplate them.</p>
+</blockquote>
+<a class="header" href="print.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
+<p>If you note <a href="print.html#built-in-types-and-their-literals">above</a>, a number of the
+built-in types share a literal representation. Pikelet will try to predictably
+infer the types, but if it fails to do so you will get an error. In that case
+you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
+<pre><code class="language-pikelet">Pikelet&gt; 1           -- error: ambiguous integer literal
+Pikelet&gt; 1 : I32     -- ok!
+Pikelet&gt; 1 : F32     -- ok!
+Pikelet&gt; 1.0 : F32   -- ok!
+Pikelet&gt; 1.1 : U64   -- error: expected a floating point value
+</code></pre>
+<a class="header" href="print.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
+<p>Types also have types!</p>
+<pre><code>Pikelet&gt; :t I32
+Type
+</code></pre>
+<p>You might then ask, “what is the type of <code>Type</code>?”</p>
+<pre><code>Pikelet&gt; :t Type
+Type 1
+</code></pre>
+<p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
+<pre><code>Pikelet&gt; :t Type 0
+Type 1
+</code></pre>
+<p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
+previous:</p>
+<pre><code>Type 0 : Type 1 : Type 2 : Type 3 : ...
+</code></pre>
+<p>You can think of these as larger and larger sets, with the smaller type
+universes being contained within the larger type universes:</p>
+<blockquote>
+<p>TODO: Put a nice SVG diagram of the sets of types here</p>
+<pre><code>(Type 2
+  (Type 1
+    (Type 0
+      (I32, F32, String,
+        (1, 4.0, &quot;hello&quot;)))))
+</code></pre>
+</blockquote>
+<a class="header" href="print.html#identifiers" id="identifiers"><h2>Identifiers</h2></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#functions" id="functions"><h2>Functions</h2></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#function-literals" id="function-literals"><h3>Function literals</h3></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#function-types" id="function-types"><h3>Function Types</h3></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#function-application" id="function-application"><h3>Function application</h3></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#syntactic-sugar" id="syntactic-sugar"><h3>Syntactic sugar</h3></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#declarations" id="declarations"><h1>Declarations</h1></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#modules" id="modules"><h1>Modules</h1></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="print.html#appendix" id="appendix"><h1>Appendix</h1></a>
+<p>Here you will find additional reference information for understanding the theoretical foundations behind Pikelet.</p>
+<a class="header" href="print.html#semantics" id="semantics"><h1>Semantics</h1></a>
+<p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
+<a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
+<ul>
+<li><a href="print.html#introduction">Introduction</a>
+<ul>
+<li><a href="print.html#notation">Notation</a></li>
+</ul>
+</li>
+<li><a href="print.html#syntax">Syntax</a>
+<ul>
+<li><a href="print.html#raw-terms">Raw terms</a></li>
+<li><a href="print.html#terms">Terms</a></li>
+<li><a href="print.html#values">Values</a></li>
+<li><a href="print.html#contexts">Contexts</a></li>
+</ul>
+</li>
+<li><a href="print.html#semantics">Semantics</a>
+<ul>
+<li><a href="print.html#normalization">Normalization</a></li>
+<li><a href="print.html#type-checking">Type checking</a></li>
+<li><a href="print.html#type-inference">Type inference</a></li>
+</ul>
+</li>
+</ul>
+<a class="header" href="print.html#introduction-1" id="introduction-1"><h2>Introduction</h2></a>
+<p>At its core, Pikelet is a simple dependently typed lambda calculus with a
+stratified universe hierarchy.</p>
+<blockquote>
+<p><strong>Note:</strong>
+This document is intended for those who are interested in looking deeper into the formal foundations of Pikelet.
+You <em>don't</em> need to understand this for general use of Pikelet, so feel free to skip this document if that is easier.
+We will however make an effort to explain some of the notation we use here, and point to resources that might help if this piques your curiosity!</p>
+</blockquote>
+<a class="header" href="print.html#notation" id="notation"><h3>Notation</h3></a>
+<p>TODO: describe BNF syntax and natural deduction here</p>
+<a class="header" href="print.html#syntax" id="syntax"><h2>Syntax</h2></a>
+<a class="header" href="print.html#raw-terms" id="raw-terms"><h3>Raw terms</h3></a>
+<p>\[
+\newcommand{\rule}[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } &amp; \Tiny{\text{(#1)}} }
+\
+% Judgements
+\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
+\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
+\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
+\
+% Metavariables
+\newcommand{\rexpr}{r}
+\newcommand{\rtype}{R}
+\
+\newcommand{\texpr}{t}
+\newcommand{\ttype}{T}
+\
+\newcommand{\vexpr}{v}
+\newcommand{\vtype}{V}
+\newcommand{\wexpr}{w}
+\newcommand{\wtype}{W}
+\newcommand{\nexpr}{n}
+\newcommand{\ntype}{N}
+\
+% Type constructors
+\newcommand{\Type}{\mathsf{Type}}
+\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
+\
+\begin{array}{rrll}
+\rexpr,\rtype   &amp; ::= &amp; x                               &amp; \text{variables} \\
+&amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; ?                               &amp; \text{holes} \\
+&amp;   | &amp; \rexpr : \rtype                 &amp; \text{term annotated with a type} \\
+&amp;   | &amp; \Arrow{(x:\rtype_1)}{\rtype_2}  &amp; \text{dependent function type} \\
+&amp;   | &amp; \lambda x:\rtype.\rexpr         &amp; \text{functions} \\
+&amp;   | &amp; \rexpr_1 ~ \rexpr_2             &amp; \text{function application} \\
+\\
+\end{array}
+\]</p>
+<p>\[
+\begin{array}{lrll}
+\Arrow{\rtype_1}{\rtype_2} &amp; := &amp; \Arrow{(x:\rtype_1)}{\rtype_2}  &amp; \text{non-dependent function types} \\
+\lambda x.\rexpr           &amp; := &amp; \lambda x:?.\rexpr              &amp; \text{functions (without an annotation)} \\
+\end{array}
+\]</p>
+<a class="header" href="print.html#terms-1" id="terms-1"><h3>Terms</h3></a>
+<p>The core term syntax skips holes, ensuring that everything is fully elaborated:</p>
+<p>\[
+\begin{array}{rrll}
+\texpr,\ttype   &amp; ::= &amp; x                               &amp; \text{variables} \\
+&amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \texpr : \ttype                 &amp; \text{term annotated with a type} \\
+&amp;   | &amp; \Arrow{(x:\ttype_1)}{\ttype_2}  &amp; \text{dependent function type} \\
+&amp;   | &amp; \lambda x:\ttype.\texpr         &amp; \text{functions} \\
+&amp;   | &amp; \texpr_1 ~ \texpr_2             &amp; \text{function application} \\
+\\
+\end{array}
+\]</p>
+<a class="header" href="print.html#values" id="values"><h3>Values</h3></a>
+<p>In order to make it clear what is 'stuck' and what still needs to be evaluated,
+we separate our syntax into weak head normal forms (\(\wexpr\)),
+and neutral terms (\(\nexpr\)):</p>
+<p>\[
+\begin{array}{rrll}
+\vexpr,\vtype   &amp; ::= &amp; \wexpr                          &amp; \text{weak head normal forms} \\
+&amp;   | &amp; \nexpr                          &amp; \text{neutral terms} \\
+\\
+\nexpr,\ntype   &amp; ::= &amp; x                               &amp; \text{variables} \\
+&amp;   | &amp; \nexpr ~ \texpr                 &amp; \text{function application} \\
+\\
+\wexpr,\wtype   &amp; ::= &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \Arrow{(x:\vtype_1)}{\vtype_2}  &amp; \text{dependent function type} \\
+&amp;   | &amp; \lambda x:\vtype.\vexpr         &amp; \text{functions} \\
+\\
+\end{array}
+\]</p>
+<p>Note that function application is stuck,
+forming a linked list of terms bottoming out with a variable \(x\).
+We require neutral terms to be evaluated in a context in order to figure out  whether the base variable is a function or not,
+and if so proceed to reduce these applications to their weak head normal forms via subsititution.</p>
+<a class="header" href="print.html#contexts" id="contexts"><h3>Contexts</h3></a>
+<p>As we typecheck terms, we'll be passing over bindings like lambdas and pi types.
+Contexts allow us to keep track of the bound parameters,
+even though we don't know the exact values these will eventually take during normalization.</p>
+<p>\[
+\begin{array}{rrll}
+\Gamma  &amp; ::= &amp; \epsilon                    &amp; \text{the empty context} \\
+&amp;   | &amp; \Gamma,x:\vtype             &amp; \text{context extended with a type annotation} \\
+&amp;   | &amp; \Gamma,x:\vtype=\texpr      &amp; \text{context extended with a definition} \\
+\end{array}
+\]</p>
+<a class="header" href="print.html#semantics-1" id="semantics-1"><h2>Semantics</h2></a>
+<p>We'll be define a bidirectional type checking algorithm.
+To that end, the next sections will define the following judgements:</p>
+<table><thead><tr><th> name                              </th><th> notation                                             </th><th> inputs                                   </th><th> outputs                    </th></tr></thead><tbody>
+<tr><td> <a href="print.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
+<tr><td> <a href="print.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
+<tr><td> <a href="print.html#type-inference">type inference</a> </td><td> \(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vtype\), \(\texpr\) </td></tr>
+</tbody></table>
+<a class="header" href="print.html#normalization" id="normalization"><h3>Normalization</h3></a>
+<p>\[
+\boxed{
+\eval{ \Gamma }{ \texpr }{ \vexpr }
+}
+\\[2em]
+\begin{array}{cl}
+\rule{E-ANN}{
+\eval{ \Gamma }{ \texpr }{ \vexpr }
+}{
+\eval{ \Gamma }{ \texpr:\ttype }{ \vexpr }
+}
+\\[2em]
+\rule{E-TYPE}{}{
+\eval{ \Gamma }{ \Type_i }{ \Type_i }
+}
+\\[2em]
+\end{array}
+\]</p>
+<a class="header" href="print.html#type-checking" id="type-checking"><h3>Type checking</h3></a>
+<p>\[
+\boxed{
+\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+}
+\]</p>
+<a class="header" href="print.html#type-inference" id="type-inference"><h3>Type inference</h3></a>
+<p>\[
+\boxed{
+\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+}
+\]</p>
+<a class="header" href="print.html#references" id="references"><h1>References</h1></a>
+<p>Reference material that was useful during the process of designing and building Pikelet.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+
+        <!-- Local fallback for Font Awesome -->
+        <script>
+            if (getComputedStyle(document.querySelector(".fa")).fontFamily !== "FontAwesome") {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.type = 'text/css';
+                link.href = '_FontAwesome/css/font-awesome.css';
+                document.head.insertBefore(link, document.head.firstChild)
+            }
+        </script>
+
+        
+
+        
+
+        
+
+        
+        <script src="searchindex.js" type="text/javascript" charset="utf-8"></script>
+        
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                window.print();
+            })
+        </script>
+        
+
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS script -->
+        
+
+    </body>
+</html>
