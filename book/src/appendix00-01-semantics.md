@@ -12,6 +12,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Values](#values)
   - [Contexts](#contexts)
 - [Semantics](#semantics)
+  - [Elaboration](#elaboration)
   - [Normalization](#normalization)
   - [Type checking](#type-checking)
   - [Type inference](#type-inference)
@@ -185,6 +186,17 @@ Type Inference <- - - - - - -> Type checking
 ```
 
 <!-- TODO: use SVG for this diagram -->
+
+### Elaboration
+
+Elaboration is the process of filling in missing information that the
+programmer omitted in the original code, generally based on the results
+of type inference.
+
+In Pikelet's judgements the elaborated terms are denoted after the
+diamond: \\(\rhd\\). At the moment not much is added - only the missing
+type annotations on function parameters. In the future this could be extended
+filling in type class instances and implicit arguments.
 
 ### Normalization
 
