@@ -55,7 +55,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         // E-TYPE
         Term::Universe(_, level) => Ok(Rc::new(Value::Universe(level))),
 
-        /// E-CONST
+        // E-CONST
         Term::Constant(_, ref c) => Ok(Rc::new(Value::Constant(c.clone()))),
 
         Term::Var(_, ref var) => match *var {
