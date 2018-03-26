@@ -4,9 +4,31 @@ rust:
   - stable
   - beta
   - nightly
+
 matrix:
   allow_failures:
     - rust: nightly
+
+install:
+  - cargo install mdbook --vers "^0.1.3" # https://github.com/rust-lang-nursery/mdBook#installation
+  - cargo build --verbose # https://docs.travis-ci.com/user/languages/rust/#Dependency-Management
+
+build:
+  - cargo build --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
+  - cargo test --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
+  - mdbook build book
+
+deploy:
+  # Deploy the book to Github Pages
+  # https://docs.travis-ci.com/user/deployment/pages/
+  - provider: pages
+    skip-cleanup: true
+    github-token: $GITHUB_TOKEN  # Set in travis-ci.org dashboard, marked secure
+    keep-history: true
+    local-dir: book/build
+    on:
+      branch: master
+
 notifications:
   webhooks:
     urls:
