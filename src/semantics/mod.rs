@@ -136,43 +136,23 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
 /// ```
 pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
     match **term {
-        //  1.  Γ ⊢ t ⇒ v
-        // ─────────────────────── (EVAL/ANN)
-        //      Γ ⊢ t:T ⇒ v
-        Term::Ann(_, ref expr, _) => {
-            normalize(context, expr) // 1.
-        },
+        // E-ANN
+        Term::Ann(_, ref expr, _) => normalize(context, expr),
 
-        // ─────────────────── (EVAL/TYPE)
-        //  Γ ⊢ Type ⇒ Type
+        // E-TYPE
         Term::Universe(_, level) => Ok(Rc::new(Value::Universe(level))),
 
+        /// E-CONST
         Term::Constant(_, ref c) => Ok(Rc::new(Value::Constant(c.clone()))),
 
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_binder(name) {
-                // Can't reduce further - we are in a pi or let binding!
-                // We'll have to hope that these are substituted away later,
-                // either in EVAL/APP or INFER/APP. For now we just forward the
-                // variable name onward:
-                //
-                //  1.  λx:V ∈ Γ
-                // ───────────────────── (EVAL/VAR-LAM)
-                //      Γ ⊢ x ⇒ x
-                //
-                //  2.  Πx:V ∈ Γ
-                // ───────────────────── (EVAL/VAR-PI)
-                //      Γ ⊢ x ⇒ x
+                // E-VAR-ANN
                 Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
                     Ok(Rc::new(Value::from(Neutral::Var(var.clone()))))
                 },
 
-                // We have a value in scope, let's use that!
-                //
-                //  1.  let x:V = t ∈ Γ
-                //  2.  Γ ⊢ t ⇒ v
-                // ───────────────────── (EVAL/VAR-LET)
-                //      Γ ⊢ x ⇒ v
+                // E-VAR-DEF)
                 Some(&Binder::Let { ref value, .. }) => normalize(context, value),
 
                 None => Err(InternalError::UndefinedName {
@@ -191,43 +171,31 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             }),
         },
 
-        //  1.  Γ ⊢ T₁ ⇒ V₁
-        //  2.  Γ, Πx:V ⊢ T₂ ⇒ V₂
-        // ─────────────────────────────────── (EVAL/PI)
-        //      Γ ⊢ Πx:T₁.T₂ ⇒ Πx:V₁.V₂
+        // E-PI
         Term::Pi(_, ref scope) => {
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-            let ann = normalize(context, &param_ann)?; // 1.
+            let ann = normalize(context, &param_ann)?;
             let body_context = context.extend_pi(name.clone(), ann.clone());
-            let body = normalize(&body_context, &body)?; // 2.
+            let body = normalize(&body_context, &body)?;
 
             Ok(Rc::new(Value::Pi(nameless::bind((name, Embed(ann)), body))))
         },
 
-        //  1.  Γ ⊢ T ⇒ V
-        //  2.  Γ, λx:V ⊢ t ⇒ v
-        // ──────────────────────────────── (EVAL/LAM)
-        //      Γ ⊢ λx:T.t ⇒ λx:V.v
+        // E-LAM
         Term::Lam(_, ref scope) => {
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
-            let ann = normalize(context, &param_ann)?; // 1.
+            let ann = normalize(context, &param_ann)?;
             let param = (name.clone(), Embed(ann.clone()));
-            let body = normalize(&context.extend_lam(name, ann), &body)?; // 2.
+            let body = normalize(&context.extend_lam(name, ann), &body)?;
 
             Ok(Rc::new(Value::Lam(nameless::bind(param, body))))
         },
 
-        // Perform [β-reduction](https://en.wikipedia.org/wiki/Lambda_calculus#β-reduction),
-        // ie. apply functions to their arguments
-        //
-        //  1.  Γ ⊢ t₁ ⇒ λx:V₁.v₁
-        //  2.  Γ, let x:V₁ = t₂ x ⊢ v₁ ⇒ v₁'
-        // ───────────────────────────────────── (EVAL/APP)
-        //      Γ ⊢ t₁ t₂ ⇒ v₁'
+        // E-APP
         Term::App(_, ref fn_expr, ref arg) => {
-            let fn_value = normalize(context, fn_expr)?; // 1.
+            let fn_value = normalize(context, fn_expr)?;
 
             match *fn_value {
                 Value::Lam(ref scope) => {
@@ -235,7 +203,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                     let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
                     let body_context = context.extend_let(name, param_ann, arg.clone());
-                    normalize(&body_context, &Rc::new(Term::from(&*body))) // 2.
+                    normalize(&body_context, &Rc::new(Term::from(&*body)))
                 },
                 Value::Neutral(ref fn_expr) => Ok(Rc::new(Value::from(Neutral::App(
                     fn_expr.clone(),

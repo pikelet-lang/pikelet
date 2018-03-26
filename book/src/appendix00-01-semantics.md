@@ -56,17 +56,20 @@ TODO: describe BNF syntax and natural deduction here
 \\newcommand{\nexpr}{n}
 \\newcommand{\ntype}{N}
 \\
-% Type constructors
+% Term and Type constructors
+\\newcommand{\const}{c}
 \\newcommand{\Type}{\mathsf{Type}}
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
+\\newcommand{\lam}[2]{ \lambda #1 . #2 }
 \\
 \begin{array}{rrll}
     \rexpr,\rtype   & ::= & x                               & \text{variables} \\\\
                     &   | & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & ?                               & \text{holes} \\\\
+                    &   | & \const                          & \text{constants} \\\\
                     &   | & \rexpr : \rtype                 & \text{term annotated with a type} \\\\
                     &   | & \Arrow{(x:\rtype_1)}{\rtype_2}  & \text{dependent function type} \\\\
-                    &   | & \lambda x:\rtype.\rexpr         & \text{functions} \\\\
+                    &   | & \lam{x:\rtype}{\rexpr}          & \text{functions} \\\\
                     &   | & \rexpr_1 ~ \rexpr_2             & \text{function application} \\\\
     \\\\
 \end{array}
@@ -75,7 +78,7 @@ TODO: describe BNF syntax and natural deduction here
 \\[
 \begin{array}{lrll}
     \Arrow{\rtype_1}{\rtype_2} & := & \Arrow{(x:\rtype_1)}{\rtype_2}  & \text{non-dependent function types} \\\\
-    \lambda x.\rexpr           & := & \lambda x:?.\rexpr              & \text{functions (without an annotation)} \\\\
+    \lam{x}{\rexpr}            & := & \lam{x:?}{\rexpr}               & \text{functions (without an annotation)} \\\\
 \end{array}
 \\]
 
@@ -87,9 +90,10 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 \begin{array}{rrll}
     \texpr,\ttype   & ::= & x                               & \text{variables} \\\\
                     &   | & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \const                          & \text{constants} \\\\
                     &   | & \texpr : \ttype                 & \text{term annotated with a type} \\\\
                     &   | & \Arrow{(x:\ttype_1)}{\ttype_2}  & \text{dependent function type} \\\\
-                    &   | & \lambda x:\ttype.\texpr         & \text{functions} \\\\
+                    &   | & \lam{x:\ttype}{\texpr}          & \text{functions} \\\\
                     &   | & \texpr_1 ~ \texpr_2             & \text{function application} \\\\
     \\\\
 \end{array}
@@ -110,8 +114,9 @@ and neutral terms (\\(\nexpr\\)):
                     &   | & \nexpr ~ \texpr                 & \text{function application} \\\\
     \\\\
     \wexpr,\wtype   & ::= & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \const                          & \text{constants} \\\\
                     &   | & \Arrow{(x:\vtype_1)}{\vtype_2}  & \text{dependent function type} \\\\
-                    &   | & \lambda x:\vtype.\vexpr         & \text{functions} \\\\
+                    &   | & \lam{x:\vtype}{\vexpr}          & \text{functions} \\\\
     \\\\
 \end{array}
 \\]
@@ -162,6 +167,48 @@ To that end, the next sections will define the following judgements:
     \\\\[2em]
     \rule{E-TYPE}{}{
         \eval{ \Gamma }{ \Type_i }{ \Type_i }
+    }
+    \\\\[2em]
+    \rule{E-CONST}{}{
+        \eval{ \Gamma }{ \const }{ \const }
+    }
+    \\\\[2em]
+    \rule{E-VAR-ANN}{
+        x : \vtype \in \Gamma
+    }{
+        \eval{ \Gamma }{ x }{ x }
+    }
+    \\\\[2em]
+    \rule{E-VAR-DEF}{
+        x : \vtype=\texpr \in \Gamma
+        \qquad
+        \eval{ \Gamma }{ \texpr }{ \vexpr }
+    }{
+        \eval{ \Gamma }{ x }{ \vexpr }
+    }
+    \\\\[2em]
+    \rule{E-PI}{
+        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \qquad
+        \eval{ \Gamma, x:\vtype_1 }{ \ttype_2 }{ \vtype_2 }
+    }{
+        \eval{ \Gamma }{ \Arrow{(x:\ttype_1)}{\ttype_2} }{ \Arrow{(x:\vtype_1)}{\vtype_2} }
+    }
+    \\\\[2em]
+    \rule{E-LAM}{
+        \eval{ \Gamma }{ \ttype }{ \vtype }
+        \qquad
+        \eval{ \Gamma, x:\vtype }{ \texpr }{ \vexpr }
+    }{
+        \eval{ \Gamma }{ \lam{x:\ttype}{\texpr} }{ \lam{x:\vtype}{\vexpr} }
+    }
+    \\\\[2em]
+    \rule{E-APP}{
+        \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
+        \qquad
+        \eval{ \Gamma, x:\vtype_1=\vexpr_2 }{ \vexpr_1 }{ \vexpr_1' }
+    }{
+        \eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_1' }
     }
     \\\\[2em]
 \end{array}
