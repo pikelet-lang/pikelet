@@ -142,14 +142,47 @@ even though we don't know the exact values these will eventually take during nor
 
 ## Semantics
 
-We'll be define a bidirectional type checking algorithm.
-To that end, the next sections will define the following judgements:
+We take a _bidirectional_ approach to type checking, splitting it into two
+phases: type checking and type inference. This makes the flow of information
+through the type checker clear and relatively easy to reason about.
+Normalization happens after inference, and before types are fed back in to be
+used during type checkiong.
+
+With that in mind, the next sections will describe the following judgements:
 
 | name                              | notation                                             | inputs                                   | outputs                    |
 |-----------------------------------|------------------------------------------------------|------------------------------------------|----------------------------|
 | [normalization](#normalization)   | \\(\eval{ \Gamma }{ \texpr }{ \vexpr }\\)            | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vexpr\\)               |
 | [type checking](#type-checking)   | \\(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\), \\(\vtype\\) | \\(\texpr\\)               |
 | [type inference](#type-inference) | \\(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vtype\\), \\(\texpr\\) |
+
+Normalization stands on its own, but both checking and inference are mutually
+dependent on each other. Care has been taken to design the judgments so that
+they are _syntax-directed_, meaning that an algorithm can be clearly derived
+from them.
+
+Here is a rough overview of how Pikelet terms are checked:
+
+```
+                (from parser)
+                      |
+                      v
+     +------------ RawTerm -----------+
+     |                                |
+     v                                v
+Type Inference <- - - - - - -> Type checking
+     |                                ^
+     |                                |
+   Term                             Value
+     |                                |
+     +-------> Normalization ---------+
+     |
+     |
+     v
+ (to compiler)
+```
+
+<!-- TODO: use SVG for this diagram -->
 
 ### Normalization
 
