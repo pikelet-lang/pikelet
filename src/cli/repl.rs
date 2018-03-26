@@ -57,7 +57,9 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     let context = Context::default();
 
     if let Some(ref history_file) = opts.history_file {
-        rl.load_history(&history_file)?;
+        if let Err(_) = rl.load_history(&history_file) {
+            // No previous REPL history!
+        }
     }
 
     for (i, line) in LOGO_TEXT.iter().enumerate() {
