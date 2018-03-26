@@ -138,25 +138,35 @@ pub fn check(
 ) -> Result<Rc<Term>, TypeError> {
     use syntax::core::{Constant, RawConstant};
 
-    /// ```text
-    /// Γ ⊢ r ↑ c ⤳ t
-    /// ```
-    fn check_const(c: &RawConstant, c_ty: &Constant) -> Option<Constant> {
+    /// Coerce a raw constant
+    fn check_const(
+        span: ByteSpan,
+        c: &RawConstant,
+        c_ty: &Constant,
+    ) -> Result<Option<Constant>, TypeError> {
         match (c, c_ty) {
             // FIXME: overflow?
-            (&RawConstant::Int(value), &Constant::U8Type) => Some(Constant::U8(value as u8)),
-            (&RawConstant::Int(value), &Constant::U16Type) => Some(Constant::U16(value as u16)),
-            (&RawConstant::Int(value), &Constant::U32Type) => Some(Constant::U32(value as u32)),
-            (&RawConstant::Int(value), &Constant::U64Type) => Some(Constant::U64(value)),
-            (&RawConstant::Int(value), &Constant::I8Type) => Some(Constant::I8(value as i8)),
-            (&RawConstant::Int(value), &Constant::I16Type) => Some(Constant::I16(value as i16)),
-            (&RawConstant::Int(value), &Constant::I32Type) => Some(Constant::I32(value as i32)),
-            (&RawConstant::Int(value), &Constant::I64Type) => Some(Constant::I64(value as i64)),
-            (&RawConstant::Int(value), &Constant::F32Type) => Some(Constant::F32(value as f32)),
-            (&RawConstant::Int(value), &Constant::F64Type) => Some(Constant::F64(value as f64)),
-            (&RawConstant::Float(value), &Constant::F32Type) => Some(Constant::F32(value as f32)),
-            (&RawConstant::Float(value), &Constant::F64Type) => Some(Constant::F64(value)),
-            (_, _) => None,
+            (&RawConstant::Int(val), &Constant::U8Type) => Ok(Some(Constant::U8(val as u8))),
+            (&RawConstant::Int(val), &Constant::U16Type) => Ok(Some(Constant::U16(val as u16))),
+            (&RawConstant::Int(val), &Constant::U32Type) => Ok(Some(Constant::U32(val as u32))),
+            (&RawConstant::Int(val), &Constant::U64Type) => Ok(Some(Constant::U64(val))),
+            (&RawConstant::Int(val), &Constant::I8Type) => Ok(Some(Constant::I8(val as i8))),
+            (&RawConstant::Int(val), &Constant::I16Type) => Ok(Some(Constant::I16(val as i16))),
+            (&RawConstant::Int(val), &Constant::I32Type) => Ok(Some(Constant::I32(val as i32))),
+            (&RawConstant::Int(val), &Constant::I64Type) => Ok(Some(Constant::I64(val as i64))),
+            (&RawConstant::Int(val), &Constant::F32Type) => Ok(Some(Constant::F32(val as f32))),
+            (&RawConstant::Int(val), &Constant::F64Type) => Ok(Some(Constant::F64(val as f64))),
+            (&RawConstant::Int(_), _) => Err(TypeError::NumericLiteralMismatch {
+                literal_span: span,
+                expected: c_ty.clone(),
+            }),
+            (&RawConstant::Float(val), &Constant::F32Type) => Ok(Some(Constant::F32(val as f32))),
+            (&RawConstant::Float(val), &Constant::F64Type) => Ok(Some(Constant::F64(val))),
+            (&RawConstant::Float(_), _) => Err(TypeError::FloatLiteralMismatch {
+                literal_span: span,
+                expected: c_ty.clone(),
+            }),
+            (_, _) => Ok(None),
         }
     }
 
@@ -182,7 +192,7 @@ pub fn check(
             // falling through to `infer` and reunbinding at I-LAM
         },
         (&RawTerm::Constant(meta, ref c), &Value::Constant(ref c_ty)) => {
-            if let Some(c) = check_const(c, c_ty) {
+            if let Some(c) = check_const(meta.span, c, c_ty)? {
                 return Ok(Rc::new(Term::Constant(meta, c)));
             }
         },

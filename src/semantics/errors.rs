@@ -6,7 +6,7 @@ use nameless::{BoundName, Name};
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::core::Type;
+use syntax::core::{Constant, Type};
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -66,6 +66,14 @@ pub enum TypeError {
         var_span: Option<ByteSpan>,
         name: Name,
     },
+    NumericLiteralMismatch {
+        literal_span: ByteSpan,
+        expected: Constant,
+    },
+    FloatLiteralMismatch {
+        literal_span: ByteSpan,
+        expected: Constant,
+    },
     AmbiguousIntLiteral {
         span: ByteSpan,
     },
@@ -120,6 +128,24 @@ impl TypeError {
             )).with_label(
                 Label::new_primary(param_span)
                     .with_message("the parameter that requires an annotation"),
+            ),
+            TypeError::NumericLiteralMismatch {
+                literal_span,
+                ref expected,
+            } => {
+                Diagnostic::new_error(format!(
+                    "found a numeric literal, but expected a type `{}`",
+                    expected,
+                )).with_label(Label::new_primary(literal_span).with_message("the numeric literal"))
+            },
+            TypeError::FloatLiteralMismatch {
+                literal_span,
+                ref expected,
+            } => Diagnostic::new_error(format!(
+                "found a floating point literal, but expected a type `{}`",
+                expected,
+            )).with_label(
+                Label::new_primary(literal_span).with_message("the floating point literal"),
             ),
             TypeError::AmbiguousIntLiteral { span } => {
                 Diagnostic::new_error("ambiguous integer literal").with_label(
@@ -188,6 +214,16 @@ impl fmt::Display for TypeError {
                 f,
                 "Type annotation needed for the function parameter `{}`",
                 name,
+            ),
+            TypeError::NumericLiteralMismatch { ref expected, .. } => write!(
+                f,
+                "found a numeric literal, but expected a type `{}`",
+                expected,
+            ),
+            TypeError::FloatLiteralMismatch { ref expected, .. } => write!(
+                f,
+                "found a floating point literal, but expected a type `{}`",
+                expected,
             ),
             TypeError::AmbiguousIntLiteral { .. } => write!(f, "Ambiguous integer literal"),
             TypeError::AmbiguousFloatLiteral { .. } => {

@@ -72,6 +72,14 @@ pub enum RawConstant {
     F64Type,
 }
 
+impl fmt::Display for RawConstant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
+}
+
 /// Primitive constants
 ///
 /// These are either the literal values or the types that describe them.
@@ -104,6 +112,14 @@ pub enum Constant {
     I64Type,
     F32Type,
     F64Type,
+}
+
+impl fmt::Display for Constant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+            .group()
+            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
 }
 
 /// A module definition

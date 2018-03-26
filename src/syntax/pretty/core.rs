@@ -34,56 +34,6 @@ fn pretty_universe(options: Options, level: Level) -> StaticDoc {
     }
 }
 
-fn pretty_raw_const(c: &RawConstant) -> StaticDoc {
-    match *c {
-        RawConstant::String(ref value) => Doc::text(format!("{:?}", value)),
-        RawConstant::Char(value) => Doc::text(format!("{:?}", value)),
-        RawConstant::Int(value) => Doc::as_string(value),
-        RawConstant::Float(value) => Doc::as_string(value),
-        RawConstant::StringType => Doc::text("#String"),
-        RawConstant::CharType => Doc::text("#Char"),
-        RawConstant::U8Type => Doc::text("#U8"),
-        RawConstant::U16Type => Doc::text("#U16"),
-        RawConstant::U32Type => Doc::text("#U32"),
-        RawConstant::U64Type => Doc::text("#U64"),
-        RawConstant::I8Type => Doc::text("#I8"),
-        RawConstant::I16Type => Doc::text("#I16"),
-        RawConstant::I32Type => Doc::text("#I32"),
-        RawConstant::I64Type => Doc::text("#I64"),
-        RawConstant::F32Type => Doc::text("#F32"),
-        RawConstant::F64Type => Doc::text("#F64"),
-    }
-}
-
-fn pretty_const(c: &Constant) -> StaticDoc {
-    match *c {
-        Constant::String(ref value) => Doc::text(format!("{:?}", value)),
-        Constant::Char(value) => Doc::text(format!("{:?}", value)),
-        Constant::U8(value) => Doc::as_string(value),
-        Constant::U16(value) => Doc::as_string(value),
-        Constant::U32(value) => Doc::as_string(value),
-        Constant::U64(value) => Doc::as_string(value),
-        Constant::I8(value) => Doc::as_string(value),
-        Constant::I16(value) => Doc::as_string(value),
-        Constant::I32(value) => Doc::as_string(value),
-        Constant::I64(value) => Doc::as_string(value),
-        Constant::F32(value) => Doc::as_string(value),
-        Constant::F64(value) => Doc::as_string(value),
-        Constant::StringType => Doc::text("#String"),
-        Constant::CharType => Doc::text("#Char"),
-        Constant::U8Type => Doc::text("#U8"),
-        Constant::U16Type => Doc::text("#U16"),
-        Constant::U32Type => Doc::text("#U32"),
-        Constant::U64Type => Doc::text("#U64"),
-        Constant::I8Type => Doc::text("#I8"),
-        Constant::I16Type => Doc::text("#I16"),
-        Constant::I32Type => Doc::text("#I32"),
-        Constant::I64Type => Doc::text("#I64"),
-        Constant::F32Type => Doc::text("#F32"),
-        Constant::F64Type => Doc::text("#F64"),
-    }
-}
-
 fn pretty_var(options: Options, var: &Var) -> StaticDoc {
     match options.debug_indices {
         true => Doc::text(format!("{:#}", var)),
@@ -158,13 +108,67 @@ fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &A) -
     )
 }
 
+impl ToDoc for RawConstant {
+    fn to_doc(&self, _options: Options) -> StaticDoc {
+        match *self {
+            RawConstant::String(ref value) => Doc::text(format!("{:?}", value)),
+            RawConstant::Char(value) => Doc::text(format!("{:?}", value)),
+            RawConstant::Int(value) => Doc::as_string(value),
+            RawConstant::Float(value) => Doc::as_string(value),
+            RawConstant::StringType => Doc::text("#String"),
+            RawConstant::CharType => Doc::text("#Char"),
+            RawConstant::U8Type => Doc::text("#U8"),
+            RawConstant::U16Type => Doc::text("#U16"),
+            RawConstant::U32Type => Doc::text("#U32"),
+            RawConstant::U64Type => Doc::text("#U64"),
+            RawConstant::I8Type => Doc::text("#I8"),
+            RawConstant::I16Type => Doc::text("#I16"),
+            RawConstant::I32Type => Doc::text("#I32"),
+            RawConstant::I64Type => Doc::text("#I64"),
+            RawConstant::F32Type => Doc::text("#F32"),
+            RawConstant::F64Type => Doc::text("#F64"),
+        }
+    }
+}
+
+impl ToDoc for Constant {
+    fn to_doc(&self, _options: Options) -> StaticDoc {
+        match *self {
+            Constant::String(ref value) => Doc::text(format!("{:?}", value)),
+            Constant::Char(value) => Doc::text(format!("{:?}", value)),
+            Constant::U8(value) => Doc::as_string(value),
+            Constant::U16(value) => Doc::as_string(value),
+            Constant::U32(value) => Doc::as_string(value),
+            Constant::U64(value) => Doc::as_string(value),
+            Constant::I8(value) => Doc::as_string(value),
+            Constant::I16(value) => Doc::as_string(value),
+            Constant::I32(value) => Doc::as_string(value),
+            Constant::I64(value) => Doc::as_string(value),
+            Constant::F32(value) => Doc::as_string(value),
+            Constant::F64(value) => Doc::as_string(value),
+            Constant::StringType => Doc::text("#String"),
+            Constant::CharType => Doc::text("#Char"),
+            Constant::U8Type => Doc::text("#U8"),
+            Constant::U16Type => Doc::text("#U16"),
+            Constant::U32Type => Doc::text("#U32"),
+            Constant::U64Type => Doc::text("#U64"),
+            Constant::I8Type => Doc::text("#I8"),
+            Constant::I16Type => Doc::text("#I16"),
+            Constant::I32Type => Doc::text("#I32"),
+            Constant::I64Type => Doc::text("#I64"),
+            Constant::F32Type => Doc::text("#F32"),
+            Constant::F64Type => Doc::text("#F64"),
+        }
+    }
+}
+
 impl ToDoc for RawTerm {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
             RawTerm::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
             RawTerm::Universe(_, level) => pretty_universe(options, level),
             RawTerm::Hole(_) => Doc::text("_"),
-            RawTerm::Constant(_, ref c) => pretty_raw_const(c),
+            RawTerm::Constant(_, ref c) => c.to_doc(options),
             RawTerm::Var(_, ref var) => pretty_var(options, var),
             RawTerm::Lam(_, ref scope) => pretty_lam(
                 options,
@@ -191,7 +195,7 @@ impl ToDoc for Term {
         match *self {
             Term::Ann(_, ref expr, ref ty) => pretty_ann(options, expr, ty),
             Term::Universe(_, level) => pretty_universe(options, level),
-            Term::Constant(_, ref c) => pretty_const(c),
+            Term::Constant(_, ref c) => c.to_doc(options),
             Term::Var(_, ref var) => pretty_var(options, var),
             Term::Lam(_, ref scope) => pretty_lam(
                 options,
@@ -214,7 +218,7 @@ impl ToDoc for Value {
     fn to_doc(&self, options: Options) -> StaticDoc {
         match *self {
             Value::Universe(level) => pretty_universe(options, level),
-            Value::Constant(ref c) => pretty_const(c),
+            Value::Constant(ref c) => c.to_doc(options),
             Value::Lam(ref scope) => pretty_lam(
                 options,
                 &scope.unsafe_pattern.0,
