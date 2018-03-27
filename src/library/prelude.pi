@@ -1,21 +1,50 @@
 module prelude;
 
 
+-- NOTE: Many of these functions could benefit from implicit arguments for
+-- improved ergonomics. For example, the identity function could be written as:
+--
+-- ```
+-- id : {a : Type} -> a -> a;
+-- id x = x;
+-- ```
+--
+-- This would then allow one to write:
+--
+-- ```
+-- Pikelet> id "hello"
+-- "hello" : String
+-- ```
+
+||| The polymorphic identity function
 id : (a : Type) -> a -> a;
 id a x = x;
 
+||| Creates a function that always returns the same value
 const : (a b : Type) -> a -> b -> a;
 const a b x y = x;
 
+||| Function composition
 compose : (a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c);
 compose a b c f g x = f (g x);
 
+||| Flip the order of the first two arguments to a function
 flip : (a b c : Type) -> (a -> b -> c) -> (b -> a -> c);
 flip a b c f x y = f y x;
 
 
-void : Type 1;
-void = (a : Type) -> a;
+||| Logical absurdity
+|||
+||| This type should have no inhabitants - if it does, it's a bug in our
+||| typechecker!
+false : Type 1;
+false = (a : Type) -> a;
+
+
+||| Logical negation
+not : Type -> Type 1;
+not a = a -> false;
+
 
 unit : Type 1;
 unit = (a : Type) -> a -> a;
@@ -27,11 +56,18 @@ unit-elim : (a : Type) -> unit -> a -> a;
 unit-elim a f x = f a x;
 
 
+||| Logical conjunction (Church encoded)
+|||
+||| You could also interpret this as a product type
 and : Type -> Type -> Type 1;
 and p q = (c : Type) -> (p -> q -> c) -> c;
 
+||| Introduce a logical conjunction between two types
 and-intro : (p q : Type) -> p -> q -> and p q;
 and-intro p q x y c f = f x y;
+
+-- FIXME: These don't typecheck - I might have got the definitions wrong, or
+-- there is a bug in the type checker!
 
 -- and-elim-left : (p q : Type) -> and p q -> p;
 -- and-elim-left p q (pq : and p q) = pq p const;
@@ -40,8 +76,14 @@ and-intro p q x y c f = f x y;
 -- and-elim-right p q (pq : and p q) = pq p (flip const);
 
 
+||| Logical disjunction (Church encoded)
+|||
+||| You could also interpret this as a sum type
 or : Type -> Type -> Type 1;
 or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
+
+-- FIXME: These don't typecheck - I might have got the definitions wrong, or
+-- there is a bug in the type checker!
 
 -- or-intro-left : (p q : Type) -> p -> or p q;
 -- or-intro-left p q (x : p) c (on-p : p -> c) (on-q : q -> c) = on-p x;
