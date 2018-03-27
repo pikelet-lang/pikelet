@@ -8,10 +8,6 @@
 - [Types of types](#types-of-types)
 - [Identifiers](#identifiers)
 - [Functions](#functions)
-  - [Function literals](#function-literals)
-  - [Function Types](#function-types)
-  - [Function application](#function-application)
-  - [Syntactic sugar](#syntactic-sugar)
 
 ## Comments
 
@@ -113,20 +109,74 @@ universes being contained within the larger type universes:
 
 ## Functions
 
-> TODO
+Here are some simple functions and their types:
 
-### Function literals
+```
+Pikelet> :t \x : I32 => x
+I32 -> I32
 
-> TODO
+Pikelet> :t \x : String => x
+String -> String
 
-### Function Types
+Pikelet> :t \x : Char => x
+Char -> Char
+```
 
-> TODO
+Note that all of these types follow the same pattern - they are the identity
+function! This means that if you pass a value to them, they'll return the same
+thing without alteration!
 
-### Function application
+```
+Pikelet> (\x : I32 => x) 42
+42 : I32
 
-> TODO
+Pikelet> (\x : String => x) "hi"
+"hi" : String
 
-### Syntactic sugar
+Pikelet> (\x : Char => x) 'b'
+'b' : Char
+```
 
-> TODO
+Alas, we can't reuse one of these identity functions with other, incompatible
+types:
+
+```
+Pikelet> (\x : I32 => x) 4.0        -- error!
+Pikelet> (\x : String => x) 'b'     -- error!
+Pikelet> (\x : Char => x) "yoho"    -- error!
+```
+
+Let's make this identity function polymorphic by adding a parameter for the type
+of the argument:
+
+```
+Pikelet> :t \(a : Type) => \(x : a) => x
+(a : Type) -> a -> a
+```
+
+We now have a polymorphic identity function! We can specialise this function by
+applying a type to it:
+
+```
+Pikelet> (\(x : Type) => \(x : a) => x) String "hello"
+"hello" : String
+
+Pikelet> (\(x : Type) => \(x : a) => x) I32 1
+1 : I32
+```
+
+Note the following things:
+
+- in Pikelet all functions take a single argument - in order to pass multiple
+  arguments we use currying
+- the type parameter `a` is being fed into the annotation of the parameter `x : a`
+- the type of the 'inner' function is now dependent on the type first argument
+- `(a: Type) -> a -> a` is actually syntactic sugar for `(a: Type) -> (x : a) -> a`
+
+Note that we can write multi-argument functions in a slightly shorter way using
+some syntactic sugar:
+
+```
+Pikelet> :t \(a : Type) (x : a) => x
+(a : Type) -> a -> a
+```
