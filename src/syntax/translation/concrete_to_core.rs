@@ -231,6 +231,8 @@ mod to_core {
     }
 
     mod module {
+        use codespan_reporting;
+
         use super::*;
 
         #[test]
@@ -239,7 +241,12 @@ mod to_core {
             let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
 
             let (concrete_module, errors) = parse::module(&filemap);
-            assert!(errors.is_empty());
+            if !errors.is_empty() {
+                for error in errors {
+                    codespan_reporting::emit(&codemap, &error.to_diagnostic());
+                }
+                panic!("parse error!")
+            }
 
             concrete_module.to_core();
         }

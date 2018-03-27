@@ -70,7 +70,9 @@ pub ReplCommand: ReplCommand = {
 };
 
 pub Module: Module = {
-    "module" <name: ByteSpannedIdent> ";" <declarations: Declaration*> => {
+    <_comment: "doc comment"*>
+    "module" <name: ByteSpannedIdent> ";"
+    <declarations: Declaration*> => {
         Module::Valid { name, declarations }
     },
 };
@@ -81,6 +83,7 @@ pub Declaration: Declaration = {
     {
         Declaration::Import { span: ByteSpan::new(start, end), name, rename, exposing }
     },
+    <_comment: "doc comment"*>
     <name: ByteSpannedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },

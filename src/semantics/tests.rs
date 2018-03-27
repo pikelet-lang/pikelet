@@ -590,7 +590,12 @@ mod check_module {
         let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
 
         let (concrete_module, errors) = parse::module(&filemap);
-        assert!(errors.is_empty());
+        if !errors.is_empty() {
+            for error in errors {
+                codespan_reporting::emit(&codemap, &error.to_diagnostic());
+            }
+            panic!("parse error!")
+        }
 
         let module = concrete_module.to_core();
         if let Err(err) = check_module(&module) {
