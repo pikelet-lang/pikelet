@@ -150,7 +150,19 @@
                 <div id="content" class="content">
                     <main>
                         <a class="header" href="ch00-00-introduction.html#introduction" id="introduction"><h1>Introduction</h1></a>
-<p>Welcome to the Pikelet book!</p>
+<p>Pikelet is a small dependently typed language. It doesn't do many interesting
+things yet, but hopefully that will change in the future!</p>
+<ul>
+<li><a href="https://github.com/brendanzab/pikelet">Source code</a></li>
+<li><a href="https://github.com/brendanzab/pikelet/issues">Issues</a></li>
+<li><a href="https://gitter.im/pikelet-lang/Lobby">Gitter Chat</a></li>
+</ul>
+<pre><code>id : (a : Type) -&gt; a -&gt; a;
+id a x = x;
+
+const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+const a b x y = x;
+</code></pre>
 
                     </main>
 

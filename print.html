@@ -151,7 +151,19 @@
                 <div id="content" class="content">
                     <main>
                         <a class="header" href="print.html#introduction" id="introduction"><h1>Introduction</h1></a>
-<p>Welcome to the Pikelet book!</p>
+<p>Pikelet is a small dependently typed language. It doesn't do many interesting
+things yet, but hopefully that will change in the future!</p>
+<ul>
+<li><a href="https://github.com/brendanzab/pikelet">Source code</a></li>
+<li><a href="https://github.com/brendanzab/pikelet/issues">Issues</a></li>
+<li><a href="https://gitter.im/pikelet-lang/Lobby">Gitter Chat</a></li>
+</ul>
+<pre><code>id : (a : Type) -&gt; a -&gt; a;
+id a x = x;
+
+const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+const a b x y = x;
+</code></pre>
 <a class="header" href="print.html#language" id="language"><h1>Language</h1></a>
 <a class="header" href="print.html#terms" id="terms"><h1>Terms</h1></a>
 <a class="header" href="print.html#contents" id="contents"><h2>Contents</h2></a>
@@ -161,14 +173,7 @@
 <li><a href="print.html#type-annotations">Type annotations</a></li>
 <li><a href="print.html#types-of-types">Types of types</a></li>
 <li><a href="print.html#identifiers">Identifiers</a></li>
-<li><a href="print.html#functions">Functions</a>
-<ul>
-<li><a href="print.html#function-literals">Function literals</a></li>
-<li><a href="print.html#function-types">Function Types</a></li>
-<li><a href="print.html#function-application">Function application</a></li>
-<li><a href="print.html#syntactic-sugar">Syntactic sugar</a></li>
-</ul>
-</li>
+<li><a href="print.html#functions">Functions</a></li>
 </ul>
 <a class="header" href="print.html#comments" id="comments"><h2>Comments</h2></a>
 <p>In Pikelet, line comments are proceeded by a double dash:</p>
@@ -241,25 +246,60 @@ universes being contained within the larger type universes:</p>
 <p>TODO</p>
 </blockquote>
 <a class="header" href="print.html#functions" id="functions"><h2>Functions</h2></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
-<a class="header" href="print.html#function-literals" id="function-literals"><h3>Function literals</h3></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
-<a class="header" href="print.html#function-types" id="function-types"><h3>Function Types</h3></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
-<a class="header" href="print.html#function-application" id="function-application"><h3>Function application</h3></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
-<a class="header" href="print.html#syntactic-sugar" id="syntactic-sugar"><h3>Syntactic sugar</h3></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
+<p>Here are some simple functions and their types:</p>
+<pre><code>Pikelet&gt; :t \x : I32 =&gt; x
+I32 -&gt; I32
+
+Pikelet&gt; :t \x : String =&gt; x
+String -&gt; String
+
+Pikelet&gt; :t \x : Char =&gt; x
+Char -&gt; Char
+</code></pre>
+<p>Note that all of these types follow the same pattern - they are the identity
+function! This means that if you pass a value to them, they'll return the same
+thing without alteration!</p>
+<pre><code>Pikelet&gt; (\x : I32 =&gt; x) 42
+42 : I32
+
+Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
+&quot;hi&quot; : String
+
+Pikelet&gt; (\x : Char =&gt; x) 'b'
+'b' : Char
+</code></pre>
+<p>Alas, we can't reuse one of these identity functions with other, incompatible
+types:</p>
+<pre><code>Pikelet&gt; (\x : I32 =&gt; x) 4.0        -- error!
+Pikelet&gt; (\x : String =&gt; x) 'b'     -- error!
+Pikelet&gt; (\x : Char =&gt; x) &quot;yoho&quot;    -- error!
+</code></pre>
+<p>Let's make this identity function polymorphic by adding a parameter for the type
+of the argument:</p>
+<pre><code>Pikelet&gt; :t \(a : Type) =&gt; \(x : a) =&gt; x
+(a : Type) -&gt; a -&gt; a
+</code></pre>
+<p>We now have a polymorphic identity function! We can specialise this function by
+applying a type to it:</p>
+<pre><code>Pikelet&gt; (\(x : Type) =&gt; \(x : a) =&gt; x) String &quot;hello&quot;
+&quot;hello&quot; : String
+
+Pikelet&gt; (\(x : Type) =&gt; \(x : a) =&gt; x) I32 1
+1 : I32
+</code></pre>
+<p>Note the following things:</p>
+<ul>
+<li>in Pikelet all functions take a single argument - in order to pass multiple
+arguments we use currying</li>
+<li>the type parameter <code>a</code> is being fed into the annotation of the parameter <code>x : a</code></li>
+<li>the type of the 'inner' function is now dependent on the type first argument</li>
+<li><code>(a: Type) -&gt; a -&gt; a</code> is actually syntactic sugar for <code>(a: Type) -&gt; (x : a) -&gt; a</code></li>
+</ul>
+<p>Note that we can write multi-argument functions in a slightly shorter way using
+some syntactic sugar:</p>
+<pre><code>Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
+(a : Type) -&gt; a -&gt; a
+</code></pre>
 <a class="header" href="print.html#declarations" id="declarations"><h1>Declarations</h1></a>
 <blockquote>
 <p>TODO</p>
