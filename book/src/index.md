@@ -13,7 +13,7 @@ doesn't do many interesting things yet, but hopefully that will change in the fu
 
 Definitions:
 
-```
+```pikelet
 module prelude;
 
 id : (a : Type) -> a -> a;

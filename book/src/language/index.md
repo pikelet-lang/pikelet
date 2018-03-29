@@ -64,26 +64,26 @@ Pikelet> 1.1 : U64   -- error: expected a floating point value
 
 Types also have types!
 
-```
+```pikelet
 Pikelet> :t I32           -- ok: Type
 ```
 
 You might then ask, “what is the type of `Type`?”
 
-```
+```pikelet
 Pikelet> :t Type          -- ok: Type 1
 ```
 
 Note that `Type` is actually just syntactic sugar for `Type 0`:
 
-```
+```pikelet
 Pikelet> :t Type 0        -- ok: Type 1
 ```
 
 In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
 previous:
 
-```
+```pikelet
 Type 0 : Type 1 : Type 2 : Type 3 : ...
 ```
 
@@ -110,7 +110,7 @@ universes being contained within the larger type universes:
 
 Here are some simple functions and their types:
 
-```
+```pikelet
 Pikelet> :t \x : I32    => x                          -- ok: I32 -> I32
 Pikelet> :t \x : String => x                          -- ok: String -> String
 Pikelet> :t \x : Char   => x                          -- ok: Char -> Char
@@ -120,7 +120,7 @@ Note that all of these types follow the same pattern - they are the identity
 function! This means that if you pass a value to them, they'll return the same
 thing without alteration!
 
-```
+```pikelet
 Pikelet> (\x : I32    => x) 42                        -- ok: 42 : I32
 Pikelet> (\x : String => x) "hi"                      -- ok: "hi" : String
 Pikelet> (\x : Char   => x) 'b'                       -- ok: 'b' : Char
@@ -131,7 +131,7 @@ Pikelet> (\x : Char   => x) 'b'                       -- ok: 'b' : Char
 Alas, we can't reuse one of these identity functions with other, incompatible
 types:
 
-```
+```pikelet
 Pikelet> (\x : I32    => x) 4.0                       -- error!
 Pikelet> (\x : String => x) 'b'                       -- error!
 Pikelet> (\x : Char   => x) "yoho"                    -- error!
@@ -140,7 +140,7 @@ Pikelet> (\x : Char   => x) "yoho"                    -- error!
 Let's make this identity function polymorphic by adding a parameter for the type
 of the argument:
 
-```
+```pikelet
 Pikelet> :t \(a : Type) (x : a) => x                  -- ok: (a : Type) -> a -> a
 ```
 
@@ -157,7 +157,7 @@ Pikelet> (\(x : Type) (x : a) => x) I32 1             -- ok: 1 : I32
 In Pikelet all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:
 
-```
+```pikelet
 \(x : Type) (x : a) => x
 \(x : Type) => \(x : a) => x
 ```
@@ -165,7 +165,7 @@ arguments we use currying. The following functions are equivalent:
 Non-dependent functions can be expressed without explicit parameter names. For
 example:
 
-```
+```pikelet
 I32 -> String
 String -> String
 (a: Type) -> a -> a
@@ -173,7 +173,7 @@ String -> String
 
 This is however just syntactic sugar for the following:
 
-```
+```pikelet
 (x : I32) -> String
 (x : String) -> String
 (a: Type) -> (x : a) -> a
