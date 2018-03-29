@@ -1,6 +1,7 @@
 # Summary
 
 - [Introduction](./introduction.md)
+  - [Installation](./introduction/installation.md)
 - [Language](./language.md)
   - [Terms](./language/terms.md)
   - [Declarations](./language/declarations.md)
