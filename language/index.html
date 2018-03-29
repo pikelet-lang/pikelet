@@ -3,13 +3,13 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - Pikelet Language Book</title>
+        <title>Language - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="">
+        <base href="../">
 
         <link rel="stylesheet" href="book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="ch00-00-introduction.html" class="active"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="ch01-00-language.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="ch01-01-terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="ch01-02-declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="ch01-03-modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix00-00-appendix.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix00-01-semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix00-02-references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="language/declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,29 +150,20 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="ch00-00-introduction.html#introduction" id="introduction"><h1>Introduction</h1></a>
-<p>Pikelet is a small dependently typed language. It doesn't do many interesting
-things yet, but hopefully that will change in the future!</p>
-<ul>
-<li><a href="https://github.com/brendanzab/pikelet">Source code</a></li>
-<li><a href="https://github.com/brendanzab/pikelet/issues">Issues</a></li>
-<li><a href="https://gitter.im/pikelet-lang/Lobby">Gitter Chat</a></li>
-</ul>
-<pre><code>id : (a : Type) -&gt; a -&gt; a;
-id a x = x;
-
-const : (a b : Type) -&gt; a -&gt; b -&gt; a;
-const a b x y = x;
-</code></pre>
+                        <a class="header" href="language/index.html#language" id="language"><h1>Language</h1></a>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
+                            <a rel="prev" href="installation/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
 
                         
-                            <a rel="next" href="ch01-00-language.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="language/terms.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -184,9 +175,13 @@ const a b x y = x;
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
+                    <a href="installation/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
 
                 
-                    <a href="ch01-00-language.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="language/terms.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

@@ -9,7 +9,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="">
+        <base href="../">
 
         <link rel="stylesheet" href="book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="ch00-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="ch01-00-language.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="ch01-01-terms.html" class="active"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="ch01-02-declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="ch01-03-modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix00-00-appendix.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix00-01-semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix00-02-references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/terms.html" class="active"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="language/declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,24 +150,24 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="ch01-01-terms.html#terms" id="terms"><h1>Terms</h1></a>
-<a class="header" href="ch01-01-terms.html#contents" id="contents"><h2>Contents</h2></a>
+                        <a class="header" href="language/terms.html#terms" id="terms"><h1>Terms</h1></a>
+<a class="header" href="language/terms.html#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="ch01-01-terms.html#comments">Comments</a></li>
-<li><a href="ch01-01-terms.html#built-in-types-and-their-literals">Built-in types and their literals</a></li>
-<li><a href="ch01-01-terms.html#type-annotations">Type annotations</a></li>
-<li><a href="ch01-01-terms.html#types-of-types">Types of types</a></li>
-<li><a href="ch01-01-terms.html#identifiers">Identifiers</a></li>
-<li><a href="ch01-01-terms.html#functions">Functions</a></li>
+<li><a href="language/terms.html#comments">Comments</a></li>
+<li><a href="language/terms.html#built-in-types-and-their-literals">Built-in types and their literals</a></li>
+<li><a href="language/terms.html#type-annotations">Type annotations</a></li>
+<li><a href="language/terms.html#types-of-types">Types of types</a></li>
+<li><a href="language/terms.html#identifiers">Identifiers</a></li>
+<li><a href="language/terms.html#functions">Functions</a></li>
 </ul>
-<a class="header" href="ch01-01-terms.html#comments" id="comments"><h2>Comments</h2></a>
+<a class="header" href="language/terms.html#comments" id="comments"><h2>Comments</h2></a>
 <p>In Pikelet, line comments are proceeded by a double dash:</p>
 <pre><code class="language-pikelet">-- this is a comment!
 </code></pre>
 <p>Doc comments are proceeded by a triple pipe:</p>
 <pre><code class="language-pikelet">||| This is a doc comment!
 </code></pre>
-<a class="header" href="ch01-01-terms.html#built-in-types-and-their-literals" id="built-in-types-and-their-literals"><h2>Built-in types and their literals</h2></a>
+<a class="header" href="language/terms.html#built-in-types-and-their-literals" id="built-in-types-and-their-literals"><h2>Built-in types and their literals</h2></a>
 <p>Pikelet has a number of fundamental types:</p>
 <table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
 <tr><td> <code>String</code> </td><td> <code>&quot;hello there!&quot;</code>                       </td></tr>
@@ -187,8 +187,8 @@
 <p><strong>Note:</strong> You can't do much with these built-in types yet. In the future we
 will add some primitive operations to allow you to maniplate them.</p>
 </blockquote>
-<a class="header" href="ch01-01-terms.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
-<p>If you note <a href="ch01-01-terms.html#built-in-types-and-their-literals">above</a>, a number of the
+<a class="header" href="language/terms.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
+<p>If you note <a href="language/terms.html#built-in-types-and-their-literals">above</a>, a number of the
 built-in types share a literal representation. Pikelet will try to predictably
 infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
@@ -198,7 +198,7 @@ Pikelet&gt; 1 : F32     -- ok!
 Pikelet&gt; 1.0 : F32   -- ok!
 Pikelet&gt; 1.1 : U64   -- error: expected a floating point value
 </code></pre>
-<a class="header" href="ch01-01-terms.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
+<a class="header" href="language/terms.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
 <p>Types also have types!</p>
 <pre><code>Pikelet&gt; :t I32
 Type
@@ -226,11 +226,11 @@ universes being contained within the larger type universes:</p>
         (1, 4.0, &quot;hello&quot;)))))
 </code></pre>
 </blockquote>
-<a class="header" href="ch01-01-terms.html#identifiers" id="identifiers"><h2>Identifiers</h2></a>
+<a class="header" href="language/terms.html#identifiers" id="identifiers"><h2>Identifiers</h2></a>
 <blockquote>
 <p>TODO</p>
 </blockquote>
-<a class="header" href="ch01-01-terms.html#functions" id="functions"><h2>Functions</h2></a>
+<a class="header" href="language/terms.html#functions" id="functions"><h2>Functions</h2></a>
 <p>Here are some simple functions and their types:</p>
 <pre><code>Pikelet&gt; :t \x : I32 =&gt; x
 I32 -&gt; I32
@@ -291,13 +291,13 @@ some syntactic sugar:</p>
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="ch01-00-language.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="language/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="ch01-02-declarations.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="language/declarations.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -309,13 +309,13 @@ some syntactic sugar:</p>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="ch01-00-language.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="language/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="ch01-02-declarations.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="language/declarations.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

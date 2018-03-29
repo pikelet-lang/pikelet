@@ -3,13 +3,13 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Language - Pikelet Language Book</title>
+        <title>Installation - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="">
+        <base href="../">
 
         <link rel="stylesheet" href="book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li><a href="ch00-00-introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><a href="ch01-00-language.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="ch01-01-terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="ch01-02-declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="ch01-03-modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix00-00-appendix.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix00-01-semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix00-02-references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="language/declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,20 +150,35 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="ch01-00-language.html#language" id="language"><h1>Language</h1></a>
+                        <a class="header" href="installation/index.html#installation" id="installation"><h1>Installation</h1></a>
+<p>Pikelet is written in <a href="https://www.rust-lang.org/">Rust</a> and therefore needs to be compiled with
+Cargo, because we don't yet offer prebuilt binaries. If you haven't already
+installed Rust, please <a href="https://www.rust-lang.org/downloads.html">install it</a> now!</p>
+<a class="header" href="installation/index.html#cloning-the-source-from-github" id="cloning-the-source-from-github"><h2>Cloning the source from Github</h2></a>
+<p>We've not yet published Pikelet on <a href="https://crates.io/">crates.io</a>, so you'll first need
+to clone <a href="https://github.com/brendanzab/pikelet">the repository</a> using git:</p>
+<pre><code class="language-sh">git clone https://github.com/brendanzab/pikelet.git
+cd pikelet
+</code></pre>
+<a class="header" href="installation/index.html#running-the-repl" id="running-the-repl"><h2>Running the REPL</h2></a>
+<p>After cloning, you can now run the <a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">REPL</a> using Cargo:</p>
+<pre><code class="language-sh">cargo run repl
+</code></pre>
+<p>You will now need to wait for cargo to download and build the dependencies, but
+sooner or later the REPL will be ready for you to interact with!</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="ch00-00-introduction.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="ch01-01-terms.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="language/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -175,13 +190,13 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="ch00-00-introduction.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="ch01-01-terms.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="language/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
