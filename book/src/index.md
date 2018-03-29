@@ -41,3 +41,9 @@ Pikelet> 1 : I16
 1 : #I16
 Pikelet>
 ```
+
+## What is a Pikelet?
+
+A pikelet is an odd sort of small (often pre-made) pancake found in Australia
+and New Zealand. Commonly sent in school lunches spread with jam and butter.
+Handily it also has a name that includes 'pi' and 'let' as substrings! 😅
