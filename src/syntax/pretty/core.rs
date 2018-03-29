@@ -115,18 +115,6 @@ impl ToDoc for RawConstant {
             RawConstant::Char(value) => Doc::text(format!("{:?}", value)),
             RawConstant::Int(value) => Doc::as_string(value),
             RawConstant::Float(value) => Doc::as_string(value),
-            RawConstant::StringType => Doc::text("#String"),
-            RawConstant::CharType => Doc::text("#Char"),
-            RawConstant::U8Type => Doc::text("#U8"),
-            RawConstant::U16Type => Doc::text("#U16"),
-            RawConstant::U32Type => Doc::text("#U32"),
-            RawConstant::U64Type => Doc::text("#U64"),
-            RawConstant::I8Type => Doc::text("#I8"),
-            RawConstant::I16Type => Doc::text("#I16"),
-            RawConstant::I32Type => Doc::text("#I32"),
-            RawConstant::I64Type => Doc::text("#I64"),
-            RawConstant::F32Type => Doc::text("#F32"),
-            RawConstant::F64Type => Doc::text("#F64"),
         }
     }
 }

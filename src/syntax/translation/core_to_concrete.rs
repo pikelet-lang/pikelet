@@ -49,7 +49,7 @@ pub trait ToConcrete<T> {
     fn to_concrete(&self, env: &Env) -> T;
 }
 
-impl ToConcrete<concrete::Module> for core::RawModule {
+impl ToConcrete<concrete::Module> for core::Module {
     fn to_concrete(&self, env: &Env) -> concrete::Module {
         use std::iter;
 
@@ -61,7 +61,7 @@ impl ToConcrete<concrete::Module> for core::RawModule {
                 // build up the type claim
                 let new_ann = concrete::Declaration::Claim {
                     name: name.clone(),
-                    ann: definition.ann.to_concrete(env),
+                    ann: core::Term::from(&*definition.ann).to_concrete(env),
                 };
 
                 // build up the concrete definition
@@ -95,85 +95,78 @@ impl ToConcrete<Option<u32>> for core::Level {
     }
 }
 
-impl ToConcrete<concrete::Term> for core::RawTerm {
+impl ToConcrete<concrete::Term> for core::Term {
     fn to_concrete(&self, env: &Env) -> concrete::Term {
         // FIXME: add concrete::Term::Paren where needed
         match *self {
-            core::RawTerm::Ann(_, ref term, ref ty) => concrete::Term::Ann(
+            core::Term::Ann(_, ref term, ref ty) => concrete::Term::Ann(
                 Box::new(term.to_concrete(env)),
                 Box::new(ty.to_concrete(env)),
             ),
-            core::RawTerm::Universe(meta, level) => {
+            core::Term::Universe(meta, level) => {
                 concrete::Term::Universe(meta.span, level.to_concrete(env))
             },
-            core::RawTerm::Hole(meta) => concrete::Term::Hole(meta.span),
-            core::RawTerm::Constant(meta, ref c) => {
+            core::Term::Constant(meta, ref c) => {
                 let span = meta.span;
                 match *c {
-                    core::RawConstant::String(ref value) => {
+                    core::Constant::String(ref value) => {
                         concrete::Term::Literal(span, concrete::Literal::String(value.clone()))
                     },
-                    core::RawConstant::Char(value) => {
+                    core::Constant::Char(value) => {
                         concrete::Term::Literal(span, concrete::Literal::Char(value))
                     },
-                    core::RawConstant::Int(value) => {
-                        concrete::Term::Literal(span, concrete::Literal::Int(value))
-                    },
-                    core::RawConstant::Float(value) => {
-                        concrete::Term::Literal(span, concrete::Literal::Float(value))
-                    },
-                    core::RawConstant::StringType => {
-                        concrete::Term::Var(span, String::from("String"))
-                    },
-                    core::RawConstant::CharType => concrete::Term::Var(span, String::from("Char")),
-                    core::RawConstant::U8Type => concrete::Term::Var(span, String::from("U8")),
-                    core::RawConstant::U16Type => concrete::Term::Var(span, String::from("U16")),
-                    core::RawConstant::U32Type => concrete::Term::Var(span, String::from("U32")),
-                    core::RawConstant::U64Type => concrete::Term::Var(span, String::from("U64")),
-                    core::RawConstant::I8Type => concrete::Term::Var(span, String::from("I8")),
-                    core::RawConstant::I16Type => concrete::Term::Var(span, String::from("I16")),
-                    core::RawConstant::I32Type => concrete::Term::Var(span, String::from("I32")),
-                    core::RawConstant::I64Type => concrete::Term::Var(span, String::from("I64")),
-                    core::RawConstant::F32Type => concrete::Term::Var(span, String::from("F32")),
-                    core::RawConstant::F64Type => concrete::Term::Var(span, String::from("F64")),
+                    core::Constant::StringType => concrete::Term::Var(span, String::from("String")),
+                    core::Constant::CharType => concrete::Term::Var(span, String::from("Char")),
+                    core::Constant::U8Type => concrete::Term::Var(span, String::from("U8")),
+                    core::Constant::U16Type => concrete::Term::Var(span, String::from("U16")),
+                    core::Constant::U32Type => concrete::Term::Var(span, String::from("U32")),
+                    core::Constant::U64Type => concrete::Term::Var(span, String::from("U64")),
+                    core::Constant::I8Type => concrete::Term::Var(span, String::from("I8")),
+                    core::Constant::I16Type => concrete::Term::Var(span, String::from("I16")),
+                    core::Constant::I32Type => concrete::Term::Var(span, String::from("I32")),
+                    core::Constant::I64Type => concrete::Term::Var(span, String::from("I64")),
+                    core::Constant::F32Type => concrete::Term::Var(span, String::from("F32")),
+                    core::Constant::F64Type => concrete::Term::Var(span, String::from("F64")),
+                    _ => unimplemented!(),
                 }
             },
-            core::RawTerm::Var(meta, Var::Free(Name::User(ref name))) => {
+            core::Term::Var(meta, Var::Free(Name::User(ref name))) => {
                 concrete::Term::Var(meta.span, name.to_string()) // FIXME
             },
-            core::RawTerm::Var(_, Var::Free(Name::Gen(ref _name, ref _gen))) => {
+            core::Term::Var(_, Var::Free(Name::Gen(ref _name, ref _gen))) => {
                 // TODO: use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
                 unimplemented!()
             },
-            core::RawTerm::Var(_, Var::Bound(_, _)) => {
+            core::Term::Var(_, Var::Bound(_, _)) => {
                 // TODO: Better message
                 panic!("Tried to convert a term that was not locally closed");
             },
-            core::RawTerm::Pi(_, ref scope) => {
-                let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
-                if body.free_vars().contains(&name) {
-                    // use name if it is present, and not used in the current scope
-                    // otherwise create a pretty name
-                    // add the used name to the environment
-                    // convert the body using the new environment
+            core::Term::Pi(_, ref scope) => {
+                let ((_name, Embed(_param_ann)), _body) = nameless::unbind(scope.clone());
+                unimplemented!()
+                // if body.free_vars().contains(&name) {
+                //     // use name if it is present, and not used in the current scope
+                //     // otherwise create a pretty name
+                //     // add the used name to the environment
+                //     // convert the body using the new environment
 
-                    // // match body.to_concrete(env) {
-                    //     // check if the body can be collapsed to form a 'sugary' pi
-                    //     concrete::Term::Pi(_, params, body) => unimplemented!(),
-                    //     body => concrete::Term::Pi(ByteSpan::default(), vec![param], body),
-                    // }
+                //     // // match body.to_concrete(env) {
+                //     //     // check if the body can be collapsed to form a 'sugary' pi
+                //     //     concrete::Term::Pi(_, params, body) => unimplemented!(),
+                //     //     body => concrete::Term::Pi(ByteSpan::default(), vec![param], body),
+                //     // }
 
-                    unimplemented!()
-                } else {
-                    // The body is not dependent on the parameter - so let's use an arrow instead!
-                    concrete::Term::Arrow(
-                        Box::new(param_ann.to_concrete(env)),
-                        Box::new(body.to_concrete(env)),
-                    )
-                }
+                //     unimplemented!()
+                // } else {
+                //     // The body is not dependent on the parameter - so let's use an arrow instead!
+                //     concrete::Term::Arrow(
+                //         Box::new(param_ann.to_concrete(env)),
+                //         Box::new(body.to_concrete(env)),
+                //     )
+                // }
             },
-            core::RawTerm::Lam(_, ref scope) => {
+            core::Term::Lam(_, ref scope) => {
                 let (_param, _body) = nameless::unbind(scope.clone());
                 // use name if it is present, and not used in the current scope
                 // otherwise create a pretty name
@@ -188,7 +181,7 @@ impl ToConcrete<concrete::Term> for core::RawTerm {
 
                 unimplemented!()
             },
-            core::RawTerm::App(_, ref fn_term, ref arg) => concrete::Term::Ann(
+            core::Term::App(_, ref fn_term, ref arg) => concrete::Term::Ann(
                 Box::new(fn_term.to_concrete(env)),
                 Box::new(arg.to_concrete(env)),
             ),

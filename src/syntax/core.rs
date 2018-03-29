@@ -58,18 +58,6 @@ pub enum RawConstant {
     Char(char),
     Int(u64),
     Float(f64),
-    StringType,
-    CharType,
-    U8Type,
-    U16Type,
-    U32Type,
-    U64Type,
-    I8Type,
-    I16Type,
-    I32Type,
-    I64Type,
-    F32Type,
-    F64Type,
 }
 
 impl fmt::Display for RawConstant {

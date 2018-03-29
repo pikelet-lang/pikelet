@@ -4,8 +4,8 @@ use codespan::ByteSpan;
 use nameless::{self, BoundTerm, Embed, Name, Var};
 use std::rc::Rc;
 
-use syntax::core::{Binder, Context, Definition, Level, Module, Neutral, RawModule, RawTerm, Term,
-                   Type, Value};
+use syntax::core::{Binder, Constant, Context, Definition, Level, Module, Neutral, RawConstant,
+                   RawModule, RawTerm, Term, Type, Value};
 
 mod errors;
 #[cfg(test)]
@@ -136,8 +136,6 @@ pub fn check(
     term: &Rc<RawTerm>,
     expected: &Rc<Type>,
 ) -> Result<Rc<Term>, TypeError> {
-    use syntax::core::{Constant, RawConstant};
-
     /// Coerce a raw constant
     fn check_const(
         span: ByteSpan,
@@ -227,8 +225,6 @@ pub fn check(
 pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
     use std::cmp;
 
-    use syntax::core::{RawConstant, SourceMeta};
-
     /// Ensures that the given term is a universe, returning the level of that
     /// universe and its elaborated form.
     fn infer_universe(
@@ -243,31 +239,6 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
                 found: ty,
             }),
         }
-    }
-
-    fn infer_const(meta: SourceMeta, c: &RawConstant) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
-        use syntax::core::{Constant as C, RawConstant as RawC};
-
-        let (term, ty) = match *c {
-            RawC::String(ref value) => (C::String(value.clone()), Value::Constant(C::StringType)),
-            RawC::Char(value) => (C::Char(value), Value::Constant(C::CharType)),
-            RawC::Int(_) => return Err(TypeError::AmbiguousIntLiteral { span: meta.span }),
-            RawC::Float(_) => return Err(TypeError::AmbiguousFloatLiteral { span: meta.span }),
-            RawC::StringType => (C::StringType, Value::Universe(Level(0))),
-            RawC::CharType => (C::CharType, Value::Universe(Level(0))),
-            RawC::U8Type => (C::U8Type, Value::Universe(Level(0))),
-            RawC::U16Type => (C::U16Type, Value::Universe(Level(0))),
-            RawC::U32Type => (C::U32Type, Value::Universe(Level(0))),
-            RawC::U64Type => (C::U64Type, Value::Universe(Level(0))),
-            RawC::I8Type => (C::I8Type, Value::Universe(Level(0))),
-            RawC::I16Type => (C::I16Type, Value::Universe(Level(0))),
-            RawC::I32Type => (C::I32Type, Value::Universe(Level(0))),
-            RawC::I64Type => (C::I64Type, Value::Universe(Level(0))),
-            RawC::F32Type => (C::F32Type, Value::Universe(Level(0))),
-            RawC::F64Type => (C::F64Type, Value::Universe(Level(0))),
-        };
-
-        Ok((Rc::new(Term::Constant(meta, term)), Rc::new(ty)))
     }
 
     match **term {
@@ -291,7 +262,18 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             expected: None,
         }),
 
-        RawTerm::Constant(meta, ref c) => infer_const(meta, c),
+        RawTerm::Constant(meta, ref c) => match *c {
+            RawConstant::String(ref value) => Ok((
+                Rc::new(Term::Constant(meta, Constant::String(value.clone()))),
+                Rc::new(Value::Constant(Constant::StringType)),
+            )),
+            RawConstant::Char(value) => Ok((
+                Rc::new(Term::Constant(meta, Constant::Char(value))),
+                Rc::new(Value::Constant(Constant::CharType)),
+            )),
+            RawConstant::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: meta.span }),
+            RawConstant::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: meta.span }),
+        },
 
         // I-VAR-ANN, I-VAR-DEF
         RawTerm::Var(meta, ref var) => match *var {
