@@ -1,7 +1,8 @@
 # Summary
 
-- [Introduction](./introduction.md)
-  - [Installation](./introduction/installation.md)
+[Pikelet](index.md)
+
+- [Installation](./installation.md)
 - [Language](./language.md)
   - [Terms](./language/terms.md)
   - [Declarations](./language/declarations.md)
