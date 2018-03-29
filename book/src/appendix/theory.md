@@ -1,4 +1,4 @@
-# Semantics
+# Theory
 
 A formalization of the semantics for type checking and normalizing Pikelet.
 

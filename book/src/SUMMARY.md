@@ -5,5 +5,5 @@
 - [Installation](./installation/index.md)
 - [Language](./language/index.md)
 - [Appendix](./appendix/index.md)
-  - [Semantics](./appendix/semantics.md)
+  - [Theory](./appendix/theory.md)
   - [References](./appendix/references.md)
