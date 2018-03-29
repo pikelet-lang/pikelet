@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="language/declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/theory.html"><strong aria-hidden="true">3.1.</strong> Theory</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -151,6 +151,129 @@
                 <div id="content" class="content">
                     <main>
                         <a class="header" href="language/index.html#language" id="language"><h1>Language</h1></a>
+<a class="header" href="language/index.html#contents" id="contents"><h2>Contents</h2></a>
+<ul>
+<li><a href="language/index.html#comments">Comments</a></li>
+<li><a href="language/index.html#built-in-types-and-their-literals">Built-in types and their literals</a></li>
+<li><a href="language/index.html#type-annotations">Type annotations</a></li>
+<li><a href="language/index.html#types-of-types">Types of types</a></li>
+<li><a href="language/index.html#identifiers">Identifiers</a></li>
+<li><a href="language/index.html#functions">Functions</a></li>
+</ul>
+<a class="header" href="language/index.html#comments" id="comments"><h2>Comments</h2></a>
+<p>In Pikelet, line comments are proceeded by a double dash:</p>
+<pre><code class="language-pikelet">-- this is a comment!
+</code></pre>
+<p>Doc comments are proceeded by a triple pipe:</p>
+<pre><code class="language-pikelet">||| This is a doc comment!
+</code></pre>
+<a class="header" href="language/index.html#built-in-types-and-their-literals" id="built-in-types-and-their-literals"><h2>Built-in types and their literals</h2></a>
+<p>Pikelet has a number of fundamental types:</p>
+<table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
+<tr><td> <code>String</code> </td><td> <code>&quot;hello there!&quot;</code>                       </td></tr>
+<tr><td> <code>Char</code>   </td><td> <code>'a'</code>, <code>'b'</code>, ..., <code>'\n'</code>, <code>'\t'</code>, ... </td></tr>
+<tr><td> <code>U8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>U16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>U32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>U64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>I64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>F32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
+<tr><td> <code>F64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
+</tbody></table>
+<blockquote>
+<p><strong>Note:</strong> You can't do much with these built-in types yet. In the future we
+will add some primitive operations to allow you to maniplate them.</p>
+</blockquote>
+<a class="header" href="language/index.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
+<p>If you note <a href="language/index.html#built-in-types-and-their-literals">above</a>, a number of the
+built-in types share a literal representation. Pikelet will try to predictably
+infer the types, but if it fails to do so you will get an error. In that case
+you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
+<pre><code class="language-pikelet">Pikelet&gt; 1           -- error: ambiguous integer literal
+Pikelet&gt; 1 : I32     -- ok!
+Pikelet&gt; 1 : F32     -- ok!
+Pikelet&gt; 1.0 : F32   -- ok!
+Pikelet&gt; 1.1 : U64   -- error: expected a floating point value
+</code></pre>
+<a class="header" href="language/index.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
+<p>Types also have types!</p>
+<pre><code>Pikelet&gt; :t I32           -- ok: Type
+</code></pre>
+<p>You might then ask, “what is the type of <code>Type</code>?”</p>
+<pre><code>Pikelet&gt; :t Type          -- ok: Type 1
+</code></pre>
+<p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
+<pre><code>Pikelet&gt; :t Type 0        -- ok: Type 1
+</code></pre>
+<p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
+previous:</p>
+<pre><code>Type 0 : Type 1 : Type 2 : Type 3 : ...
+</code></pre>
+<p>You can think of these as larger and larger sets, with the smaller type
+universes being contained within the larger type universes:</p>
+<blockquote>
+<p>TODO: Put a nice SVG diagram of the sets of types here</p>
+<pre><code>(Type 2
+  (Type 1
+    (Type 0
+      (I32, F32, String,
+        (1, 4.0, &quot;hello&quot;)))))
+</code></pre>
+</blockquote>
+<a class="header" href="language/index.html#identifiers" id="identifiers"><h2>Identifiers</h2></a>
+<blockquote>
+<p>TODO</p>
+</blockquote>
+<a class="header" href="language/index.html#functions" id="functions"><h2>Functions</h2></a>
+<a class="header" href="language/index.html#simply-typed-functions" id="simply-typed-functions"><h3>Simply typed functions</h3></a>
+<p>Here are some simple functions and their types:</p>
+<pre><code>Pikelet&gt; :t \x : I32    =&gt; x                          -- ok: I32 -&gt; I32
+Pikelet&gt; :t \x : String =&gt; x                          -- ok: String -&gt; String
+Pikelet&gt; :t \x : Char   =&gt; x                          -- ok: Char -&gt; Char
+</code></pre>
+<p>Note that all of these types follow the same pattern - they are the identity
+function! This means that if you pass a value to them, they'll return the same
+thing without alteration!</p>
+<pre><code>Pikelet&gt; (\x : I32    =&gt; x) 42                        -- ok: 42 : I32
+Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;                      -- ok: &quot;hi&quot; : String
+Pikelet&gt; (\x : Char   =&gt; x) 'b'                       -- ok: 'b' : Char
+</code></pre>
+<a class="header" href="language/index.html#polymorphic-functions" id="polymorphic-functions"><h3>Polymorphic functions</h3></a>
+<p>Alas, we can't reuse one of these identity functions with other, incompatible
+types:</p>
+<pre><code>Pikelet&gt; (\x : I32    =&gt; x) 4.0                       -- error!
+Pikelet&gt; (\x : String =&gt; x) 'b'                       -- error!
+Pikelet&gt; (\x : Char   =&gt; x) &quot;yoho&quot;                    -- error!
+</code></pre>
+<p>Let's make this identity function polymorphic by adding a parameter for the type
+of the argument:</p>
+<pre><code>Pikelet&gt; :t \(a : Type) (x : a) =&gt; x                  -- ok: (a : Type) -&gt; a -&gt; a
+</code></pre>
+<p>We now have a polymorphic identity function! We can specialise this function by
+applying a type to it:</p>
+<pre><code>Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;    -- ok: &quot;hello&quot; : String
+Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1             -- ok: 1 : I32
+</code></pre>
+<a class="header" href="language/index.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h3>Syntactic Sugar for functions</h3></a>
+<p>In Pikelet all functions take a single argument - in order to pass multiple
+arguments we use currying. The following functions are equivalent:</p>
+<pre><code>\(x : Type) (x : a) =&gt; x
+\(x : Type) =&gt; \(x : a) =&gt; x
+</code></pre>
+<p>Non-dependent functions can be expressed without explicit parameter names. For
+example:</p>
+<pre><code>I32 -&gt; String
+String -&gt; String
+(a: Type) -&gt; a -&gt; a
+</code></pre>
+<p>This is however just syntactic sugar for the following:</p>
+<pre><code>(x : I32) -&gt; String
+(x : String) -&gt; String
+(a: Type) -&gt; (x : a) -&gt; a
+</code></pre>
 
                     </main>
 
@@ -163,7 +286,7 @@
                         
 
                         
-                            <a rel="next" href="language/terms.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="appendix/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -181,7 +304,7 @@
                 
 
                 
-                    <a href="language/terms.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="appendix/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

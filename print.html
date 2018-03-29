@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="language/declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/semantics.html"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/theory.html"><strong aria-hidden="true">3.1.</strong> Theory</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -205,7 +205,6 @@ cd pikelet
 <p>You will now need to wait for cargo to download and build the dependencies, but
 sooner or later the REPL will be ready for you to interact with!</p>
 <a class="header" href="print.html#language" id="language"><h1>Language</h1></a>
-<a class="header" href="print.html#terms" id="terms"><h1>Terms</h1></a>
 <a class="header" href="print.html#contents" id="contents"><h2>Contents</h2></a>
 <ul>
 <li><a href="print.html#comments">Comments</a></li>
@@ -255,16 +254,13 @@ Pikelet&gt; 1.1 : U64   -- error: expected a floating point value
 </code></pre>
 <a class="header" href="print.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
 <p>Types also have types!</p>
-<pre><code>Pikelet&gt; :t I32
-Type
+<pre><code>Pikelet&gt; :t I32           -- ok: Type
 </code></pre>
 <p>You might then ask, “what is the type of <code>Type</code>?”</p>
-<pre><code>Pikelet&gt; :t Type
-Type 1
+<pre><code>Pikelet&gt; :t Type          -- ok: Type 1
 </code></pre>
 <p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
-<pre><code>Pikelet&gt; :t Type 0
-Type 1
+<pre><code>Pikelet&gt; :t Type 0        -- ok: Type 1
 </code></pre>
 <p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
 previous:</p>
@@ -286,71 +282,56 @@ universes being contained within the larger type universes:</p>
 <p>TODO</p>
 </blockquote>
 <a class="header" href="print.html#functions" id="functions"><h2>Functions</h2></a>
+<a class="header" href="print.html#simply-typed-functions" id="simply-typed-functions"><h3>Simply typed functions</h3></a>
 <p>Here are some simple functions and their types:</p>
-<pre><code>Pikelet&gt; :t \x : I32 =&gt; x
-I32 -&gt; I32
-
-Pikelet&gt; :t \x : String =&gt; x
-String -&gt; String
-
-Pikelet&gt; :t \x : Char =&gt; x
-Char -&gt; Char
+<pre><code>Pikelet&gt; :t \x : I32    =&gt; x                          -- ok: I32 -&gt; I32
+Pikelet&gt; :t \x : String =&gt; x                          -- ok: String -&gt; String
+Pikelet&gt; :t \x : Char   =&gt; x                          -- ok: Char -&gt; Char
 </code></pre>
 <p>Note that all of these types follow the same pattern - they are the identity
 function! This means that if you pass a value to them, they'll return the same
 thing without alteration!</p>
-<pre><code>Pikelet&gt; (\x : I32 =&gt; x) 42
-42 : I32
-
-Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
-&quot;hi&quot; : String
-
-Pikelet&gt; (\x : Char =&gt; x) 'b'
-'b' : Char
+<pre><code>Pikelet&gt; (\x : I32    =&gt; x) 42                        -- ok: 42 : I32
+Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;                      -- ok: &quot;hi&quot; : String
+Pikelet&gt; (\x : Char   =&gt; x) 'b'                       -- ok: 'b' : Char
 </code></pre>
+<a class="header" href="print.html#polymorphic-functions" id="polymorphic-functions"><h3>Polymorphic functions</h3></a>
 <p>Alas, we can't reuse one of these identity functions with other, incompatible
 types:</p>
-<pre><code>Pikelet&gt; (\x : I32 =&gt; x) 4.0        -- error!
-Pikelet&gt; (\x : String =&gt; x) 'b'     -- error!
-Pikelet&gt; (\x : Char =&gt; x) &quot;yoho&quot;    -- error!
+<pre><code>Pikelet&gt; (\x : I32    =&gt; x) 4.0                       -- error!
+Pikelet&gt; (\x : String =&gt; x) 'b'                       -- error!
+Pikelet&gt; (\x : Char   =&gt; x) &quot;yoho&quot;                    -- error!
 </code></pre>
 <p>Let's make this identity function polymorphic by adding a parameter for the type
 of the argument:</p>
-<pre><code>Pikelet&gt; :t \(a : Type) =&gt; \(x : a) =&gt; x
-(a : Type) -&gt; a -&gt; a
+<pre><code>Pikelet&gt; :t \(a : Type) (x : a) =&gt; x                  -- ok: (a : Type) -&gt; a -&gt; a
 </code></pre>
 <p>We now have a polymorphic identity function! We can specialise this function by
 applying a type to it:</p>
-<pre><code>Pikelet&gt; (\(x : Type) =&gt; \(x : a) =&gt; x) String &quot;hello&quot;
-&quot;hello&quot; : String
-
-Pikelet&gt; (\(x : Type) =&gt; \(x : a) =&gt; x) I32 1
-1 : I32
+<pre><code>Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;    -- ok: &quot;hello&quot; : String
+Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1             -- ok: 1 : I32
 </code></pre>
-<p>Note the following things:</p>
-<ul>
-<li>in Pikelet all functions take a single argument - in order to pass multiple
-arguments we use currying</li>
-<li>the type parameter <code>a</code> is being fed into the annotation of the parameter <code>x : a</code></li>
-<li>the type of the 'inner' function is now dependent on the type first argument</li>
-<li><code>(a: Type) -&gt; a -&gt; a</code> is actually syntactic sugar for <code>(a: Type) -&gt; (x : a) -&gt; a</code></li>
-</ul>
-<p>Note that we can write multi-argument functions in a slightly shorter way using
-some syntactic sugar:</p>
-<pre><code>Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
-(a : Type) -&gt; a -&gt; a
+<a class="header" href="print.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h3>Syntactic Sugar for functions</h3></a>
+<p>In Pikelet all functions take a single argument - in order to pass multiple
+arguments we use currying. The following functions are equivalent:</p>
+<pre><code>\(x : Type) (x : a) =&gt; x
+\(x : Type) =&gt; \(x : a) =&gt; x
 </code></pre>
-<a class="header" href="print.html#declarations" id="declarations"><h1>Declarations</h1></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
-<a class="header" href="print.html#modules" id="modules"><h1>Modules</h1></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
+<p>Non-dependent functions can be expressed without explicit parameter names. For
+example:</p>
+<pre><code>I32 -&gt; String
+String -&gt; String
+(a: Type) -&gt; a -&gt; a
+</code></pre>
+<p>This is however just syntactic sugar for the following:</p>
+<pre><code>(x : I32) -&gt; String
+(x : String) -&gt; String
+(a: Type) -&gt; (x : a) -&gt; a
+</code></pre>
 <a class="header" href="print.html#appendix" id="appendix"><h1>Appendix</h1></a>
-<p>Here you will find additional reference information for understanding the theoretical foundations behind Pikelet.</p>
-<a class="header" href="print.html#semantics" id="semantics"><h1>Semantics</h1></a>
+<p>Here you will find additional reference information for understanding the
+theoretical foundations behind Pikelet.</p>
+<a class="header" href="print.html#theory" id="theory"><h1>Theory</h1></a>
 <p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
 <a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
 <ul>
@@ -438,7 +419,7 @@ We will however make an effort to explain some of the notation we use here, and 
 \lam{x}{\rexpr}            &amp; := &amp; \lam{x:?}{\rexpr}         &amp; \text{functions (without an annotation)} \\
 \end{array}
 \]</p>
-<a class="header" href="print.html#terms-1" id="terms-1"><h3>Terms</h3></a>
+<a class="header" href="print.html#terms" id="terms"><h3>Terms</h3></a>
 <p>The core term syntax skips holes, ensuring that everything is fully elaborated:</p>
 <p>\[
 \begin{array}{rrll}
@@ -486,7 +467,7 @@ even though we don't know the exact values these will eventually take during nor
 &amp;   | &amp; \Gamma,x:\vtype=\texpr      &amp; \text{context extended with a definition} \\
 \end{array}
 \]</p>
-<a class="header" href="print.html#semantics-1" id="semantics-1"><h2>Semantics</h2></a>
+<a class="header" href="print.html#semantics" id="semantics"><h2>Semantics</h2></a>
 <p>We take a <em>bidirectional</em> approach to type checking, splitting it into two
 phases: type checking and type inference. This makes the flow of information
 through the type checker clear and relatively easy to reason about.

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Semantics - Pikelet Language Book</title>
+        <title>Theory - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/terms.html"><strong aria-hidden="true">2.1.</strong> Terms</a></li><li><a href="language/declarations.html"><strong aria-hidden="true">2.2.</strong> Declarations</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.3.</strong> Modules</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/semantics.html" class="active"><strong aria-hidden="true">3.1.</strong> Semantics</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/theory.html" class="active"><strong aria-hidden="true">3.1.</strong> Theory</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,33 +150,33 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="appendix/semantics.html#semantics" id="semantics"><h1>Semantics</h1></a>
+                        <a class="header" href="appendix/theory.html#theory" id="theory"><h1>Theory</h1></a>
 <p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
-<a class="header" href="appendix/semantics.html#contents" id="contents"><h2>Contents</h2></a>
+<a class="header" href="appendix/theory.html#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="appendix/semantics.html#introduction">Introduction</a>
+<li><a href="appendix/theory.html#introduction">Introduction</a>
 <ul>
-<li><a href="appendix/semantics.html#notation">Notation</a></li>
+<li><a href="appendix/theory.html#notation">Notation</a></li>
 </ul>
 </li>
-<li><a href="appendix/semantics.html#syntax">Syntax</a>
+<li><a href="appendix/theory.html#syntax">Syntax</a>
 <ul>
-<li><a href="appendix/semantics.html#raw-terms">Raw terms</a></li>
-<li><a href="appendix/semantics.html#terms">Terms</a></li>
-<li><a href="appendix/semantics.html#values">Values</a></li>
-<li><a href="appendix/semantics.html#contexts">Contexts</a></li>
+<li><a href="appendix/theory.html#raw-terms">Raw terms</a></li>
+<li><a href="appendix/theory.html#terms">Terms</a></li>
+<li><a href="appendix/theory.html#values">Values</a></li>
+<li><a href="appendix/theory.html#contexts">Contexts</a></li>
 </ul>
 </li>
-<li><a href="appendix/semantics.html#semantics">Semantics</a>
+<li><a href="appendix/theory.html#semantics">Semantics</a>
 <ul>
-<li><a href="appendix/semantics.html#elaboration">Elaboration</a></li>
-<li><a href="appendix/semantics.html#normalization">Normalization</a></li>
-<li><a href="appendix/semantics.html#type-checking">Type checking</a></li>
-<li><a href="appendix/semantics.html#type-inference">Type inference</a></li>
+<li><a href="appendix/theory.html#elaboration">Elaboration</a></li>
+<li><a href="appendix/theory.html#normalization">Normalization</a></li>
+<li><a href="appendix/theory.html#type-checking">Type checking</a></li>
+<li><a href="appendix/theory.html#type-inference">Type inference</a></li>
 </ul>
 </li>
 </ul>
-<a class="header" href="appendix/semantics.html#introduction" id="introduction"><h2>Introduction</h2></a>
+<a class="header" href="appendix/theory.html#introduction" id="introduction"><h2>Introduction</h2></a>
 <p>At its core, Pikelet is a dependently typed lambda calculus with a stratified
 universe hierarchy.</p>
 <blockquote>
@@ -185,10 +185,10 @@ This document is intended for those who are interested in looking deeper into th
 You <em>don't</em> need to understand this for general use of Pikelet, so feel free to skip this document if that is easier.
 We will however make an effort to explain some of the notation we use here, and point to resources that might help if this piques your curiosity!</p>
 </blockquote>
-<a class="header" href="appendix/semantics.html#notation" id="notation"><h3>Notation</h3></a>
+<a class="header" href="appendix/theory.html#notation" id="notation"><h3>Notation</h3></a>
 <p>TODO: describe BNF syntax and natural deduction here</p>
-<a class="header" href="appendix/semantics.html#syntax" id="syntax"><h2>Syntax</h2></a>
-<a class="header" href="appendix/semantics.html#raw-terms" id="raw-terms"><h3>Raw terms</h3></a>
+<a class="header" href="appendix/theory.html#syntax" id="syntax"><h2>Syntax</h2></a>
+<a class="header" href="appendix/theory.html#raw-terms" id="raw-terms"><h3>Raw terms</h3></a>
 <p>\[
 \newcommand{\rule}[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } &amp; \Tiny{\text{(#1)}} }
 \
@@ -238,7 +238,7 @@ We will however make an effort to explain some of the notation we use here, and 
 \lam{x}{\rexpr}            &amp; := &amp; \lam{x:?}{\rexpr}         &amp; \text{functions (without an annotation)} \\
 \end{array}
 \]</p>
-<a class="header" href="appendix/semantics.html#terms" id="terms"><h3>Terms</h3></a>
+<a class="header" href="appendix/theory.html#terms" id="terms"><h3>Terms</h3></a>
 <p>The core term syntax skips holes, ensuring that everything is fully elaborated:</p>
 <p>\[
 \begin{array}{rrll}
@@ -252,7 +252,7 @@ We will however make an effort to explain some of the notation we use here, and 
 \\
 \end{array}
 \]</p>
-<a class="header" href="appendix/semantics.html#values" id="values"><h3>Values</h3></a>
+<a class="header" href="appendix/theory.html#values" id="values"><h3>Values</h3></a>
 <p>In order to make it clear what is 'stuck' and what still needs to be evaluated,
 we separate our syntax into weak head normal forms (\(\wexpr\)),
 and neutral terms (\(\nexpr\)):</p>
@@ -275,7 +275,7 @@ and neutral terms (\(\nexpr\)):</p>
 forming a linked list of terms bottoming out with a variable \(x\).
 We require neutral terms to be evaluated in a context in order to figure out  whether the base variable is a function or not,
 and if so proceed to reduce these applications to their weak head normal forms via subsititution.</p>
-<a class="header" href="appendix/semantics.html#contexts" id="contexts"><h3>Contexts</h3></a>
+<a class="header" href="appendix/theory.html#contexts" id="contexts"><h3>Contexts</h3></a>
 <p>As we typecheck terms, we'll be passing over bindings like lambdas and pi types.
 Contexts allow us to keep track of the bound parameters,
 even though we don't know the exact values these will eventually take during normalization.</p>
@@ -286,7 +286,7 @@ even though we don't know the exact values these will eventually take during nor
 &amp;   | &amp; \Gamma,x:\vtype=\texpr      &amp; \text{context extended with a definition} \\
 \end{array}
 \]</p>
-<a class="header" href="appendix/semantics.html#semantics-1" id="semantics-1"><h2>Semantics</h2></a>
+<a class="header" href="appendix/theory.html#semantics" id="semantics"><h2>Semantics</h2></a>
 <p>We take a <em>bidirectional</em> approach to type checking, splitting it into two
 phases: type checking and type inference. This makes the flow of information
 through the type checker clear and relatively easy to reason about.
@@ -294,9 +294,9 @@ Normalization happens after inference, and before types are fed back in to be
 used during type checkiong.</p>
 <p>With that in mind, the next sections will describe the following judgements:</p>
 <table><thead><tr><th> name                              </th><th> notation                                             </th><th> inputs                                   </th><th> outputs                    </th></tr></thead><tbody>
-<tr><td> <a href="appendix/semantics.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
-<tr><td> <a href="appendix/semantics.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
-<tr><td> <a href="appendix/semantics.html#type-inference">type inference</a> </td><td> \(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vtype\), \(\texpr\) </td></tr>
+<tr><td> <a href="appendix/theory.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
+<tr><td> <a href="appendix/theory.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
+<tr><td> <a href="appendix/theory.html#type-inference">type inference</a> </td><td> \(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vtype\), \(\texpr\) </td></tr>
 </tbody></table>
 <p>Normalization stands on its own, but both checking and inference are mutually
 dependent on each other. Care has been taken to design the judgments so that
@@ -321,7 +321,7 @@ Type Inference &lt;- - - - - - -&gt; Type checking
  (to compiler)
 </code></pre>
 <!-- TODO: use SVG for this diagram -->
-<a class="header" href="appendix/semantics.html#elaboration" id="elaboration"><h3>Elaboration</h3></a>
+<a class="header" href="appendix/theory.html#elaboration" id="elaboration"><h3>Elaboration</h3></a>
 <p>Elaboration is the process of filling in missing information that the
 programmer omitted in the original code, generally based on the results
 of type inference.</p>
@@ -329,7 +329,7 @@ of type inference.</p>
 diamond: \(\rhd\). At the moment not much is added - only the missing
 type annotations on function parameters. In the future this could be extended
 filling in type class instances and implicit arguments.</p>
-<a class="header" href="appendix/semantics.html#normalization" id="normalization"><h3>Normalization</h3></a>
+<a class="header" href="appendix/theory.html#normalization" id="normalization"><h3>Normalization</h3></a>
 <p>Here we describe how we normalize elaborated terms under the assumptions
 in the context.</p>
 <p>\[
@@ -392,7 +392,7 @@ x : \vtype=\texpr \in \Gamma
 \\[2em]
 \end{array}
 \]</p>
-<a class="header" href="appendix/semantics.html#type-checking" id="type-checking"><h3>Type checking</h3></a>
+<a class="header" href="appendix/theory.html#type-checking" id="type-checking"><h3>Type checking</h3></a>
 <p>This judgement checks that the given term has the expected type and returns its
 elaborated form.</p>
 <p>\[
@@ -421,7 +421,7 @@ elaborated form.</p>
 expected term for <a href="https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence">alpha equivalence</a> with the inferred term. Note that we could
 alternatively check for subtyping instead of alpha equivalence. This could be
 useful for implementing a cumulative universe hierarchy.</p>
-<a class="header" href="appendix/semantics.html#type-inference" id="type-inference"><h3>Type inference</h3></a>
+<a class="header" href="appendix/theory.html#type-inference" id="type-inference"><h3>Type inference</h3></a>
 <p>Here we define a jugement that synthesizes a type from the given term and
 returns its elaborated form.</p>
 <p>\[
