@@ -166,7 +166,7 @@ impl fmt::Display for Exposing {
     }
 }
 
-/// Literals
+/// Literal values
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     /// String literals
@@ -200,6 +200,7 @@ pub enum Term {
     /// Type
     /// ```
     Universe(ByteSpan, Option<u32>),
+    /// Literal values
     Literal(ByteSpan, Literal),
     /// Holes
     ///
