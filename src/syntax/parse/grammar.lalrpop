@@ -179,7 +179,7 @@ AtomicTerm: Term = {
 
 AtomicLamParam: (Vec<(ByteSpan, String)>, Option<Box<Term>>) = {
     <name: ByteSpannedIdent> => (vec![name], None),
-    "(" <names: ByteSpannedIdent+> ":" <ann: PiTerm> ")" => (names, Some(Box::new(ann))),
+    "(" <names: ByteSpannedIdent+> <ann: (":" <PiTerm>)?> ")" => (names, ann.map(Box::new)),
 };
 
 ByteSpannedIdent: (ByteSpan, String) = {
