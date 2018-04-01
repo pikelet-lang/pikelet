@@ -93,7 +93,7 @@ pub Declaration: Declaration = {
     <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Declaration::Error(ByteSpan::new(start, end))
-    }
+    },
 };
 
 Exposing : Exposing = {
@@ -174,7 +174,7 @@ AtomicTerm: Term = {
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Term::Error(ByteSpan::new(start, end))
-    }
+    },
 };
 
 AtomicLamParam: (Vec<(ByteSpan, String)>, Option<Box<Term>>) = {
