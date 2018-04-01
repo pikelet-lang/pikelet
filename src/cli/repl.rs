@@ -19,6 +19,10 @@ pub struct Opts {
     #[structopt(long = "prompt", default_value = "Pikelet> ")]
     pub prompt: String,
 
+    /// Don't print the welcome banner on startup
+    #[structopt(long = "suppress-welcome-banner")]
+    pub suppress_welcome_banner: bool,
+
     /// The history file to record previous commands to (blank to disable)
     #[structopt(long = "history-file", parse(from_os_str), default_value = "repl-history")]
     pub history_file: Option<PathBuf>,
@@ -28,25 +32,42 @@ pub struct Opts {
     pub files: Vec<PathBuf>,
 }
 
-const LOGO_TEXT: &[&str] = &[
-    r"    ____  _ __        __     __     ",
-    r"   / __ \(_) /_____  / /__  / /_    ",
-    r"  / /_/ / / //_/ _ \/ / _ \/ __/    ",
-    r" / ____/ / ,< /  __/ /  __/ /_      ",
-    r"/_/   /_/_/|_|\___/_/\___/\__/      ",
-    r"",
-];
+fn print_welcome_banner() {
+    const WELCOME_BANNER: &[&str] = &[
+        r"    ____  _ __        __     __     ",
+        r"   / __ \(_) /_____  / /__  / /_    ",
+        r"  / /_/ / / //_/ _ \/ / _ \/ __/    ",
+        r" / ____/ / ,< /  __/ /  __/ /_      ",
+        r"/_/   /_/_/|_|\___/_/\___/\__/      ",
+        r"",
+    ];
 
-const HELP_TEXT: &[&str] = &[
-    "",
-    "Command       Arguments   Purpose",
-    "",
-    "<expr>                    evaluate a term",
-    ":? :h :help               display this help text",
-    ":q :quit                  quit the repl",
-    ":t :type      <expr>      infer the type of an expression",
-    "",
-];
+    for (i, line) in WELCOME_BANNER.iter().enumerate() {
+        match i {
+            2 => println!("{}Version {}", line, env!("CARGO_PKG_VERSION")),
+            3 => println!("{}{}", line, env!("CARGO_PKG_HOMEPAGE")),
+            4 => println!("{}:? for help", line),
+            _ => println!("{}", line),
+        }
+    }
+}
+
+fn print_help_text() {
+    const HELP_TEXT: &[&str] = &[
+        "",
+        "Command       Arguments   Purpose",
+        "",
+        "<expr>                    evaluate a term",
+        ":? :h :help               display this help text",
+        ":q :quit                  quit the repl",
+        ":t :type      <expr>      infer the type of an expression",
+        "",
+    ];
+
+    for line in HELP_TEXT {
+        println!("{}", line);
+    }
+}
 
 /// Run the `repl` subcommand with the given options
 pub fn run(opts: Opts) -> Result<(), Error> {
@@ -62,13 +83,8 @@ pub fn run(opts: Opts) -> Result<(), Error> {
         }
     }
 
-    for (i, line) in LOGO_TEXT.iter().enumerate() {
-        match i {
-            2 => println!("{}Version {}", line, env!("CARGO_PKG_VERSION")),
-            3 => println!("{}{}", line, env!("CARGO_PKG_HOMEPAGE")),
-            4 => println!("{}:? for help", line),
-            _ => println!("{}", line),
-        }
+    if !opts.suppress_welcome_banner {
+        print_welcome_banner();
     }
 
     // TODO: Load files
@@ -132,9 +148,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
     }
 
     match repl_command {
-        ReplCommand::Help => for line in HELP_TEXT {
-            println!("{}", line);
-        },
+        ReplCommand::Help => print_help_text(),
 
         ReplCommand::Eval(parse_term) => {
             let raw_term = Rc::new(parse_term.to_core());
