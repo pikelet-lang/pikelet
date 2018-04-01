@@ -115,6 +115,28 @@ impl ToConcrete<concrete::Term> for core::Term {
                     core::Constant::Char(value) => {
                         concrete::Term::Literal(span, concrete::Literal::Char(value))
                     },
+                    core::Constant::U8(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Int(value as u64))
+                    },
+                    core::Constant::U16(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Int(value as u64))
+                    },
+                    core::Constant::U32(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Int(value as u64))
+                    },
+                    core::Constant::U64(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Int(value))
+                    },
+                    core::Constant::I8(_) => unimplemented!(),
+                    core::Constant::I16(_) => unimplemented!(),
+                    core::Constant::I32(_) => unimplemented!(),
+                    core::Constant::I64(_) => unimplemented!(),
+                    core::Constant::F32(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Float(value as f64))
+                    },
+                    core::Constant::F64(value) => {
+                        concrete::Term::Literal(span, concrete::Literal::Float(value))
+                    },
                     core::Constant::StringType => concrete::Term::Var(span, String::from("String")),
                     core::Constant::CharType => concrete::Term::Var(span, String::from("Char")),
                     core::Constant::U8Type => concrete::Term::Var(span, String::from("U8")),
@@ -127,7 +149,6 @@ impl ToConcrete<concrete::Term> for core::Term {
                     core::Constant::I64Type => concrete::Term::Var(span, String::from("I64")),
                     core::Constant::F32Type => concrete::Term::Var(span, String::from("F32")),
                     core::Constant::F64Type => concrete::Term::Var(span, String::from("F64")),
-                    _ => unimplemented!(),
                 }
             },
             core::Term::Var(meta, Var::Free(Name::User(ref name))) => {
