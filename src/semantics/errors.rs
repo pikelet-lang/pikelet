@@ -6,7 +6,7 @@ use nameless::{BoundName, Name};
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::core::{Constant, Type};
+use syntax::core::{Constant, RawConstant, Type};
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -66,12 +66,9 @@ pub enum TypeError {
         var_span: Option<ByteSpan>,
         name: Name,
     },
-    NumericLiteralMismatch {
+    LiteralMismatch {
         literal_span: ByteSpan,
-        expected: Constant,
-    },
-    FloatLiteralMismatch {
-        literal_span: ByteSpan,
+        found: RawConstant,
         expected: Constant,
     },
     AmbiguousIntLiteral {
@@ -129,24 +126,23 @@ impl TypeError {
                 Label::new_primary(param_span)
                     .with_message("the parameter that requires an annotation"),
             ),
-            TypeError::NumericLiteralMismatch {
+            TypeError::LiteralMismatch {
                 literal_span,
+                ref found,
                 ref expected,
             } => {
+                let found_text = match *found {
+                    RawConstant::String(_) => "string",
+                    RawConstant::Char(_) => "character",
+                    RawConstant::Int(_) => "numeric",
+                    RawConstant::Float(_) => "floating point",
+                };
+
                 Diagnostic::new_error(format!(
-                    "found a numeric literal, but expected a type `{}`",
-                    expected,
-                )).with_label(Label::new_primary(literal_span).with_message("the numeric literal"))
+                    "found a {} literal, but expected a type `{}`",
+                    found_text, expected,
+                )).with_label(Label::new_primary(literal_span).with_message("the literal"))
             },
-            TypeError::FloatLiteralMismatch {
-                literal_span,
-                ref expected,
-            } => Diagnostic::new_error(format!(
-                "found a floating point literal, but expected a type `{}`",
-                expected,
-            )).with_label(
-                Label::new_primary(literal_span).with_message("the floating point literal"),
-            ),
             TypeError::AmbiguousIntLiteral { span } => {
                 Diagnostic::new_error("ambiguous integer literal").with_label(
                     Label::new_primary(span).with_message("type annotations needed here"),
@@ -215,16 +211,24 @@ impl fmt::Display for TypeError {
                 "Type annotation needed for the function parameter `{}`",
                 name,
             ),
-            TypeError::NumericLiteralMismatch { ref expected, .. } => write!(
-                f,
-                "found a numeric literal, but expected a type `{}`",
-                expected,
-            ),
-            TypeError::FloatLiteralMismatch { ref expected, .. } => write!(
-                f,
-                "found a floating point literal, but expected a type `{}`",
-                expected,
-            ),
+            TypeError::LiteralMismatch {
+                ref found,
+                ref expected,
+                ..
+            } => {
+                let found_text = match *found {
+                    RawConstant::String(_) => "string",
+                    RawConstant::Char(_) => "character",
+                    RawConstant::Int(_) => "numeric",
+                    RawConstant::Float(_) => "floating point",
+                };
+
+                write!(
+                    f,
+                    "found a {} literal, but expected a type `{}`",
+                    found_text, expected,
+                )
+            },
             TypeError::AmbiguousIntLiteral { .. } => write!(f, "Ambiguous integer literal"),
             TypeError::AmbiguousFloatLiteral { .. } => {
                 write!(f, "Ambiguous floating point literal")
