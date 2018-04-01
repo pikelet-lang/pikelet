@@ -1,4 +1,4 @@
-use codespan::ByteSpan;
+use codespan::ByteIndex;
 use nameless::{self, Embed, Name, Var};
 use std::collections::HashSet;
 
@@ -56,7 +56,7 @@ impl ToConcrete<concrete::Module> for core::Module {
         let declarations = self.definitions
             .iter()
             .flat_map(|definition| {
-                let name = (ByteSpan::default(), definition.name.clone());
+                let name = (ByteIndex::default(), definition.name.clone());
 
                 // build up the type claim
                 let new_ann = concrete::Declaration::Claim {
@@ -80,7 +80,7 @@ impl ToConcrete<concrete::Module> for core::Module {
             .collect();
 
         concrete::Module::Valid {
-            name: (ByteSpan::default(), self.name.clone()),
+            name: (ByteIndex::default(), self.name.clone()),
             declarations,
         }
     }
@@ -137,22 +137,42 @@ impl ToConcrete<concrete::Term> for core::Term {
                     core::Constant::F64(value) => {
                         concrete::Term::Literal(span, concrete::Literal::Float(value))
                     },
-                    core::Constant::StringType => concrete::Term::Var(span, String::from("String")),
-                    core::Constant::CharType => concrete::Term::Var(span, String::from("Char")),
-                    core::Constant::U8Type => concrete::Term::Var(span, String::from("U8")),
-                    core::Constant::U16Type => concrete::Term::Var(span, String::from("U16")),
-                    core::Constant::U32Type => concrete::Term::Var(span, String::from("U32")),
-                    core::Constant::U64Type => concrete::Term::Var(span, String::from("U64")),
-                    core::Constant::I8Type => concrete::Term::Var(span, String::from("I8")),
-                    core::Constant::I16Type => concrete::Term::Var(span, String::from("I16")),
-                    core::Constant::I32Type => concrete::Term::Var(span, String::from("I32")),
-                    core::Constant::I64Type => concrete::Term::Var(span, String::from("I64")),
-                    core::Constant::F32Type => concrete::Term::Var(span, String::from("F32")),
-                    core::Constant::F64Type => concrete::Term::Var(span, String::from("F64")),
+                    core::Constant::StringType => {
+                        concrete::Term::Var(span.start(), String::from("String"))
+                    },
+                    core::Constant::CharType => {
+                        concrete::Term::Var(span.start(), String::from("Char"))
+                    },
+                    core::Constant::U8Type => concrete::Term::Var(span.start(), String::from("U8")),
+                    core::Constant::U16Type => {
+                        concrete::Term::Var(span.start(), String::from("U16"))
+                    },
+                    core::Constant::U32Type => {
+                        concrete::Term::Var(span.start(), String::from("U32"))
+                    },
+                    core::Constant::U64Type => {
+                        concrete::Term::Var(span.start(), String::from("U64"))
+                    },
+                    core::Constant::I8Type => concrete::Term::Var(span.start(), String::from("I8")),
+                    core::Constant::I16Type => {
+                        concrete::Term::Var(span.start(), String::from("I16"))
+                    },
+                    core::Constant::I32Type => {
+                        concrete::Term::Var(span.start(), String::from("I32"))
+                    },
+                    core::Constant::I64Type => {
+                        concrete::Term::Var(span.start(), String::from("I64"))
+                    },
+                    core::Constant::F32Type => {
+                        concrete::Term::Var(span.start(), String::from("F32"))
+                    },
+                    core::Constant::F64Type => {
+                        concrete::Term::Var(span.start(), String::from("F64"))
+                    },
                 }
             },
             core::Term::Var(meta, Var::Free(Name::User(ref name))) => {
-                concrete::Term::Var(meta.span, name.to_string()) // FIXME
+                concrete::Term::Var(meta.span.start(), name.to_string()) // FIXME
             },
             core::Term::Var(_, Var::Free(Name::Gen(ref _name, ref _gen))) => {
                 // TODO: use name if it is present, and not used in the current scope

@@ -1,4 +1,4 @@
-use codespan::ByteSpan;
+use codespan::{ByteIndex, ByteSpan};
 use nameless::{self, Embed, GenId, Name, Var};
 use std::rc::Rc;
 
@@ -22,18 +22,18 @@ pub trait ToCore<T> {
 /// (a : t1) -> (b : t1) -> t3
 /// ```
 fn pi_to_core(
-    param_names: &[(ByteSpan, String)],
+    param_names: &[(ByteIndex, String)],
     ann: &concrete::Term,
     body: &concrete::Term,
 ) -> core::RawTerm {
     let ann = Rc::new(ann.to_core());
     let mut term = body.to_core();
 
-    for &(span, ref name) in param_names.iter().rev() {
+    for &(start, ref name) in param_names.iter().rev() {
         // This could be wrong... :/
         term = core::RawTerm::Pi(
             core::SourceMeta {
-                span: span.to(term.span()),
+                span: ByteSpan::new(start, term.span().end()),
             },
             nameless::bind(
                 (Name::user(name.clone()), Embed(ann.clone())),
@@ -57,16 +57,16 @@ fn pi_to_core(
 /// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
 /// ```
 fn lam_to_core(
-    params: &[(Vec<(ByteSpan, String)>, Option<Box<concrete::Term>>)],
+    params: &[(Vec<(ByteIndex, String)>, Option<Box<concrete::Term>>)],
     body: &concrete::Term,
 ) -> core::RawTerm {
     let mut term = body.to_core();
 
     for &(ref names, ref ann) in params.iter().rev() {
-        for &(span, ref name) in names.iter().rev() {
+        for &(start, ref name) in names.iter().rev() {
             let name = Name::user(name.clone());
             let meta = core::SourceMeta {
-                span: span.to(term.span()),
+                span: ByteSpan::new(start, term.span().end()),
             };
             let ann = match *ann {
                 None => Rc::new(core::RawTerm::Hole(core::SourceMeta::default())),

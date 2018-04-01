@@ -10,10 +10,10 @@ fn reparse_pi_type_hack<L, T>(
 ) -> Result<Term, LalrpopError<L, T, ParseError>> {
     fn param_names<L, T>(
         term: Term,
-        names: &mut Vec<(ByteSpan, String)>,
+        names: &mut Vec<(ByteIndex, String)>,
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match term {
-            Term::Var(span, name) => names.push((span, name)),
+            Term::Var(start, name) => names.push((start, name)),
             Term::App(fn_expr, arg) => {
                 param_names(*fn_expr, names)?;
                 param_names(*arg, names)?;

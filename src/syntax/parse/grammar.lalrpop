@@ -71,23 +71,23 @@ pub ReplCommand: ReplCommand = {
 
 pub Module: Module = {
     <_comment: "doc comment"*>
-    "module" <name: ByteSpannedIdent> ";"
+    "module" <name: IndexedIdent> ";"
     <declarations: Declaration*> => {
         Module::Valid { name, declarations }
     },
 };
 
 pub Declaration: Declaration = {
-    <start: @L> "import" <name: ByteSpannedIdent> <rename: ("as" <ByteSpannedIdent>)?>
+    <start: @L> "import" <name: IndexedIdent> <rename: ("as" <IndexedIdent>)?>
         <exposing: Exposing?> <end: @R> ";" =>
     {
         Declaration::Import { span: ByteSpan::new(start, end), name, rename, exposing }
     },
     <_comment: "doc comment"*>
-    <name: ByteSpannedIdent> ":" <ann: Term> ";" => {
+    <name: IndexedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },
-    <name: ByteSpannedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
+    <name: IndexedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
         Declaration::Definition { name, params, body }
     },
     <start: @L> <recovered: !> <end: @R> ";" => {
@@ -109,8 +109,8 @@ Exposing : Exposing = {
     },
 };
 
-ExposedIdent : ((ByteSpan, String), Option<(ByteSpan, String)>) = {
-    <ByteSpannedIdent> <("as" <ByteSpannedIdent>)?>
+ExposedIdent : ((ByteIndex, String), Option<(ByteIndex, String)>) = {
+    <IndexedIdent> <("as" <IndexedIdent>)?>
 };
 
 pub Term: Term = {
@@ -122,7 +122,7 @@ pub Term: Term = {
 
 LamTerm: Term = {
     PiTerm,
-    <start: @L> "\\" <name: ByteSpannedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
+    <start: @L> "\\" <name: IndexedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
         Term::Lam(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
     },
     <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
@@ -170,20 +170,20 @@ AtomicTerm: Term = {
     <start: @L> <value: "character literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Char(value)),
     <start: @L> <value: "decimal literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Int(value)),
     <start: @L> <value: "float literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Float(value)),
-    <start: @L> <ident: Ident> <end: @R> => Term::Var(ByteSpan::new(start, end), ident),
+    <start: @L> <ident: Ident> => Term::Var(start, ident),
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Term::Error(ByteSpan::new(start, end))
     },
 };
 
-AtomicLamParam: (Vec<(ByteSpan, String)>, Option<Box<Term>>) = {
-    <name: ByteSpannedIdent> => (vec![name], None),
-    "(" <names: ByteSpannedIdent+> <ann: (":" <PiTerm>)?> ")" => (names, ann.map(Box::new)),
+AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
+    <name: IndexedIdent> => (vec![name], None),
+    "(" <names: IndexedIdent+> <ann: (":" <PiTerm>)?> ")" => (names, ann.map(Box::new)),
 };
 
-ByteSpannedIdent: (ByteSpan, String) = {
-    <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), ident),
+IndexedIdent: (ByteIndex, String) = {
+    <start: @L> <ident: Ident> => (start, ident),
 };
 
 Ident: String = {
