@@ -146,7 +146,7 @@ PiTerm: Term = {
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in by reparsing the binder:
     <start: @L> <binder: AppTerm> "->" <body: LamTerm> <end: @R> =>? {
-        reparse_pi_type_hack(ByteSpan::new(start, end), binder, body)
+        super::reparse_pi_type_hack(ByteSpan::new(start, end), binder, body)
     },
 };
 
