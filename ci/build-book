@@ -2,15 +2,7 @@
 set -euo pipefail
 
 main() {
-    pushd book
-        pushd highlight.js
-            npm install
-            node tools/build.js pikelet pikelet-repl rust bash
-        popd
-
-        mkdir -p src/theme
-        cp highlight.js/build/highlight.pack.js src/theme/highlight.js
-    popd
+    mdbook build book
 }
 
 main
