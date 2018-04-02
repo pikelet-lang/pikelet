@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+main() {
+    # prepare the git submodule, if it hasn't been already
+    git submodule init
+
+    pushd book
+        # build the minified highlight.js source
+        pushd highlight.js
+            npm install
+            node tools/build.js pikelet pikelet-repl rust bash
+        popd
+
+        # copy the minified sources to the theme directory
+        mkdir -p src/theme
+        cp highlight.js/build/highlight.pack.js src/theme/highlight.js
+    popd
+}
+
+main

@@ -1,5 +1,8 @@
 language: rust
-cache: cargo
+cache:
+  cargo: true
+  directories:
+    - book/highlight.js/node_modules
 rust:
   - stable
   - beta
@@ -11,12 +14,13 @@ matrix:
 
 install:
   - ci/install-mdbook
+  - ci/build-highlight-js
   - cargo build --verbose # https://docs.travis-ci.com/user/languages/rust/#Dependency-Management
 
 script:
   - cargo build --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
   - cargo test --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
-  - mdbook build book
+  - ci/build-book
 
 deploy:
   # Deploy the book to Github Pages
