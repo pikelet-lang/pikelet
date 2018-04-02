@@ -222,9 +222,9 @@ impl ToConcrete<concrete::Term> for core::Term {
 
                 unimplemented!()
             },
-            core::Term::App(_, ref fn_term, ref arg) => concrete::Term::Ann(
+            core::Term::App(_, ref fn_term, ref arg) => concrete::Term::App(
                 Box::new(fn_term.to_concrete(env)),
-                Box::new(arg.to_concrete(env)),
+                vec![arg.to_concrete(env)], // TODO
             ),
         }
     }

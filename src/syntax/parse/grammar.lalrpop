@@ -152,12 +152,11 @@ PiTerm: Term = {
 
 AppTerm: Term = {
     AtomicTerm,
-    <f: AppTerm> <arg: AtomicTerm> => {
-        match (f, arg) {
-            (Term::Universe(s1, None), Term::Literal(s2, Literal::Int(value))) => {
-                Term::Universe(s1.to(s2), Some(value as u32)) // FIXME - overflow
-            },
-            (f, arg) => Term::App(Box::new(f), Box::new(arg)),
+    <f: AtomicTerm> <args: AtomicTerm+> => {
+        if let (&Term::Universe(s1, None), &Term::Literal(s2, Literal::Int(value))) = (&f, &args[0]) {
+            Term::Universe(s1.to(s2), Some(value as u32)) // FIXME - overflow
+        } else {
+            Term::App(Box::new(f), args)
         }
     },
 };

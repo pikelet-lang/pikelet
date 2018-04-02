@@ -136,10 +136,13 @@ impl ToDoc for Term {
                 .append(Doc::text("->"))
                 .append(Doc::space())
                 .append(body.to_doc(options)),
-            Term::App(ref fn_term, ref arg) => fn_term
+            Term::App(ref fn_term, ref args) => fn_term
                 .to_doc(options)
                 .append(Doc::space())
-                .append(arg.to_doc(options)),
+                .append(Doc::intersperse(
+                    args.iter().map(|arg| arg.to_doc(options)),
+                    Doc::space(),
+                )),
             Term::Error(_) => Doc::text("<error>"),
         }
     }

@@ -79,6 +79,23 @@ fn lam_to_core(
     term
 }
 
+fn app_to_core(
+    fn_expr: &concrete::Term,
+    args: &[concrete::Term],
+) -> core::RawTerm {
+    let mut term = fn_expr.to_core();
+
+    for arg in args.iter() {
+        let meta = core::SourceMeta {
+            span: term.span().to(arg.span()),
+        };
+
+        term = core::RawTerm::App(meta, Rc::new(term), Rc::new(arg.to_core()))
+    }
+
+    term
+}
+
 impl ToCore<core::RawModule> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
     fn to_core(&self) -> core::RawModule {
@@ -200,12 +217,7 @@ impl ToCore<core::RawTerm> for concrete::Term {
 
                 core::RawTerm::Pi(meta, nameless::bind((name, Embed(ann)), body))
             },
-            concrete::Term::App(ref fn_expr, ref arg) => {
-                let fn_expr = Rc::new(fn_expr.to_core());
-                let arg = Rc::new(arg.to_core());
-
-                core::RawTerm::App(meta, fn_expr, arg)
-            },
+            concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
             concrete::Term::Error(_) => unimplemented!("error recovery"),
         }
     }

@@ -245,7 +245,7 @@ pub enum Term {
     /// ```text
     /// e1 e2
     /// ```
-    App(Box<Term>, Box<Term>),
+    App(Box<Term>, Vec<Term>),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -267,7 +267,7 @@ impl Term {
             },
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
-            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
+            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg[arg.len() - 1].span()),
         }
     }
 }

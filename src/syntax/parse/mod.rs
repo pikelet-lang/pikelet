@@ -70,9 +70,11 @@ fn reparse_pi_type_hack<L, T>(
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match term {
             Term::Var(start, name) => names.push((start, name)),
-            Term::App(fn_expr, arg) => {
+            Term::App(fn_expr, args) => {
                 param_names(*fn_expr, names)?;
-                param_names(*arg, names)?;
+                for arg in args {
+                    param_names(arg, names)?;
+                }
             },
             term => {
                 return Err(LalrpopError::User {
