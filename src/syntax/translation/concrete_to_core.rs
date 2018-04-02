@@ -22,24 +22,25 @@ pub trait ToCore<T> {
 /// (a : t1) -> (b : t1) -> t3
 /// ```
 fn pi_to_core(
-    param_names: &[(ByteIndex, String)],
-    ann: &concrete::Term,
+    params: &[(Vec<(ByteIndex, String)>, Box<concrete::Term>)],
     body: &concrete::Term,
 ) -> core::RawTerm {
-    let ann = Rc::new(ann.to_core());
     let mut term = body.to_core();
 
-    for &(start, ref name) in param_names.iter().rev() {
-        // This could be wrong... :/
-        term = core::RawTerm::Pi(
-            core::SourceMeta {
-                span: ByteSpan::new(start, term.span().end()),
-            },
-            nameless::bind(
-                (Name::user(name.clone()), Embed(ann.clone())),
-                Rc::new(term),
-            ),
-        );
+    for &(ref names, ref ann) in params.iter().rev() {
+        let ann = Rc::new(ann.to_core());
+        for &(start, ref name) in names.iter().rev() {
+            // This could be wrong... :/
+            term = core::RawTerm::Pi(
+                core::SourceMeta {
+                    span: ByteSpan::new(start, term.span().end()),
+                },
+                nameless::bind(
+                    (Name::user(name.clone()), Embed(ann.clone())),
+                    Rc::new(term),
+                ),
+            );
+        }
     }
 
     term
@@ -79,10 +80,7 @@ fn lam_to_core(
     term
 }
 
-fn app_to_core(
-    fn_expr: &concrete::Term,
-    args: &[concrete::Term],
-) -> core::RawTerm {
+fn app_to_core(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTerm {
     let mut term = fn_expr.to_core();
 
     for arg in args.iter() {
@@ -208,7 +206,7 @@ impl ToCore<core::RawTerm> for concrete::Term {
             concrete::Term::Var(_, ref x) => {
                 core::RawTerm::Var(meta, Var::Free(Name::user(x.clone())))
             },
-            concrete::Term::Pi(_, (ref names, ref ann), ref body) => pi_to_core(names, ann, body),
+            concrete::Term::Pi(_, ref params, ref body) => pi_to_core(params, body),
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
                 let name = Name::from(GenId::fresh());
@@ -715,6 +713,14 @@ mod to_core {
                 assert_term_eq!(
                     parse(r"(a : Type) -> (x y z : a) -> x"),
                     parse(r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
+                );
+            }
+
+            #[test]
+            fn pi_args_multi() {
+                assert_term_eq!(
+                    parse(r"(a : Type) (x y z : a) (w : I8) -> x"),
+                    parse(r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> (w : I8) -> x"),
                 );
             }
 

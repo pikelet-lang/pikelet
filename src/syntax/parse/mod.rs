@@ -64,19 +64,35 @@ fn reparse_pi_type_hack<L, T>(
 ) -> Result<concrete::Term, LalrpopError<L, T, ParseError>> {
     use syntax::concrete::Term;
 
+    fn pi_binder<L, T>(
+        binder: &Term,
+    ) -> Result<Option<(Vec<(ByteIndex, String)>, Box<Term>)>, LalrpopError<L, T, ParseError>> {
+        match *binder {
+            Term::Parens(_, ref term) => match **term {
+                Term::Ann(ref params, ref ann) => {
+                    let mut names = Vec::new();
+                    param_names(&**params, &mut names)?;
+                    Ok(Some((names, ann.clone())))
+                },
+                _ => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
+
     fn param_names<L, T>(
-        term: Term,
+        term: &Term,
         names: &mut Vec<(ByteIndex, String)>,
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
-        match term {
-            Term::Var(start, name) => names.push((start, name)),
-            Term::App(fn_expr, args) => {
-                param_names(*fn_expr, names)?;
+        match *term {
+            Term::Var(start, ref name) => names.push((start, name.clone())),
+            Term::App(ref fn_expr, ref args) => {
+                param_names(fn_expr, names)?;
                 for arg in args {
                     param_names(arg, names)?;
                 }
             },
-            term => {
+            _ => {
                 return Err(LalrpopError::User {
                     error: ParseError::IdentifierExpectedInPiType { span: term.span() },
                 });
@@ -86,21 +102,24 @@ fn reparse_pi_type_hack<L, T>(
     }
 
     match binder {
-        Term::Parens(paren_span, term) => {
-            let term = *term; // HACK: see https://github.com/rust-lang/rust/issues/16223
-            match term {
-                Term::Ann(params, ann) => {
-                    let mut names = Vec::new();
-                    param_names(*params, &mut names)?;
-                    Ok(Term::Pi(span.start(), (names, ann), body.into()))
-                },
-                ann => {
-                    let parens = Term::Parens(paren_span, ann.into()).into();
-                    Ok(Term::Arrow(parens, body.into()))
-                },
+        Term::App(ref fn_expr, ref args) => {
+            use std::iter;
+
+            let mut binders = Vec::with_capacity(args.len() + 1);
+
+            for next in iter::once(&**fn_expr).chain(args).map(pi_binder) {
+                match next? {
+                    Some((names, ann)) => binders.push((names, ann)),
+                    None => return Ok(Term::Arrow(Box::new(binder.clone()), Box::new(body))),
+                }
             }
+
+            Ok(Term::Pi(span.start(), binders, Box::new(body)))
         },
-        ann => Ok(Term::Arrow(ann.into(), body.into())),
+        binder => match pi_binder(&binder)? {
+            Some(binder) => Ok(Term::Pi(span.start(), vec![binder], Box::new(body))),
+            None => Ok(Term::Arrow(binder.into(), Box::new(body))),
+        },
     }
 }
 
@@ -123,6 +142,27 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(28))),
+                vec![
+                    ParseError::IdentifierExpectedInPiType {
+                        span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
+                    },
+                ],
+            )
+        );
+    }
+
+    #[test]
+    fn pi_bad_ident_multi() {
+        let src = "((x : Type) : Type) (x : Type) -> Type";
+        let mut codemap = CodeMap::new();
+        let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+        let parse_result = term(&filemap);
+
+        assert_eq!(
+            parse_result,
+            (
+                concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(39))),
                 vec![
                     ParseError::IdentifierExpectedInPiType {
                         span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),

@@ -135,8 +135,8 @@ PiTerm: Term = {
     // Naively we would want to write the following rules:
     //
     // ```lalrpop
-    // "(" <names: Ident+> ":" <ann: PiTerm> ")" "->" <body: LamTerm> => {
-    //      Term::Pi(names, Box::new(ann), Box::new(body))
+    // <params: ("(" <IndexedIdent+> ":" <PiTerm> ")")+> "->" <body: LamTerm> => {
+    //      Term::Pi(params, Box::new(body))
     //  },
     //  <ann: AppTerm> "->" <body: LamTerm> => {
     //      Term::Arrow(Box::new(ann), Box::new(body))

@@ -163,18 +163,10 @@ arguments we use currying. The following functions are equivalent:
 ```
 
 Non-dependent functions can be expressed without explicit parameter names. For
-example:
+example the following function types are equivalent:
 
 ```pikelet
-I32 -> String
-String -> String
-(a: Type) -> a -> a
-```
-
-This is however just syntactic sugar for the following:
-
-```pikelet
-(x : I32) -> String
-(x : String) -> String
-(a: Type) -> (x : a) -> a
+(a : Type) (x : a) -> a
+(a : Type) -> (x : a) -> a
+(a : Type) -> a -> a
 ```

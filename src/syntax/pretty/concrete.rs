@@ -168,15 +168,20 @@ fn pretty_lam_params(options: Options, params: &LamParams) -> StaticDoc {
     )
 }
 
-fn pretty_pi_params(options: Options, &(ref names, ref ann): &PiParams) -> StaticDoc {
-    Doc::text("(")
-        .append(Doc::intersperse(
-            names.iter().map(|name| Doc::as_string(&name.1)),
-            Doc::space(),
-        ))
-        .append(Doc::space())
-        .append(Doc::text(":"))
-        .append(Doc::space())
-        .append(ann.to_doc(options))
-        .append(Doc::text(")"))
+fn pretty_pi_params(options: Options, params: &PiParams) -> StaticDoc {
+    Doc::intersperse(
+        params.iter().map(|&(ref names, ref ann)| {
+            Doc::text("(")
+                .append(Doc::intersperse(
+                    names.iter().map(|name| Doc::as_string(&name.1)),
+                    Doc::space(),
+                ))
+                .append(Doc::space())
+                .append(Doc::text(":"))
+                .append(Doc::space())
+                .append(ann.to_doc(options))
+                .append(Doc::text(")"))
+        }),
+        Doc::space(),
+    )
 }
