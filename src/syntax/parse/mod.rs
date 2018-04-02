@@ -66,13 +66,13 @@ fn reparse_pi_type_hack<L, T>(
 
     fn pi_binder<L, T>(
         binder: &Term,
-    ) -> Result<Option<(Vec<(ByteIndex, String)>, Box<Term>)>, LalrpopError<L, T, ParseError>> {
+    ) -> Result<Option<(Vec<(ByteIndex, String)>, Term)>, LalrpopError<L, T, ParseError>> {
         match *binder {
             Term::Parens(_, ref term) => match **term {
                 Term::Ann(ref params, ref ann) => {
                     let mut names = Vec::new();
                     param_names(&**params, &mut names)?;
-                    Ok(Some((names, ann.clone())))
+                    Ok(Some((names, (**ann).clone())))
                 },
                 _ => Ok(None),
             },

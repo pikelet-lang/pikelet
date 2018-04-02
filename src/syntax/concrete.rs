@@ -284,4 +284,4 @@ impl fmt::Display for Term {
 pub type LamParams = Vec<(Vec<(ByteIndex, String)>, Option<Box<Term>>)>;
 
 /// The parameters to a dependent function type
-pub type PiParams = Vec<(Vec<(ByteIndex, String)>, Box<Term>)>;
+pub type PiParams = Vec<(Vec<(ByteIndex, String)>, Term)>;

@@ -22,7 +22,7 @@ pub trait ToCore<T> {
 /// (a : t1) -> (b : t1) -> t3
 /// ```
 fn pi_to_core(
-    params: &[(Vec<(ByteIndex, String)>, Box<concrete::Term>)],
+    params: &[(Vec<(ByteIndex, String)>, concrete::Term)],
     body: &concrete::Term,
 ) -> core::RawTerm {
     let mut term = body.to_core();
