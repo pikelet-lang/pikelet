@@ -1,0 +1,4 @@
+[submodule "book/highlight.js"]
+	path = book/highlight.js
+	url = https://github.com/brendanzab/highlight.js.git
+	branch = add-pikelet

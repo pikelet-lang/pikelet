@@ -25,7 +25,7 @@ const a b x y = x;
 
 Interactive REPL:
 
-```
+```pikelet-repl
 cargo run repl
     ____  _ __        __     __
    / __ \(_) /_____  / /__  / /_
