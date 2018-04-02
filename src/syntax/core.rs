@@ -148,35 +148,24 @@ impl fmt::Display for RawDefinition {
 ///
 /// For now the only implicit syntax we have is holes and lambdas that lack a
 /// type annotation.
-///
-/// ```text
-/// r,R ::= r:R         1. annotated terms
-///       | Typeᵢ       2. universes
-///       | c           3. constants
-///       | _           4. hole
-///       | x           5. variables
-///       | Πx:R₁.R₂    6. dependent function types
-///       | λx:R.r      7. lambda abstractions
-///       | R₁ R₂       8. term application
-/// ```
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum RawTerm {
     /// A term annotated with a type
-    Ann(SourceMeta, Rc<RawTerm>, Rc<RawTerm>), // 1.
+    Ann(SourceMeta, Rc<RawTerm>, Rc<RawTerm>),
     /// Universes
-    Universe(SourceMeta, Level), // 2.
+    Universe(SourceMeta, Level),
     /// Constants
-    Constant(SourceMeta, RawConstant), // 3.
+    Constant(SourceMeta, RawConstant),
     /// A hole
-    Hole(SourceMeta), // 4.
+    Hole(SourceMeta),
     /// A variable
-    Var(SourceMeta, Var), // 5.
+    Var(SourceMeta, Var),
     /// Dependent function types
-    Pi(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 6.
+    Pi(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
     /// Lambda abstractions
-    Lam(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>), // 7.
+    Lam(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
     /// RawTerm application
-    App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>), // 8.
+    App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>),
 }
 
 impl RawTerm {
@@ -257,32 +246,22 @@ pub struct Definition {
 }
 
 /// The core term syntax
-///
-/// ```text
-/// t,T ::= t:T         1. annotated terms
-///       | Typeᵢ       2. universes
-///       | c           3. constants
-///       | x           4. variables
-///       | Πx:T₁.T₂    5. dependent function types
-///       | λx:T.t      6. lambda abstractions
-///       | t₁ t₂       7. term application
-/// ```
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(SourceMeta, Rc<Term>, Rc<Term>), // 1.
+    Ann(SourceMeta, Rc<Term>, Rc<Term>),
     /// Universes
-    Universe(SourceMeta, Level), // 2.
+    Universe(SourceMeta, Level),
     /// Constants
-    Constant(SourceMeta, Constant), // 3.
+    Constant(SourceMeta, Constant),
     /// A variable
-    Var(SourceMeta, Var), // 4.
+    Var(SourceMeta, Var),
     /// Dependent function types
-    Pi(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>), // 5.
+    Pi(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
-    Lam(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>), // 6.
+    Lam(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
-    App(SourceMeta, Rc<Term>, Rc<Term>), // 7.
+    App(SourceMeta, Rc<Term>, Rc<Term>),
 }
 
 impl Term {
@@ -312,26 +291,18 @@ impl fmt::Display for Term {
 /// These are either in _weak head normal form_ (they cannot be reduced further)
 /// or are _neutral terms_ (there is a possibility of reducing further depending
 /// on the bindings given in the context)
-///
-/// ```text
-/// v,V ::= Typeᵢ       1. universes
-///       | c           2. constants
-///       | Πx:V₁.V₂    3. dependent function types
-///       | λx:V.v      4. lambda abstractions
-///       | n           5. neutral terms
-/// ```
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Value {
     /// Universes
-    Universe(Level), // 1.
+    Universe(Level),
     /// Constants
-    Constant(Constant), // 2.
+    Constant(Constant),
     /// A pi type
-    Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>), // 3.
+    Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
-    Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>), // 4.
+    Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// Neutral terms
-    Neutral(Rc<Neutral>), // 5.
+    Neutral(Rc<Neutral>),
 }
 
 impl fmt::Display for Value {
@@ -346,17 +317,12 @@ impl fmt::Display for Value {
 ///
 /// These might be able to be reduced further depending on the bindings in the
 /// context
-///
-/// ```text
-/// n,N ::= x           1. variables
-///       | n t         2. term application
-/// ```
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
     /// Variables
-    Var(Var), // 1.
+    Var(Var),
     /// RawTerm application
-    App(Rc<Neutral>, Rc<Term>), // 2.
+    App(Rc<Neutral>, Rc<Term>),
 }
 
 impl fmt::Display for Neutral {
@@ -414,24 +380,18 @@ impl<'a> From<&'a Neutral> for Term {
 }
 
 /// A binder that introduces a variable into the context
-///
-/// ```text
-/// b ::= λx:V           1. lambda abstraction
-///     | Πx:V           2. dependent function
-///     | let x:V = t    3. let binding
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Binder {
     /// A type introduced after entering a lambda abstraction
-    Lam { name: Name, ann: Rc<Type> }, // 1.
+    Lam { name: Name, ann: Rc<Type> },
     /// A type introduced after entering a pi type
-    Pi { name: Name, ann: Rc<Type> }, // 2.
+    Pi { name: Name, ann: Rc<Type> },
     /// A value and type binding that was introduced by passing over a let binding
     Let {
         name: Name,
         ann: Rc<Type>,
         value: Rc<Term>,
-    }, // 3.
+    },
 }
 
 impl Binder {
@@ -450,11 +410,6 @@ impl Binder {
 }
 
 /// A list of binders that have been accumulated during typechecking
-///
-/// ```text
-/// Γ ::= ε           1. empty context
-///     | Γ,b         2. context extension
-/// ```
 #[derive(Clone, PartialEq)]
 pub struct Context {
     pub binders: List<Binder>,
