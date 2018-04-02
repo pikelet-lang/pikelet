@@ -264,15 +264,10 @@ arguments we use currying. The following functions are equivalent:</p>
 \(x : Type) =&gt; \(x : a) =&gt; x
 </code></pre>
 <p>Non-dependent functions can be expressed without explicit parameter names. For
-example:</p>
-<pre><code class="language-pikelet">I32 -&gt; String
-String -&gt; String
-(a: Type) -&gt; a -&gt; a
-</code></pre>
-<p>This is however just syntactic sugar for the following:</p>
-<pre><code class="language-pikelet">(x : I32) -&gt; String
-(x : String) -&gt; String
-(a: Type) -&gt; (x : a) -&gt; a
+example the following function types are equivalent:</p>
+<pre><code class="language-pikelet">(a : Type) (x : a) -&gt; a
+(a : Type) -&gt; (x : a) -&gt; a
+(a : Type) -&gt; a -&gt; a
 </code></pre>
 
                     </main>
