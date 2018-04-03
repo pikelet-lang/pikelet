@@ -1,4 +1,4 @@
-use codespan::ByteIndex;
+use codespan::{ByteIndex, ByteSpan};
 use nameless::{self, Embed, Name, Var};
 use std::collections::HashSet;
 
@@ -56,11 +56,9 @@ impl ToConcrete<concrete::Module> for core::Module {
         let declarations = self.definitions
             .iter()
             .flat_map(|definition| {
-                let name = (ByteIndex::default(), definition.name.clone());
-
                 // build up the type claim
                 let new_ann = concrete::Declaration::Claim {
-                    name: name.clone(),
+                    name: (ByteIndex::default(), definition.name.clone()),
                     ann: core::Term::from(&*definition.ann).to_concrete(env),
                 };
 
@@ -73,7 +71,8 @@ impl ToConcrete<concrete::Module> for core::Module {
                     };
 
                     concrete::Declaration::Definition {
-                        name,
+                        span: ByteSpan::default(),
+                        name: definition.name.clone(),
                         params,
                         body,
                         wheres: vec![],

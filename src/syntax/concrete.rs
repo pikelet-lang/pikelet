@@ -109,7 +109,8 @@ pub enum Declaration {
     ///     }
     /// ```
     Definition {
-        name: (ByteIndex, String),
+        span: ByteSpan,
+        name: String,
         params: LamParams,
         body: Term,
         wheres: Vec<Declaration>,
@@ -124,11 +125,8 @@ impl Declaration {
     /// Return the span of source code that this declaration originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Declaration::Import { span, .. } => span,
+            Declaration::Import { span, .. } | Declaration::Definition { span, .. } => span,
             Declaration::Claim { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
-            Declaration::Definition {
-                ref name, ref body, ..
-            } => ByteSpan::new(name.0, body.span().end()), // FIXME: include where clause
             Declaration::Error(span) => span,
         }
     }

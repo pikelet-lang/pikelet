@@ -126,10 +126,11 @@ impl ToCore<core::RawModule> for concrete::Module {
                             None => prev_claim = Some((name.clone(), Rc::new(ann.to_core()))),
                         },
                         concrete::Declaration::Definition {
-                            name: (_, ref name),
+                            ref name,
                             ref params,
                             ref body,
                             ref wheres,
+                            ..
                         } => {
                             let default_meta = core::SourceMeta::default();
 

@@ -88,9 +88,13 @@ pub Declaration: Declaration = {
         Declaration::Claim { name, ann }
     },
     <name: IndexedIdent> <params: AtomicLamParam*> "=" <body: Term>
-        <wheres: ("where" "{" <Declaration+> "}")?> ";" =>
+        <wheres: ("where" "{" <Declaration+> "}")?> <end: @R> ";" =>
     {
-        Declaration::Definition { name, params, body, wheres: wheres.unwrap_or(vec![]) }
+        let (start, name) = name;
+        let span = ByteSpan::new(start, end);
+        let wheres = wheres.unwrap_or(vec![]);
+
+        Declaration::Definition { span, name, params, body, wheres }
     },
     <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
