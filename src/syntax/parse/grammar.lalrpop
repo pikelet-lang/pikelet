@@ -23,9 +23,12 @@ extern {
         // Keywords
         "as" => Token::As,
         "_" => Token::Hole,
+        "in" => Token::In,
+        "let" => Token::Let,
         "module" => Token::Module,
         "import" => Token::Import,
         "Type" => Token::Type,
+        "where" => Token::Where,
 
         // Symbols
         "\\" => Token::BSlash,
@@ -70,9 +73,7 @@ pub ReplCommand: ReplCommand = {
 };
 
 pub Module: Module = {
-    <_comment: "doc comment"*>
-    "module" <name: IndexedIdent> ";"
-    <declarations: Declaration*> => {
+    <_comment: "doc comment"*> "module" <name: IndexedIdent> ";" <declarations: Declaration*> => {
         Module::Valid { name, declarations }
     },
 };
@@ -83,12 +84,13 @@ pub Declaration: Declaration = {
     {
         Declaration::Import { span: ByteSpan::new(start, end), name, rename, exposing }
     },
-    <_comment: "doc comment"*>
-    <name: IndexedIdent> ":" <ann: Term> ";" => {
+    <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },
-    <name: IndexedIdent> <params: AtomicLamParam*> "=" <body: Term> ";" => {
-        Declaration::Definition { name, params, body }
+    <name: IndexedIdent> <params: AtomicLamParam*> "=" <body: Term>
+        <wheres: ("where" "{" <Declaration+> "}")?> ";" =>
+    {
+        Declaration::Definition { name, params, body, wheres: wheres.unwrap_or(vec![]) }
     },
     <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
@@ -127,6 +129,9 @@ LamTerm: Term = {
     },
     <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
         Term::Lam(start, params, Box::new(body))
+    },
+    <start: @L> "let" <declarations: Declaration+> "in" <body: LamTerm> => {
+        Term::Let(start, declarations, Box::new(body))
     },
 };
 

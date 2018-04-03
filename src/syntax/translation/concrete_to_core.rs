@@ -129,9 +129,13 @@ impl ToCore<core::RawModule> for concrete::Module {
                             name: (_, ref name),
                             ref params,
                             ref body,
-                            ..
+                            ref wheres,
                         } => {
                             let default_meta = core::SourceMeta::default();
+
+                            if !wheres.is_empty() {
+                                unimplemented!("where clauses");
+                            }
 
                             match prev_claim.take() {
                                 None => definitions.push(core::RawDefinition {
@@ -216,6 +220,7 @@ impl ToCore<core::RawTerm> for concrete::Term {
                 core::RawTerm::Pi(meta, nameless::bind((name, Embed(ann)), body))
             },
             concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
+            concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
             concrete::Term::Error(_) => unimplemented!("error recovery"),
         }
     }

@@ -72,7 +72,12 @@ impl ToConcrete<concrete::Module> for core::Module {
                         body => (vec![], body),
                     };
 
-                    concrete::Declaration::Definition { name, params, body }
+                    concrete::Declaration::Definition {
+                        name,
+                        params,
+                        body,
+                        wheres: vec![],
+                    }
                 };
 
                 iter::once(new_ann).chain(iter::once(new_definition))

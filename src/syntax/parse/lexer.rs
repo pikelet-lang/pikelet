@@ -107,9 +107,12 @@ pub enum Token<S> {
     // Keywords
     As,     // as
     Hole,   // _
+    In,     // in
+    Let,    // let
     Module, // module
     Import, // import
     Type,   // Type
+    Where,  // where
 
     // Symbols
     BSlash,    // \
@@ -142,9 +145,12 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::FloatLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
             Token::Hole => write!(f, "_"),
+            Token::In => write!(f, "in"),
+            Token::Let => write!(f, "let"),
             Token::Module => write!(f, "module"),
             Token::Import => write!(f, "import"),
             Token::Type => write!(f, "Type"),
+            Token::Where => write!(f, "where"),
             Token::BSlash => write!(f, "\\"),
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
@@ -174,10 +180,13 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::DecLiteral(value) => Token::DecLiteral(value),
             Token::FloatLiteral(value) => Token::FloatLiteral(value),
             Token::As => Token::As,
+            Token::Hole => Token::Hole,
+            Token::In => Token::In,
+            Token::Let => Token::Let,
             Token::Module => Token::Module,
             Token::Import => Token::Import,
             Token::Type => Token::Type,
-            Token::Hole => Token::Hole,
+            Token::Where => Token::Where,
             Token::BSlash => Token::BSlash,
             Token::Colon => Token::Colon,
             Token::Comma => Token::Comma,
@@ -308,9 +317,12 @@ impl<'input> Lexer<'input> {
         let token = match ident {
             "as" => Token::As,
             "_" => Token::Hole,
+            "in" => Token::In,
+            "let" => Token::Let,
             "module" => Token::Module,
             "import" => Token::Import,
             "Type" => Token::Type,
+            "where" => Token::Where,
             ident => Token::Ident(ident),
         };
 

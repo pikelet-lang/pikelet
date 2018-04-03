@@ -57,17 +57,38 @@ impl ToDoc for Declaration {
                 .append(Doc::text(":"))
                 .append(Doc::space())
                 .append(ann.to_doc(options)),
+            Declaration::Definition { ref wheres, .. } if !wheres.is_empty() => {
+                unimplemented!("where clauses")
+            },
             Declaration::Definition {
                 ref name,
                 ref params,
                 ref body,
-                ..
+                ref wheres,
             } => Doc::as_string(&name.1)
                 .append(Doc::space())
                 .append(pretty_lam_params(options, params))
                 .append(Doc::text("="))
                 .append(Doc::space())
-                .append(body.to_doc(options).nest(options.indent_width as usize)),
+                .append(body.to_doc(options).nest(options.indent_width as usize))
+                .append(
+                    if wheres.is_empty() {
+                        Doc::nil()
+                    } else {
+                        // FIXME: Indentation
+                        Doc::newline()
+                            .append(Doc::text("where"))
+                            .append(Doc::space())
+                            .append(Doc::text("{"))
+                            .append(Doc::newline())
+                            .append(Doc::intersperse(
+                                wheres.iter().map(|w| w.to_doc(options)),
+                                Doc::newline(),
+                            ))
+                            .append(Doc::newline())
+                            .append(Doc::text("}"))
+                    }
+                ),
             Declaration::Error(_) => Doc::text("<error>"),
         }.append(Doc::text(";"))
     }
@@ -143,6 +164,17 @@ impl ToDoc for Term {
                     args.iter().map(|arg| arg.to_doc(options)),
                     Doc::space(),
                 )),
+            Term::Let(_, ref decls, ref body) => {
+                Doc::text("let")
+                    .append(Doc::space())
+                    .append(Doc::intersperse(
+                        // FIXME: Indentation
+                        decls.iter().map(|decl| decl.to_doc(options)),
+                        Doc::newline(),
+                    ))
+                    .append(Doc::text("in"))
+                    .append(body.to_doc(options))
+            },
             Term::Error(_) => Doc::text("<error>"),
         }
     }

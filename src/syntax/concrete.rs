@@ -103,11 +103,16 @@ pub enum Declaration {
     /// ```text
     /// foo = some-body
     /// foo x (y : some-type) = some-body
+    ///     where {
+    ///         some-subdef : some-type
+    ///         some-subdef = some-body
+    ///     }
     /// ```
     Definition {
         name: (ByteIndex, String),
         params: LamParams,
         body: Term,
+        wheres: Vec<Declaration>,
     },
     /// Declarations that could not be correctly parsed
     ///
@@ -123,7 +128,7 @@ impl Declaration {
             Declaration::Claim { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
             Declaration::Definition {
                 ref name, ref body, ..
-            } => ByteSpan::new(name.0, body.span().end()),
+            } => ByteSpan::new(name.0, body.span().end()), // FIXME: include where clause
             Declaration::Error(span) => span,
         }
     }
@@ -246,6 +251,15 @@ pub enum Term {
     /// e1 e2
     /// ```
     App(Box<Term>, Vec<Term>),
+    /// Let binding
+    ///
+    /// ```text
+    /// let x : I32
+    ///     x = 1
+    /// in
+    ///     x
+    /// ```
+    Let(ByteIndex, Vec<Declaration>, Box<Term>),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -262,9 +276,9 @@ impl Term {
             | Term::Hole(span)
             | Term::Error(span) => span,
             Term::Var(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),
-            Term::Pi(start, _, ref body) | Term::Lam(start, _, ref body) => {
-                ByteSpan::new(start, body.span().end())
-            },
+            Term::Pi(start, _, ref body)
+            | Term::Lam(start, _, ref body)
+            | Term::Let(start, _, ref body) => ByteSpan::new(start, body.span().end()),
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg[arg.len() - 1].span()),
