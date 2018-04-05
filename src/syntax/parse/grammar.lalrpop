@@ -27,6 +27,8 @@ extern {
         "let" => Token::Let,
         "module" => Token::Module,
         "import" => Token::Import,
+        "record" => Token::Record,
+        "Record" => Token::RecordType,
         "Type" => Token::Type,
         "where" => Token::Where,
 
@@ -34,6 +36,7 @@ extern {
         "\\" => Token::BSlash,
         ":" => Token::Colon,
         "," => Token::Comma,
+        "." => Token::Dot,
         ".." => Token::DotDot,
         "=" => Token::Equal,
         "->" => Token::LArrow,
@@ -187,6 +190,19 @@ AtomicTerm: Term = {
     <start: @L> <value: "decimal literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Int(value)),
     <start: @L> <value: "float literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Float(value)),
     <start: @L> <ident: Ident> => Term::Var(start, ident),
+    <start: @L> "Record" "{" <fields: (<RecordTypeField> ",")*> <last: RecordTypeField?> "}" <end: @R> => {
+        let mut fields = fields;
+        fields.extend(last);
+        Term::RecordType(ByteSpan::new(start, end), fields)
+    },
+    <start: @L> "record" "{" <fields: (<RecordField> ",")*> <last: RecordField?> "}" <end: @R> => {
+        let mut fields = fields;
+        fields.extend(last);
+        Term::Record(ByteSpan::new(start, end), fields)
+    },
+    <term: AtomicTerm> "." <label_start: @L> <label: Ident> => {
+        Term::Proj(Box::new(term), label_start, label)
+    },
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Term::Error(ByteSpan::new(start, end))
@@ -196,6 +212,14 @@ AtomicTerm: Term = {
 AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
     <name: IndexedIdent> => (vec![name], None),
     "(" <names: IndexedIdent+> <ann: (":" <PiTerm>)?> ")" => (names, ann.map(Box::new)),
+};
+
+RecordTypeField: (ByteIndex, String, Box<Term>) = {
+    <start: @L> <label: Ident> ":" <ty: Term> => (start, label, Box::new(ty)),
+};
+
+RecordField: (ByteIndex, String, Box<Term>) = {
+    <start: @L> <label: Ident> "=" <ty: Term> => (start, label, Box::new(ty)),
 };
 
 IndexedIdent: (ByteIndex, String) = {

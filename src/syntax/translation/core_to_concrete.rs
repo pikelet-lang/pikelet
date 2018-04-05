@@ -13,8 +13,6 @@ pub struct Prec(i8);
 
 impl Prec {
     /// This term will never be wrapped in parentheses
-    ///
-    /// Also used for terms that correspond to `AtomicTerm` in the parser
     pub const NO_WRAP: Prec = Prec(-1);
     /// Precedence corresponding to `Term` in the parser
     pub const ANN: Prec = Prec(0);
@@ -24,6 +22,8 @@ impl Prec {
     pub const PI: Prec = Prec(2);
     /// Precedence corresponding to `AppTerm` in the parser
     pub const APP: Prec = Prec(3);
+    /// Precedence corresponding to `AtomicTerm` in the parser
+    pub const ATOMIC: Prec = Prec(4);
 }
 
 fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
@@ -242,6 +242,59 @@ impl ToConcrete<concrete::Term> for core::Term {
                     Box::new(fn_term.to_concrete_prec(Prec::NO_WRAP)),
                     vec![arg.to_concrete_prec(Prec::NO_WRAP)], // TODO
                 ),
+            ),
+            core::Term::RecordType(_, ref scope) => {
+                let mut fields = vec![];
+                let mut scope = scope.clone();
+
+                loop {
+                    let ((label, Embed(expr)), body) = nameless::unbind(scope);
+
+                    fields.push((
+                        ByteIndex::default(),
+                        label.0.to_string(),
+                        Box::new(expr.to_concrete_prec(Prec::NO_WRAP)),
+                    ));
+
+                    match *body {
+                        core::Term::RecordType(_, ref next_scope) => scope = next_scope.clone(),
+                        core::Term::EmptyRecordType(_) => break,
+                        _ => panic!("ill-formed record type"), // FIXME: better error
+                    }
+                }
+
+                concrete::Term::RecordType(ByteSpan::default(), fields)
+            },
+            core::Term::Record(_, ref scope) => {
+                let mut fields = vec![];
+                let mut scope = scope.clone();
+
+                loop {
+                    let ((label, Embed(expr)), body) = nameless::unbind(scope);
+
+                    fields.push((
+                        ByteIndex::default(),
+                        label.0.to_string(),
+                        Box::new(expr.to_concrete_prec(Prec::NO_WRAP)),
+                    ));
+
+                    match *body {
+                        core::Term::Record(_, ref next_scope) => scope = next_scope.clone(),
+                        core::Term::EmptyRecord(_) => break,
+                        _ => panic!("ill-formed record"), // FIXME: better error
+                    }
+                }
+
+                concrete::Term::Record(ByteSpan::default(), fields)
+            },
+            core::Term::EmptyRecordType(_) => {
+                concrete::Term::RecordType(ByteSpan::default(), vec![])
+            },
+            core::Term::EmptyRecord(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
+            core::Term::Proj(_, ref expr, ref label) => concrete::Term::Proj(
+                Box::new(expr.to_concrete_prec(Prec::ATOMIC)),
+                ByteIndex::default(),
+                label.0.to_string(),
             ),
         }
     }

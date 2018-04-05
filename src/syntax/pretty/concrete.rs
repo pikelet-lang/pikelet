@@ -172,6 +172,11 @@ impl ToDoc for Term {
                     .append(Doc::text("in"))
                     .append(body.to_doc(options))
             },
+            Term::RecordType(_, _) => unimplemented!(),
+            Term::Record(_, _) => unimplemented!(),
+            Term::Proj(ref expr, _, ref label) => expr.to_doc(options)
+                .append(Doc::text("."))
+                .append(Doc::as_string(label)),
             Term::Error(_) => Doc::text("<error>"),
         }
     }
