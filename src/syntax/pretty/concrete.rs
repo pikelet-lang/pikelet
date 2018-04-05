@@ -172,6 +172,43 @@ impl ToDoc for Term {
                     .append(Doc::text("in"))
                     .append(body.to_doc(options))
             },
+            Term::RecordType(_, ref fields) if fields.is_empty() => Doc::text("Record {}"),
+            Term::Record(_, ref fields) if fields.is_empty() => Doc::text("record {}"),
+            Term::RecordType(_, ref fields) => Doc::text("Record {")
+                .append(Doc::space())
+                .append(
+                    Doc::intersperse(
+                        fields.iter().map(|&(_, ref name, ref ann)| {
+                            Doc::as_string(name)
+                                .append(Doc::space())
+                                .append(Doc::text(":"))
+                                .append(Doc::space())
+                                .append(ann.to_doc(options))
+                        }),
+                        Doc::text(",").append(Doc::space()),
+                    ).nest(options.indent_width as usize),
+                )
+                .append(Doc::space())
+                .append(Doc::text("}")),
+            Term::Record(_, ref fields) => Doc::text("record {")
+                .append(Doc::space())
+                .append(
+                    Doc::intersperse(
+                        fields.iter().map(|&(_, ref name, ref expr)| {
+                            Doc::as_string(name)
+                                .append(Doc::space())
+                                .append(Doc::text("="))
+                                .append(Doc::space())
+                                .append(expr.to_doc(options))
+                        }),
+                        Doc::text(",").append(Doc::space()),
+                    ).nest(options.indent_width as usize),
+                )
+                .append(Doc::space())
+                .append(Doc::text("}")),
+            Term::Proj(ref expr, _, ref label) => expr.to_doc(options)
+                .append(Doc::text("."))
+                .append(Doc::as_string(label)),
             Term::Error(_) => Doc::text("<error>"),
         }
     }

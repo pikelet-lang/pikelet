@@ -3,8 +3,8 @@
 use nameless::{Name, Var};
 use pretty::Doc;
 
-use syntax::core::{Constant, Context, Level, Neutral, RawConstant, RawDefinition, RawModule,
-                   RawTerm, Term, Value};
+use syntax::core::{Constant, Context, Label, Level, Neutral, RawConstant, RawDefinition,
+                   RawModule, RawTerm, Term, Value};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
 
@@ -108,6 +108,44 @@ fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &A) -
     )
 }
 
+fn pretty_record_ty(inner: StaticDoc) -> StaticDoc {
+    Doc::text("Record")
+        .append(Doc::space())
+        .append(Doc::text("{"))
+        .append(inner)
+        .append(Doc::text("}"))
+}
+
+fn pretty_record(inner: StaticDoc) -> StaticDoc {
+    Doc::text("Record")
+        .append(Doc::space())
+        .append(Doc::text("{"))
+        .append(inner)
+        .append(Doc::text("}"))
+}
+
+fn pretty_empty_record_ty() -> StaticDoc {
+    Doc::text("Record")
+        .append(Doc::space())
+        .append(Doc::text("{}"))
+}
+
+fn pretty_empty_record() -> StaticDoc {
+    Doc::text("record")
+        .append(Doc::space())
+        .append(Doc::text("{}"))
+}
+
+fn pretty_proj<E: ToDoc>(options: Options, expr: &E, label: &Label) -> StaticDoc {
+    parens_if(
+        Prec::APP < options.prec, // Is this precedence right?
+        Doc::nil()
+            .append(expr.to_doc(options.with_prec(Prec::APP))) // ???
+            .append(Doc::text("."))
+            .append(Doc::as_string(&label.0)),
+    )
+}
+
 impl ToDoc for RawConstant {
     fn to_doc(&self, _options: Options) -> StaticDoc {
         match *self {
@@ -174,6 +212,63 @@ impl ToDoc for RawTerm {
                 &scope.unsafe_body,
             ),
             RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
+            RawTerm::RecordType(_, ref label, ref ann, ref rest) => {
+                let mut inner = Doc::nil();
+                let mut label = label;
+                let mut ann = ann;
+                let mut rest = rest;
+
+                loop {
+                    inner = inner
+                        .append(Doc::as_string(&label.0))
+                        .append(Doc::space())
+                        .append(Doc::text(":"))
+                        .append(Doc::space())
+                        .append(ann.to_doc(options));
+
+                    match **rest {
+                        RawTerm::RecordType(_, ref next_label, ref next_ann, ref next_rest) => {
+                            label = next_label;
+                            ann = next_ann;
+                            rest = next_rest;
+                        },
+                        RawTerm::EmptyRecordType(_) => break,
+                        _ => panic!("ill-formed record"),
+                    }
+                }
+
+                pretty_record_ty(inner)
+            },
+            RawTerm::Record(_, ref label, ref expr, ref rest) => {
+                let mut inner = Doc::nil();
+                let mut label = label;
+                let mut expr = expr;
+                let mut rest = rest;
+
+                loop {
+                    inner = inner
+                        .append(Doc::as_string(&label.0))
+                        .append(Doc::space())
+                        .append(Doc::text("="))
+                        .append(Doc::space())
+                        .append(expr.to_doc(options));
+
+                    match **rest {
+                        RawTerm::Record(_, ref next_label, ref next_expr, ref next_rest) => {
+                            label = next_label;
+                            expr = next_expr;
+                            rest = next_rest;
+                        },
+                        RawTerm::EmptyRecord(_) => break,
+                        _ => panic!("ill-formed record"),
+                    }
+                }
+
+                pretty_record(inner)
+            },
+            RawTerm::EmptyRecordType(_) => pretty_empty_record_ty(),
+            RawTerm::EmptyRecord(_) => pretty_empty_record(),
+            RawTerm::Proj(_, ref expr, ref label) => pretty_proj(options, expr, label),
         }
     }
 }
@@ -198,6 +293,63 @@ impl ToDoc for Term {
                 &scope.unsafe_body,
             ),
             Term::App(_, ref f, ref a) => pretty_app(options, f, a),
+            Term::RecordType(_, ref label, ref ann, ref rest) => {
+                let mut inner = Doc::nil();
+                let mut label = label;
+                let mut ann = ann;
+                let mut rest = rest;
+
+                loop {
+                    inner = inner
+                        .append(Doc::as_string(&label.0))
+                        .append(Doc::space())
+                        .append(Doc::text(":"))
+                        .append(Doc::space())
+                        .append(ann.to_doc(options));
+
+                    match **rest {
+                        Term::RecordType(_, ref next_label, ref next_ann, ref next_rest) => {
+                            label = next_label;
+                            ann = next_ann;
+                            rest = next_rest;
+                        },
+                        Term::EmptyRecordType(_) => break,
+                        _ => panic!("ill-formed record"),
+                    }
+                }
+
+                pretty_record_ty(inner)
+            },
+            Term::Record(_, ref label, ref expr, ref rest) => {
+                let mut inner = Doc::nil();
+                let mut label = label;
+                let mut expr = expr;
+                let mut rest = rest;
+
+                loop {
+                    inner = inner
+                        .append(Doc::as_string(&label.0))
+                        .append(Doc::space())
+                        .append(Doc::text("="))
+                        .append(Doc::space())
+                        .append(expr.to_doc(options));
+
+                    match **rest {
+                        Term::Record(_, ref next_label, ref next_expr, ref next_rest) => {
+                            label = next_label;
+                            expr = next_expr;
+                            rest = next_rest;
+                        },
+                        Term::EmptyRecord(_) => break,
+                        _ => panic!("ill-formed record"),
+                    }
+                }
+
+                pretty_record(inner)
+            },
+            Term::EmptyRecordType(_) => pretty_empty_record_ty(),
+            Term::EmptyRecord(_) => pretty_empty_record(),
+            Term::Proj(_, ref expr, ref label) => pretty_proj(options, expr, label),
         }
     }
 }
@@ -219,6 +371,62 @@ impl ToDoc for Value {
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
+            Value::RecordType(ref label, ref ann, ref rest) => {
+                let mut inner = Doc::nil();
+                let mut label = label;
+                let mut ann = ann;
+                let mut rest = rest;
+
+                loop {
+                    inner = inner
+                        .append(Doc::as_string(&label.0))
+                        .append(Doc::space())
+                        .append(Doc::text(":"))
+                        .append(Doc::space())
+                        .append(ann.to_doc(options));
+
+                    match **rest {
+                        Value::RecordType(ref next_label, ref next_ann, ref next_rest) => {
+                            label = next_label;
+                            ann = next_ann;
+                            rest = next_rest;
+                        },
+                        Value::EmptyRecordType => break,
+                        _ => panic!("ill-formed record"),
+                    }
+                }
+
+                pretty_record_ty(inner)
+            },
+            Value::Record(ref label, ref expr, ref rest) => {
+                let mut inner = Doc::nil();
+                let mut label = label;
+                let mut expr = expr;
+                let mut rest = rest;
+
+                loop {
+                    inner = inner
+                        .append(Doc::as_string(&label.0))
+                        .append(Doc::space())
+                        .append(Doc::text("="))
+                        .append(Doc::space())
+                        .append(expr.to_doc(options));
+
+                    match **rest {
+                        Value::Record(ref next_label, ref next_expr, ref next_rest) => {
+                            label = next_label;
+                            expr = next_expr;
+                            rest = next_rest;
+                        },
+                        Value::EmptyRecord => break,
+                        _ => panic!("ill-formed record"),
+                    }
+                }
+
+                pretty_record(inner)
+            },
+            Value::EmptyRecordType => pretty_empty_record_ty(),
+            Value::EmptyRecord => pretty_empty_record(),
             Value::Neutral(ref n) => n.to_doc(options),
         }
     }
@@ -229,6 +437,7 @@ impl ToDoc for Neutral {
         match *self {
             Neutral::Var(ref var) => pretty_var(options, var),
             Neutral::App(ref fn_term, ref arg_term) => pretty_app(options, fn_term, arg_term),
+            Neutral::Proj(ref expr, ref label) => pretty_proj(options, expr, label),
         }
     }
 }

@@ -121,6 +121,36 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 _ => Err(InternalError::ArgumentAppliedToNonFunction { span: expr.span() }),
             }
         },
+
+        // E-RECORD-TYPE
+        Term::RecordType(_, ref label, ref ann, ref rest) => {
+            let ann = normalize(context, ann)?;
+            let rest = normalize(context, rest)?;
+
+            Ok(Rc::new(Value::RecordType(label.clone(), ann, rest)))
+        },
+
+        // E-RECORD
+        Term::Record(_, ref label, ref expr, ref rest) => {
+            let expr = normalize(context, expr)?;
+            let rest = normalize(context, rest)?;
+
+            Ok(Rc::new(Value::Record(label.clone(), expr, rest)))
+        },
+
+        // E-EMPTY-RECORD-TYPE
+        Term::EmptyRecordType(_) => Ok(Rc::new(Value::EmptyRecordType)),
+
+        // E-EMPTY-RECORD
+        Term::EmptyRecord(_) => Ok(Rc::new(Value::EmptyRecord)),
+
+        // E-PROJ
+        Term::Proj(_, ref expr, ref label) => {
+            match normalize(context, expr)?.lookup_record(label) {
+                Some(value) => Ok(value.clone()),
+                None => unimplemented!(),
+            }
+        },
     }
 }
 
@@ -186,6 +216,21 @@ pub fn check(
                 span: raw_term.span(),
                 expected: Box::new(Term::from(&**expected_ty).to_concrete()),
             });
+        },
+
+        // C-RECORD
+        (
+            &RawTerm::Record(meta, ref label, ref raw_expr, ref raw_rest),
+            &Value::RecordType(ref ty_label, ref ann, ref ty_rest),
+        ) => {
+            if label == ty_label {
+                let expr = check(context, &raw_expr, &ann)?;
+                let body = check(context, &raw_rest, &ty_rest)?;
+
+                return Ok(Rc::new(Term::Record(meta, label.clone(), expr, body)));
+            } else {
+                unimplemented!()
+            }
         },
 
         (&RawTerm::Hole(meta), _) => {
@@ -294,12 +339,9 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 infer_universe(&context.claim(name.clone(), ann), &raw_body)?
             };
 
-            let scope = nameless::bind((name, Embed(ann)), body);
-            let level = cmp::max(ann_level, body_level);
-
             Ok((
-                Rc::new(Term::Pi(meta, scope)),
-                Rc::new(Value::Universe(level)),
+                Rc::new(Term::Pi(meta, nameless::bind((name, Embed(ann)), body))),
+                Rc::new(Value::Universe(cmp::max(ann_level, body_level))),
             ))
         },
 
@@ -351,6 +393,58 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                     arg_span: raw_arg.span(),
                     found: Box::new(Term::from(&*expr_ty).to_concrete()),
                 }),
+            }
+        },
+
+        // I-RECORD-TYPE
+        RawTerm::RecordType(meta, ref label, ref raw_ann, ref raw_rest) => {
+            // Check that rest of record type is well-formed?
+            // Might be able to skip that for now, because there's no way to
+            // express ill-formed records in the concrete syntax...
+
+            let (ann, ann_level) = infer_universe(context, &raw_ann)?;
+            let (rest, rest_level) = infer_universe(context, &raw_rest)?;
+
+            Ok((
+                Rc::new(Term::RecordType(meta, label.clone(), ann, rest)),
+                Rc::new(Value::Universe(cmp::max(ann_level, rest_level))),
+            ))
+        },
+
+        // I-RECORD
+        RawTerm::Record(meta, ref label, ref raw_expr, ref raw_rest) => {
+            // Check that rest of record is well-formed?
+            // Might be able to skip that for now, because there's no way to
+            // express ill-formed records in the concrete syntax...
+
+            let (expr, ann) = infer(context, &raw_expr)?;
+            let (rest, ty_rest) = infer(context, &raw_rest)?;
+
+            Ok((
+                Rc::new(Term::Record(meta, label.clone(), expr, rest)),
+                Rc::new(Value::RecordType(label.clone(), ann, ty_rest)),
+            ))
+        },
+
+        // I-EMPTY-RECORD-TYPE
+        RawTerm::EmptyRecordType(meta) => Ok((
+            Rc::new(Term::EmptyRecordType(meta)),
+            Rc::new(Value::Universe(Level(0))),
+        )),
+
+        // I-EMPTY-RECORD
+        RawTerm::EmptyRecord(meta) => Ok((
+            Rc::new(Term::EmptyRecord(meta)),
+            Rc::new(Value::EmptyRecordType),
+        )),
+
+        // I-PROJ
+        RawTerm::Proj(meta, ref expr, ref label) => {
+            let (expr, ty) = infer(context, expr)?;
+
+            match ty.lookup_record_ty(label) {
+                Some(ty) => Ok((Rc::new(Term::Proj(meta, expr, label.clone())), ty)),
+                None => unimplemented!(),
             }
         },
     }

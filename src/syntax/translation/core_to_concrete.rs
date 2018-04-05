@@ -13,8 +13,6 @@ pub struct Prec(i8);
 
 impl Prec {
     /// This term will never be wrapped in parentheses
-    ///
-    /// Also used for terms that correspond to `AtomicTerm` in the parser
     pub const NO_WRAP: Prec = Prec(-1);
     /// Precedence corresponding to `Term` in the parser
     pub const ANN: Prec = Prec(0);
@@ -24,6 +22,8 @@ impl Prec {
     pub const PI: Prec = Prec(2);
     /// Precedence corresponding to `AppTerm` in the parser
     pub const APP: Prec = Prec(3);
+    /// Precedence corresponding to `AtomicTerm` in the parser
+    pub const ATOMIC: Prec = Prec(4);
 }
 
 fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
@@ -242,6 +242,67 @@ impl ToConcrete<concrete::Term> for core::Term {
                     Box::new(fn_term.to_concrete_prec(Prec::NO_WRAP)),
                     vec![arg.to_concrete_prec(Prec::NO_WRAP)], // TODO
                 ),
+            ),
+            core::Term::RecordType(_, ref label, ref ann, ref rest) => {
+                let mut fields = vec![];
+                let mut label = label;
+                let mut ann = ann;
+                let mut rest = rest;
+
+                loop {
+                    fields.push((
+                        ByteIndex::default(),
+                        label.0.clone(),
+                        Box::new(ann.to_concrete_prec(Prec::NO_WRAP)),
+                    ));
+
+                    match **rest {
+                        core::Term::RecordType(_, ref next_label, ref next_ann, ref next_rest) => {
+                            label = next_label;
+                            ann = next_ann;
+                            rest = next_rest;
+                        },
+                        core::Term::EmptyRecordType(_) => break,
+                        _ => panic!("ill-formed record type"), // FIXME: better error
+                    }
+                }
+
+                concrete::Term::RecordType(ByteSpan::default(), fields)
+            },
+            core::Term::Record(_, ref label, ref expr, ref rest) => {
+                let mut fields = vec![];
+                let mut label = label;
+                let mut expr = expr;
+                let mut rest = rest;
+
+                loop {
+                    fields.push((
+                        ByteIndex::default(),
+                        label.0.clone(),
+                        Box::new(expr.to_concrete_prec(Prec::NO_WRAP)),
+                    ));
+
+                    match **rest {
+                        core::Term::Record(_, ref next_label, ref next_expr, ref next_rest) => {
+                            label = next_label;
+                            expr = next_expr;
+                            rest = next_rest;
+                        },
+                        core::Term::EmptyRecord(_) => break,
+                        _ => panic!("ill-formed record"), // FIXME: better error
+                    }
+                }
+
+                concrete::Term::Record(ByteSpan::default(), fields)
+            },
+            core::Term::EmptyRecordType(_) => {
+                concrete::Term::RecordType(ByteSpan::default(), vec![])
+            },
+            core::Term::EmptyRecord(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
+            core::Term::Proj(_, ref expr, ref label) => concrete::Term::Proj(
+                Box::new(expr.to_concrete_prec(Prec::ATOMIC)),
+                ByteIndex::default(),
+                label.0.clone(),
             ),
         }
     }

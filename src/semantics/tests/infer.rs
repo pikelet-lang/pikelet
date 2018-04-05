@@ -25,7 +25,7 @@ fn ty() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -38,7 +38,7 @@ fn ty_levels() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -51,7 +51,7 @@ fn ann_ty_id() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -64,7 +64,7 @@ fn ann_arrow_ty_id() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -89,7 +89,7 @@ fn app() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -118,7 +118,7 @@ fn lam() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -131,7 +131,7 @@ fn pi() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -144,7 +144,7 @@ fn id() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -157,7 +157,7 @@ fn id_ann() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -167,12 +167,12 @@ fn id_ann() {
 fn id_app_ty() {
     let context = Context::new();
 
-    let expected_expr = r"Type -> Type";
+    let expected_ty = r"Type -> Type";
     let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -181,12 +181,12 @@ fn id_app_ty() {
 fn id_app_ty_ty() {
     let context = Context::new();
 
-    let expected_expr = r"Type 1";
+    let expected_ty = r"Type 1";
     let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -199,7 +199,7 @@ fn id_app_ty_arr_ty() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -212,7 +212,7 @@ fn id_app_arr_pi_ty() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -225,7 +225,7 @@ fn apply() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -238,7 +238,7 @@ fn const_() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -251,7 +251,7 @@ fn const_flipped() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -264,7 +264,7 @@ fn flip() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -277,7 +277,7 @@ fn compose() {
 
     assert_term_eq!(
         infer(&context, &parse(given_expr)).unwrap().1,
-        normalize(&context, &parse_infer(expected_ty)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
 }
 
@@ -293,7 +293,7 @@ mod church_encodings {
 
         assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
-            normalize(&context, &parse_infer(expected_ty)).unwrap(),
+            normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
         );
     }
 
@@ -312,7 +312,7 @@ mod church_encodings {
 
         assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
-            normalize(&context, &parse_infer(expected_ty)).unwrap(),
+            normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
         );
     }
 
@@ -331,7 +331,7 @@ mod church_encodings {
 
         assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
-            normalize(&context, &parse_infer(expected_ty)).unwrap(),
+            normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
         );
     }
 
@@ -349,7 +349,72 @@ mod church_encodings {
 
         assert_term_eq!(
             infer(&context, &parse(given_expr)).unwrap().1,
-            normalize(&context, &parse_infer(expected_ty)).unwrap(),
+            normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
         );
     }
+}
+
+#[test]
+fn empty_record_ty() {
+    let context = Context::new();
+
+    let expected_ty = r"Type";
+    let given_expr = r"Record {}";
+
+    assert_term_eq!(
+        infer(&context, &parse(given_expr)).unwrap().1,
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
+    );
+}
+
+#[test]
+fn empty_record() {
+    let context = Context::new();
+
+    let expected_ty = r"Record {}";
+    let given_expr = r"record {}";
+
+    assert_term_eq!(
+        infer(&context, &parse(given_expr)).unwrap().1,
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
+    );
+}
+
+#[test]
+fn record_ty() {
+    let context = Context::default();
+
+    let expected_ty = r"Type 2";
+    let given_expr = r"Record { t : Type 1, x : String }";
+
+    assert_term_eq!(
+        infer(&context, &parse(given_expr)).unwrap().1,
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
+    );
+}
+
+#[test]
+fn record() {
+    let context = Context::default();
+
+    let expected_ty = r"Record { t : Type, x : String }";
+    let given_expr = r#"record { t = String, x = "hello" }"#;
+
+    assert_term_eq!(
+        infer(&context, &parse(given_expr)).unwrap().1,
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
+    );
+}
+
+#[test]
+fn proj() {
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"record { t = String, x = "hello" }.x"#;
+
+    assert_term_eq!(
+        infer(&context, &parse(given_expr)).unwrap().1,
+        normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
+    );
 }

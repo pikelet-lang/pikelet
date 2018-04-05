@@ -4,10 +4,11 @@
 
 - [Declarations](#declarations)
 - [Comments](#comments)
-- [Built-in types and their literals](#built-in-types-and-their-literals)
+- [Primitive types and their literals](#primitive-types-and-their-literals)
 - [Type annotations](#type-annotations)
-- [Types of types](#types-of-types)
 - [Identifiers](#identifiers)
+- [Records](# value)
+  - [Field lookups](#field-lookups)
 - [Functions](#functions)
 
 
@@ -59,9 +60,9 @@ self-aware-string : String
 self-aware-string = "I am a string!"
 ```
 
-## Built-in types and their literals
+## Primitive types and their literals
 
-Pikelet has a number of fundamental types:
+Pikelet has a number of primitive types:
 
 | Type     | Literal                                |
 |----------|----------------------------------------|
@@ -78,13 +79,13 @@ Pikelet has a number of fundamental types:
 | `F32`    | `1`, `2`, `3`, ..., `0.0`, `1.0`, ...  |
 | `F64`    | `1`, `2`, `3`, ..., `0.0`, `1.0`, ...  |
 
-> **Note:** You can't do much with these built-in types yet. In the future we
+> **Note:** You can't do much with these primitive types yet. In the future we
 > will add some primitive functions to allow you to maniplate them.
 
 ## Type annotations
 
-If you note [above](#built-in-types-and-their-literals), a number of the
-built-in types share a literal representation. Pikelet will try to predictably
+If you note [above](#primitive-types-and-their-literals), a number of the
+primitive types share a literal representation. Pikelet will try to predictably
 infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, `(:)`, to specify the intended type:
 
@@ -107,6 +108,50 @@ error: found a floating point literal, but expected a type `U64`
 ## Identifiers
 
 > TODO
+
+## Records
+
+You can group together multiple values by using records:
+
+```pikelet-repl
+Pikelet> record { x = 3.0 : F32, y = 3.0 : F32 }
+record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+```
+
+Take note of the following:
+
+- record values use the lower case `record` keyword
+- record types use the upper case `Record` keyword
+- we had to [annotate](#type-annotations) ambiguous field values
+
+We can make a new definition for point types:
+
+```pikelet
+Point2d = Record {
+  x : F32,
+  y : F32,
+};
+```
+
+You can then use this type to make it easier to define a point record:
+
+```pikelet-repl
+Pikelet> record { x = 3.0, y = 3.0 } : Point2d
+record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+```
+
+Note how we no longer needed to annotate each field! Pikelet was able to pick up
+the type of each field from the type definition during type checking. You can
+read more about Pikelet's type inference on [the type inference page](./type-inference).
+
+### Field lookups
+
+You can access the value associated with a field by using the dot operator:
+
+```pikelet-repl
+Pikelet> record { name = "Jane" }.name
+"Jane" : String
+```
 
 ## Functions
 

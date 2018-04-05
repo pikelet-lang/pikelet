@@ -1,5 +1,3 @@
-use codespan_reporting;
-use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use library;
 
 use super::*;

@@ -144,6 +144,10 @@ impl fmt::Display for RawDefinition {
     }
 }
 
+/// A record label
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub struct Label(pub String);
+
 /// Raw terms, unchecked and with implicit syntax that needs to be elaborated
 ///
 /// For now the only implicit syntax we have is holes and lambdas that lack a
@@ -166,6 +170,16 @@ pub enum RawTerm {
     Lam(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
     /// RawTerm application
     App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>),
+    /// Dependent record types
+    RecordType(SourceMeta, Label, Rc<RawTerm>, Rc<RawTerm>),
+    /// Dependent record
+    Record(SourceMeta, Label, Rc<RawTerm>, Rc<RawTerm>),
+    /// The unit type
+    EmptyRecordType(SourceMeta),
+    /// The element of the unit type
+    EmptyRecord(SourceMeta),
+    /// Field projection
+    Proj(SourceMeta, Rc<RawTerm>, Label),
 }
 
 impl RawTerm {
@@ -178,7 +192,12 @@ impl RawTerm {
             | RawTerm::Var(meta, _)
             | RawTerm::Pi(meta, _)
             | RawTerm::Lam(meta, _)
-            | RawTerm::App(meta, _, _) => meta.span,
+            | RawTerm::App(meta, _, _)
+            | RawTerm::RecordType(meta, _, _, _)
+            | RawTerm::Record(meta, _, _, _)
+            | RawTerm::EmptyRecordType(meta)
+            | RawTerm::EmptyRecord(meta)
+            | RawTerm::Proj(meta, _, _) => meta.span,
         }
     }
 }
@@ -212,6 +231,22 @@ impl RawTerm {
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
+            },
+            RawTerm::RecordType(_, _, ref ann, ref rest) => {
+                ann.visit_vars(on_var);
+                rest.visit_vars(on_var);
+                return;
+            },
+            RawTerm::Record(_, _, ref expr, ref rest) => {
+                expr.visit_vars(on_var);
+                rest.visit_vars(on_var);
+                return;
+            },
+            RawTerm::EmptyRecordType(_) => return,
+            RawTerm::EmptyRecord(_) => return,
+            RawTerm::Proj(_, ref expr, _) => {
+                expr.visit_vars(on_var);
+                return;
             },
         };
     }
@@ -264,6 +299,16 @@ pub enum Term {
     Lam(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(SourceMeta, Rc<Term>, Rc<Term>),
+    /// Dependent record types
+    RecordType(SourceMeta, Label, Rc<Term>, Rc<Term>),
+    /// Dependent record
+    Record(SourceMeta, Label, Rc<Term>, Rc<Term>),
+    /// The unit type
+    EmptyRecordType(SourceMeta),
+    /// The element of the unit type
+    EmptyRecord(SourceMeta),
+    /// Field projection
+    Proj(SourceMeta, Rc<Term>, Label),
 }
 
 impl Term {
@@ -275,7 +320,12 @@ impl Term {
             | Term::Var(meta, _)
             | Term::Lam(meta, _)
             | Term::Pi(meta, _)
-            | Term::App(meta, _, _) => meta.span,
+            | Term::App(meta, _, _)
+            | Term::RecordType(meta, _, _, _)
+            | Term::Record(meta, _, _, _)
+            | Term::EmptyRecordType(meta)
+            | Term::EmptyRecord(meta)
+            | Term::Proj(meta, _, _) => meta.span,
         }
     }
 }
@@ -310,6 +360,22 @@ impl Term {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
             },
+            Term::RecordType(_, _, ref ann, ref rest) => {
+                ann.visit_vars(on_var);
+                rest.visit_vars(on_var);
+                return;
+            },
+            Term::Record(_, _, ref expr, ref rest) => {
+                expr.visit_vars(on_var);
+                rest.visit_vars(on_var);
+                return;
+            },
+            Term::EmptyRecordType(_) => return,
+            Term::EmptyRecord(_) => return,
+            Term::Proj(_, ref expr, _) => {
+                expr.visit_vars(on_var);
+                return;
+            },
         };
     }
 
@@ -341,8 +407,64 @@ pub enum Value {
     Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
     Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
+    /// Dependent record types
+    RecordType(Label, Rc<Value>, Rc<Value>),
+    /// Dependent record
+    Record(Label, Rc<Value>, Rc<Value>),
+    /// The unit type
+    EmptyRecordType,
+    /// The element of the unit type
+    EmptyRecord,
     /// Neutral terms
     Neutral(Rc<Neutral>),
+}
+
+impl Value {
+    pub fn lookup_record_ty(&self, label: &Label) -> Option<Rc<Value>> {
+        fn lookup_next(value: &Value, label: &Label) -> Result<Rc<Value>, Option<Rc<Value>>> {
+            if let Value::RecordType(ref curr_label, ref value, ref body) = *value {
+                if curr_label == label {
+                    Ok(value.clone())
+                } else {
+                    Err(Some(body.clone()))
+                }
+            } else {
+                Err(None)
+            }
+        }
+
+        let mut current = lookup_next(self, label);
+        loop {
+            current = match current {
+                Ok(term) => return Some(term),
+                Err(Some(term)) => lookup_next(&*term, label),
+                Err(None) => return None,
+            };
+        }
+    }
+
+    pub fn lookup_record(&self, label: &Label) -> Option<Rc<Value>> {
+        fn lookup_next(value: &Value, label: &Label) -> Result<Rc<Value>, Option<Rc<Value>>> {
+            if let Value::Record(ref curr_label, ref value, ref body) = *value {
+                if curr_label == label {
+                    Ok(value.clone())
+                } else {
+                    Err(Some(body.clone()))
+                }
+            } else {
+                Err(None)
+            }
+        }
+
+        let mut current = lookup_next(self, label);
+        loop {
+            current = match current {
+                Ok(term) => return Some(term),
+                Err(Some(term)) => lookup_next(&*term, label),
+                Err(None) => return None,
+            };
+        }
+    }
 }
 
 impl fmt::Display for Value {
@@ -363,6 +485,8 @@ pub enum Neutral {
     Var(Var),
     /// RawTerm application
     App(Rc<Neutral>, Rc<Term>),
+    /// Field projection
+    Proj(Rc<Neutral>, Label),
 }
 
 impl fmt::Display for Neutral {
@@ -401,6 +525,20 @@ impl<'a> From<&'a Value> for Term {
 
                 Term::Lam(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
             },
+            Value::RecordType(ref label, ref ann, ref rest) => Term::RecordType(
+                meta,
+                label.clone(),
+                Rc::new(Term::from(&**ann)),
+                Rc::new(Term::from(&**rest)),
+            ),
+            Value::Record(ref label, ref expr, ref rest) => Term::Record(
+                meta,
+                label.clone(),
+                Rc::new(Term::from(&**expr)),
+                Rc::new(Term::from(&**rest)),
+            ),
+            Value::EmptyRecordType => Term::EmptyRecordType(meta).into(),
+            Value::EmptyRecord => Term::EmptyRecord(meta).into(),
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }
@@ -414,6 +552,9 @@ impl<'a> From<&'a Neutral> for Term {
             Neutral::Var(ref var) => Term::Var(meta, var.clone()),
             Neutral::App(ref fn_expr, ref arg_expr) => {
                 Term::App(meta, Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
+            },
+            Neutral::Proj(ref expr, ref name) => {
+                Term::Proj(meta, Rc::new(Term::from(&**expr)), name.clone()).into()
             },
         }
     }
