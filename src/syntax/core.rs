@@ -438,67 +438,34 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Context {
+        let universe0 = Rc::new(Value::Universe(Level(0)));
+        let constant = |c: Constant| Rc::new(Term::Constant(SourceMeta::default(), c));
+
         Context::new()
-            .claim(Name::user("String"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("String"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::StringType)),
-            )
-            .claim(Name::user("Char"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("Char"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::CharType)),
-            )
-            .claim(Name::user("U8"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("U8"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::U8Type)),
-            )
-            .claim(Name::user("U16"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("U16"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::U16Type)),
-            )
-            .claim(Name::user("U32"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("U32"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::U32Type)),
-            )
-            .claim(Name::user("U64"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("U64"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::U64Type)),
-            )
-            .claim(Name::user("I8"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("I8"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::I8Type)),
-            )
-            .claim(Name::user("I16"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("I16"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::I16Type)),
-            )
-            .claim(Name::user("I32"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("I32"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::I32Type)),
-            )
-            .claim(Name::user("I64"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("I64"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::I64Type)),
-            )
-            .claim(Name::user("F32"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("F32"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::F32Type)),
-            )
-            .claim(Name::user("F64"), Rc::new(Value::Universe(Level(0))))
-            .define(
-                Name::user("F64"),
-                Rc::new(Term::Constant(SourceMeta::default(), Constant::F64Type)),
-            )
+            .claim(Name::user("String"), universe0.clone())
+            .define(Name::user("String"), constant(Constant::StringType))
+            .claim(Name::user("Char"), universe0.clone())
+            .define(Name::user("Char"), constant(Constant::CharType))
+            .claim(Name::user("U8"), universe0.clone())
+            .define(Name::user("U8"), constant(Constant::U8Type))
+            .claim(Name::user("U16"), universe0.clone())
+            .define(Name::user("U16"), constant(Constant::U16Type))
+            .claim(Name::user("U32"), universe0.clone())
+            .define(Name::user("U32"), constant(Constant::U32Type))
+            .claim(Name::user("U64"), universe0.clone())
+            .define(Name::user("U64"), constant(Constant::U64Type))
+            .claim(Name::user("I8"), universe0.clone())
+            .define(Name::user("I8"), constant(Constant::I8Type))
+            .claim(Name::user("I16"), universe0.clone())
+            .define(Name::user("I16"), constant(Constant::I16Type))
+            .claim(Name::user("I32"), universe0.clone())
+            .define(Name::user("I32"), constant(Constant::I32Type))
+            .claim(Name::user("I64"), universe0.clone())
+            .define(Name::user("I64"), constant(Constant::I64Type))
+            .claim(Name::user("F32"), universe0.clone())
+            .define(Name::user("F32"), constant(Constant::F32Type))
+            .claim(Name::user("F64"), universe0.clone())
+            .define(Name::user("F64"), constant(Constant::F64Type))
     }
 }
 
