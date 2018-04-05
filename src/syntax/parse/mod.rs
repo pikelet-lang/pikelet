@@ -17,7 +17,7 @@ pub use self::lexer::{LexerError, Token};
 pub fn repl_command<'input>(filemap: &'input FileMap) -> (concrete::ReplCommand, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_ReplCommand(&mut errors, filemap, lexer) {
+    match grammar::ReplCommandParser::new().parse(&mut errors, filemap, lexer) {
         Ok(value) => (value, errors),
         Err(err) => {
             errors.push(errors::from_lalrpop(filemap, err));
@@ -29,7 +29,7 @@ pub fn repl_command<'input>(filemap: &'input FileMap) -> (concrete::ReplCommand,
 pub fn module<'input>(filemap: &'input FileMap) -> (concrete::Module, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_Module(&mut errors, filemap, lexer) {
+    match grammar::ModuleParser::new().parse(&mut errors, filemap, lexer) {
         Ok(value) => (value, errors),
         Err(err) => {
             errors.push(errors::from_lalrpop(filemap, err));
@@ -41,7 +41,7 @@ pub fn module<'input>(filemap: &'input FileMap) -> (concrete::Module, Vec<ParseE
 pub fn term<'input>(filemap: &'input FileMap) -> (concrete::Term, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    match grammar::parse_Term(&mut errors, filemap, lexer) {
+    match grammar::TermParser::new().parse(&mut errors, filemap, lexer) {
         Ok(value) => (value, errors),
         Err(err) => {
             errors.push(errors::from_lalrpop(filemap, err));

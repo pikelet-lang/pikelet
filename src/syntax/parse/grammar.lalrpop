@@ -78,7 +78,7 @@ pub Module: Module = {
     },
 };
 
-pub Declaration: Declaration = {
+Declaration: Declaration = {
     <start: @L> "import" <name: IndexedIdent> <rename: ("as" <IndexedIdent>)?>
         <exposing: Exposing?> <end: @R> ";" =>
     {
