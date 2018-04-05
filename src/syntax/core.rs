@@ -439,7 +439,7 @@ impl Context {
 impl Default for Context {
     fn default() -> Context {
         let universe0 = Rc::new(Value::Universe(Level(0)));
-        let constant = |c: Constant| Rc::new(Term::Constant(SourceMeta::default(), c));
+        let constant = |c| Rc::new(Term::Constant(SourceMeta::default(), c));
 
         Context::new()
             .claim(Name::user("String"), universe0.clone())
