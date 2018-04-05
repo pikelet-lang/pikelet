@@ -379,135 +379,124 @@ impl<'a> From<&'a Neutral> for Term {
     }
 }
 
-/// A binder that introduces a variable into the context
+/// An entry in the context
 #[derive(Debug, Clone, PartialEq)]
-pub enum Binder {
-    /// A type introduced after entering a lambda abstraction
-    Lam { name: Name, ann: Rc<Type> },
-    /// A type introduced after entering a pi type
-    Pi { name: Name, ann: Rc<Type> },
-    /// A value and type binding that was introduced by passing over a let binding
-    Let {
-        name: Name,
-        ann: Rc<Type>,
-        value: Rc<Term>,
-    },
-}
-
-impl Binder {
-    pub fn span(&self) -> ByteSpan {
-        // TODO: real span
-        ByteSpan::default()
-    }
-
-    pub fn name(&self) -> &Name {
-        match *self {
-            Binder::Lam { ref name, .. }
-            | Binder::Pi { ref name, .. }
-            | Binder::Let { ref name, .. } => name,
-        }
-    }
+pub enum ContextEntry {
+    /// A type claim
+    Claim(Name, Rc<Type>),
+    /// A value definition
+    Definition(Name, Rc<Term>),
 }
 
 /// A list of binders that have been accumulated during typechecking
 #[derive(Clone, PartialEq)]
 pub struct Context {
-    pub binders: List<Binder>,
+    pub entries: List<ContextEntry>,
 }
 
 impl Context {
     /// Create a new, empty context
     pub fn new() -> Context {
         Context {
-            binders: List::new(),
+            entries: List::new(),
         }
     }
 
-    /// Extend the context with a binder
-    pub fn extend(&self, binder: Binder) -> Context {
+    pub fn claim(&self, name: Name, ty: Rc<Type>) -> Context {
         Context {
-            binders: self.binders.push_front(binder),
+            entries: self.entries.push_front(ContextEntry::Claim(name, ty)),
         }
     }
 
-    pub fn extend_lam(&self, name: Name, ann: Rc<Type>) -> Context {
-        self.extend(Binder::Lam { name, ann })
+    pub fn define(&self, name: Name, term: Rc<Term>) -> Context {
+        Context {
+            entries: self.entries
+                .push_front(ContextEntry::Definition(name, term)),
+        }
     }
 
-    pub fn extend_pi(&self, name: Name, ann: Rc<Type>) -> Context {
-        self.extend(Binder::Pi { name, ann })
+    pub fn lookup_claim(&self, name: &Name) -> Option<&Rc<Type>> {
+        self.entries
+            .iter()
+            .filter_map(|entry| match *entry {
+                ContextEntry::Claim(ref n, ref ty) if n == name => Some(ty),
+                ContextEntry::Claim(_, _) | ContextEntry::Definition(_, _) => None,
+            })
+            .next()
     }
 
-    pub fn extend_let(&self, name: Name, ann: Rc<Type>, value: Rc<Term>) -> Context {
-        self.extend(Binder::Let { name, ann, value })
-    }
-
-    pub fn lookup_binder(&self, name: &Name) -> Option<&Binder> {
-        self.binders.iter().find(|binder| binder.name() == name)
+    pub fn lookup_definition(&self, name: &Name) -> Option<&Rc<Term>> {
+        self.entries
+            .iter()
+            .filter_map(|entry| match *entry {
+                ContextEntry::Definition(ref n, ref term) if n == name => Some(term),
+                ContextEntry::Definition(_, _) | ContextEntry::Claim(_, _) => None,
+            })
+            .next()
     }
 }
 
 impl Default for Context {
     fn default() -> Context {
         Context::new()
-            .extend_let(
+            .claim(Name::user("String"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("String"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::StringType)),
             )
-            .extend_let(
+            .claim(Name::user("Char"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("Char"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::CharType)),
             )
-            .extend_let(
+            .claim(Name::user("U8"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("U8"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::U8Type)),
             )
-            .extend_let(
+            .claim(Name::user("U16"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("U16"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::U16Type)),
             )
-            .extend_let(
+            .claim(Name::user("U32"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("U32"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::U32Type)),
             )
-            .extend_let(
+            .claim(Name::user("U64"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("U64"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::U64Type)),
             )
-            .extend_let(
+            .claim(Name::user("I8"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("I8"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::I8Type)),
             )
-            .extend_let(
+            .claim(Name::user("I16"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("I16"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::I16Type)),
             )
-            .extend_let(
+            .claim(Name::user("I32"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("I32"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::I32Type)),
             )
-            .extend_let(
+            .claim(Name::user("I64"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("I64"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::I64Type)),
             )
-            .extend_let(
+            .claim(Name::user("F32"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("F32"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::F32Type)),
             )
-            .extend_let(
+            .claim(Name::user("F64"), Rc::new(Value::Universe(Level(0))))
+            .define(
                 Name::user("F64"),
-                Rc::new(Value::Universe(Level(0))),
                 Rc::new(Term::Constant(SourceMeta::default(), Constant::F64Type)),
             )
     }
@@ -523,16 +512,16 @@ impl fmt::Display for Context {
 
 impl fmt::Debug for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct FmtBinders<'a>(&'a List<Binder>);
+        struct FmtContextEntries<'a>(&'a List<ContextEntry>);
 
-        impl<'a> fmt::Debug for FmtBinders<'a> {
+        impl<'a> fmt::Debug for FmtContextEntries<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 f.debug_list().entries(self.0).finish()
             }
         }
 
         f.debug_struct("Context")
-            .field("binders", &FmtBinders(&self.binders))
+            .field("entries", &FmtContextEntries(&self.entries))
             .finish()
     }
 }

@@ -17,8 +17,6 @@ pub enum InternalError {
         name: Name,
         index: BoundName,
     },
-    #[fail(display = "Undefined name `{}`.", name)]
-    UndefinedName { var_span: ByteSpan, name: Name },
     #[fail(display = "Argument applied to non-function.")]
     ArgumentAppliedToNonFunction { span: ByteSpan },
 }
@@ -27,7 +25,6 @@ impl InternalError {
     pub fn span(&self) -> ByteSpan {
         match *self {
             InternalError::UnsubstitutedDebruijnIndex { span, .. } => span,
-            InternalError::UndefinedName { var_span, .. } => var_span,
             InternalError::ArgumentAppliedToNonFunction { span, .. } => span,
         }
     }
@@ -40,11 +37,6 @@ impl InternalError {
                 index,
             } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index))
                 .with_label(Label::new_primary(span).with_message("index found here")),
-            InternalError::UndefinedName { ref name, var_span } => {
-                Diagnostic::new_bug(format!("cannot find `{}` in scope", name)).with_label(
-                    Label::new_primary(var_span).with_message("not found in this scope"),
-                )
-            },
             InternalError::ArgumentAppliedToNonFunction { span } => {
                 Diagnostic::new_bug(format!("argument applied to non-function"))
                     .with_label(Label::new_primary(span).with_message("not a function"))

@@ -3,8 +3,8 @@
 use nameless::{Name, Var};
 use pretty::Doc;
 
-use syntax::core::{Binder, Constant, Context, Level, Neutral, RawConstant, RawDefinition,
-                   RawModule, RawTerm, Term, Value};
+use syntax::core::{Constant, Context, Level, Neutral, RawConstant, RawDefinition, RawModule,
+                   RawTerm, Term, Value};
 
 use super::{parens_if, Options, Prec, StaticDoc, ToDoc};
 
@@ -235,42 +235,26 @@ impl ToDoc for Neutral {
 
 impl ToDoc for Context {
     fn to_doc(&self, options: Options) -> StaticDoc {
+        use syntax::core::ContextEntry;
+
         Doc::text("[")
             .append(Doc::intersperse(
-                self.binders.iter().map(|binder| match *binder {
-                    Binder::Lam { ref name, ref ann } => Doc::group(
-                        Doc::text(r"\").append(pretty_name(options, name)).append(
+                self.entries.iter().map(|entry| match *entry {
+                    ContextEntry::Claim(ref name, ref ty) => Doc::group(
+                        pretty_name(options, name).append(
                             Doc::space()
                                 .append(Doc::text(":"))
                                 .append(Doc::space())
-                                .append(ann.to_doc(options.with_prec(Prec::PI)).group()),
+                                .append(ty.to_doc(options.with_prec(Prec::PI)).group()),
                         ),
                     ),
-                    Binder::Pi { ref name, ref ann } => Doc::group(
-                        Doc::text("(")
-                            .append(pretty_name(options, name))
-                            .append(Doc::space())
-                            .append(Doc::text(":"))
-                            .append(Doc::space())
-                            .append(ann.to_doc(options.with_prec(Prec::PI)))
-                            .append(Doc::text(")")),
-                    ),
-                    Binder::Let {
-                        ref name,
-                        ref ann,
-                        ref value,
-                    } => Doc::group(
-                        Doc::text("let")
-                            .append(Doc::space())
-                            .append(pretty_name(options, name))
-                            .append(Doc::space())
-                            .append(Doc::text(":"))
-                            .append(Doc::space())
-                            .append(ann.to_doc(options.with_prec(Prec::PI)))
-                            .append(Doc::space())
-                            .append(Doc::text("="))
-                            .append(Doc::space())
-                            .append(value.to_doc(options.with_prec(Prec::PI))),
+                    ContextEntry::Definition(ref name, ref term) => Doc::group(
+                        pretty_name(options, name).append(
+                            Doc::space()
+                                .append(Doc::text("="))
+                                .append(Doc::space())
+                                .append(term.to_doc(options.with_prec(Prec::PI)).group()),
+                        ),
                     ),
                 }),
                 Doc::text(",").append(Doc::space()),

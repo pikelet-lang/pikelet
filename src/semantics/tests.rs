@@ -30,11 +30,8 @@ mod normalize {
         let var = Rc::new(Term::Var(SourceMeta::default(), Var::Free(x.clone())));
 
         assert_eq!(
-            normalize(&context, &var),
-            Err(InternalError::UndefinedName {
-                var_span: ByteSpan::default(),
-                name: x,
-            },),
+            normalize(&context, &var).unwrap(),
+            Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
         );
     }
 

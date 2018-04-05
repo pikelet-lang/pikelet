@@ -138,9 +138,9 @@ even though we don't know the exact values these will eventually take during nor
 
 \\[
 \begin{array}{rrll}
-    \Gamma  & ::= & \epsilon                    & \text{the empty context} \\\\
-            &   | & \Gamma,x:\vtype             & \text{context extended with a type annotation} \\\\
-            &   | & \Gamma,x:\vtype=\texpr      & \text{context extended with a definition} \\\\
+    \Gamma  & ::= & \epsilon              & \text{the empty context} \\\\
+            &   | & \Gamma,x:\vtype       & \text{context extended with a type claim} \\\\
+            &   | & \Gamma,x=\texpr       & \text{context extended with a definition} \\\\
 \end{array}
 \\]
 
@@ -224,14 +224,14 @@ in the context.
         \eval{ \Gamma }{ \const }{ \const }
     }
     \\\\[2em]
-    \rule{E-VAR-ANN}{
-        x : \vtype \in \Gamma
+    \rule{E-VAR}{
+        x=\texpr \notin \Gamma
     }{
         \eval{ \Gamma }{ x }{ x }
     }
     \\\\[2em]
     \rule{E-VAR-DEF}{
-        x : \vtype=\texpr \in \Gamma
+        x=\texpr \in \Gamma
         \qquad
         \eval{ \Gamma }{ \texpr }{ \vexpr }
     }{
@@ -257,7 +257,7 @@ in the context.
     \rule{E-APP}{
         \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
         \qquad
-        \eval{ \Gamma, x:\vtype_1=\vexpr_2 }{ \vexpr_1 }{ \vexpr_1' }
+        \eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_1' }
     }{
         \eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_1' }
     }
@@ -325,16 +325,8 @@ returns its elaborated form.
         \infer{ \Gamma }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
     }
     \\\\[2em]
-    \rule{I-VAR-ANN}{
-        x : \vtype \in \Gamma
-    }{
-        \infer{ \Gamma }{ x }{ \vtype }{ x }
-    }
-    \\\\[2em]
-    \rule{I-VAR-DEF}{
-        x : \vtype=\texpr \in \Gamma
-        \qquad
-        \infer{ \Gamma }{ \texpr }{ \vexpr }
+    \rule{I-VAR}{
+        x:\vtype \in \Gamma
     }{
         \infer{ \Gamma }{ x }{ \vtype }{ x }
     }
@@ -364,7 +356,7 @@ returns its elaborated form.
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
-        \eval{ \Gamma, x:\vtype_1=\texpr_2 }{ \vtype_2 }{ \vtype_2' }
+        \eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_2' }
     }{
         \infer{ \Gamma }{ \rexpr_1 ~ \rexpr_2 }{ \vtype_2' }{ \texpr_1 ~ \texpr_2 }
     }

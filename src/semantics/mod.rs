@@ -4,8 +4,8 @@ use codespan::ByteSpan;
 use nameless::{self, BoundTerm, Embed, Name, Var};
 use std::rc::Rc;
 
-use syntax::core::{Binder, Constant, Context, Definition, Level, Module, Neutral, RawConstant,
-                   RawModule, RawTerm, Term, Type, Value};
+use syntax::core::{Constant, Context, Definition, Level, Module, Neutral, RawConstant, RawModule,
+                   RawTerm, Term, Type, Value};
 
 mod errors;
 #[cfg(test)]
@@ -35,7 +35,8 @@ pub fn check_module(module: &RawModule) -> Result<Module, TypeError> {
         };
 
         // Add the definition to the context
-        context = context.extend_let(Name::user(name.clone()), ann.clone(), term.clone());
+        context = context.claim(Name::user(name.clone()), ann.clone());
+        context = context.define(Name::user(name.clone()), term.clone());
 
         definitions.push(Definition { name, term, ann })
     }
@@ -58,20 +59,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         // E-CONST
         Term::Constant(_, ref c) => Ok(Rc::new(Value::Constant(c.clone()))),
 
+        // E-VAR, E-VAR-DEF
         Term::Var(_, ref var) => match *var {
-            Var::Free(ref name) => match context.lookup_binder(name) {
-                // E-VAR-ANN
-                Some(&Binder::Lam { .. }) | Some(&Binder::Pi { .. }) => {
-                    Ok(Rc::new(Value::from(Neutral::Var(var.clone()))))
-                },
-
-                // E-VAR-DEF)
-                Some(&Binder::Let { ref value, .. }) => normalize(context, value),
-
-                None => Err(InternalError::UndefinedName {
-                    var_span: term.span(),
-                    name: name.clone(),
-                }),
+            Var::Free(ref name) => match context.lookup_definition(name) {
+                Some(term) => normalize(context, term),
+                None => Ok(Rc::new(Value::from(Neutral::Var(var.clone())))),
             },
 
             // We should always be substituting bound variables with fresh
@@ -89,7 +81,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
             let ann = normalize(context, &param_ann)?;
-            let body_context = context.extend_pi(name.clone(), ann.clone());
+            let body_context = context.claim(name.clone(), ann.clone());
             let body = normalize(&body_context, &body)?;
 
             Ok(Rc::new(Value::Pi(nameless::bind((name, Embed(ann)), body))))
@@ -101,7 +93,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
             let ann = normalize(context, &param_ann)?;
             let param = (name.clone(), Embed(ann.clone()));
-            let body = normalize(&context.extend_lam(name, ann), &body)?;
+            let body = normalize(&context.claim(name, ann), &body)?;
 
             Ok(Rc::new(Value::Lam(nameless::bind(param, body))))
         },
@@ -113,9 +105,9 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             match *fn_value {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
-                    let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
+                    let ((name, Embed(_)), body) = nameless::unbind(scope.clone());
 
-                    let body_context = context.extend_let(name, param_ann, arg.clone());
+                    let body_context = context.define(name, arg.clone());
                     normalize(&body_context, &Rc::new(Term::from(&*body)))
                 },
                 Value::Neutral(ref fn_expr) => Ok(Rc::new(Value::from(Neutral::App(
@@ -177,7 +169,7 @@ pub fn check(
 
             // Elaborate the hole, if it exists
             if let RawTerm::Hole(_) = *lam_ann {
-                let body_context = context.extend_pi(pi_name, pi_ann.clone());
+                let body_context = context.claim(pi_name, pi_ann.clone());
                 let elab_param = (lam_name, Embed(Rc::new(Term::from(&*pi_ann))));
                 let elab_lam_body = check(&body_context, &lam_body, &pi_body)?;
 
@@ -273,15 +265,10 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
             RawConstant::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: meta.span }),
         },
 
-        // I-VAR-ANN, I-VAR-DEF
+        // I-VAR
         RawTerm::Var(meta, ref var) => match *var {
-            Var::Free(ref name) => match context.lookup_binder(name) {
-                Some(&Binder::Lam { ann: ref ty, .. })
-                | Some(&Binder::Pi { ann: ref ty, .. })
-                | Some(&Binder::Let { ann: ref ty, .. }) => {
-                    Ok((Rc::new(Term::Var(meta, var.clone())), ty.clone()))
-                },
-
+            Var::Free(ref name) => match context.lookup_claim(name) {
+                Some(ty) => Ok((Rc::new(Term::Var(meta, var.clone())), ty.clone())),
                 None => Err(TypeError::UndefinedName {
                     var_span: term.span(),
                     name: name.clone(),
@@ -304,7 +291,7 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
 
             let (elab_ann, level_ann) = infer_universe(context, &param_ann)?;
             let simp_ann = normalize(context, &elab_ann)?;
-            let body_context = context.extend_pi(name.clone(), simp_ann);
+            let body_context = context.claim(name.clone(), simp_ann);
             let (elab_body, level_body) = infer_universe(&body_context, &body)?;
 
             let elab_param = (name, Embed(elab_ann));
@@ -329,8 +316,8 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
 
             let (lam_ann, _) = infer_universe(context, &param_ann)?;
             let pi_ann = normalize(context, &lam_ann)?;
-            let body_ctx = context.extend_lam(name.clone(), pi_ann.clone());
-            let (lam_body, pi_body) = infer(&body_ctx, &body)?;
+            let body_context = context.claim(name.clone(), pi_ann.clone());
+            let (lam_body, pi_body) = infer(&body_context, &body)?;
 
             let lam_param = (name.clone(), Embed(lam_ann));
             let pi_param = (name.clone(), Embed(pi_ann));
@@ -350,10 +337,8 @@ pub fn infer(context: &Context, term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type
                     let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
 
                     let arg_expr = check(context, arg_expr, &param_ann)?;
-                    let body = normalize(
-                        &context.extend_let(name, param_ann, arg_expr.clone()),
-                        &Rc::new(Term::from(&*body)),
-                    )?;
+                    let body_context = context.define(name, arg_expr.clone());
+                    let body = normalize(&body_context, &Rc::new(Term::from(&*body)))?;
 
                     Ok((Rc::new(Term::App(meta, elab_fn_expr, arg_expr)), body))
                 },
