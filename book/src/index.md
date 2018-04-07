@@ -33,7 +33,7 @@ $ cargo run repl
  / ____/ / ,< /  __/ /  __/ /_      https://github.com/brendanzab/pikelet
 /_/   /_/_/|_|\___/_/\___/\__/      :? for help
 
-Pikelet> (\(a : Type) (x: a) => x) String "hello"
+Pikelet> (\(a : Type) (x : a) => x) String "hello"
 "hello" : #String
 Pikelet> :t Type
 Type 1
