@@ -45,14 +45,22 @@ if you'd like to give your input and get involved!
 - [Dependent types](https://en.wikipedia.org/wiki/Dependent_type)
 - [Purely functional](https://en.wikipedia.org/wiki/Pure_function)
 - [Strict evaluation](https://en.wikipedia.org/wiki/Eager_evaluation)
-- Totality checking
-- Dependent records as first class modules/type classes
+- Implicit arguments
+- Dependent records+instance arguments as first class modules/type classes
 - Non-uniform memory layout
 - [Quantitative type theory](https://bentnib.org/quantitative-type-theory.pdf)
   for [erasure](https://en.wikipedia.org/wiki/Type_erasure) and
   [linear types](https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems)
+- Totality checking
 - Explicit tail-call elimination
 - Interactive program development using holes
+
+Some more handwavey ideas:
+
+- Monomorphisation by partial-evaluation of instance arguments
+- Optional/configurable garbage collection
+- Alternatives to currying for function application?
+- First-class declarations (Levitation or Elaborator Reflection could be useful here)
 
 Some other features that may be trickier to integrate given the previous
 features and design goals:
@@ -65,6 +73,7 @@ features and design goals:
         - most systems cause lots of intemediate allocations or stack switching
 - [Combined Effects/Coeffects](https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf)
     - allow for statically checked compilation configurations
+    - explicit variable capture could be modelled as a coeffect
     - could subsume quantitative type theory, implicit arguments, etc
     - not yet integrated into dependent types in the research literature
 - Row polymorphism
@@ -74,10 +83,6 @@ features and design goals:
     - Similar problems to effect systems: we don't want to allocate intermediate
       data structures, instead we want to build up stack allocated state machines
       (like in Rust's future and iterator traits) to be executed later
-- Optional garbage collection
-- Alternatives to currying for function application
-- First-class declarations (Levitation or Elaborator Reflection could be useful here)
-- Explicit variable capture as a coeffect
 
 ## A possible plan of attack
 
