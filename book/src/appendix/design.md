@@ -106,10 +106,10 @@ At the moment we are building the language in Rust, but perhaps it would be
 better to build a verified implementation in Coq/Agda/Lean/Idris/something else.
 That way we can actually start proving some of the claims we desire to make
 about our system. A concern could be that we go too far down the route of
-implementation (as was done with Rust), and it would be extremely challenging to
-then form a solid specification for what we are building. On the other hand, as
-always, the downside of a verified implementation is that it could take a
-prohibitive amount of time to complete.
+implementation and it would be extremely challenging to then form a solid
+specification for what we are building. On the other hand, as always, the
+downside of a verified implementation is that it could take a prohibitive
+amount of time to complete.
 
 ## Inspiration
 
