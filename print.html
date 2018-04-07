@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/theory.html"><strong aria-hidden="true">3.1.</strong> Theory</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.2.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.3.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -326,6 +326,174 @@ example the following function types are equivalent:</p>
 <a class="header" href="print.html#appendix" id="appendix"><h1>Appendix</h1></a>
 <p>Here you will find additional reference information for understanding the
 theoretical foundations behind Pikelet.</p>
+<a class="header" href="print.html#design" id="design"><h1>Design</h1></a>
+<a class="header" href="print.html#design-goals" id="design-goals"><h2>Design goals</h2></a>
+<p>Pikelet should feel:</p>
+<ul>
+<li>Friendly</li>
+<li>Liberating</li>
+<li>Sympathetic</li>
+</ul>
+<p>This is a rough list things that might be interesting to explore with Pikelet:</p>
+<ul>
+<li>Sympathetic to humans
+<ul>
+<li>Programs should look pretty, and read clearly</li>
+<li>Friendly community</li>
+<li>Helpful interactive tooling</li>
+<li>Tight feedback loops</li>
+</ul>
+</li>
+<li>Sympathetic to machines
+<ul>
+<li>Predictable performance</li>
+<li>Predictable memory layout</li>
+<li>Predictable optimizations</li>
+<li>Zero (or close to zero) cost abstractions</li>
+<li>Low level control</li>
+<li>Minimal runtime</li>
+</ul>
+</li>
+<li>Sympathetic to real-world realities
+<ul>
+<li>Gradual correctness (eg. examples -&gt; generative tests -&gt; solvers -&gt; proofs)</li>
+<li>Provide clearly marked escape hatches (learn from the lessons of <a href="rust-belt">RustBelt</a>?)</li>
+<li>Automatic upgrades of code - between language and library versions</li>
+<li>Work for large scale systems</li>
+</ul>
+</li>
+<li>Sympathetic to mathematical foundations
+<ul>
+<li>Simple core language that can be formalized and proven sound</li>
+<li>Should allow for mathematically inspired patterns of code reuse</li>
+<li>Allow newcomers to learn mathematical thinking gradually</li>
+<li>Adaptable to future developments in type theory</li>
+</ul>
+</li>
+</ul>
+<p>It's unclear how many of these will be able to be met, and what priorities these
+should have, so this list might change over time. Come and <a href="https://gitter.im/pikelet-lang/Lobby">chat with us</a>
+if you'd like to give your input and get involved!</p>
+<a class="header" href="print.html#some-key-features-of-interest" id="some-key-features-of-interest"><h2>Some key features of interest</h2></a>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Dependent_type">Dependent types</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Pure_function">Purely functional</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Eager_evaluation">Strict evaluation</a></li>
+<li>Implicit arguments</li>
+<li>Dependent records+instance arguments as first class modules/type classes</li>
+<li>Non-uniform memory layout</li>
+<li><a href="https://bentnib.org/quantitative-type-theory.pdf">Quantitative type theory</a>
+for <a href="https://en.wikipedia.org/wiki/Type_erasure">erasure</a> and
+<a href="https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems">linear types</a></li>
+<li>Totality checking</li>
+<li>Explicit tail-call elimination</li>
+<li>Interactive program development using holes</li>
+</ul>
+<p>Some more handwavey ideas:</p>
+<ul>
+<li>Monomorphisation by partial-evaluation of instance arguments</li>
+<li>Optional/configurable garbage collection</li>
+<li>Alternatives to currying for function application?</li>
+<li>First-class declarations (Levitation or Elaborator Reflection could be useful here)</li>
+</ul>
+<p>Some other features that may be trickier to integrate given the previous
+features and design goals:</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Effect_system">Effect systems/Algebraic Effects</a>
+<ul>
+<li>could make it easier to integrate async-io without needing to build it in</li>
+<li>how do cubical type theory and observational type theory play into this?</li>
+<li>how do we makes this <em>fast</em> for systems programming?
+<ul>
+<li>should compile down in a similar way to the equivalent procedural code in Rust or C</li>
+<li>most systems cause lots of intemediate allocations or stack switching</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf">Combined Effects/Coeffects</a>
+<ul>
+<li>allow for statically checked compilation configurations</li>
+<li>explicit variable capture could be modelled as a coeffect</li>
+<li>could subsume quantitative type theory, implicit arguments, etc</li>
+<li>not yet integrated into dependent types in the research literature</li>
+</ul>
+</li>
+<li>Row polymorphism
+<ul>
+<li>no research on integrating these with dependent records and inductive datatypes</li>
+</ul>
+</li>
+<li>Program composition via category theory
+<ul>
+<li>Challenging to integrate in the presence of strict evaluation</li>
+<li>Similar problems to effect systems: we don't want to allocate intermediate
+data structures, instead we want to build up stack allocated state machines
+(like in Rust's future and iterator traits) to be executed later</li>
+</ul>
+</li>
+</ul>
+<a class="header" href="print.html#a-possible-implementation-plan" id="a-possible-implementation-plan"><h2>A possible implementation plan</h2></a>
+<ol>
+<li>Start with a simple dependent type system, like <a href="https://www.andres-loeh.de/LambdaPi/">LambdaPi</a></li>
+<li>Implement additional language extensions needed for actual usefulness
+<ul>
+<li>dependent records</li>
+<li>let/where bindings</li>
+<li>quantitative type theory</li>
+<li>implicit arguments</li>
+<li>instance arguments</li>
+<li>better universe handling (or a flag to turn on <code>Type : Type</code> in the interim)</li>
+</ul>
+</li>
+<li>Implement backend(s)
+<ul>
+<li>JIT and embeddable runtime (for bootstrapping usage) - possibly with
+<a href="https://github.com/nbp/holyjit">HolyJIT</a>?</li>
+<li>Optimizing compiler - Possibly with LLVM or <a href="https://github.com/Cretonne/cretonne">Cretonne</a>,
+or a verified compiler (like CompCert) in the future
+<ul>
+<li>Cretonne would unlock WebASM, which would be a huge boost</li>
+<li>Figure out how to integrate with libraries written in other languages,
+like C or Rust</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p>By starting with a JIT we could get initial usage from embedding the language
+within existing Rust programs, like games. Looking into the future it would also
+be nice to then move forward towards implementing a native compiler, however.</p>
+<p>At the moment we are building the language in Rust, but perhaps it would be
+better to build a verified implementation in Coq/Agda/Lean/Idris/something else.
+That way we can actually start proving some of the claims we desire to make
+about our system. A concern could be that we go too far down the route of
+implementation and it would be extremely challenging to then form a solid
+specification for what we are building. On the other hand, as always, the
+downside of a verified implementation is that it could take a prohibitive
+amount of time to complete.</p>
+<a class="header" href="print.html#inspiration" id="inspiration"><h2>Inspiration</h2></a>
+<p>Some languages have been inspiring when building Pikelet. These include:</p>
+<ul>
+<li><a href="https://people.mpi-sws.org/%7Erossberg/1ml/">1ML</a></li>
+<li><a href="http://wiki.portal.chalmers.se/agda/pmwiki.php">Agda</a></li>
+<li><a href="http://www.ats-lang.org/">ATS</a></li>
+<li><a href="https://github.com/dhall-lang/">Dhall</a></li>
+<li><a href="http://www.discus-lang.org/">Discus (formerly DDC)</a></li>
+<li><a href="http://elm-lang.org/">Elm</a></li>
+<li><a href="https://www.fstar-lang.org/">F*</a></li>
+<li><a href="https://github.com/gluon-lang/gluon">Gluon</a></li>
+<li><a href="https://github.com/dorchard/granule/">Granule</a></li>
+<li><a href="https://www.idris-lang.org/">Idris</a></li>
+<li><a href="https://ivorylang.org/ivory-introduction.html">Ivory</a></li>
+<li><a href="https://www.microsoft.com/en-us/research/project/koka/">Koka</a></li>
+<li><a href="http://leanprover.github.io">Lean</a></li>
+<li><a href="https://github.com/ocamllabs/ocaml-multicore">OCaml (Multicore)</a></li>
+<li><a href="https://github.com/ocamllabs/ocaml-modular-implicits">OCaml (Modular implicits)</a></li>
+<li><a href="http://rust-lang.org/">Rust</a></li>
+<li><a href="https://github.com/ollef/sixten">Sixten</a></li>
+<li><a href="http://www.impredicative.com/ur/">Ur</a></li>
+</ul>
 <a class="header" href="print.html#theory" id="theory"><h1>Theory</h1></a>
 <p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
 <a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
