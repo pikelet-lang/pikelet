@@ -7,4 +7,5 @@
 - [Appendix](./appendix/index.md)
   - [Design](./appendix/design.md)
   - [Theory](./appendix/theory.md)
+  - [Influences](./appendix/influences.md)
   - [References](./appendix/references.md)
