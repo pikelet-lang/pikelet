@@ -11,27 +11,27 @@ Pikelet should feel:
 This is a rough list things that might be interesting to explore with Pikelet:
 
 - Sympathetic to humans
-  - Programs should look pretty, and read clearly
-  - Friendly community
-  - Helpful interactive tooling
-  - Tight feedback loops
+    - Programs should look pretty, and read clearly
+    - Friendly community
+    - Helpful interactive tooling
+    - Tight feedback loops
 - Sympathetic to machines
-  - Predictable performance
-  - Predictable memory layout
-  - Predictable optimizations
-  - Zero (or close to zero) cost abstractions
-  - Low level control
-  - Minimal runtime
+    - Predictable performance
+    - Predictable memory layout
+    - Predictable optimizations
+    - Zero (or close to zero) cost abstractions
+    - Low level control
+    - Minimal runtime
 - Sympathetic to real-world realities
-  - Gradual correctness (eg. examples -> generative tests -> solvers -> proofs)
-  - Provide clearly marked escape hatches (learn from the lessons of [RustBelt](rust-belt)?)
-  - Automatic upgrades of code - between language and library versions
-  - Work for large scale systems
+    - Gradual correctness (eg. examples -> generative tests -> solvers -> proofs)
+    - Provide clearly marked escape hatches (learn from the lessons of [RustBelt](rust-belt)?)
+    - Automatic upgrades of code - between language and library versions
+    - Work for large scale systems
 - Sympathetic to mathematical foundations
-  - Simple core language that can be formalized and proven sound
-  - Should allow for mathematically inspired patterns of code reuse
-  - Allow newcomers to learn mathematical thinking gradually
-  - Adaptable to future developments in type theory
+    - Simple core language that can be formalized and proven sound
+    - Should allow for mathematically inspired patterns of code reuse
+    - Allow newcomers to learn mathematical thinking gradually
+    - Adaptable to future developments in type theory
 
 It's unclear how many of these will be able to be met, and what priorities these
 should have, so this list might change over time. Come and [chat with us][gitter-channel]
@@ -58,22 +58,22 @@ Some other features that may be trickier to integrate given the previous
 features and design goals:
 
 - [Effect systems/Algebraic Effects](https://en.wikipedia.org/wiki/Effect_system)
-  - could make it easier to integrate async-io without needing to build it in
-  - how do cubical type theory and observational type theory play into this?
-  - how do we makes this *fast* for systems programming?
-    - should compile down in a similar way to the equivalent procedural code in Rust or C
-    - most systems cause lots of intemediate allocations or stack switching
+    - could make it easier to integrate async-io without needing to build it in
+    - how do cubical type theory and observational type theory play into this?
+    - how do we makes this *fast* for systems programming?
+        - should compile down in a similar way to the equivalent procedural code in Rust or C
+        - most systems cause lots of intemediate allocations or stack switching
 - [Combined Effects/Coeffects](https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf)
-  - allow for statically checked compilation configurations
-  - could subsume quantitative type theory, implicit arguments, etc
-  - not yet integrated into dependent types in the research literature
+    - allow for statically checked compilation configurations
+    - could subsume quantitative type theory, implicit arguments, etc
+    - not yet integrated into dependent types in the research literature
 - Row polymorphism
-  - no research on integrating these with dependent records and inductive datatypes
+    - no research on integrating these with dependent records and inductive datatypes
 - Program composition via category theory
-  - Challenging to integrate in the presence of strict evaluation
-  - Similar problems to effect systems: we don't want to allocate intermediate
-    data structures, instead we want to build up stack allocated state machines
-    (like in Rust's future and iterator traits) to be executed later
+    - Challenging to integrate in the presence of strict evaluation
+    - Similar problems to effect systems: we don't want to allocate intermediate
+      data structures, instead we want to build up stack allocated state machines
+      (like in Rust's future and iterator traits) to be executed later
 - Optional garbage collection
 - Alternatives to currying for function application
 - First-class declarations (Levitation or Elaborator Reflection could be useful here)
@@ -83,20 +83,20 @@ features and design goals:
 
 1. Start with a simple dependent type system, like [LambdaPi](https://www.andres-loeh.de/LambdaPi/)
 2. Implement additional language extensions needed for actual usefulness
-  - dependent records
-  - let/where bindings
-  - quantitative type theory
-  - implicit arguments
-  - instance arguments
-  - better universe handling (or a flag to turn on `Type : Type` in the interim)
+    - dependent records
+    - let/where bindings
+    - quantitative type theory
+    - implicit arguments
+    - instance arguments
+    - better universe handling (or a flag to turn on `Type : Type` in the interim)
 3. Implement backend(s)
-  - JIT and embeddable runtime (for bootstrapping usage) - possibly with
-    [HolyJIT](https://github.com/nbp/holyjit)?
-  - Optimizing compiler - Possibly with LLVM or [Cretonne](https://github.com/Cretonne/cretonne),
-    or a verified compiler (like CompCert) in the future
-    - Cretonne would unlock WebASM, which would be a huge boost
-    - Figure out how to integrate with libraries written in other languages,
-      like C or Rust
+    - JIT and embeddable runtime (for bootstrapping usage) - possibly with
+      [HolyJIT](https://github.com/nbp/holyjit)?
+    - Optimizing compiler - Possibly with LLVM or [Cretonne](https://github.com/Cretonne/cretonne),
+      or a verified compiler (like CompCert) in the future
+        - Cretonne would unlock WebASM, which would be a huge boost
+        - Figure out how to integrate with libraries written in other languages,
+          like C or Rust
 
 By starting with a JIT we could get initial usage from embedding the language
 within existing Rust programs, like games. Looking into the future it would also
