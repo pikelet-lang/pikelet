@@ -84,7 +84,7 @@ features and design goals:
       data structures, instead we want to build up stack allocated state machines
       (like in Rust's future and iterator traits) to be executed later
 
-## A possible plan of attack
+## A possible implementation plan
 
 1. Start with a simple dependent type system, like [LambdaPi](https://www.andres-loeh.de/LambdaPi/)
 2. Implement additional language extensions needed for actual usefulness
