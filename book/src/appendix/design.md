@@ -51,6 +51,7 @@ if you'd like to give your input and get involved!
 - [Quantitative type theory](https://bentnib.org/quantitative-type-theory.pdf)
   for [erasure](https://en.wikipedia.org/wiki/Type_erasure) and
   [linear types](https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems)
+- Explicit tail-call elimination
 - Interactive program development using holes
 
 Some other features that may be trickier to integrate given the previous
@@ -77,6 +78,38 @@ features and design goals:
 - Alternatives to currying for function application
 - First-class declarations (Levitation or Elaborator Reflection could be useful here)
 - Explicit variable capture as a coeffect
+
+## A possible plan of attack
+
+1. Start with a simple dependent type system, like [LambdaPi](https://www.andres-loeh.de/LambdaPi/)
+2. Implement additional language extensions needed for actual usefulness
+  - dependent records
+  - let/where bindings
+  - quantitative type theory
+  - implicit arguments
+  - instance arguments
+  - better universe handling (or a flag to turn on `Type : Type` in the interim)
+3. Implement backend(s)
+  - JIT and embeddable runtime (for bootstrapping usage) - possibly with
+    [HolyJIT](https://github.com/nbp/holyjit)?
+  - Optimizing compiler - Possibly with LLVM or [Cretonne](https://github.com/Cretonne/cretonne),
+    or a verified compiler (like CompCert) in the future
+    - Cretonne would unlock WebASM, which would be a huge boost
+    - Figure out how to integrate with libraries written in other languages,
+      like C or Rust
+
+By starting with a JIT we could get initial usage from embedding the language
+within existing Rust programs, like games. Looking into the future it would also
+be nice to then move forward towards implementing a native compiler, however.
+
+At the moment we are building the language in Rust, but perhaps it would be
+better to build a verified implementation in Coq/Agda/Lean/Idris/something else.
+That way we can actually start proving some of the claims we desire to make
+about our system. A concern could be that we go too far down the route of
+implementation (as was done with Rust), and it would be extremely challenging to
+then form a solid specification for what we are building. On the other hand, as
+always, the downside of a verified implementation is that it could take a
+prohibitive amount of time to complete.
 
 ## Inspiration
 
