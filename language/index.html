@@ -153,6 +153,7 @@
                         <a class="header" href="language/index.html#language" id="language"><h1>Language</h1></a>
 <a class="header" href="language/index.html#contents" id="contents"><h2>Contents</h2></a>
 <ul>
+<li><a href="language/index.html#declarations">Declarations</a></li>
 <li><a href="language/index.html#comments">Comments</a></li>
 <li><a href="language/index.html#built-in-types-and-their-literals">Built-in types and their literals</a></li>
 <li><a href="language/index.html#type-annotations">Type annotations</a></li>
@@ -160,12 +161,32 @@
 <li><a href="language/index.html#identifiers">Identifiers</a></li>
 <li><a href="language/index.html#functions">Functions</a></li>
 </ul>
+<a class="header" href="language/index.html#declarations" id="declarations"><h2>Declarations</h2></a>
+<p>Declarations are preceded by a type annotation, and followed by a definition:</p>
+<pre><code class="language-pikelet">greeting : String
+greeting = &quot;hello there!&quot;
+</code></pre>
 <a class="header" href="language/index.html#comments" id="comments"><h2>Comments</h2></a>
-<p>In Pikelet, line comments are proceeded by a double dash:</p>
+<p>Line comments are proceeded by a double dash:</p>
 <pre><code class="language-pikelet">-- this is a comment!
 </code></pre>
-<p>Doc comments are proceeded by a triple pipe:</p>
-<pre><code class="language-pikelet">||| This is a doc comment!
+<p>Block comments go between curly-dashes like so:</p>
+<pre><code class="language-pikelet">{-
+  this is a block comment!
+-}
+</code></pre>
+<p>Doc comments are proceeded by a triple pipe, and are used to document
+definitions:</p>
+<pre><code class="language-pikelet">||| This is a documented definition
+|||
+||| # Example
+|||
+||| ```pikelet-repl
+||| Pikelet&gt; self-aware-string
+||| &quot;I am a string!&quot; : String
+||| ```
+self-aware-string : String
+self-aware-string = &quot;I am a string!&quot;
 </code></pre>
 <a class="header" href="language/index.html#built-in-types-and-their-literals" id="built-in-types-and-their-literals"><h2>Built-in types and their literals</h2></a>
 <p>Pikelet has a number of fundamental types:</p>
@@ -185,7 +206,7 @@
 </tbody></table>
 <blockquote>
 <p><strong>Note:</strong> You can't do much with these built-in types yet. In the future we
-will add some primitive operations to allow you to maniplate them.</p>
+will add some primitive functions to allow you to maniplate them.</p>
 </blockquote>
 <a class="header" href="language/index.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
 <p>If you note <a href="language/index.html#built-in-types-and-their-literals">above</a>, a number of the
