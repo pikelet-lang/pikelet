@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.3.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -192,25 +192,39 @@ will add some primitive operations to allow you to maniplate them.</p>
 built-in types share a literal representation. Pikelet will try to predictably
 infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; 1           -- error: ambiguous integer literal
-Pikelet&gt; 1 : I32     -- ok!
-Pikelet&gt; 1 : F32     -- ok!
-Pikelet&gt; 1.0 : F32   -- ok!
-Pikelet&gt; 1.1 : U64   -- error: expected a floating point value
+<pre><code class="language-pikelet-repl">Pikelet&gt; 1
+error: ambiguous integer literal
+Pikelet&gt; 1 : I32
+1 : I32
+Pikelet&gt; 1 : F32
+1 : F32
+Pikelet&gt; 1.0 : F32
+1.0 : F32
+Pikelet&gt; 1.1 : U64
+error: found a floating point literal, but expected a type `#U64`
 </code></pre>
 <a class="header" href="language/index.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
 <p>Types also have types!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t I32           -- ok: Type
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
+Type
 </code></pre>
 <p>You might then ask, “what is the type of <code>Type</code>?”</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type          -- ok: Type 1
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type
+Type 1
 </code></pre>
 <p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0        -- ok: Type 1
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
+Type 1
 </code></pre>
 <p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
 previous:</p>
-<pre><code class="language-pikelet">Type 0 : Type 1 : Type 2 : Type 3 : ...
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
+Type 1
+Pikelet&gt; :t Type 1
+Type 2
+Pikelet&gt; :t Type 2
+Type 3
+...
 </code></pre>
 <p>You can think of these as larger and larger sets, with the smaller type
 universes being contained within the larger type universes:</p>
@@ -230,32 +244,44 @@ universes being contained within the larger type universes:</p>
 <a class="header" href="language/index.html#functions" id="functions"><h2>Functions</h2></a>
 <a class="header" href="language/index.html#simply-typed-functions" id="simply-typed-functions"><h3>Simply typed functions</h3></a>
 <p>Here are some simple functions and their types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32    =&gt; x                          -- ok: I32 -&gt; I32
-Pikelet&gt; :t \x : String =&gt; x                          -- ok: String -&gt; String
-Pikelet&gt; :t \x : Char   =&gt; x                          -- ok: Char -&gt; Char
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
+I32 -&gt; I32
+Pikelet&gt; :t \x : String =&gt; x
+String -&gt; String
+Pikelet&gt; :t \x : Char =&gt; x
+Char -&gt; Char
 </code></pre>
 <p>Note that all of these types follow the same pattern - they are the identity
 function! This means that if you pass a value to them, they'll return the same
 thing without alteration!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32    =&gt; x) 42                        -- ok: 42 : I32
-Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;                      -- ok: &quot;hi&quot; : String
-Pikelet&gt; (\x : Char   =&gt; x) 'b'                       -- ok: 'b' : Char
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 42
+42 : I32
+Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
+&quot;hi&quot; : String
+Pikelet&gt; (\x : Char =&gt; x) 'b'
+'b' : Char
 </code></pre>
 <a class="header" href="language/index.html#polymorphic-functions" id="polymorphic-functions"><h3>Polymorphic functions</h3></a>
 <p>Alas, we can't reuse one of these identity functions with other, incompatible
 types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32    =&gt; x) 4.0                       -- error!
-Pikelet&gt; (\x : String =&gt; x) 'b'                       -- error!
-Pikelet&gt; (\x : Char   =&gt; x) &quot;yoho&quot;                    -- error!
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
+error: found a floating point literal, but expected a type `#I32`
+Pikelet&gt; (\x : String =&gt; x) 'b'
+error: found a character literal, but expected a type `#String`
+Pikelet&gt; (\x : Char =&gt; x) &quot;yoho&quot;
+error: found a string literal, but expected a type `#Char`
 </code></pre>
 <p>Let's make this identity function polymorphic by adding a parameter for the type
 of the argument:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x                  -- ok: (a : Type) -&gt; a -&gt; a
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
+(a : Type) -&gt; a -&gt; a
 </code></pre>
 <p>We now have a polymorphic identity function! We can specialise this function by
 applying a type to it:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;    -- ok: &quot;hello&quot; : String
-Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1             -- ok: 1 : I32
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
+&quot;hello&quot; : String
+Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
+1 : I32
 </code></pre>
 <a class="header" href="language/index.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h3>Syntactic Sugar for functions</h3></a>
 <p>In Pikelet all functions take a single argument - in order to pass multiple
