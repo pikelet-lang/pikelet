@@ -2,6 +2,7 @@
 
 ## Contents
 
+- [Declarations](#declarations)
 - [Comments](#comments)
 - [Built-in types and their literals](#built-in-types-and-their-literals)
 - [Type annotations](#type-annotations)
@@ -9,18 +10,46 @@
 - [Identifiers](#identifiers)
 - [Functions](#functions)
 
+
+## Declarations
+
+Declarations are preceded by a type annotation, and followed by a definition:
+
+```pikelet
+greeting : String
+greeting = "hello there!"
+```
+
 ## Comments
 
-In Pikelet, line comments are proceeded by a double dash:
+Line comments are proceeded by a double dash:
 
 ```pikelet
 -- this is a comment!
 ```
 
-Doc comments are proceeded by a triple pipe:
+Block comments go between curly-dashes like so:
 
 ```pikelet
-||| This is a doc comment!
+{-
+  this is a block comment!
+-}
+```
+
+Doc comments are proceeded by a triple pipe, and are used to document
+definitions:
+
+```pikelet
+||| This is a documented definition
+|||
+||| # Example
+|||
+||| ```pikelet-repl
+||| Pikelet> self-aware-string
+||| "I am a string!" : String
+||| ```
+self-aware-string : String
+self-aware-string = "I am a string!"
 ```
 
 ## Built-in types and their literals
@@ -43,7 +72,7 @@ Pikelet has a number of fundamental types:
 | `F64`    | `1`, `2`, `3`, ..., `0.0`, `1.0`, ...  |
 
 > **Note:** You can't do much with these built-in types yet. In the future we
-> will add some primitive operations to allow you to maniplate them.
+> will add some primitive functions to allow you to maniplate them.
 
 ## Type annotations
 
