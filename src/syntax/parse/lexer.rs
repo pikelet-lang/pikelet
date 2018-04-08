@@ -225,6 +225,11 @@ impl<'input> Lexer<'input> {
         }
     }
 
+    /// Returns the index of the end of the file
+    fn eof(&self) -> ByteIndex {
+        self.filemap.span().end()
+    }
+
     /// Return the next character in the source string
     fn lookahead(&self) -> Option<(ByteIndex, char)> {
         self.lookahead.map(|(index, ch)| {
@@ -280,7 +285,7 @@ impl<'input> Lexer<'input> {
             }
         }
 
-        let eof = self.filemap.span().end();
+        let eof = self.eof();
         (eof, self.slice(start, eof))
     }
 
@@ -294,6 +299,35 @@ impl<'input> Lexer<'input> {
             (start, Token::Colon, end)
         } else {
             (start, Token::ReplCommand(command), end)
+        }
+    }
+
+    /// Consume a block comment
+    fn block_comment(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<Option<(ByteIndex, Token<&'input str>, ByteIndex)>, LexerError> {
+        // TODO: Nested block comments?
+        match self.lookahead() {
+            Some((_, '-')) => {
+                self.bump(); // skip '-'
+
+                loop {
+                    self.take_until(start, |c| c == '-');
+                    self.bump(); // skip '-'
+
+                    match self.lookahead() {
+                        Some((_, '}')) => {
+                            self.bump();
+                            return Ok(None);
+                        },
+                        Some(_) => continue,
+                        None => return Err(LexerError::UnexpectedEof { end: self.eof() }),
+                    }
+                }
+            },
+            Some((end, _)) => Ok(Some((start, Token::LBrace, end))),
+            None => Ok(Some((start, Token::LBrace, self.eof()))),
         }
     }
 
@@ -453,7 +487,11 @@ impl<'input> Iterator for Lexer<'input> {
                 '\\' => Ok((start, Token::BSlash, end)),
                 '(' => Ok((start, Token::LParen, end)),
                 ')' => Ok((start, Token::RParen, end)),
-                '{' => Ok((start, Token::LBrace, end)),
+                '{' => match self.block_comment(start) {
+                    Ok(None) => continue,
+                    Ok(Some((start, token, end))) => Ok((start, token, end)),
+                    Err(err) => Err(err),
+                },
                 '}' => Ok((start, Token::RBrace, end)),
                 '[' => Ok((start, Token::LBracket, end)),
                 ']' => Ok((start, Token::RBracket, end)),
@@ -501,6 +539,20 @@ mod tests {
         test! {
             "  hello-hahaha8ABC  ",
             "  ~~~~~~~~~~~~~~~~  " => Token::Ident("hello-hahaha8ABC"),
+        };
+    }
+
+    #[test]
+    fn comment() {
+        test! {
+            "       -- hello this is dog\n  ",
+        };
+    }
+
+    #[test]
+    fn block_comment() {
+        test! {
+            "       {- hello this is dog\n no really it is -}  ",
         };
     }
 
