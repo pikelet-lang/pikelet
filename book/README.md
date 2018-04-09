@@ -15,3 +15,22 @@ mdbook serve
 
 [install-mdbook]: https://rust-lang-nursery.github.io/mdBook/cli/cli-tool.html#install-cratesio-version
 [mdbook-serve]: https://rust-lang-nursery.github.io/mdBook/cli/serve.html
+
+## Building custom syntax highlighting
+
+Highlight.js can be [hard to extend][mdbook-custom-highlighting-issue], so we've
+had to make a [custom fork][highlightjs-fork] that supports Pikelet syntax. For
+better our worse, we've included this as a submodule as a temporary solution.
+To build this, we've included a handy script:
+
+```sh
+ci/build-highlight-js
+```
+
+This should update/initialize the submodule, update the npm dependencies,
+and copy the minified highlighting source to the proper directory. Note that
+this is an optional step for developing locally - the CI pipline will take care
+of building and deploying this automatically.
+
+[mdbook-custom-highlighting-issue]: https://github.com/rust-lang-nursery/mdBook/issues/657
+[highlightjs-fork]: https://github.com/brendanzab/highlight.js/tree/add-pikelet
