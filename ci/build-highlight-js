@@ -2,20 +2,26 @@
 set -euo pipefail
 
 main() {
-    # prepare the git submodule, if it hasn't been already
-    git submodule init
+    local book_dir=./book
+    local highlightjs_dir=$book_dir/highlight.js
+    local theme_dir=$book_dir/src/theme
 
-    pushd book
-        # build the minified highlight.js source
-        pushd highlight.js
-            npm install
-            node tools/build.js pikelet pikelet-repl rust bash
-        popd
+    echo "Preparing highlight.js submodule"
+    git submodule update --init $highlightjs_dir
 
-        # copy the minified sources to the theme directory
-        mkdir -p src/theme
-        cp highlight.js/build/highlight.pack.js src/theme/highlight.js
-    popd
+    (
+        cd $highlightjs_dir
+
+        echo "Updating NPM dependencies"
+        npm install
+
+        echo "Running highlight.js build script"
+        node tools/build.js pikelet pikelet-repl rust bash
+    )
+
+    echo "Copying minified sources to the theme directory"
+    mkdir -p $theme_dir
+    cp $highlightjs_dir/build/highlight.pack.js $theme_dir/highlight.js
 }
 
 main
