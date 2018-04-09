@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html" class="active"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/repl.html"><strong aria-hidden="true">2.1.</strong> REPL</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.2.</strong> Type inference</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html" class="active"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -151,26 +151,229 @@
                 <div id="content" class="content">
                     <main>
                         <a class="header" href="appendix/influences.html#influences" id="influences"><h1>Influences</h1></a>
-<p>Some languages have been inspiring when building Pikelet. These include:</p>
+<p>Some languages have been inspiring when building Pikelet. We list some of them
+here, and the contributions they have made in our thinking. These ideas may or
+may not be included in the final Pikelet language, but they are worth mentioning!</p>
+<a class="header" href="appendix/influences.html#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="https://people.mpi-sws.org/%7Erossberg/1ml/">1ML</a></li>
-<li><a href="http://wiki.portal.chalmers.se/agda/pmwiki.php">Agda</a></li>
-<li><a href="http://www.ats-lang.org/">ATS</a></li>
-<li><a href="https://github.com/dhall-lang/">Dhall</a></li>
-<li><a href="http://www.discus-lang.org/">Discus (formerly DDC)</a></li>
-<li><a href="http://elm-lang.org/">Elm</a></li>
-<li><a href="https://www.fstar-lang.org/">F*</a></li>
-<li><a href="https://github.com/gluon-lang/gluon">Gluon</a></li>
-<li><a href="https://github.com/dorchard/granule/">Granule</a></li>
-<li><a href="https://www.idris-lang.org/">Idris</a></li>
-<li><a href="https://ivorylang.org/ivory-introduction.html">Ivory</a></li>
-<li><a href="https://www.microsoft.com/en-us/research/project/koka/">Koka</a></li>
-<li><a href="http://leanprover.github.io">Lean</a></li>
-<li><a href="https://github.com/ocamllabs/ocaml-multicore">OCaml (Multicore)</a></li>
-<li><a href="https://github.com/ocamllabs/ocaml-modular-implicits">OCaml (Modular implicits)</a></li>
-<li><a href="http://rust-lang.org/">Rust</a></li>
-<li><a href="https://github.com/ollef/sixten">Sixten</a></li>
-<li><a href="http://www.impredicative.com/ur/">Ur</a></li>
+<li><a href="appendix/influences.html#1ml">1ML</a></li>
+<li><a href="appendix/influences.html#agda">Agda</a></li>
+<li><a href="appendix/influences.html#ats">ATS</a></li>
+<li><a href="appendix/influences.html#dhall">Dhall</a></li>
+<li><a href="appendix/influences.html#discus-formerly-ddc">Discus (formerly DDC)</a></li>
+<li><a href="appendix/influences.html#elm">Elm</a></li>
+<li><a href="appendix/influences.html#f">F*</a></li>
+<li><a href="appendix/influences.html#gluon">Gluon</a></li>
+<li><a href="appendix/influences.html#granule">Granule</a></li>
+<li><a href="appendix/influences.html#idris">Idris</a></li>
+<li><a href="appendix/influences.html#ivory">Ivory</a></li>
+<li><a href="appendix/influences.html#koka">Koka</a></li>
+<li><a href="appendix/influences.html#lean">Lean</a></li>
+<li><a href="appendix/influences.html#ocaml">OCaml</a></li>
+<li><a href="appendix/influences.html#rust">Rust</a></li>
+<li><a href="appendix/influences.html#sixten">Sixten</a></li>
+<li><a href="appendix/influences.html#ur">Ur</a></li>
+</ul>
+<a class="header" href="appendix/influences.html#a1ml" id="a1ml"><h2>1ML</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://people.mpi-sws.org/%7Erossberg/1ml/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>focus on simplicity</li>
+<li>combines module language of ML with dependent records</li>
+<li>formalized foundation</li>
+</ul>
+<a class="header" href="appendix/influences.html#agda" id="agda"><h2>Agda</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://wiki.portal.chalmers.se/agda/pmwiki.php">Wiki</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>interactive editing</li>
+<li>dependent types</li>
+<li>dependent records</li>
+<li>implicit arguments</li>
+<li>instance arguments for emulating type classes</li>
+<li>codata for unbounded data</li>
+<li>totality checking</li>
+<li>inductive datatypes</li>
+</ul>
+<a class="header" href="appendix/influences.html#ats" id="ats"><h2>ATS</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://www.ats-lang.org/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>dependent types</li>
+<li>proofs can be generated by SMT solvers</li>
+<li>high level of performance, low level interop</li>
+<li>unboxed data types</li>
+</ul>
+<a class="header" href="appendix/influences.html#dhall" id="dhall"><h2>Dhall</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://github.com/dhall-lang/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>simple core language</li>
+<li>dependent types</li>
+<li>total language</li>
+<li>structural records</li>
+</ul>
+<a class="header" href="appendix/influences.html#discus-formerly-ddc" id="discus-formerly-ddc"><h2>Discus (formerly DDC)</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://www.discus-lang.org/">Website</a></li>
+</ul>
+<a class="header" href="appendix/influences.html#elm" id="elm"><h2>Elm</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://elm-lang.org/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>focus on usability, and adoption</li>
+<li>friendly marketing</li>
+<li>welcoming community</li>
+<li>best-in-class error messages</li>
+<li>row polymorphism</li>
+</ul>
+<a class="header" href="appendix/influences.html#f" id="f"><h2>F*</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://www.fstar-lang.org/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>combining SMT solvers with explicit proofs</li>
+<li>combining effects with dependent types</li>
+</ul>
+<a class="header" href="appendix/influences.html#gluon" id="gluon"><h2>Gluon</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://github.com/gluon-lang/gluon">Repository</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>strict evaluation</li>
+<li>focus on simplicity</li>
+<li>embeddable in Rust programs</li>
+<li>using records as a basis for the module system</li>
+</ul>
+<a class="header" href="appendix/influences.html#granule" id="granule"><h2>Granule</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://github.com/dorchard/granule/">Repository</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>combining coeffects with effects in one language</li>
+</ul>
+<a class="header" href="appendix/influences.html#idris" id="idris"><h2>Idris</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://www.idris-lang.org/">Website</a></li>
+<li><a href="http://docs.idris-lang.org">Documentation</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>focus on making dependently typed programming practical</li>
+<li>interactive editing</li>
+<li>simple core type theory</li>
+<li>opt-out totality checking</li>
+<li>nice, accessible documentation, focused on real-world examples</li>
+<li>universe checking</li>
+<li>aggressive erasure</li>
+<li>linear types</li>
+<li>compilation to native code</li>
+<li>elaborator reflection</li>
+<li>ad-hoc interfaces desugar into records</li>
+<li>effects system as a library</li>
+<li>state machine library</li>
+</ul>
+<a class="header" href="appendix/influences.html#ivory" id="ivory"><h2>Ivory</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://ivorylang.org/ivory-introduction.html">Website</a></li>
+</ul>
+<a class="header" href="appendix/influences.html#koka" id="koka"><h2>Koka</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://www.microsoft.com/en-us/research/project/koka/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>algebraic effects and handlers</li>
+<li>nice library documentation, with clickable links, etc.</li>
+</ul>
+<a class="header" href="appendix/influences.html#lean" id="lean"><h2>Lean</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://leanprover.github.io">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>focus on responsive interactive development</li>
+<li>metaprogramming support using Lean</li>
+<li>simple kernel language</li>
+</ul>
+<a class="header" href="appendix/influences.html#ocaml" id="ocaml"><h2>OCaml</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://ocaml.org/">Website</a></li>
+<li><a href="https://github.com/ocamllabs/ocaml-multicore">Repository (Multicore)</a></li>
+<li><a href="https://github.com/ocamllabs/ocaml-modular-implicits">Repository (Modular implicits)</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>module system</li>
+<li>algebraic effects</li>
+<li>modular implicits</li>
+<li>row polymorphism</li>
+<li>structural records</li>
+<li>efficient (and <em>fast</em>) code generation</li>
+</ul>
+<a class="header" href="appendix/influences.html#rust" id="rust"><h2>Rust</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://rust-lang.org/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>friendly community</li>
+<li>non-uniform data representation</li>
+<li>predictable optimizations</li>
+<li>focus on systems programming</li>
+<li>having saftey and low level code under one roof</li>
+<li>infectious 'unsafe' keyword</li>
+<li>strict evaluation</li>
+<li>opt-in garbage collection</li>
+<li>minimal runtime</li>
+<li>bootstrapped itself off a foundation of C libraries</li>
+</ul>
+<a class="header" href="appendix/influences.html#sixten" id="sixten"><h2>Sixten</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="https://github.com/ollef/sixten">Repository</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>non-uniform data representation</li>
+<li>dependent types</li>
+</ul>
+<a class="header" href="appendix/influences.html#ur" id="ur"><h2>Ur</h2></a>
+<p>Links:</p>
+<ul>
+<li><a href="http://www.impredicative.com/ur/">Website</a></li>
+</ul>
+<p>Key things we love:</p>
+<ul>
+<li>Statially typed metaprogramming with type-level records</li>
 </ul>
 
                     </main>

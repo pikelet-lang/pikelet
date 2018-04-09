@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>References - Pikelet Language Book</title>
+        <title>Type inference - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/repl.html"><strong aria-hidden="true">2.1.</strong> REPL</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.2.</strong> Type inference</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html" class="active"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/repl.html"><strong aria-hidden="true">2.1.</strong> REPL</a></li><li><a href="language/type-inference.html" class="active"><strong aria-hidden="true">2.2.</strong> Type inference</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,35 +150,79 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="appendix/references.html#references" id="references"><h1>References</h1></a>
-<p>What follows is a non-exhaustive list of some of the references that were useful
-when building Pikelet:</p>
+                        <a class="header" href="language/type-inference.html#type-inference" id="type-inference"><h1>Type inference</h1></a>
+<p>Many statically typed languages perform type inference, to varying degrees, and
+Pikelet is no different! The goal is to reduce the burden of writing type
+annotations everywhere. Some languages like <a href="https://ocaml.org/">OCaml</a> and
+<a href="http://elm-lang.org/">Elm</a> can even infer the types of a whole program without
+any annotations at all!</p>
+<p>Pikelet's type inference follows some very simple rules that you can probably
+pick up on your own, but we thought it might help to give a deeper explanation
+of how it works, without getting to bogged down in the theoretical details.</p>
+<a class="header" href="language/type-inference.html#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li>Charguéraud, Arthur (2011). “The Locally Nameless Representation”.
-In <em>Journal of Automated Reasoning (JAR)</em>.
-[<a href="http://www.chargueraud.org/softs/ln/">SITE</a>]
-[<a href="http://www.chargueraud.org/research/2009/ln/main.pdf">PAPER</a>]</li>
-<li>Christiansen, David Raymond (2013). “Bidirectional Typing Rules: A Tutorial”.
-[<a href="http://www.davidchristiansen.dk/tutorials/bidirectional.pdf">PAPER</a>]</li>
-<li>Löh, Andres, McBride, Conor and Swierstra, Wouter (2009). “A tutorial
-implementation of a dependently typed lambda calculus”.
-[<a href="https://www.andres-loeh.de/LambdaPi/">SITE</a>]
-[<a href="https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf">PAPER</a>]</li>
-<li>Norell, Ulf (2007). “Towards a practical programming language based on
-dependent type theory”.
-[<a href="http://www.cse.chalmers.se/%7Eulfn/papers/thesis.pdf">PAPER</a>]</li>
+<li><a href="language/type-inference.html#bidirectional-typechecking">Bidirectional type checking</a>
+<ul>
+<li><a href="language/type-inference.html#inferrable-terms">Inferrable terms</a></li>
+<li><a href="language/type-inference.html#checkable-terms">Checkable terms</a></li>
 </ul>
+</li>
+<li><a href="language/type-inference.html#further-reading">Further reading</a></li>
+</ul>
+<a class="header" href="language/type-inference.html#bidirectional-type-checking" id="bidirectional-type-checking"><h2>Bidirectional type checking</h2></a>
+<p>Pikelet has a rather flexible type system that can have expressions embedded in
+them, so we've opted to use an algorithm known as 'bidirectional type checking'
+as a way to get a decent amount of inference while still remaining relatively
+predictable to you, the programmer. This means that you may sometimes have to
+write annotations on top-level definitions, but the types should propagate
+downwards and inner definitions should not require much annotation at all.</p>
+<p>To do this we break the terms of the language into two groups. We call these
+<a href="language/type-inference.html#inferrable-terms"><em>inferrable terms</em></a> and <a href="language/type-inference.html#checkable-terms"><em>checkable terms</em></a>.</p>
+<a class="header" href="language/type-inference.html#inferrable-terms" id="inferrable-terms"><h3>Inferrable terms</h3></a>
+<p>Inferrable terms can be checked on their own or based on previous definitions.</p>
+<blockquote>
+<p>TODO: Explain examples</p>
+</blockquote>
+<pre><code class="language-pikelet-repl">Pikelet&gt; &quot;1&quot;
+Pikelet&gt; 'a'
+Pikelet&gt; \x : Int =&gt; x
+Pikelet&gt; (a : Type) -&gt; a
+</code></pre>
+<a class="header" href="language/type-inference.html#checkable-terms" id="checkable-terms"><h3>Checkable terms</h3></a>
+<p>Checkable terms need extra annotations, or be used in a position where extra
+information can be supplied.</p>
+<blockquote>
+<p>TODO: Explain examples</p>
+</blockquote>
+<pre><code class="language-pikelet-repl">Pikelet&gt; 1
+Pikelet&gt; 2.0
+Pikelet&gt; \x =&gt; x
+</code></pre>
+<pre><code class="language-pikelet-repl">Pikelet&gt; 1 : I32
+Pikelet&gt; 2.0 : F32
+Pikelet&gt; \x =&gt; x : I32 -&gt; I32
+</code></pre>
+<a class="header" href="language/type-inference.html#further-reading" id="further-reading"><h2>Further reading</h2></a>
+<p>We describe Pikelet's type checking algorithm more formally
+<a href="../appendix/theory.md">in the appendix</a>. If you have a background in progamming
+languages and type theory this might be of interest to you. If not, that's
+ok - understanding the formal notation is not neccessary for developing a high
+level intuition of type inference in Pikelet.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="appendix/influences.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="language/repl.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
+                        
+                            <a rel="next" href="appendix/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
 
                         <div style="clear: both"></div>
@@ -188,11 +232,15 @@ dependent type theory”.
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="appendix/influences.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="language/repl.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
+                
+                    <a href="appendix/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                 
             </nav>
 
