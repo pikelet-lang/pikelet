@@ -183,6 +183,9 @@ impl ToConcrete<concrete::Term> for core::Term {
                 // TODO: Better message
                 panic!("Tried to convert a term that was not locally closed");
             },
+            core::Term::Singleton(meta, ref term) => {
+                concrete::Term::Singleton(meta.span, Box::new(term.to_concrete(env)))
+            },
             core::Term::Pi(_, ref scope) => {
                 let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
 

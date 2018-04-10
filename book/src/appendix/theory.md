@@ -16,6 +16,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Normalization](#normalization)
   - [Type checking](#type-checking)
   - [Type inference](#type-inference)
+  - [Subtyping](#subtyping)
 
 ## Introduction
 
@@ -44,6 +45,7 @@ TODO: describe BNF syntax and natural deduction here
 \\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
 \\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
 \\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
+\\newcommand{\subtype}[3]{ #1 \vdash #2 \leqslant #3 }
 \\
 % Metavariables
 \\newcommand{\rexpr}{r}
@@ -62,6 +64,7 @@ TODO: describe BNF syntax and natural deduction here
 % Term and Type constructors
 \\newcommand{\const}{c}
 \\newcommand{\Type}{\mathsf{Type}}
+\\newcommand{\Singleton}[1]{(= #1)}
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \\newcommand{\lam}[2]{ \lambda #1 . #2 }
@@ -72,6 +75,7 @@ TODO: describe BNF syntax and natural deduction here
                     &   | & ?                           & \text{holes} \\\\
                     &   | & \const                      & \text{constants} \\\\
                     &   | & \rexpr : \rtype             & \text{term annotated with a type} \\\\
+                    &   | & \Singleton{\rexpr}          & \text{singleton type} \\\\
                     &   | & \Pi{x:\rtype_1}{\rtype_2}   & \text{dependent function type} \\\\
                     &   | & \lam{x:\rtype}{\rexpr}      & \text{functions} \\\\
                     &   | & \rexpr_1 ~ \rexpr_2         & \text{function application} \\\\
@@ -96,6 +100,7 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
                     &   | & \Type_i                     & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \const                      & \text{constants} \\\\
                     &   | & \texpr : \ttype             & \text{term annotated with a type} \\\\
+                    &   | & \Singleton{\texpr}          & \text{singleton type} \\\\
                     &   | & \Pi{x:\ttype_1}{\ttype_2}   & \text{dependent function type} \\\\
                     &   | & \lam{x:\ttype}{\texpr}      & \text{functions} \\\\
                     &   | & \texpr_1 ~ \texpr_2         & \text{function application} \\\\
@@ -119,6 +124,7 @@ and neutral terms (\\(\nexpr\\)):
     \\\\
     \wexpr,\wtype   & ::= & \Type_i                     & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \const                      & \text{constants} \\\\
+                    &   | & \Singleton{\vexpr}          & \text{singleton type} \\\\
                     &   | & \Pi{x:\vtype_1}{\vtype_2}   & \text{dependent function type} \\\\
                     &   | & \lam{x:\vtype}{\vexpr}      & \text{functions} \\\\
     \\\\
@@ -151,11 +157,12 @@ used during type checkiong.
 
 With that in mind, the next sections will describe the following judgements:
 
-| name                              | notation                                             | inputs                                   | outputs                    |
-|-----------------------------------|------------------------------------------------------|------------------------------------------|----------------------------|
-| [normalization](#normalization)   | \\(\eval{ \Gamma }{ \texpr }{ \vexpr }\\)            | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vexpr\\)               |
-| [type checking](#type-checking)   | \\(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\), \\(\vtype\\) | \\(\texpr\\)               |
-| [type inference](#type-inference) | \\(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vtype\\), \\(\texpr\\) |
+| name                              | notation                                             | inputs                                      | outputs                    |
+|-----------------------------------|------------------------------------------------------|---------------------------------------------|----------------------------|
+| [normalization](#normalization)   | \\(\eval{ \Gamma }{ \texpr }{ \vexpr }\\)            | \\(\Gamma\\), \\(\rexpr\\)                  | \\(\vexpr\\)               |
+| [type checking](#type-checking)   | \\(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\), \\(\vtype\\)    | \\(\texpr\\)               |
+| [type inference](#type-inference) | \\(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\)                  | \\(\vtype\\), \\(\texpr\\) |
+| [subtyping](#subtyping)           | \\(\subtype{ \Gamma }{ \vtype_1 }{ \vtype_2 }\\)     | \\(\Gamma\\), \\(\vtype_1\\) \\(\vtype_2\\) |                            |
 
 Normalization stands on its own, but both checking and inference are mutually
 dependent on each other. Care has been taken to design the judgments so that
@@ -235,6 +242,12 @@ in the context.
         \eval{ \Gamma }{ x }{ \vexpr }
     }
     \\\\[2em]
+    \rule{E-SING}{
+        \eval{ \Gamma }{ \texpr }{ \vexpr }
+    }{
+        \eval{ \Gamma }{ \Singleton{\texpr} }{ \Singleton{\vexpr} }
+    }
+    \\\\[2em]
     \rule{E-PI}{
         \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
         \qquad
@@ -280,22 +293,18 @@ elaborated form.
     }
     \\\\[2em]
     \rule{C-CONV}{
-        \infer{ \Gamma }{ \rexpr }{ \vtype_2 }{ \texpr }
+        \infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
         \qquad
-        \vtype_1 \equiv_{\alpha} \vtype_2
+        \subtype{ \Gamma }{ \vtype_1 }{ \vtype_2 }
     }{
-        \check{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+        \check{ \Gamma }{ \rexpr }{ \vtype_2 }{ \texpr }
     }
     \\\\[2em]
 \end{array}
 \\]
 
-In C-CONV we flip the direction of the type checker, comparing the type of the
-expected term for [alpha equivalence] with the inferred term. Note that we could
-alternatively check for subtyping instead of alpha equivalence. This could be
-useful for implementing a cumulative universe hierarchy.
-
-[alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
+In C-CONV we flip the direction of the type checker, comparing the inferred type
+of the term to the expected type using the [subtyping judgement](#subtyping).
 
 ### Type inference
 
@@ -326,6 +335,12 @@ returns its elaborated form.
         x:\vtype \in \Gamma
     }{
         \infer{ \Gamma }{ x }{ \vtype }{ x }
+    }
+    \\\\[2em]
+    \rule{I-SING}{
+        \infer{ \Gamma }{ \rtype }{ \vtype }{ \ttype }
+    }{
+        \infer{ \Gamma }{ \Singleton{\rtype} }{ \vtype }{ \Singleton{\ttype} }
     }
     \\\\[2em]
     \rule{I-PI}{
@@ -360,3 +375,40 @@ returns its elaborated form.
     \\\\[2em]
 \end{array}
 \\]
+
+### Subtyping
+
+\\[
+\boxed{
+    \subtype{ \Gamma }{ \vtype_1 }{ \vtype_2 }
+}
+\\\\[2em]
+\begin{array}{cl}
+    \rule{S-REFL}{
+        \vtype_1 \equiv \vtype_2
+    }{
+        \subtype{ \Gamma }{ \vtype_1 }{ \vtype_2 }
+    }
+    \\\\[2em]
+    \rule{S-SING}{
+        \infer{ \Gamma }{ \vexpr }{ \vtype_2 }{ \texpr }
+        \qquad
+        \vtype_1 \equiv \vtype_2
+    }{
+        \subtype{ \Gamma }{ \Singleton{\vexpr} }{ \vtype_1 }
+    }
+    \\\\[2em]
+    \rule{S-SING-EQ-SYM}{
+        \infer{ \Gamma }{ \vexpr_1 }{ \vtype_1 }{ \texpr_1 }
+        \qquad
+        \infer{ \Gamma }{ \vexpr_2 }{ \vtype_2 }{ \texpr_2 }
+        \qquad
+        \vtype_1 \equiv \vtype_2
+    }{
+        \subtype{ \Gamma }{ \Singleton{\vexpr_1} }{ \Singleton{\vexpr_2} }
+    }
+    \\\\[2em]
+\end{array}
+\\]
+
+> TODO: Rules for pi types

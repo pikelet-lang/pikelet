@@ -138,6 +138,10 @@ impl ToDoc for Term {
             Term::Literal(_, Literal::Float(value)) => Doc::as_string(value),
             Term::Hole(_) => Doc::text("_"),
             Term::Var(_, ref name) => Doc::as_string(name),
+            Term::Singleton(_, ref expr) => Doc::text("(=")
+                .append(Doc::space())
+                .append(expr.to_doc(options))
+                .append(Doc::text(")")),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
                 .append(pretty_lam_params(options, params))
                 .append(Doc::space())

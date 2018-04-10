@@ -9,6 +9,7 @@
 - [Types of types](#types-of-types)
 - [Identifiers](#identifiers)
 - [Functions](#functions)
+- [Singleton types](#singleton-types)
 
 
 ## Declarations
@@ -184,4 +185,22 @@ example the following function types are equivalent:
 (a : Type) (x : a) -> a
 (a : Type) -> (x : a) -> a
 (a : Type) -> a -> a
+```
+
+## Singleton types
+
+Singleton types are fixed to only having a single inhabitant:
+
+```pikelet-repl
+Pikelet> "hello" : (= "hello")
+"hello" : (= "hello")
+Pikelet> "hello" : (= "goodbye")
+error: (= "hello") is not a subtype of (= "goodbye")
+```
+
+Singleton types are subtypes:
+
+```pikelet-repl
+Pikelet> (\x : String => x) ("hello" : (= "hello"))
+"hello" : String
 ```

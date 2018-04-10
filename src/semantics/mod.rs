@@ -76,6 +76,9 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             }),
         },
 
+        // E-SING
+        Term::Singleton(_, ref expr) => Ok(Rc::new(Value::Singleton(normalize(context, expr)?))),
+
         // E-PI
         Term::Pi(_, ref scope) => {
             let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
@@ -283,6 +286,14 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             }.into()),
         },
 
+        // I-SING
+        RawTerm::Singleton(meta, ref expr) => {
+            let (expr, ty1) = infer(context, expr)?;
+            let (_, ty2) = infer(context, &Rc::new(RawTerm::from(&*ty1)))?;
+
+            Ok((Term::Singleton(meta, expr), ty2))
+        },
+
         // I-PI
         RawTerm::Pi(meta, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
@@ -352,5 +363,40 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 }),
             }
         },
+    }
+}
+
+pub fn subtype(context: &Context, ty1: &Rc<Type>, ty2: &Rc<Type>) -> Result<(), TypeError> {
+    match (&**ty1, &**ty2) {
+        // S-SING
+        (Value::Singleton(ref expr1), _) => {
+            let (_, ty1) = infer(context, &Rc::new(RawTerm::from(&**expr1)))?;
+
+            equiv(&ty1, ty2)
+        },
+
+        // S-SING-EQ-SYM
+        (Value::Singleton(ref expr1), Value::Singleton(ref expr2)) => {
+            let (_, ty1) = infer(context, &Rc::new(RawTerm::from(&**expr1)))?;
+            let (_, ty2) = infer(context, &Rc::new(RawTerm::from(&**expr2)))?;
+
+            equiv(&ty1, &ty2)
+        }
+
+        // S-REFL
+        (_, _) => equiv(ty1, ty2),
+
+        // TODO: pi types
+    }
+}
+
+pub fn equiv(ty1: &Rc<Type>, ty2: &Rc<Type>) -> Result<(), TypeError> {
+    match Type::term_eq(ty1, ty2) {
+        true => Ok(()),
+        false => Err(TypeError::Mismatch {
+            span: term.span(),
+            found: ty1.clone(),
+            expected: ty2.clone(),
+        }),
     }
 }

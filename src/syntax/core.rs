@@ -160,6 +160,8 @@ pub enum RawTerm {
     Hole(SourceMeta),
     /// A variable
     Var(SourceMeta, Var),
+    /// Singleton types
+    Singleton(SourceMeta, Rc<RawTerm>),
     /// Dependent function types
     Pi(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
     /// Lambda abstractions
@@ -176,6 +178,7 @@ impl RawTerm {
             | RawTerm::Hole(meta)
             | RawTerm::Constant(meta, _)
             | RawTerm::Var(meta, _)
+            | RawTerm::Singleton(meta, _)
             | RawTerm::Pi(meta, _)
             | RawTerm::Lam(meta, _)
             | RawTerm::App(meta, _, _) => meta.span,
@@ -201,6 +204,7 @@ impl RawTerm {
             },
             RawTerm::Universe(_, _) | RawTerm::Hole(_) | RawTerm::Constant(_, _) => {},
             RawTerm::Var(_, ref var) => on_var(var),
+            RawTerm::Singleton(_, ref expr) => expr.visit_vars(on_var),
             RawTerm::Pi(_, ref scope) => {
                 (scope.unsafe_pattern.1).0.visit_vars(on_var);
                 scope.unsafe_body.visit_vars(on_var);
@@ -258,6 +262,8 @@ pub enum Term {
     Constant(SourceMeta, Constant),
     /// A variable
     Var(SourceMeta, Var),
+    /// Singleton types
+    Singleton(SourceMeta, Rc<Term>),
     /// Dependent function types
     Pi(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
@@ -273,6 +279,7 @@ impl Term {
             | Term::Universe(meta, _)
             | Term::Constant(meta, _)
             | Term::Var(meta, _)
+            | Term::Singleton(meta, _)
             | Term::Lam(meta, _)
             | Term::Pi(meta, _)
             | Term::App(meta, _, _) => meta.span,
@@ -337,6 +344,8 @@ pub enum Value {
     Universe(Level),
     /// Constants
     Constant(Constant),
+    /// Singleton types
+    Singleton(Rc<Value>),
     /// A pi type
     Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
@@ -389,6 +398,7 @@ impl<'a> From<&'a Value> for Term {
         match *src {
             Value::Universe(level) => Term::Universe(meta, level),
             Value::Constant(ref c) => Term::Constant(meta, c.clone()),
+            Value::Singleton(ref expr) => Term::Singleton(meta, Rc::new(Term::from(&**expr))),
             Value::Pi(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));

@@ -173,6 +173,7 @@ AppTerm: Term = {
 AtomicTerm: Term = {
     <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
     <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
+    <start: @L> "(" "=" <term: Term> ")" <end: @R> => Term::Singleton(ByteSpan::new(start, end), Box::new(term)),
     <start: @L> "_" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
     <start: @L> <value: "string literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::String(value)),
     <start: @L> <value: "character literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Char(value)),

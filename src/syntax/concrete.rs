@@ -220,6 +220,14 @@ pub enum Term {
     /// x
     /// ```
     Var(ByteIndex, String),
+    /// Singleton types
+    ///
+    /// ```text
+    /// (= String)
+    /// (= "hello")
+    /// (= 2 : I8)
+    /// ```
+    Singleton(ByteSpan, Box<Term>),
     /// Lambda abstractions
     ///
     /// ```text
@@ -271,6 +279,7 @@ impl Term {
             Term::Parens(span, _)
             | Term::Universe(span, _)
             | Term::Literal(span, _)
+            | Term::Singleton(span, _)
             | Term::Hole(span)
             | Term::Error(span) => span,
             Term::Var(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),

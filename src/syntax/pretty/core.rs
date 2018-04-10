@@ -49,6 +49,13 @@ fn pretty_name(options: Options, name: &Name) -> StaticDoc {
     }
 }
 
+fn pretty_singleton<A: ToDoc>(options: Options, expr: &A) -> StaticDoc {
+    Doc::text("(=")
+        .append(Doc::space())
+        .append(expr.to_doc(options.with_prec(Prec::NO_WRAP)))
+        .append(Doc::text(")"))
+}
+
 fn pretty_lam<A: ToDoc, B: ToDoc>(
     options: Options,
     name: &Name,
@@ -158,6 +165,7 @@ impl ToDoc for RawTerm {
             RawTerm::Hole(_) => Doc::text("_"),
             RawTerm::Constant(_, ref c) => c.to_doc(options),
             RawTerm::Var(_, ref var) => pretty_var(options, var),
+            RawTerm::Singleton(_, ref expr) => pretty_singleton(options, expr),
             RawTerm::Lam(_, ref scope) => pretty_lam(
                 options,
                 &scope.unsafe_pattern.0,
@@ -185,6 +193,7 @@ impl ToDoc for Term {
             Term::Universe(_, level) => pretty_universe(options, level),
             Term::Constant(_, ref c) => c.to_doc(options),
             Term::Var(_, ref var) => pretty_var(options, var),
+            Term::Singleton(_, ref expr) => pretty_singleton(options, expr),
             Term::Lam(_, ref scope) => pretty_lam(
                 options,
                 &scope.unsafe_pattern.0,
@@ -207,6 +216,7 @@ impl ToDoc for Value {
         match *self {
             Value::Universe(level) => pretty_universe(options, level),
             Value::Constant(ref c) => c.to_doc(options),
+            Value::Singleton(ref expr) => pretty_singleton(options, expr),
             Value::Lam(ref scope) => pretty_lam(
                 options,
                 &scope.unsafe_pattern.0,

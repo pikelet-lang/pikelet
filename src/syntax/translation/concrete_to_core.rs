@@ -211,6 +211,9 @@ impl ToCore<core::RawTerm> for concrete::Term {
             concrete::Term::Var(_, ref x) => {
                 core::RawTerm::Var(meta, Var::Free(Name::user(x.clone())))
             },
+            concrete::Term::Singleton(_, ref expr) => {
+                core::RawTerm::Singleton(meta, Rc::new(expr.to_core()))
+            },
             concrete::Term::Pi(_, ref params, ref body) => pi_to_core(params, body),
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
