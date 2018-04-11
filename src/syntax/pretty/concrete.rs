@@ -144,9 +144,7 @@ impl ToDoc for Term {
                 .append(Doc::text("=>"))
                 .append(Doc::space())
                 .append(body.to_doc(options)),
-            Term::Pi(_, ref params, ref body) => Doc::text("(")
-                .append(pretty_pi_params(options, params))
-                .append(Doc::text(")"))
+            Term::Pi(_, ref params, ref body) => pretty_pi_params(options, params)
                 .append(Doc::space())
                 .append(Doc::text("->"))
                 .append(Doc::space())
