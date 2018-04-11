@@ -685,7 +685,7 @@ We will however make an effort to explain some of the notation we use here, and 
 \]</p>
 <a class="header" href="print.html#values" id="values"><h3>Values</h3></a>
 <p>In order to make it clear what is 'stuck' and what still needs to be evaluated,
-we separate our syntax into weak head normal forms (\(\wexpr\)),
+we separate our syntax into <a href="https://en.wikipedia.org/wiki/Lambda_calculus_definition#Weak_head_normal_form">weak head normal forms</a> (\(\wexpr\)),
 and neutral terms (\(\nexpr\)):</p>
 <p>\[
 \begin{array}{rrll}
@@ -702,10 +702,6 @@ and neutral terms (\(\nexpr\)):</p>
 \\
 \end{array}
 \]</p>
-<p>Note that function application is stuck,
-forming a linked list of terms bottoming out with a variable \(x\).
-We require neutral terms to be evaluated in a context in order to figure out  whether the base variable is a function or not,
-and if so proceed to reduce these applications to their weak head normal forms via subsititution.</p>
 <a class="header" href="print.html#contexts" id="contexts"><h3>Contexts</h3></a>
 <p>As we typecheck terms, we'll be passing over bindings like lambdas and pi types.
 Contexts allow us to keep track of the bound parameters,
@@ -835,7 +831,7 @@ elaborated form.</p>
 \rule{C-LAM}{
 \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
 }{
-\check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+\check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
 }
 \\[2em]
 \rule{C-CONV}{
