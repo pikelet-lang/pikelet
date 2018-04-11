@@ -106,7 +106,7 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 ### Values
 
 In order to make it clear what is 'stuck' and what still needs to be evaluated,
-we separate our syntax into weak head normal forms (\\(\wexpr\\)),
+we separate our syntax into [weak head normal forms][whnf-wikipedia] (\\(\wexpr\\)),
 and neutral terms (\\(\nexpr\\)):
 
 \\[
@@ -125,10 +125,7 @@ and neutral terms (\\(\nexpr\\)):
 \end{array}
 \\]
 
-Note that function application is stuck,
-forming a linked list of terms bottoming out with a variable \\(x\\).
-We require neutral terms to be evaluated in a context in order to figure out  whether the base variable is a function or not,
-and if so proceed to reduce these applications to their weak head normal forms via subsititution.
+[whnf-wikipedia]: https://en.wikipedia.org/wiki/Lambda_calculus_definition#Weak_head_normal_form
 
 ### Contexts
 
