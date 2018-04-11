@@ -286,7 +286,7 @@ impl fmt::Display for Term {
     }
 }
 
-/// Normal forms
+/// Values
 ///
 /// These are either in _weak head normal form_ (they cannot be reduced further)
 /// or are _neutral terms_ (there is a possibility of reducing further depending
