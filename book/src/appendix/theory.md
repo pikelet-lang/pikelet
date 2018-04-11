@@ -279,7 +279,7 @@ elaborated form.
     \rule{C-LAM}{
         \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
     }{
-        \check{ \Gamma }{ \lam{x:?}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+        \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
     }
     \\\\[2em]
     \rule{C-CONV}{
