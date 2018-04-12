@@ -174,7 +174,7 @@ impl TypeError {
                 found, expected,
             )).with_label(Label::new_primary(span).with_message("the term")),
             TypeError::ExpectedUniverse { ref found, span } => {
-                Diagnostic::new_error(format!("expected type, found value `{}`", found))
+                Diagnostic::new_error(format!("expected type, found a value of type `{}`", found))
                     .with_label(Label::new_primary(span).with_message("the value"))
             },
             TypeError::UndefinedName { ref name, var_span } => {
