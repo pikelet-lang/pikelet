@@ -20,13 +20,17 @@ pub struct Opts {
     #[structopt(long = "prompt", default_value = "Pikelet> ")]
     pub prompt: String,
 
-    /// Don't print the welcome banner on startup
-    #[structopt(long = "suppress-welcome-banner")]
-    pub suppress_welcome_banner: bool,
+    /// Disable the welcome banner on startup
+    #[structopt(long = "no-banner")]
+    pub no_banner: bool,
 
-    /// The history file to record previous commands to (blank to disable)
+    /// Disable saving of command history on exit
+    #[structopt(long = "no-history")]
+    pub no_history: bool,
+
+    /// The file to save the command history to
     #[structopt(long = "history-file", parse(from_os_str), default_value = "repl-history")]
-    pub history_file: Option<PathBuf>,
+    pub history_file: PathBuf,
 
     /// Files to preload into the REPL
     #[structopt(name = "FILE", parse(from_os_str))]
@@ -79,13 +83,13 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     let writer = StandardStream::stderr(color);
     let context = Context::default();
 
-    if let Some(ref history_file) = opts.history_file {
-        if let Err(_) = rl.load_history(&history_file) {
+    if !opts.no_history {
+        if let Err(_) = rl.load_history(&opts.history_file) {
             // No previous REPL history!
         }
     }
 
-    if !opts.suppress_welcome_banner {
+    if !opts.no_banner {
         print_welcome_banner();
     }
 
@@ -94,7 +98,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     loop {
         match rl.readline(&opts.prompt) {
             Ok(line) => {
-                if let Some(_) = opts.history_file {
+                if !opts.no_history {
                     rl.add_history_entry(&line);
                 }
 
@@ -129,8 +133,8 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
         }
     }
 
-    if let Some(ref history_file) = opts.history_file {
-        rl.save_history(history_file)?;
+    if !opts.no_history {
+        rl.save_history(&opts.history_file)?;
     }
 
     println!("Bye bye");
