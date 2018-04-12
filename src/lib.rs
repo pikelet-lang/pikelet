@@ -17,8 +17,6 @@ pub mod semantics;
 pub mod syntax;
 
 #[cfg(feature = "cli")]
-extern crate isatty;
-#[cfg(feature = "cli")]
 extern crate rustyline;
 #[cfg(feature = "cli")]
 #[macro_use]
@@ -60,10 +58,10 @@ pub fn load_prelude(codemap: &mut CodeMap) -> Module {
 
     match load_file(&file) {
         Ok(module) => module,
-        Err(diagnostics) => {
-            for diagnostic in diagnostics {
-                codespan_reporting::emit(codemap, &diagnostic);
-            }
+        Err(_diagnostics) => {
+            // for diagnostic in diagnostics {
+            //     codespan_reporting::emit(codemap, &diagnostic);
+            // }
             panic!("unexpected parse errors in prelude");
         },
     }

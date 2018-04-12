@@ -2,9 +2,10 @@
 
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting;
+use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use rustyline::error::ReadlineError;
 use std::path::PathBuf;
 use term_size;
 
@@ -19,13 +20,17 @@ pub struct Opts {
     #[structopt(long = "prompt", default_value = "Pikelet> ")]
     pub prompt: String,
 
-    /// Don't print the welcome banner on startup
-    #[structopt(long = "suppress-welcome-banner")]
-    pub suppress_welcome_banner: bool,
+    /// Disable the welcome banner on startup
+    #[structopt(long = "no-banner")]
+    pub no_banner: bool,
 
-    /// The history file to record previous commands to (blank to disable)
+    /// Disable saving of command history on exit
+    #[structopt(long = "no-history")]
+    pub no_history: bool,
+
+    /// The file to save the command history to
     #[structopt(long = "history-file", parse(from_os_str), default_value = "repl-history")]
-    pub history_file: Option<PathBuf>,
+    pub history_file: PathBuf,
 
     /// Files to preload into the REPL
     #[structopt(name = "FILE", parse(from_os_str))]
@@ -70,20 +75,21 @@ fn print_help_text() {
 }
 
 /// Run the `repl` subcommand with the given options
-pub fn run(opts: Opts) -> Result<(), Error> {
+pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     // TODO: Load files
 
     let mut rl = Editor::<()>::new();
     let mut codemap = CodeMap::new();
+    let writer = StandardStream::stderr(color);
     let context = Context::default();
 
-    if let Some(ref history_file) = opts.history_file {
-        if let Err(_) = rl.load_history(&history_file) {
+    if !opts.no_history {
+        if let Err(_) = rl.load_history(&opts.history_file) {
             // No previous REPL history!
         }
     }
 
-    if !opts.suppress_welcome_banner {
+    if !opts.no_banner {
         print_welcome_banner();
     }
 
@@ -92,7 +98,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     loop {
         match rl.readline(&opts.prompt) {
             Ok(line) => {
-                if let Some(_) = opts.history_file {
+                if !opts.no_history {
                     rl.add_history_entry(&line);
                 }
 
@@ -101,10 +107,18 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        codespan_reporting::emit(&codemap, &err.to_diagnostic());
+                        codespan_reporting::emit(
+                            &mut writer.lock(),
+                            &codemap,
+                            &err.to_diagnostic(),
+                        )?;
                     },
                     Err(EvalPrintError::Type(err)) => {
-                        codespan_reporting::emit(&codemap, &err.to_diagnostic());
+                        codespan_reporting::emit(
+                            &mut writer.lock(),
+                            &codemap,
+                            &err.to_diagnostic(),
+                        )?;
                     },
                 }
             },
@@ -119,8 +133,8 @@ pub fn run(opts: Opts) -> Result<(), Error> {
         }
     }
 
-    if let Some(ref history_file) = opts.history_file {
-        rl.save_history(history_file)?;
+    if !opts.no_history {
+        rl.save_history(&opts.history_file)?;
     }
 
     println!("Bye bye");

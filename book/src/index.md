@@ -34,11 +34,11 @@ $ cargo run repl
 /_/   /_/_/|_|\___/_/\___/\__/      :? for help
 
 Pikelet> (\(a : Type) (x : a) => x) String "hello"
-"hello" : #String
+"hello" : String
 Pikelet> :t Type
 Type 1
 Pikelet> 1 : I16
-1 : #I16
+1 : I16
 Pikelet>
 ```
 

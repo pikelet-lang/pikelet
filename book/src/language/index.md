@@ -91,7 +91,10 @@ Pikelet> 1 : F32
 Pikelet> 1.0 : F32
 1.0 : F32
 Pikelet> 1.1 : U64
-error: found a floating point literal, but expected a type `#U64`
+error: found a floating point literal, but expected a type `U64`
+- <repl>:1:1
+1 | 1.1 : U64
+  | ^^^ the literal
 ```
 
 ## Types of types
@@ -182,11 +185,10 @@ types:
 
 ```pikelet-repl
 Pikelet> (\x : I32 => x) 4.0
-error: found a floating point literal, but expected a type `#I32`
-Pikelet> (\x : String => x) 'b'
-error: found a character literal, but expected a type `#String`
-Pikelet> (\x : Char => x) "yoho"
-error: found a string literal, but expected a type `#Char`
+error: found a floating point literal, but expected a type `I32`
+- <repl>:1:17
+1 | (\x : I32 => x) 4.0
+  |                 ^^^ the literal
 ```
 
 Let's make this identity function polymorphic by adding a parameter for the type

@@ -248,6 +248,7 @@ mod to_core {
 
     mod module {
         use codespan_reporting;
+        use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 
         use super::*;
 
@@ -255,11 +256,13 @@ mod to_core {
         fn parse_prelude() {
             let mut codemap = CodeMap::new();
             let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
+            let writer = StandardStream::stderr(ColorChoice::Always);
 
             let (concrete_module, errors) = parse::module(&filemap);
             if !errors.is_empty() {
                 for error in errors {
-                    codespan_reporting::emit(&codemap, &error.to_diagnostic());
+                    codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic())
+                        .unwrap();
                 }
                 panic!("parse error!")
             }
