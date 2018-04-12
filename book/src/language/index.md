@@ -20,6 +20,13 @@ greeting : String
 greeting = "hello there!"
 ```
 
+We can also make type aliases in the same way:
+
+```pikelet
+name : Type
+name = String
+```
+
 ## Comments
 
 Line comments are proceeded by a double dash:
