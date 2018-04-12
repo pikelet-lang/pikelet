@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/repl.html"><strong aria-hidden="true">2.1.</strong> REPL</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.2.</strong> Type inference</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/repl.html"><strong aria-hidden="true">2.1.</strong> REPL</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.2.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.3.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -220,6 +220,10 @@ sooner or later the REPL will be ready for you to interact with!</p>
 <pre><code class="language-pikelet">greeting : String
 greeting = &quot;hello there!&quot;
 </code></pre>
+<p>We can also make type aliases in the same way:</p>
+<pre><code class="language-pikelet">name : Type
+name = String
+</code></pre>
 <a class="header" href="print.html#comments" id="comments"><h2>Comments</h2></a>
 <p>Line comments are proceeded by a double dash:</p>
 <pre><code class="language-pikelet">-- this is a comment!
@@ -281,40 +285,6 @@ error: found a floating point literal, but expected a type `U64`
 1 | 1.1 : U64
   | ^^^ the literal
 </code></pre>
-<a class="header" href="print.html#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
-<p>Types also have types!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
-Type
-</code></pre>
-<p>You might then ask, “what is the type of <code>Type</code>?”</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type
-Type 1
-</code></pre>
-<p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
-Type 1
-</code></pre>
-<p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
-previous:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
-Type 1
-Pikelet&gt; :t Type 1
-Type 2
-Pikelet&gt; :t Type 2
-Type 3
-...
-</code></pre>
-<p>You can think of these as larger and larger sets, with the smaller type
-universes being contained within the larger type universes:</p>
-<blockquote>
-<p>TODO: Put a nice SVG diagram of the sets of types here</p>
-<pre><code>(Type 2
-  (Type 1
-    (Type 0
-      (I32, F32, String,
-        (1, 4.0, &quot;hello&quot;)))))
-</code></pre>
-</blockquote>
 <a class="header" href="print.html#identifiers" id="identifiers"><h2>Identifiers</h2></a>
 <blockquote>
 <p>TODO</p>
@@ -430,10 +400,44 @@ Pikelet&gt; \x =&gt; x : I32 -&gt; I32
 </code></pre>
 <a class="header" href="print.html#further-reading" id="further-reading"><h2>Further reading</h2></a>
 <p>We describe Pikelet's type checking algorithm more formally
-<a href="../appendix/theory.md">in the appendix</a>. If you have a background in progamming
+<a href="../appendix/theory">in the appendix</a>. If you have a background in progamming
 languages and type theory this might be of interest to you. If not, that's
 ok - understanding the formal notation is not neccessary for developing a high
 level intuition of type inference in Pikelet.</p>
+<a class="header" href="print.html#types-of-types" id="types-of-types"><h1>Types of types</h1></a>
+<p>Types also have types!</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
+Type
+</code></pre>
+<p>You might then ask, “what is the type of <code>Type</code>?”</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type
+Type 1
+</code></pre>
+<p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
+Type 1
+</code></pre>
+<p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
+previous:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
+Type 1
+Pikelet&gt; :t Type 1
+Type 2
+Pikelet&gt; :t Type 2
+Type 3
+...
+</code></pre>
+<p>You can think of these as larger and larger sets, with the smaller type
+universes being contained within the larger type universes:</p>
+<blockquote>
+<p>TODO: Put a nice SVG diagram of the sets of types here</p>
+<pre><code>(Type 2
+  (Type 1
+    (Type 0
+      (I32, F32, String,
+        (1, 4.0, &quot;hello&quot;)))))
+</code></pre>
+</blockquote>
 <a class="header" href="print.html#appendix" id="appendix"><h1>Appendix</h1></a>
 <p>Here you will find additional reference information for understanding the
 theoretical foundations behind Pikelet.</p>
