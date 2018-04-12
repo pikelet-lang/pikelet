@@ -61,11 +61,10 @@ Pikelet> 2.0 : F32
 Pikelet> \x => x : I32 -> I32
 ```
 
-
 ## Further reading
 
 We describe Pikelet's type checking algorithm more formally
-[in the appendix](../appendix/theory.md). If you have a background in progamming
+[in the appendix](../appendix/theory). If you have a background in progamming
 languages and type theory this might be of interest to you. If not, that's
 ok - understanding the formal notation is not neccessary for developing a high
 level intuition of type inference in Pikelet.
