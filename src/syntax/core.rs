@@ -192,6 +192,7 @@ impl fmt::Display for RawTerm {
 }
 
 impl RawTerm {
+    // TODO: Move to nameless crate
     fn visit_vars<F: FnMut(&Var)>(&self, on_var: &mut F) {
         match *self {
             RawTerm::Ann(_, ref expr, ref ty) => {
@@ -215,6 +216,7 @@ impl RawTerm {
         };
     }
 
+    // TODO: move to nameless crate
     pub fn free_vars(&self) -> HashSet<Name> {
         let mut free_vars = HashSet::new();
         self.visit_vars(&mut |var| match *var {
@@ -283,6 +285,44 @@ impl fmt::Display for Term {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
             .render_fmt(f.width().unwrap_or(usize::MAX), f)
+    }
+}
+
+impl Term {
+    // TODO: Move to nameless crate
+    fn visit_vars<F: FnMut(&Var)>(&self, on_var: &mut F) {
+        match *self {
+            Term::Ann(_, ref expr, ref ty) => {
+                expr.visit_vars(on_var);
+                ty.visit_vars(on_var);
+            },
+            Term::Universe(_, _) | Term::Constant(_, _) => {},
+            Term::Var(_, ref var) => on_var(var),
+            Term::Pi(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
+            },
+            Term::Lam(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
+            },
+            Term::App(_, ref fn_expr, ref arg_expr) => {
+                fn_expr.visit_vars(on_var);
+                arg_expr.visit_vars(on_var);
+            },
+        };
+    }
+
+    // TODO: move to nameless crate
+    pub fn free_vars(&self) -> HashSet<Name> {
+        let mut free_vars = HashSet::new();
+        self.visit_vars(&mut |var| match *var {
+            Var::Bound(_, _) => {},
+            Var::Free(ref name) => {
+                free_vars.insert(name.clone());
+            },
+        });
+        free_vars
     }
 }
 

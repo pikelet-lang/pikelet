@@ -3,8 +3,8 @@
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting;
 use failure::Error;
-use rustyline::Editor;
 use rustyline::error::ReadlineError;
+use rustyline::Editor;
 use std::path::PathBuf;
 use term_size;
 
@@ -134,7 +134,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
 
     use syntax::concrete::ReplCommand;
     use syntax::core::{SourceMeta, Term};
-    use syntax::translation::ToCore;
+    use syntax::translation::{ToConcrete, ToCore};
 
     fn term_width() -> usize {
         term_size::dimensions()
@@ -161,7 +161,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
                     SourceMeta::default(),
                     Rc::new(Term::from(&*evaluated)),
                     Rc::new(Term::from(&*inferred)),
-                ),
+                ).to_concrete(),
                 width = term_width(),
             );
         },
@@ -169,7 +169,11 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let raw_term = Rc::new(parse_term.to_core());
             let (_, inferred) = semantics::infer(context, &raw_term)?;
 
-            println!("{term:width$}", term = inferred, width = term_width());
+            println!(
+                "{term:width$}",
+                term = Term::from(&*inferred).to_concrete(),
+                width = term_width()
+            );
         },
 
         ReplCommand::NoOp | ReplCommand::Error(_) => {},
