@@ -1,5 +1,6 @@
 //! The command line interface for Pikelet
 
+use codespan_reporting::termcolor::ColorChoice;
 use failure::Error;
 use std::str::FromStr;
 
@@ -13,7 +14,7 @@ pub mod repl;
 pub struct Opts {
     /// Configure coloring of output
     #[structopt(long = "color", parse(try_from_str), default_value = "auto",
-                raw(possible_values = "&[\"auto\", \"always\", \"never\"]"))]
+                raw(possible_values = "&[\"auto\", \"always\", \"ansi\", \"never\"]"))]
     pub color: ColorArg,
 
     /// Subcommand to run
@@ -26,19 +27,17 @@ pub struct Opts {
 pub enum ColorArg {
     Auto,
     Always,
+    AlwaysAnsi,
     Never,
 }
 
-impl ColorArg {
-    /// Returns a boolean that specifies if the output should be colorized,
-    /// checking if we are in a terminal session if `Auto` is passed.
-    pub fn should_colorize(self) -> bool {
-        use isatty;
-
+impl Into<ColorChoice> for ColorArg {
+    fn into(self) -> ColorChoice {
         match self {
-            ColorArg::Auto => isatty::stdin_isatty(),
-            ColorArg::Always => true,
-            ColorArg::Never => false,
+            ColorArg::Auto => ColorChoice::Auto,
+            ColorArg::Always => ColorChoice::Always,
+            ColorArg::AlwaysAnsi => ColorChoice::AlwaysAnsi,
+            ColorArg::Never => ColorChoice::Never,
         }
     }
 }
@@ -68,8 +67,9 @@ pub enum Command {
 }
 
 pub fn run(opts: Opts) -> Result<(), Error> {
+    let color_choice = opts.color.into();
     match opts.command {
-        Command::Check(check_opts) => check::run(check_opts),
-        Command::Repl(repl_opts) => repl::run(repl_opts),
+        Command::Check(check_opts) => check::run(color_choice, check_opts),
+        Command::Repl(repl_opts) => repl::run(color_choice, repl_opts),
     }
 }

@@ -12,7 +12,6 @@ publish = false
 [features]
 default = ["cli"]
 cli = [
-    "isatty",
     "rustyline",
     "structopt",
     "term_size",
@@ -23,8 +22,8 @@ name = "pikelet"
 required-features = ["cli"]
 
 [dependencies]
-codespan = { git = "https://github.com/brendanzab/codespan", rev = "e25e243", version = "0.1.0" }
-codespan-reporting = { git = "https://github.com/brendanzab/codespan", rev = "e25e243", version = "0.1.0" }
+codespan = { git = "https://github.com/brendanzab/codespan", rev = "d5c18a0", version = "0.1.0" }
+codespan-reporting = { git = "https://github.com/brendanzab/codespan", rev = "d5c18a0", version = "0.1.0" }
 failure = "0.1.1"
 lalrpop-util = "0.15.1"
 nameless = { git = "https://github.com/brendanzab/nameless", rev = "9db2220", version = "0.1.0" }
@@ -34,7 +33,6 @@ rpds = "0.4.0"
 unicode-xid = "0.1.0"
 
 # cli dependencies
-isatty = { version = "0.1.6", optional = true }
 rustyline = { version = "1.0.0", optional = true }
 structopt = { version = "0.2.2", optional = true }
 term_size = { version = "0.3.0", optional = true }

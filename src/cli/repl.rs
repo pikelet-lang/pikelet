@@ -2,9 +2,10 @@
 
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting;
+use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use rustyline::error::ReadlineError;
 use std::path::PathBuf;
 use term_size;
 
@@ -70,11 +71,12 @@ fn print_help_text() {
 }
 
 /// Run the `repl` subcommand with the given options
-pub fn run(opts: Opts) -> Result<(), Error> {
+pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     // TODO: Load files
 
     let mut rl = Editor::<()>::new();
     let mut codemap = CodeMap::new();
+    let writer = StandardStream::stderr(color);
     let context = Context::default();
 
     if let Some(ref history_file) = opts.history_file {
@@ -101,10 +103,18 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        codespan_reporting::emit(&codemap, &err.to_diagnostic());
+                        codespan_reporting::emit(
+                            &mut writer.lock(),
+                            &codemap,
+                            &err.to_diagnostic(),
+                        )?;
                     },
                     Err(EvalPrintError::Type(err)) => {
-                        codespan_reporting::emit(&codemap, &err.to_diagnostic());
+                        codespan_reporting::emit(
+                            &mut writer.lock(),
+                            &codemap,
+                            &err.to_diagnostic(),
+                        )?;
                     },
                 }
             },

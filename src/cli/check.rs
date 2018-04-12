@@ -1,3 +1,4 @@
+use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
 use std::path::PathBuf;
 
@@ -10,7 +11,7 @@ pub struct Opts {
 }
 
 /// Run the `check` subcommand with the given options
-pub fn run(opts: Opts) -> Result<(), Error> {
+pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     use codespan::CodeMap;
     use codespan_reporting;
 
@@ -19,6 +20,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     use syntax::translation::ToCore;
 
     let mut codemap = CodeMap::new();
+    let writer = StandardStream::stderr(color);
 
     let mut is_error = false;
     for path in opts.files {
@@ -27,7 +29,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 
         let mut is_parse_error = false;
         for error in parse_errors {
-            codespan_reporting::emit(&codemap, &error.to_diagnostic());
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic())?;
             is_error = true;
             is_parse_error = true;
         }
@@ -38,7 +40,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
         match semantics::check_module(&module.to_core()) {
             Ok(_module) => {},
             Err(err) => {
-                codespan_reporting::emit(&codemap, &err.to_diagnostic());
+                codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;
                 is_error = true;
             },
         }
