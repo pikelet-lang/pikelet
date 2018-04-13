@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, Bind, BoundTerm, Embed, Name, Var};
+use nameless::{self, Bind, BoundName, BoundPattern, BoundTerm, Embed, Name, ScopeState, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
@@ -144,6 +144,44 @@ impl fmt::Display for RawDefinition {
     }
 }
 
+/// A record label
+///
+/// Labels are significant when comparing for alpha-equality, both in terms and
+/// in patterns
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label(pub Name);
+
+impl BoundTerm for Label {
+    fn term_eq(&self, other: &Label) -> bool {
+        match (self.0.name(), other.0.name()) {
+            (Some(lhs), Some(rhs)) => lhs == rhs,
+            (_, _) => Name::term_eq(&self.0, &other.0),
+        }
+    }
+}
+
+impl BoundPattern for Label {
+    fn pattern_eq(&self, other: &Label) -> bool {
+        Label::term_eq(self, other)
+    }
+
+    fn freshen(&mut self) -> Vec<Name> {
+        self.0.freshen()
+    }
+
+    fn rename(&mut self, perm: &[Name]) {
+        self.0.rename(perm)
+    }
+
+    fn on_free(&self, state: ScopeState, name: &Name) -> Option<BoundName> {
+        self.0.on_free(state, name)
+    }
+
+    fn on_bound(&self, state: ScopeState, name: BoundName) -> Option<Name> {
+        self.0.on_bound(state, name)
+    }
+}
+
 /// Raw terms, unchecked and with implicit syntax that needs to be elaborated
 ///
 /// For now the only implicit syntax we have is holes and lambdas that lack a
@@ -166,6 +204,16 @@ pub enum RawTerm {
     Lam(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
     /// RawTerm application
     App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>),
+    /// Dependent record types
+    RecordType(SourceMeta, Bind<(Label, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
+    /// Dependent record
+    Record(SourceMeta, Bind<(Label, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
+    /// The unit type
+    EmptyRecordType(SourceMeta),
+    /// The element of the unit type
+    EmptyRecord(SourceMeta),
+    /// Field projection
+    Proj(SourceMeta, Rc<RawTerm>, Label),
 }
 
 impl RawTerm {
@@ -178,7 +226,12 @@ impl RawTerm {
             | RawTerm::Var(meta, _)
             | RawTerm::Pi(meta, _)
             | RawTerm::Lam(meta, _)
-            | RawTerm::App(meta, _, _) => meta.span,
+            | RawTerm::App(meta, _, _)
+            | RawTerm::RecordType(meta, _)
+            | RawTerm::Record(meta, _)
+            | RawTerm::EmptyRecordType(meta)
+            | RawTerm::EmptyRecord(meta)
+            | RawTerm::Proj(meta, _, _) => meta.span,
         }
     }
 }
@@ -212,6 +265,22 @@ impl RawTerm {
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
+            },
+            RawTerm::RecordType(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
+                return;
+            },
+            RawTerm::Record(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
+                return;
+            },
+            RawTerm::EmptyRecordType(_) => return,
+            RawTerm::EmptyRecord(_) => return,
+            RawTerm::Proj(_, ref expr, _) => {
+                expr.visit_vars(on_var);
+                return;
             },
         };
     }
@@ -264,6 +333,16 @@ pub enum Term {
     Lam(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(SourceMeta, Rc<Term>, Rc<Term>),
+    /// Dependent record types
+    RecordType(SourceMeta, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    /// Dependent record
+    Record(SourceMeta, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    /// The unit type
+    EmptyRecordType(SourceMeta),
+    /// The element of the unit type
+    EmptyRecord(SourceMeta),
+    /// Field projection
+    Proj(SourceMeta, Rc<Term>, Label),
 }
 
 impl Term {
@@ -275,7 +354,12 @@ impl Term {
             | Term::Var(meta, _)
             | Term::Lam(meta, _)
             | Term::Pi(meta, _)
-            | Term::App(meta, _, _) => meta.span,
+            | Term::App(meta, _, _)
+            | Term::RecordType(meta, _)
+            | Term::Record(meta, _)
+            | Term::EmptyRecordType(meta)
+            | Term::EmptyRecord(meta)
+            | Term::Proj(meta, _, _) => meta.span,
         }
     }
 }
@@ -310,6 +394,22 @@ impl Term {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
             },
+            Term::RecordType(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
+                return;
+            },
+            Term::Record(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
+                return;
+            },
+            Term::EmptyRecordType(_) => return,
+            Term::EmptyRecord(_) => return,
+            Term::Proj(_, ref expr, _) => {
+                expr.visit_vars(on_var);
+                return;
+            },
         };
     }
 
@@ -341,8 +441,68 @@ pub enum Value {
     Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
     Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
+    /// Dependent record types
+    RecordType(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
+    /// Dependent record
+    Record(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
+    /// The unit type
+    EmptyRecordType,
+    /// The element of the unit type
+    EmptyRecord,
     /// Neutral terms
     Neutral(Rc<Neutral>),
+}
+
+impl Value {
+    pub fn lookup_record_ty(&self, label: &Label) -> Option<Rc<Value>> {
+        fn lookup_next(value: &Value, label: &Label) -> Result<Rc<Value>, Option<Rc<Value>>> {
+            if let Value::RecordType(ref scope) = *value {
+                let ((curr_label, Embed(value)), body) = nameless::unbind(scope.clone());
+
+                if Label::pattern_eq(&curr_label, &label) {
+                    Ok(value)
+                } else {
+                    Err(Some(body))
+                }
+            } else {
+                Err(None)
+            }
+        }
+
+        let mut current = lookup_next(self, label);
+        loop {
+            current = match current {
+                Ok(term) => return Some(term),
+                Err(Some(term)) => lookup_next(&*term, label),
+                Err(None) => return None,
+            };
+        }
+    }
+
+    pub fn lookup_record(&self, label: &Label) -> Option<Rc<Value>> {
+        fn lookup_next(value: &Value, label: &Label) -> Result<Rc<Value>, Option<Rc<Value>>> {
+            if let Value::Record(ref scope) = *value {
+                let ((name, Embed(value)), body) = nameless::unbind(scope.clone());
+
+                if Label::pattern_eq(&name, &label) {
+                    Ok(value)
+                } else {
+                    Err(Some(body))
+                }
+            } else {
+                Err(None)
+            }
+        }
+
+        let mut current = lookup_next(self, label);
+        loop {
+            current = match current {
+                Ok(term) => return Some(term),
+                Err(Some(term)) => lookup_next(&*term, label),
+                Err(None) => return None,
+            };
+        }
+    }
 }
 
 impl fmt::Display for Value {
@@ -363,6 +523,8 @@ pub enum Neutral {
     Var(Var),
     /// RawTerm application
     App(Rc<Neutral>, Rc<Term>),
+    /// Field projection
+    Proj(Rc<Neutral>, Label),
 }
 
 impl fmt::Display for Neutral {
@@ -401,6 +563,20 @@ impl<'a> From<&'a Value> for Term {
 
                 Term::Lam(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
             },
+            Value::RecordType(ref scope) => {
+                let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
+                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
+
+                Term::RecordType(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
+            },
+            Value::Record(ref scope) => {
+                let ((name, Embed(param_value)), body) = nameless::unbind(scope.clone());
+                let param = (name, Embed(Rc::new(Term::from(&*param_value))));
+
+                Term::Record(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
+            },
+            Value::EmptyRecordType => Term::EmptyRecordType(meta).into(),
+            Value::EmptyRecord => Term::EmptyRecord(meta).into(),
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }
@@ -414,6 +590,9 @@ impl<'a> From<&'a Neutral> for Term {
             Neutral::Var(ref var) => Term::Var(meta, var.clone()),
             Neutral::App(ref fn_expr, ref arg_expr) => {
                 Term::App(meta, Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
+            },
+            Neutral::Proj(ref expr, ref name) => {
+                Term::Proj(meta, Rc::new(Term::from(&**expr)), name.clone()).into()
             },
         }
     }

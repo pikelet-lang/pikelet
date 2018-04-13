@@ -9,6 +9,7 @@
 - [Types of types](#types-of-types)
 - [Identifiers](#identifiers)
 - [Functions](#functions)
+- [Records](#records)
 
 
 ## Declarations
@@ -184,4 +185,31 @@ example the following function types are equivalent:
 (a : Type) (x : a) -> a
 (a : Type) -> (x : a) -> a
 (a : Type) -> a -> a
+```
+
+## Records
+
+Pikelet supports dependent records. These can be a handy way of organising
+data and specifying interfaces.
+
+```
+Point2 (a : Type) = Record {
+    x : a,
+    y : a,
+};
+
+my-point : Point2 F32 = record {
+    x = 1.0,
+    y = 3.0,
+};
+```
+
+Field types can depend on data from previous fields. Here we turn a
+fixed-length array into a dynamically sized array:
+
+```
+DArray (a : Type) = Record {
+    len : I32,
+    data : Array len a,
+}
 ```

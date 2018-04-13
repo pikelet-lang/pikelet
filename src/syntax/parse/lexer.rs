@@ -105,19 +105,22 @@ pub enum Token<S> {
     FloatLiteral(f64),
 
     // Keywords
-    As,     // as
-    Hole,   // _
-    In,     // in
-    Let,    // let
-    Module, // module
-    Import, // import
-    Type,   // Type
-    Where,  // where
+    As,         // as
+    Hole,       // _
+    In,         // in
+    Let,        // let
+    Module,     // module
+    Import,     // import
+    Record,     // record
+    RecordType, // Record
+    Type,       // Type
+    Where,      // where
 
     // Symbols
     BSlash,    // \
     Colon,     // :
     Comma,     // ,
+    Dot,       // .
     DotDot,    // ..
     Equal,     // =
     LArrow,    // ->
@@ -149,11 +152,14 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Let => write!(f, "let"),
             Token::Module => write!(f, "module"),
             Token::Import => write!(f, "import"),
+            Token::Record => write!(f, "record"),
+            Token::RecordType => write!(f, "Record"),
             Token::Type => write!(f, "Type"),
             Token::Where => write!(f, "where"),
             Token::BSlash => write!(f, "\\"),
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
+            Token::Dot => write!(f, "."),
             Token::DotDot => write!(f, ".."),
             Token::Equal => write!(f, "="),
             Token::LFatArrow => write!(f, "=>"),
@@ -185,11 +191,14 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Let => Token::Let,
             Token::Module => Token::Module,
             Token::Import => Token::Import,
+            Token::Record => Token::Record,
+            Token::RecordType => Token::RecordType,
             Token::Type => Token::Type,
             Token::Where => Token::Where,
             Token::BSlash => Token::BSlash,
             Token::Colon => Token::Colon,
             Token::Comma => Token::Comma,
+            Token::Dot => Token::Dot,
             Token::DotDot => Token::DotDot,
             Token::Equal => Token::Equal,
             Token::LFatArrow => Token::LFatArrow,
@@ -355,6 +364,8 @@ impl<'input> Lexer<'input> {
             "let" => Token::Let,
             "module" => Token::Module,
             "import" => Token::Import,
+            "record" => Token::Record,
+            "Record" => Token::RecordType,
             "Type" => Token::Type,
             "where" => Token::Where,
             ident => Token::Ident(ident),
@@ -471,6 +482,7 @@ impl<'input> Iterator for Lexer<'input> {
                     match symbol {
                         ":" => Ok(self.repl_command(start)),
                         "," => Ok((start, Token::Comma, end)),
+                        "." => Ok((start, Token::Dot, end)),
                         ".." => Ok((start, Token::DotDot, end)),
                         "=" => Ok((start, Token::Equal, end)),
                         "->" => Ok((start, Token::LArrow, end)),

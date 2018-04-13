@@ -1,11 +1,11 @@
 //! The semantics of the language
 
 use codespan::ByteSpan;
-use nameless::{self, BoundTerm, Embed, Name, Var};
+use nameless::{self, BoundPattern, BoundTerm, Embed, Name, Var};
 use std::rc::Rc;
 
-use syntax::core::{Constant, Context, Definition, Level, Module, Neutral, RawConstant, RawModule,
-                   RawTerm, Term, Type, Value};
+use syntax::core::{Constant, Context, Definition, Label, Level, Module, Neutral, RawConstant,
+                   RawModule, RawTerm, Term, Type, Value};
 use syntax::translation::ToConcrete;
 
 mod errors;
@@ -121,6 +121,35 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 _ => Err(InternalError::ArgumentAppliedToNonFunction { span: expr.span() }),
             }
         },
+
+        Term::RecordType(_, ref scope) => {
+            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
+            let ann = normalize(context, &ann)?;
+            let body_context = context.claim(name.0.clone(), ann.clone());
+            let body = normalize(&body_context, &body)?;
+
+            Ok(Value::RecordType(nameless::bind((name, Embed(ann)), body)).into())
+        },
+
+        Term::Record(_, ref scope) => {
+            let ((name, Embed(term)), body) = nameless::unbind(scope.clone());
+            let value = normalize(context, &term)?;
+            let body_context = context.define(name.0.clone(), term.clone());
+            let body = normalize(&body_context, &body)?;
+
+            Ok(Value::Record(nameless::bind((name, Embed(value)), body)).into())
+        },
+
+        Term::Proj(_, ref expr, ref label) => {
+            match normalize(context, expr)?.lookup_record(label) {
+                Some(value) => Ok(value.clone()),
+                None => unimplemented!(),
+            }
+        },
+
+        Term::EmptyRecordType(_) => Ok(Value::EmptyRecordType.into()),
+
+        Term::EmptyRecord(_) => Ok(Value::EmptyRecord.into()),
     }
 }
 
@@ -186,6 +215,28 @@ pub fn check(
                 span: raw_term.span(),
                 expected: Box::new(Term::from(&**expected_ty).to_concrete()),
             });
+        },
+
+        // C-RECORD
+        (&RawTerm::Record(meta, ref scope), &Value::RecordType(ref ty_scope)) => {
+            let ((label, Embed(expr)), body, (ty_label, Embed(ann)), ty_body) =
+                nameless::unbind2(scope.clone(), ty_scope.clone());
+
+            if Label::pattern_eq(&label, &ty_label) {
+                let expr = check(context, &expr, &ann)?;
+                let body = check(
+                    &context
+                        .claim(label.0.clone(), ann)
+                        .define(label.0.clone(), expr.clone()),
+                    &body,
+                    &ty_body,
+                )?;
+                let scope = nameless::bind((label, Embed(expr)), body);
+
+                return Ok(Rc::new(Term::Record(meta, scope)));
+            } else {
+                unimplemented!()
+            }
         },
 
         (&RawTerm::Hole(meta), _) => {
@@ -353,5 +404,75 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 }),
             }
         },
+
+        // I-RECORD-TYPE
+        RawTerm::RecordType(meta, ref raw_scope) => {
+            let ((label, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
+
+            // Check that rest of record is well-formed?
+            // Might be able to skip that for now, because there's no way to
+            // express ill-formed records in the concrete syntax...
+
+            let (ann, ann_level) = infer_universe(context, &raw_ann)?;
+            let (body, body_level) = {
+                let ann = normalize(context, &ann)?;
+                infer_universe(&context.claim(label.0.clone(), ann), &raw_body)?
+            };
+
+            let scope = nameless::bind((label, Embed(ann)), body);
+            let level = cmp::max(ann_level, body_level);
+
+            Ok((
+                Rc::new(Term::RecordType(meta, scope)),
+                Rc::new(Value::Universe(level)),
+            ))
+        },
+
+        RawTerm::Record(_, _) => unimplemented!(),
+        // RawTerm::Record(meta, ref raw_scope) => {
+        //     let ((label, Embed(raw_expr)), raw_body) = nameless::unbind(raw_scope.clone());
+
+        //     // Check that rest of record is well-formed?
+        //     // Might be able to skip that for now, because there's no way to
+        //     // express ill-formed records in the concrete syntax...
+
+        //     let (expr, ann) = infer(context, &raw_expr)?;
+        //     let (body, ty) = infer(
+        //         &context
+        //             .claim(label.0.clone(), ann.clone())
+        //             .define(label.0.clone(), expr.clone()),
+        //         &raw_body,
+        //     )?;
+
+        //     let scope = nameless::bind((label.clone(), Embed(expr)), body);
+        //     let scope_ty = nameless::bind((label, Embed(ann)), ty);
+
+        //     Ok((
+        //         Rc::new(Term::Record(meta, scope)),
+        //         Rc::new(Value::RecordType(scope_ty)),
+        //     ))
+        // },
+
+        // I-PROJ
+        RawTerm::Proj(meta, ref expr, ref label) => {
+            let (expr, ty) = infer(context, expr)?;
+
+            match ty.lookup_record_ty(label) {
+                Some(ty) => Ok((Rc::new(Term::Proj(meta, expr, label.clone())), ty)),
+                None => unimplemented!(),
+            }
+        },
+
+        // I-EMPTY-RECORD-TYPE
+        RawTerm::EmptyRecordType(meta) => Ok((
+            Term::EmptyRecordType(meta).into(),
+            Value::Universe(Level(0)).into(),
+        )),
+
+        // I-EMPTY-RECORD
+        RawTerm::EmptyRecord(meta) => Ok((
+            Term::EmptyRecord(meta).into(),
+            Value::EmptyRecordType.into(),
+        )),
     }
 }

@@ -94,6 +94,62 @@ fn app_to_core(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTe
     term
 }
 
+fn record_ty_to_core(
+    span: ByteSpan,
+    fields: &[(ByteIndex, String, Box<concrete::Term>)],
+) -> core::RawTerm {
+    let mut term = core::RawTerm::EmptyRecordType(core::SourceMeta {
+        span: ByteSpan::new(span.end(), span.end()),
+    });
+
+    for &(start, ref label, ref ann) in fields.iter().rev() {
+        let meta = core::SourceMeta {
+            span: ByteSpan::new(start, term.span().end()),
+        };
+
+        term = core::RawTerm::RecordType(
+            meta,
+            nameless::bind(
+                (
+                    core::Label(Name::user(label.clone())),
+                    Embed(Rc::new(ann.to_core())),
+                ),
+                Rc::new(term),
+            ),
+        );
+    }
+
+    term
+}
+
+fn record_to_core(
+    span: ByteSpan,
+    fields: &[(ByteIndex, String, Box<concrete::Term>)],
+) -> core::RawTerm {
+    let mut term = core::RawTerm::EmptyRecord(core::SourceMeta {
+        span: ByteSpan::new(span.end(), span.end()),
+    });
+
+    for &(start, ref label, ref value) in fields.iter().rev() {
+        let meta = core::SourceMeta {
+            span: ByteSpan::new(start, term.span().end()),
+        };
+
+        term = core::RawTerm::Record(
+            meta,
+            nameless::bind(
+                (
+                    core::Label(Name::user(label.clone())),
+                    Embed(Rc::new(value.to_core())),
+                ),
+                Rc::new(term),
+            ),
+        );
+    }
+
+    term
+}
+
 impl ToCore<core::RawModule> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
     fn to_core(&self) -> core::RawModule {
@@ -222,6 +278,13 @@ impl ToCore<core::RawTerm> for concrete::Term {
             },
             concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
+            concrete::Term::RecordType(span, ref fields) => record_ty_to_core(span, fields),
+            concrete::Term::Record(span, ref fields) => record_to_core(span, fields),
+            concrete::Term::Proj(ref tm, _, ref label) => core::RawTerm::Proj(
+                meta,
+                Rc::new(tm.to_core()),
+                core::Label(Name::user(label.clone())),
+            ),
             concrete::Term::Error(_) => unimplemented!("error recovery"),
         }
     }
