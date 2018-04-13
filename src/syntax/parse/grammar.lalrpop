@@ -70,6 +70,14 @@ pub ReplCommand: ReplCommand = {
             Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
         },
     },
+    <start: @L> <command: "REPL command"> <end: @R> <ident: Ident> "=" <term: Term> =>? match command {
+        "let" => Ok(ReplCommand::Let(ident, Box::new(term))),
+        command => {
+            let span = ByteSpan::new(start, end);
+            let command = String::from(command);
+            Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
+        },
+    },
 };
 
 pub Module: Module = {

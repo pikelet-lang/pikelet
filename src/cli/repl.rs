@@ -4,8 +4,8 @@ use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
-use rustyline::Editor;
 use rustyline::error::ReadlineError;
+use rustyline::Editor;
 use std::path::PathBuf;
 use term_size;
 
@@ -60,12 +60,13 @@ fn print_welcome_banner() {
 fn print_help_text() {
     const HELP_TEXT: &[&str] = &[
         "",
-        "Command       Arguments   Purpose",
+        "Command       Arguments        Purpose",
         "",
-        "<expr>                    evaluate a term",
-        ":? :h :help               display this help text",
-        ":q :quit                  quit the repl",
-        ":t :type      <expr>      infer the type of an expression",
+        "<term>                         evaluate a term",
+        ":? :h :help                    display this help text",
+        ":let          <name> = <term>  add a named term to the REPL context",
+        ":q :quit                       quit the repl",
+        ":t :type      <term>           infer the type of a term",
         "",
     ];
 
@@ -81,7 +82,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     let mut rl = Editor::<()>::new();
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
-    let context = Context::default();
+    let mut context = Context::default();
 
     if !opts.no_history {
         if let Err(_) = rl.load_history(&opts.history_file) {
@@ -104,7 +105,8 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 
                 let filename = FileName::virtual_("repl");
                 match eval_print(&context, &codemap.add_filemap(filename, line)) {
-                    Ok(ControlFlow::Continue) => {},
+                    Ok(ControlFlow::Continue(None)) => {},
+                    Ok(ControlFlow::Continue(Some(new_context))) => context = new_context,
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
                         codespan_reporting::emit(
@@ -143,6 +145,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 }
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
+    use nameless::{Name, Var};
     use std::rc::Rc;
     use std::usize;
 
@@ -179,6 +182,29 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
                 width = term_width(),
             );
         },
+        ReplCommand::Let(name, parse_term) => {
+            let raw_term = Rc::new(parse_term.to_core());
+            let (term, inferred) = semantics::infer(context, &raw_term)?;
+
+            println!(
+                "{term:width$}",
+                term = Term::Ann(
+                    SourceMeta::default(),
+                    Rc::new(Term::Var(
+                        SourceMeta::default(),
+                        Var::Free(Name::user(&*name))
+                    )),
+                    Rc::new(Term::from(&*inferred)),
+                ).to_concrete(),
+                width = term_width(),
+            );
+
+            let context = context
+                .claim(Name::user(&*name), inferred)
+                .define(Name::user(&*name), term);
+
+            return Ok(ControlFlow::Continue(Some(context)));
+        },
         ReplCommand::TypeOf(parse_term) => {
             let raw_term = Rc::new(parse_term.to_core());
             let (_, inferred) = semantics::infer(context, &raw_term)?;
@@ -186,7 +212,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             println!(
                 "{term:width$}",
                 term = Term::from(&*inferred).to_concrete(),
-                width = term_width()
+                width = term_width(),
             );
         },
 
@@ -194,13 +220,13 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         ReplCommand::Quit => return Ok(ControlFlow::Break),
     }
 
-    Ok(ControlFlow::Continue)
+    Ok(ControlFlow::Continue(None))
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 enum ControlFlow {
     Break,
-    Continue,
+    Continue(Option<Context>),
 }
 
 enum EvalPrintError {

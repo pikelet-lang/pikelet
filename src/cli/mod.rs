@@ -13,8 +13,12 @@ pub mod repl;
 #[structopt(name = "pikelet")]
 pub struct Opts {
     /// Configure coloring of output
-    #[structopt(long = "color", parse(try_from_str), default_value = "auto",
-                raw(possible_values = "&[\"auto\", \"always\", \"ansi\", \"never\"]"))]
+    #[structopt(
+        long = "color",
+        parse(try_from_str),
+        default_value = "auto",
+        raw(possible_values = "&[\"auto\", \"always\", \"ansi\", \"never\"]")
+    )]
     pub color: ColorArg,
 
     /// Subcommand to run
