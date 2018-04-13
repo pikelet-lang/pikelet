@@ -3,10 +3,9 @@
 use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use nameless::{BoundName, Name};
-use std::fmt;
-use std::rc::Rc;
 
-use syntax::core::{Constant, RawConstant, Type};
+use syntax::concrete;
+use syntax::core::RawConstant;
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -46,50 +45,54 @@ impl InternalError {
 }
 
 /// An error produced during typechecking
-#[derive(Debug, Clone, PartialEq)] // FIXME: Derive `Fail` (Rc does not impl `Send + Sync`)
+#[derive(Debug, Fail, Clone, PartialEq)]
 pub enum TypeError {
+    #[fail(display = "Applied an argument to a non-function type `{}`", found)]
     ArgAppliedToNonFunction {
         fn_span: ByteSpan,
         arg_span: ByteSpan,
-        found: Rc<Type>,
+        found: Box<concrete::Term>,
     },
+    #[fail(display = "Type annotation needed for the function parameter `{}`", name)]
     FunctionParamNeedsAnnotation {
         param_span: ByteSpan,
         var_span: Option<ByteSpan>,
         name: Name,
     },
+    #[fail(display = "found a `{}`, but expected a type `{}`", found, expected)]
     LiteralMismatch {
         literal_span: ByteSpan,
         found: RawConstant,
-        expected: Constant,
+        expected: Box<concrete::Term>,
     },
-    AmbiguousIntLiteral {
-        span: ByteSpan,
-    },
-    AmbiguousFloatLiteral {
-        span: ByteSpan,
-    },
+    #[fail(display = "Ambiguous integer literal")]
+    AmbiguousIntLiteral { span: ByteSpan },
+    #[fail(display = "Ambiguous floating point literal")]
+    AmbiguousFloatLiteral { span: ByteSpan },
+    #[fail(display = "Unable to elaborate hole, expected: `{:?}`", expected)]
     UnableToElaborateHole {
         span: ByteSpan,
-        expected: Option<Rc<Type>>,
+        expected: Option<Box<concrete::Term>>,
     },
+    #[fail(display = "Type mismatch: found `{}` but `{}` was expected", found, expected)]
     Mismatch {
         span: ByteSpan,
-        found: Rc<Type>,
-        expected: Rc<Type>,
+        found: Box<concrete::Term>,
+        expected: Box<concrete::Term>,
     },
+    #[fail(display = "Found a function but expected `{}`", expected)]
     UnexpectedFunction {
         span: ByteSpan,
-        expected: Rc<Type>,
+        expected: Box<concrete::Term>,
     },
+    #[fail(display = "Found `{}` but a universe was expected", found)]
     ExpectedUniverse {
         span: ByteSpan,
-        found: Rc<Type>,
+        found: Box<concrete::Term>,
     },
-    UndefinedName {
-        var_span: ByteSpan,
-        name: Name,
-    },
+    #[fail(display = "Undefined name `{}`", name)]
+    UndefinedName { var_span: ByteSpan, name: Name },
+    #[fail(display = "Internal error - this is a bug! {}", _0)]
     Internal(InternalError),
 }
 
@@ -189,66 +192,5 @@ impl TypeError {
 impl From<InternalError> for TypeError {
     fn from(src: InternalError) -> TypeError {
         TypeError::Internal(src)
-    }
-}
-
-impl fmt::Display for TypeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TypeError::ArgAppliedToNonFunction { ref found, .. } => {
-                write!(f, "Applied an argument to a non-function type `{}`", found)
-            },
-            TypeError::FunctionParamNeedsAnnotation { ref name, .. } => write!(
-                f,
-                "Type annotation needed for the function parameter `{}`",
-                name,
-            ),
-            TypeError::LiteralMismatch {
-                ref found,
-                ref expected,
-                ..
-            } => {
-                let found_text = match *found {
-                    RawConstant::String(_) => "string",
-                    RawConstant::Char(_) => "character",
-                    RawConstant::Int(_) => "numeric",
-                    RawConstant::Float(_) => "floating point",
-                };
-
-                write!(
-                    f,
-                    "found a {} literal, but expected a type `{}`",
-                    found_text, expected,
-                )
-            },
-            TypeError::AmbiguousIntLiteral { .. } => write!(f, "Ambiguous integer literal"),
-            TypeError::AmbiguousFloatLiteral { .. } => {
-                write!(f, "Ambiguous floating point literal")
-            },
-            TypeError::UnableToElaborateHole { expected: None, .. } => {
-                write!(f, "Unable to elaborate hole")
-            },
-            TypeError::UnableToElaborateHole {
-                expected: Some(ref ty),
-                ..
-            } => write!(f, "Unable to elaborate hole, expected: `{}`", ty),
-            TypeError::Mismatch {
-                ref found,
-                ref expected,
-                ..
-            } => write!(
-                f,
-                "Type mismatch: found `{}` but `{}` was expected",
-                found, expected,
-            ),
-            TypeError::UnexpectedFunction { ref expected, .. } => {
-                write!(f, "Found a function but expected `{}`", expected)
-            },
-            TypeError::ExpectedUniverse { ref found, .. } => {
-                write!(f, "Found `{}` but a universe was expected", found)
-            },
-            TypeError::UndefinedName { ref name, .. } => write!(f, "Undefined name `{}`", name),
-            TypeError::Internal(ref err) => write!(f, "Internal error - this is a bug! {}", err),
-        }
     }
 }

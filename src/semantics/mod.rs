@@ -6,6 +6,7 @@ use std::rc::Rc;
 
 use syntax::core::{Constant, Context, Definition, Level, Module, Neutral, RawConstant, RawModule,
                    RawTerm, Term, Type, Value};
+use syntax::translation::ToConcrete;
 
 mod errors;
 #[cfg(test)]
@@ -155,7 +156,7 @@ pub fn check(
                     return Err(TypeError::LiteralMismatch {
                         literal_span: meta.span,
                         found: raw_c.clone(),
-                        expected: c_ty.clone(),
+                        expected: Box::new(c_ty.to_concrete()),
                     });
                 },
             };
@@ -183,14 +184,14 @@ pub fn check(
         (&RawTerm::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
-                expected: expected_ty.clone(),
+                expected: Box::new(Term::from(&**expected_ty).to_concrete()),
             });
         },
 
         (&RawTerm::Hole(meta), _) => {
             return Err(TypeError::UnableToElaborateHole {
                 span: meta.span,
-                expected: Some(expected_ty.clone()),
+                expected: Some(Box::new(Term::from(&**expected_ty).to_concrete())),
             });
         },
 
@@ -203,8 +204,8 @@ pub fn check(
         true => Ok(term),
         false => Err(TypeError::Mismatch {
             span: term.span(),
-            found: inferred_ty,
-            expected: expected_ty.clone(),
+            found: Box::new(Term::from(&*inferred_ty).to_concrete()),
+            expected: Box::new(Term::from(&**expected_ty).to_concrete()),
         }),
     }
 }
@@ -224,7 +225,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             Value::Universe(level) => Ok((term, level)),
             _ => Err(TypeError::ExpectedUniverse {
                 span: raw_term.span(),
-                found: ty,
+                found: Box::new(Term::from(&*ty).to_concrete()),
             }),
         }
     }
@@ -348,7 +349,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_expr.span(),
                     arg_span: raw_arg.span(),
-                    found: expr_ty.clone(),
+                    found: Box::new(Term::from(&*expr_ty).to_concrete()),
                 }),
             }
         },
