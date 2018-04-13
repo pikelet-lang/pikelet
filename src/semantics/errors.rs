@@ -4,10 +4,9 @@ use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use nameless::{BoundName, Name};
 use std::fmt;
-use std::rc::Rc;
 
-use syntax::core::{Constant, RawConstant, Term, Type};
-use syntax::translation::ToConcrete;
+use syntax::concrete;
+use syntax::core::RawConstant;
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -52,7 +51,7 @@ pub enum TypeError {
     ArgAppliedToNonFunction {
         fn_span: ByteSpan,
         arg_span: ByteSpan,
-        found: Rc<Type>,
+        found: Box<concrete::Term>,
     },
     FunctionParamNeedsAnnotation {
         param_span: ByteSpan,
@@ -62,7 +61,7 @@ pub enum TypeError {
     LiteralMismatch {
         literal_span: ByteSpan,
         found: RawConstant,
-        expected: Constant,
+        expected: Box<concrete::Term>,
     },
     AmbiguousIntLiteral {
         span: ByteSpan,
@@ -72,20 +71,20 @@ pub enum TypeError {
     },
     UnableToElaborateHole {
         span: ByteSpan,
-        expected: Option<Rc<Type>>,
+        expected: Option<Box<concrete::Term>>,
     },
     Mismatch {
         span: ByteSpan,
-        found: Rc<Type>,
-        expected: Rc<Type>,
+        found: Box<concrete::Term>,
+        expected: Box<concrete::Term>,
     },
     UnexpectedFunction {
         span: ByteSpan,
-        expected: Rc<Type>,
+        expected: Box<concrete::Term>,
     },
     ExpectedUniverse {
         span: ByteSpan,
-        found: Rc<Type>,
+        found: Box<concrete::Term>,
     },
     UndefinedName {
         var_span: ByteSpan,
@@ -105,7 +104,7 @@ impl TypeError {
                 ref found,
             } => Diagnostic::new_error(format!(
                 "applied an argument to a term that was not a function - found type `{}`",
-                Term::from(&**found).to_concrete(),
+                found,
             )).with_label(Label::new_primary(fn_span).with_message("the term"))
                 .with_label(Label::new_secondary(arg_span).with_message("the applied argument")),
             TypeError::FunctionParamNeedsAnnotation {
@@ -133,8 +132,7 @@ impl TypeError {
 
                 Diagnostic::new_error(format!(
                     "found a {} literal, but expected a type `{}`",
-                    found_text,
-                    expected.to_concrete(),
+                    found_text, expected,
                 )).with_label(Label::new_primary(literal_span).with_message("the literal"))
             },
             TypeError::AmbiguousIntLiteral { span } => {
@@ -159,13 +157,13 @@ impl TypeError {
                 ..
             } => Diagnostic::new_error(format!(
                 "unable to elaborate hole - expected: `{}`",
-                Term::from(&**expected).to_concrete(),
+                expected,
             )).with_label(Label::new_primary(span).with_message("the hole")),
             TypeError::UnexpectedFunction {
                 span, ref expected, ..
             } => Diagnostic::new_error(format!(
                 "found a function but expected a term of type `{}`",
-                Term::from(&**expected).to_concrete(),
+                expected,
             )).with_label(Label::new_primary(span).with_message("the function")),
             TypeError::Mismatch {
                 span,
@@ -173,8 +171,7 @@ impl TypeError {
                 ref expected,
             } => Diagnostic::new_error(format!(
                 "found a term of type `{}`, but expected a term of type `{}`",
-                Term::from(&**found).to_concrete(),
-                Term::from(&**expected).to_concrete(),
+                found, expected,
             )).with_label(Label::new_primary(span).with_message("the term")),
             TypeError::ExpectedUniverse { ref found, span } => {
                 Diagnostic::new_error(format!("expected type, found a value of type `{}`", found))
@@ -198,11 +195,9 @@ impl From<InternalError> for TypeError {
 impl fmt::Display for TypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TypeError::ArgAppliedToNonFunction { ref found, .. } => write!(
-                f,
-                "Applied an argument to a non-function type `{}`",
-                Term::from(&**found).to_concrete(),
-            ),
+            TypeError::ArgAppliedToNonFunction { ref found, .. } => {
+                write!(f, "Applied an argument to a non-function type `{}`", found)
+            },
             TypeError::FunctionParamNeedsAnnotation { ref name, .. } => write!(
                 f,
                 "Type annotation needed for the function parameter `{}`",
@@ -223,8 +218,7 @@ impl fmt::Display for TypeError {
                 write!(
                     f,
                     "found a {} literal, but expected a type `{}`",
-                    found_text,
-                    expected.to_concrete(),
+                    found_text, expected,
                 )
             },
             TypeError::AmbiguousIntLiteral { .. } => write!(f, "Ambiguous integer literal"),
@@ -237,11 +231,7 @@ impl fmt::Display for TypeError {
             TypeError::UnableToElaborateHole {
                 expected: Some(ref expected),
                 ..
-            } => write!(
-                f,
-                "Unable to elaborate hole, expected: `{}`",
-                Term::from(&**expected).to_concrete(),
-            ),
+            } => write!(f, "Unable to elaborate hole, expected: `{}`", expected),
             TypeError::Mismatch {
                 ref found,
                 ref expected,
@@ -249,19 +239,14 @@ impl fmt::Display for TypeError {
             } => write!(
                 f,
                 "Type mismatch: found `{}` but `{}` was expected",
-                Term::from(&**found).to_concrete(),
-                Term::from(&**expected).to_concrete(),
+                found, expected,
             ),
-            TypeError::UnexpectedFunction { ref expected, .. } => write!(
-                f,
-                "Found a function but expected `{}`",
-                Term::from(&**expected).to_concrete()
-            ),
-            TypeError::ExpectedUniverse { ref found, .. } => write!(
-                f,
-                "Found `{}` but a universe was expected",
-                Term::from(&**found).to_concrete(),
-            ),
+            TypeError::UnexpectedFunction { ref expected, .. } => {
+                write!(f, "Found a function but expected `{}`", expected)
+            },
+            TypeError::ExpectedUniverse { ref found, .. } => {
+                write!(f, "Found `{}` but a universe was expected", found)
+            },
             TypeError::UndefinedName { ref name, .. } => write!(f, "Undefined name `{}`", name),
             TypeError::Internal(ref err) => write!(f, "Internal error - this is a bug! {}", err),
         }
