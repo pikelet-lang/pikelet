@@ -142,11 +142,9 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(28))),
-                vec![
-                    ParseError::IdentifierExpectedInPiType {
-                        span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
-                    },
-                ],
+                vec![ParseError::IdentifierExpectedInPiType {
+                    span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
+                }],
             )
         );
     }
@@ -163,11 +161,9 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(39))),
-                vec![
-                    ParseError::IdentifierExpectedInPiType {
-                        span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
-                    },
-                ],
+                vec![ParseError::IdentifierExpectedInPiType {
+                    span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
+                }],
             )
         );
     }
@@ -184,12 +180,10 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(36))),
-                vec![
-                    ParseError::Lexer(LexerError::IntegerLiteralOverflow {
-                        span: ByteSpan::new(ByteIndex(6), ByteIndex(36)),
-                        value: String::from("111111111111111111111111111111"),
-                    }),
-                ],
+                vec![ParseError::Lexer(LexerError::IntegerLiteralOverflow {
+                    span: ByteSpan::new(ByteIndex(6), ByteIndex(36)),
+                    value: String::from("111111111111111111111111111111"),
+                })],
             )
         );
     }

@@ -23,6 +23,12 @@ pub enum ReplCommand {
     /// :help
     /// ```
     Help,
+    /// Add a declaration to the REPL environment
+    ///
+    /// ```text
+    ///:let <name> = <term>
+    /// ```
+    Let(String, Box<Term>),
     ///  No command
     NoOp,
     /// Quit the REPL

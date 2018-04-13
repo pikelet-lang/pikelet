@@ -4,7 +4,6 @@
 
 - [Installation](./installation/index.md)
 - [Language](./language/index.md)
-  - [REPL](./language/repl.md)
   - [Type inference](./language/type-inference.md)
   - [Types of types](./language/types-of-types.md)
 - [Appendix](./appendix/index.md)
