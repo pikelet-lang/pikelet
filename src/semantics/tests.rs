@@ -1,5 +1,6 @@
 use codespan::{ByteIndex, CodeMap, FileName};
 
+use syntax::concrete;
 use syntax::core::SourceMeta;
 use syntax::parse;
 use syntax::translation::ToCore;
@@ -324,7 +325,7 @@ mod infer {
             Err(TypeError::ArgAppliedToNonFunction {
                 fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
                 arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
-                found: Rc::new(Value::Universe(Level(0).succ())),
+                found: Box::new(concrete::Term::Universe(ByteSpan::default(), Some(1))),
             },),
         )
     }
