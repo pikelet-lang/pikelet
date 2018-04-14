@@ -1,4 +1,4 @@
-use codespan::{ByteIndex, ByteSpan};
+use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use nameless::{self, Embed, GenId, Name, Var};
 use std::rc::Rc;
 
@@ -272,8 +272,17 @@ impl ToCore<core::RawTerm> for concrete::Term {
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
             concrete::Term::RecordType(span, ref fields) => record_ty_to_core(span, fields),
             concrete::Term::Record(span, ref fields) => record_to_core(span, fields),
-            concrete::Term::Proj(ref tm, _, ref label) => {
-                core::RawTerm::Proj(meta, Rc::new(tm.to_core()), core::Label(label.clone()))
+            concrete::Term::Proj(ref tm, label_start, ref label) => {
+                let label_meta = core::SourceMeta {
+                    span: ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
+                };
+
+                core::RawTerm::Proj(
+                    meta,
+                    Rc::new(tm.to_core()),
+                    label_meta,
+                    core::Label(label.clone()),
+                )
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),
         }

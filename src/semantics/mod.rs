@@ -145,10 +145,13 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         Term::EmptyRecord(_) => Ok(Rc::new(Value::EmptyRecord)),
 
         // E-PROJ
-        Term::Proj(_, ref expr, ref label) => {
+        Term::Proj(_, ref expr, label_meta, ref label) => {
             match normalize(context, expr)?.lookup_record(label) {
                 Some(value) => Ok(value.clone()),
-                None => unimplemented!(),
+                None => Err(InternalError::ProjectedOnNonExistentField {
+                    label_span: label_meta.span, // FIXME: better location info
+                    label: label.clone(),
+                }),
             }
         },
     }
@@ -439,12 +442,19 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         )),
 
         // I-PROJ
-        RawTerm::Proj(meta, ref expr, ref label) => {
+        RawTerm::Proj(meta, ref expr, label_meta, ref label) => {
             let (expr, ty) = infer(context, expr)?;
 
             match ty.lookup_record_ty(label) {
-                Some(ty) => Ok((Rc::new(Term::Proj(meta, expr, label.clone())), ty)),
-                None => unimplemented!(),
+                Some(ty) => Ok((
+                    Rc::new(Term::Proj(meta, expr, label_meta, label.clone())),
+                    ty,
+                )),
+                None => Err(TypeError::NoFieldInType {
+                    label_span: label_meta.span,
+                    expected_label: label.clone(),
+                    found: Box::new(Term::from(&*ty).to_concrete()),
+                }),
             }
         },
     }

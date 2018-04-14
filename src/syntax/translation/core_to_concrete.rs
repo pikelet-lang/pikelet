@@ -299,7 +299,7 @@ impl ToConcrete<concrete::Term> for core::Term {
                 concrete::Term::RecordType(ByteSpan::default(), vec![])
             },
             core::Term::EmptyRecord(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
-            core::Term::Proj(_, ref expr, ref label) => concrete::Term::Proj(
+            core::Term::Proj(_, ref expr, _, ref label) => concrete::Term::Proj(
                 Box::new(expr.to_concrete_prec(Prec::ATOMIC)),
                 ByteIndex::default(),
                 label.0.clone(),

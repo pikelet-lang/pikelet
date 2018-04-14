@@ -6,7 +6,6 @@ use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
-use std::usize;
 
 use syntax::pretty::{self, ToDoc};
 
@@ -64,7 +63,7 @@ impl fmt::Display for RawConstant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -106,7 +105,7 @@ impl fmt::Display for Constant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -122,7 +121,7 @@ impl fmt::Display for RawModule {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -140,13 +139,19 @@ impl fmt::Display for RawDefinition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
 /// A record label
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct Label(pub String);
+
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// Raw terms, unchecked and with implicit syntax that needs to be elaborated
 ///
@@ -179,7 +184,7 @@ pub enum RawTerm {
     /// The element of the unit type
     EmptyRecord(SourceMeta),
     /// Field projection
-    Proj(SourceMeta, Rc<RawTerm>, Label),
+    Proj(SourceMeta, Rc<RawTerm>, SourceMeta, Label),
 }
 
 impl RawTerm {
@@ -197,7 +202,7 @@ impl RawTerm {
             | RawTerm::Record(meta, _, _, _)
             | RawTerm::EmptyRecordType(meta)
             | RawTerm::EmptyRecord(meta)
-            | RawTerm::Proj(meta, _, _) => meta.span,
+            | RawTerm::Proj(meta, _, _, _) => meta.span,
         }
     }
 }
@@ -206,7 +211,7 @@ impl fmt::Display for RawTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -244,7 +249,7 @@ impl RawTerm {
             },
             RawTerm::EmptyRecordType(_) => return,
             RawTerm::EmptyRecord(_) => return,
-            RawTerm::Proj(_, ref expr, _) => {
+            RawTerm::Proj(_, ref expr, _, _) => {
                 expr.visit_vars(on_var);
                 return;
             },
@@ -308,7 +313,7 @@ pub enum Term {
     /// The element of the unit type
     EmptyRecord(SourceMeta),
     /// Field projection
-    Proj(SourceMeta, Rc<Term>, Label),
+    Proj(SourceMeta, Rc<Term>, SourceMeta, Label),
 }
 
 impl Term {
@@ -325,7 +330,7 @@ impl Term {
             | Term::Record(meta, _, _, _)
             | Term::EmptyRecordType(meta)
             | Term::EmptyRecord(meta)
-            | Term::Proj(meta, _, _) => meta.span,
+            | Term::Proj(meta, _, _, _) => meta.span,
         }
     }
 }
@@ -334,7 +339,7 @@ impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -372,7 +377,7 @@ impl Term {
             },
             Term::EmptyRecordType(_) => return,
             Term::EmptyRecord(_) => return,
-            Term::Proj(_, ref expr, _) => {
+            Term::Proj(_, ref expr, _, _) => {
                 expr.visit_vars(on_var);
                 return;
             },
@@ -471,7 +476,7 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -493,7 +498,7 @@ impl fmt::Display for Neutral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -554,7 +559,7 @@ impl<'a> From<&'a Neutral> for Term {
                 Term::App(meta, Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
             },
             Neutral::Proj(ref expr, ref name) => {
-                Term::Proj(meta, Rc::new(Term::from(&**expr)), name.clone()).into()
+                Term::Proj(meta, Rc::new(Term::from(&**expr)), meta, name.clone()).into()
             },
         }
     }
@@ -654,7 +659,7 @@ impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 

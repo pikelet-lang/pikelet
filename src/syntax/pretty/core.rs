@@ -268,7 +268,7 @@ impl ToDoc for RawTerm {
             },
             RawTerm::EmptyRecordType(_) => pretty_empty_record_ty(),
             RawTerm::EmptyRecord(_) => pretty_empty_record(),
-            RawTerm::Proj(_, ref expr, ref label) => pretty_proj(options, expr, label),
+            RawTerm::Proj(_, ref expr, _, ref label) => pretty_proj(options, expr, label),
         }
     }
 }
@@ -349,7 +349,7 @@ impl ToDoc for Term {
             },
             Term::EmptyRecordType(_) => pretty_empty_record_ty(),
             Term::EmptyRecord(_) => pretty_empty_record(),
-            Term::Proj(_, ref expr, ref label) => pretty_proj(options, expr, label),
+            Term::Proj(_, ref expr, _, ref label) => pretty_proj(options, expr, label),
         }
     }
 }

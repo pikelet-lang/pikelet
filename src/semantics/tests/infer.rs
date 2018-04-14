@@ -12,7 +12,7 @@ fn free() {
         Err(TypeError::UndefinedName {
             var_span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
             name: x,
-        },),
+        }),
     );
 }
 
@@ -105,7 +105,7 @@ fn app_ty() {
             fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
             arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
             found: Box::new(concrete::Term::Universe(ByteSpan::default(), Some(1))),
-        },),
+        }),
     )
 }
 
@@ -417,4 +417,16 @@ fn proj() {
         infer(&context, &parse(given_expr)).unwrap().1,
         normalize(&context, &parse_infer(&context, expected_ty)).unwrap(),
     );
+}
+
+#[test]
+fn proj_missing() {
+    let context = Context::new();
+
+    let given_expr = r#"record { x = "hello" }.bloop"#;
+
+    match infer(&context, &parse(given_expr)) {
+        Err(TypeError::NoFieldInType { .. }) => {},
+        x => panic!("expected a field lookup error, found {:?}", x),
+    }
 }
