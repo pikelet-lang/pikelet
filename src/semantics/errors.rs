@@ -5,7 +5,7 @@ use codespan_reporting::{Diagnostic, Label};
 use nameless::{BoundName, Name};
 
 use syntax::concrete;
-use syntax::core::RawConstant;
+use syntax::core::{self, RawConstant};
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -18,6 +18,11 @@ pub enum InternalError {
     },
     #[fail(display = "Argument applied to non-function.")]
     ArgumentAppliedToNonFunction { span: ByteSpan },
+    #[fail(display = "Projected on non-existent field `{}`.", label)]
+    ProjectedOnNonExistentField {
+        label_span: ByteSpan,
+        label: core::Label,
+    },
 }
 
 impl InternalError {
@@ -25,6 +30,7 @@ impl InternalError {
         match *self {
             InternalError::UnsubstitutedDebruijnIndex { span, .. } => span,
             InternalError::ArgumentAppliedToNonFunction { span, .. } => span,
+            InternalError::ProjectedOnNonExistentField { label_span, .. } => label_span,
         }
     }
 
@@ -40,6 +46,11 @@ impl InternalError {
                 Diagnostic::new_bug(format!("argument applied to non-function"))
                     .with_label(Label::new_primary(span).with_message("not a function"))
             },
+            InternalError::ProjectedOnNonExistentField {
+                label_span,
+                ref label,
+            } => Diagnostic::new_bug(format!("projected on non-existent field `{}`.", label))
+                .with_label(Label::new_primary(label_span).with_message("the projection")),
         }
     }
 }
@@ -92,6 +103,12 @@ pub enum TypeError {
     },
     #[fail(display = "Undefined name `{}`", name)]
     UndefinedName { var_span: ByteSpan, name: Name },
+    #[fail(display = "The type `{}` does not contain a field named `{}`.", found, expected_label)]
+    NoFieldInType {
+        label_span: ByteSpan,
+        expected_label: core::Label,
+        found: Box<concrete::Term>,
+    },
     #[fail(display = "Internal error - this is a bug! {}", _0)]
     Internal(InternalError),
 }
@@ -185,6 +202,14 @@ impl TypeError {
                     Label::new_primary(var_span).with_message("not found in this scope"),
                 )
             },
+            TypeError::NoFieldInType {
+                label_span,
+                ref expected_label,
+                ref found,
+            } => Diagnostic::new_error(format!(
+                "the type `{}` does not contain a field called `{}`",
+                found, expected_label
+            )).with_label(Label::new_primary(label_span).with_message("the field lookup")),
         }
     }
 }

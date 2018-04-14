@@ -18,7 +18,7 @@ fn ty() {
     let context = Context::new();
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(r"Type")).unwrap(),
+        normalize(&context, &parse_infer(&context, r"Type")).unwrap(),
         Rc::new(Value::Universe(Level(0)))
     );
 }
@@ -30,7 +30,7 @@ fn lam() {
     let x = Name::user("x");
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(r"\x : Type => x")).unwrap(),
+        normalize(&context, &parse_infer(&context, r"\x : Type => x")).unwrap(),
         Rc::new(Value::Lam(nameless::bind(
             (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
             Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
@@ -45,7 +45,7 @@ fn pi() {
     let x = Name::user("x");
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(r"(x : Type) -> x")).unwrap(),
+        normalize(&context, &parse_infer(&context, r"(x : Type) -> x")).unwrap(),
         Rc::new(Value::Pi(nameless::bind(
             (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
             Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
@@ -67,7 +67,7 @@ fn lam_app() {
     assert_term_eq!(
         normalize(
             &context,
-            &parse_infer(r"\(x : Type -> Type) (y : Type) => x y")
+            &parse_infer(&context, r"\(x : Type -> Type) (y : Type) => x y")
         ).unwrap(),
         Rc::new(Value::Lam(nameless::bind(
             (x.clone(), Embed(ty_arr)),
@@ -96,7 +96,7 @@ fn pi_app() {
     assert_term_eq!(
         normalize(
             &context,
-            &parse_infer(r"(x : Type -> Type) -> (y : Type) -> x y")
+            &parse_infer(&context, r"(x : Type -> Type) -> (y : Type) -> x y")
         ).unwrap(),
         Rc::new(Value::Pi(nameless::bind(
             (x.clone(), Embed(ty_arr)),
@@ -121,8 +121,8 @@ fn id_app_ty() {
     let expected_expr = r"\x : Type => x";
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(given_expr)).unwrap(),
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
     );
 }
 
@@ -135,8 +135,8 @@ fn id_app_ty_ty() {
     let expected_expr = r"Type";
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(given_expr)).unwrap(),
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
     );
 }
 
@@ -150,8 +150,8 @@ fn id_app_ty_arr_ty() {
     let expected_expr = r"Type -> Type";
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(given_expr)).unwrap(),
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
     );
 }
 
@@ -168,8 +168,8 @@ fn id_app_id() {
     let expected_expr = r"\(a : Type) (x : a) => x";
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(given_expr)).unwrap(),
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
     );
 }
 
@@ -189,7 +189,7 @@ fn const_app_id_ty() {
     let expected_expr = r"\(a : Type) (x : a) => x";
 
     assert_term_eq!(
-        normalize(&context, &parse_infer(given_expr)).unwrap(),
-        normalize(&context, &parse_infer(expected_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
     );
 }

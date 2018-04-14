@@ -1,4 +1,4 @@
-use codespan::{ByteIndex, ByteSpan};
+use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use nameless::{self, Embed, GenId, Name, Var};
 use std::rc::Rc;
 
@@ -89,6 +89,54 @@ fn app_to_core(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTe
         };
 
         term = core::RawTerm::App(meta, Rc::new(term), Rc::new(arg.to_core()))
+    }
+
+    term
+}
+
+fn record_ty_to_core(
+    span: ByteSpan,
+    fields: &[(ByteIndex, String, Box<concrete::Term>)],
+) -> core::RawTerm {
+    let mut term = core::RawTerm::EmptyRecordType(core::SourceMeta {
+        span: ByteSpan::new(span.end(), span.end()),
+    });
+
+    for &(start, ref label, ref ann) in fields.iter().rev() {
+        let meta = core::SourceMeta {
+            span: ByteSpan::new(start, term.span().end()),
+        };
+
+        term = core::RawTerm::RecordType(
+            meta,
+            core::Label(label.clone()),
+            Rc::new(ann.to_core()),
+            Rc::new(term),
+        );
+    }
+
+    term
+}
+
+fn record_to_core(
+    span: ByteSpan,
+    fields: &[(ByteIndex, String, Box<concrete::Term>)],
+) -> core::RawTerm {
+    let mut term = core::RawTerm::EmptyRecord(core::SourceMeta {
+        span: ByteSpan::new(span.end(), span.end()),
+    });
+
+    for &(start, ref label, ref value) in fields.iter().rev() {
+        let meta = core::SourceMeta {
+            span: ByteSpan::new(start, term.span().end()),
+        };
+
+        term = core::RawTerm::Record(
+            meta,
+            core::Label(label.clone()),
+            Rc::new(value.to_core()),
+            Rc::new(term),
+        );
     }
 
     term
@@ -222,6 +270,20 @@ impl ToCore<core::RawTerm> for concrete::Term {
             },
             concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
+            concrete::Term::RecordType(span, ref fields) => record_ty_to_core(span, fields),
+            concrete::Term::Record(span, ref fields) => record_to_core(span, fields),
+            concrete::Term::Proj(ref tm, label_start, ref label) => {
+                let label_meta = core::SourceMeta {
+                    span: ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
+                };
+
+                core::RawTerm::Proj(
+                    meta,
+                    Rc::new(tm.to_core()),
+                    label_meta,
+                    core::Label(label.clone()),
+                )
+            },
             concrete::Term::Error(_) => unimplemented!("error recovery"),
         }
     }

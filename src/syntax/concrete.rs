@@ -2,7 +2,6 @@
 
 use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use std::fmt;
-use std::usize;
 
 use syntax::pretty::{self, ToDoc};
 
@@ -75,7 +74,7 @@ impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -142,7 +141,7 @@ impl fmt::Display for Declaration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -174,7 +173,7 @@ impl fmt::Display for Exposing {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
@@ -264,6 +263,24 @@ pub enum Term {
     ///     x
     /// ```
     Let(ByteIndex, Vec<Declaration>, Box<Term>),
+    /// Record types
+    ///
+    /// ```text
+    /// Record { x : t1, .. }
+    /// ```
+    RecordType(ByteSpan, Vec<(ByteIndex, String, Box<Term>)>),
+    /// Record values
+    ///
+    /// ```text
+    /// record { x = t1, .. }
+    /// ```
+    Record(ByteSpan, Vec<(ByteIndex, String, Box<Term>)>),
+    /// Record field projection
+    ///
+    /// ```text
+    /// e.l
+    /// ```
+    Proj(Box<Term>, ByteIndex, String),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -278,6 +295,8 @@ impl Term {
             | Term::Universe(span, _)
             | Term::Literal(span, _)
             | Term::Hole(span)
+            | Term::RecordType(span, _)
+            | Term::Record(span, _)
             | Term::Error(span) => span,
             Term::Var(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),
             Term::Pi(start, _, ref body)
@@ -286,6 +305,8 @@ impl Term {
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg[arg.len() - 1].span()),
+            Term::Proj(ref term, label_start, ref label) => term.span()
+                .with_end(label_start + ByteOffset::from_str(label)),
         }
     }
 }
@@ -294,7 +315,7 @@ impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
             .group()
-            .render_fmt(f.width().unwrap_or(usize::MAX), f)
+            .render_fmt(f.width().unwrap_or(10000), f)
     }
 }
 
