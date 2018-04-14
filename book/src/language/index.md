@@ -7,7 +7,7 @@
 - [Primitive types and their literals](#primitive-types-and-their-literals)
 - [Type annotations](#type-annotations)
 - [Identifiers](#identifiers)
-- [Records](# value)
+- [Records](#records)
   - [Field lookups](#field-lookups)
 - [Functions](#functions)
 
