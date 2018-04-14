@@ -193,6 +193,8 @@ We will however make an effort to explain some of the notation we use here, and 
 \newcommand{\rule}[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } &amp; \Tiny{\text{(#1)}} }
 \
 \DeclareMathOperator{\max}{max}
+\DeclareMathOperator{\field}{field}
+\DeclareMathOperator{\fieldty}{fieldty}
 \
 % Judgements
 \newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
@@ -219,16 +221,23 @@ We will however make an effort to explain some of the notation we use here, and 
 \newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \newcommand{\lam}[2]{ \lambda #1 . #2 }
+\newcommand{\Record}[1]{ ( #1 ) }
+\newcommand{\record}[1]{ \langle #1 \rangle }
 \
 \begin{array}{rrll}
-\rexpr,\rtype   &amp; ::= &amp; x                           &amp; \text{variables} \\
-&amp;   | &amp; \Type_i                     &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
-&amp;   | &amp; ?                           &amp; \text{holes} \\
-&amp;   | &amp; \const                      &amp; \text{constants} \\
-&amp;   | &amp; \rexpr : \rtype             &amp; \text{term annotated with a type} \\
-&amp;   | &amp; \Pi{x:\rtype_1}{\rtype_2}   &amp; \text{dependent function type} \\
-&amp;   | &amp; \lam{x:\rtype}{\rexpr}      &amp; \text{functions} \\
-&amp;   | &amp; \rexpr_1 ~ \rexpr_2         &amp; \text{function application} \\
+\rexpr,\rtype   &amp; ::= &amp; x                               &amp; \text{variables} \\
+&amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; ?                               &amp; \text{holes} \\
+&amp;   | &amp; \const                          &amp; \text{constants} \\
+&amp;   | &amp; \rexpr : \rtype                 &amp; \text{term annotated with a type} \\
+&amp;   | &amp; \Pi{x:\rtype_1}{\rtype_2}       &amp; \text{dependent function type} \\
+&amp;   | &amp; \lam{x:\rtype}{\rexpr}          &amp; \text{functions} \\
+&amp;   | &amp; \rexpr_1 ~ \rexpr_2             &amp; \text{function application} \\
+&amp;   | &amp; \Record{l:\rtype_1, \rtype_2}   &amp; \text{record type extension} \\
+&amp;   | &amp; \Record{}                       &amp; \text{empty record type} \\
+&amp;   | &amp; \record{l=\rexpr_1, \rexpr_2}   &amp; \text{record extension} \\
+&amp;   | &amp; \record{}                       &amp; \text{empty record} \\
+&amp;   | &amp; \rexpr.l                        &amp; \text{record projection} \\
 \\
 \end{array}
 \]</p>
@@ -242,13 +251,18 @@ We will however make an effort to explain some of the notation we use here, and 
 <p>The core term syntax skips holes, ensuring that everything is fully elaborated:</p>
 <p>\[
 \begin{array}{rrll}
-\texpr,\ttype   &amp; ::= &amp; x                           &amp; \text{variables} \\
-&amp;   | &amp; \Type_i                     &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
-&amp;   | &amp; \const                      &amp; \text{constants} \\
-&amp;   | &amp; \texpr : \ttype             &amp; \text{term annotated with a type} \\
-&amp;   | &amp; \Pi{x:\ttype_1}{\ttype_2}   &amp; \text{dependent function type} \\
-&amp;   | &amp; \lam{x:\ttype}{\texpr}      &amp; \text{functions} \\
-&amp;   | &amp; \texpr_1 ~ \texpr_2         &amp; \text{function application} \\
+\texpr,\ttype   &amp; ::= &amp; x                               &amp; \text{variables} \\
+&amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \const                          &amp; \text{constants} \\
+&amp;   | &amp; \texpr : \ttype                 &amp; \text{term annotated with a type} \\
+&amp;   | &amp; \Pi{x:\ttype_1}{\ttype_2}       &amp; \text{dependent function type} \\
+&amp;   | &amp; \lam{x:\ttype}{\texpr}          &amp; \text{functions} \\
+&amp;   | &amp; \texpr_1 ~ \texpr_2             &amp; \text{function application} \\
+&amp;   | &amp; \Record{l:\ttype_1, \ttype_2}   &amp; \text{record type extension} \\
+&amp;   | &amp; \Record{}                       &amp; \text{empty record type} \\
+&amp;   | &amp; \record{l=\texpr_1, \texpr_2}   &amp; \text{record extension} \\
+&amp;   | &amp; \record{}                       &amp; \text{empty record} \\
+&amp;   | &amp; \texpr.l                        &amp; \text{record projection} \\
 \\
 \end{array}
 \]</p>
@@ -258,16 +272,21 @@ we separate our syntax into <a href="https://en.wikipedia.org/wiki/Lambda_calcul
 and neutral terms (\(\nexpr\)):</p>
 <p>\[
 \begin{array}{rrll}
-\vexpr,\vtype   &amp; ::= &amp; \wexpr                      &amp; \text{weak head normal forms} \\
-&amp;   | &amp; \nexpr                      &amp; \text{neutral terms} \\
+\vexpr,\vtype   &amp; ::= &amp; \wexpr                          &amp; \text{weak head normal forms} \\
+&amp;   | &amp; \nexpr                          &amp; \text{neutral terms} \\
 \\
-\nexpr,\ntype   &amp; ::= &amp; x                           &amp; \text{variables} \\
-&amp;   | &amp; \nexpr ~ \texpr             &amp; \text{function application} \\
+\nexpr,\ntype   &amp; ::= &amp; x                               &amp; \text{variables} \\
+&amp;   | &amp; \nexpr ~ \texpr                 &amp; \text{function application} \\
+&amp;   | &amp; \nexpr.l                        &amp; \text{record projection} \\
 \\
-\wexpr,\wtype   &amp; ::= &amp; \Type_i                     &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
-&amp;   | &amp; \const                      &amp; \text{constants} \\
-&amp;   | &amp; \Pi{x:\vtype_1}{\vtype_2}   &amp; \text{dependent function type} \\
-&amp;   | &amp; \lam{x:\vtype}{\vexpr}      &amp; \text{functions} \\
+\wexpr,\wtype   &amp; ::= &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \const                          &amp; \text{constants} \\
+&amp;   | &amp; \Pi{x:\vtype_1}{\vtype_2}       &amp; \text{dependent function type} \\
+&amp;   | &amp; \lam{x:\vtype}{\vexpr}          &amp; \text{functions} \\
+&amp;   | &amp; \Record{l:\vtype_1, \vtype_2}   &amp; \text{record type extension} \\
+&amp;   | &amp; \Record{}                       &amp; \text{empty record type} \\
+&amp;   | &amp; \record{l=\vexpr_1, \vexpr_2}   &amp; \text{record extension} \\
+&amp;   | &amp; \record{}                       &amp; \text{empty record} \\
 \\
 \end{array}
 \]</p>
@@ -381,11 +400,52 @@ x=\texpr \in \Gamma
 \rule{E-APP}{
 \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
 \qquad
-\eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_1' }
+\eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+\qquad
+\eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
 }{
-\eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_1' }
+\eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_3 }
 }
 \\[2em]
+\rule{E-RECORD-TYPE}{
+\eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+\qquad
+\eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
+}{
+\eval{ \Gamma }{ \Record{l:\ttype_1, \ttype_2} }{ \Record{l:\vtype_1, \vtype_2} }
+}
+\\[2em]
+\rule{E-RECORD}{
+\eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+\qquad
+\eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+}{
+\eval{ \Gamma }{ \record{l=\texpr_1, \texpr_2} }{ \record{l=\vexpr_1, \vexpr_2} }
+}
+\\[2em]
+\rule{E-EMPTY-RECORD-TYPE}{}{
+\eval{ \Gamma }{ \Record{} }{ \Record{} }
+}
+\\[2em]
+\rule{E-EMPTY-RECORD}{}{
+\eval{ \Gamma }{ \record{} }{ \record{} }
+}
+\\[2em]
+\rule{E-PROJ}{
+\eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+\qquad
+\vexpr_2 = \field(x, \vexpr_1)
+}{
+\eval{ \Gamma }{ \texpr_1.x }{ \vexpr_2 }
+}
+\\[2em]
+\end{array}
+\]</p>
+<p>We define \(\field(-,-)\) like so:</p>
+<p>\[
+\begin{array}{lrll}
+\field(x, \record{y = \vexpr_1, \vexpr_2}) &amp; = &amp; \vexpr_1 &amp; \text{if} ~ x \equiv y \\
+\field(x, \record{y = \vexpr_1, \vexpr_2}) &amp; = &amp; \field(x, \vexpr_2) \\
 \end{array}
 \]</p>
 <a class="header" href="appendix/theory.html#type-checking" id="type-checking"><h3>Type checking</h3></a>
@@ -401,6 +461,16 @@ elaborated form.</p>
 \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
 }{
 \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+}
+\\[2em]
+\rule{C-RECORD}{
+l_1 \equiv l_2
+\qquad
+\check{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+\qquad
+\check{ \Gamma }{ \rexpr_2 }{ \vtype_2 }{ \texpr_2 }
+}{
+\check{ \Gamma }{ \record{l_1=\rexpr_1, \rexpr_2} }{ \Record{l_2:\vtype_1, \vtype_2} }{ \record{l_1=\texpr_1, \texpr_2} }
 }
 \\[2em]
 \rule{C-CONV}{
@@ -471,11 +541,50 @@ x:\vtype \in \Gamma
 \qquad
 \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
 \qquad
-\eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_2' }
+\eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_3 }
 }{
-\infer{ \Gamma }{ \rexpr_1 ~ \rexpr_2 }{ \vtype_2' }{ \texpr_1 ~ \texpr_2 }
+\infer{ \Gamma }{ \rexpr_1 ~ \rexpr_2 }{ \vtype_3 }{ \texpr_1 ~ \texpr_2 }
 }
 \\[2em]
+\rule{I-RECORD-TYPE}{
+\infer{ \Gamma }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
+\qquad
+\infer{ \Gamma }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+}{
+\infer{ \Gamma }{ \Record{l:\rtype_1, \rtype_2} }{ \Type_{\max(i,j)} }{ \Record{l:\ttype_1, \ttype_2} }
+}
+\\[2em]
+\rule{I-RECORD}{
+\infer{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+\qquad
+\infer{ \Gamma }{ \rexpr_2 }{ \vtype_2 }{ \texpr_2 }
+}{
+\infer{ \Gamma }{ \record{l=\rexpr_1, \rexpr_2} }{ \Record{l:\vtype_1, \vtype_2} }{ \record{l=\texpr_1, \texpr_2} }
+}
+\\[2em]
+\rule{I-EMPTY-RECORD-TYPE}{}{
+\infer{ \Gamma }{ \Record{} }{ \Type_0 }{ \Record{} }
+}
+\\[2em]
+\rule{I-EMPTY-RECORD}{}{
+\infer{ \Gamma }{ \record{} }{ \Record{} }{ \record{} }
+}
+\\[2em]
+\rule{I-PROJ}{
+\infer{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+\qquad
+\ttype_2 = \fieldty(x, \vtype_1)
+}{
+\infer{ \Gamma }{ \rexpr_1.x }{ ? }{ \texpr_1.x }
+}
+\\[2em]
+\end{array}
+\]</p>
+<p>We define \(\fieldty(-,-)\) like so:</p>
+<p>\[
+\begin{array}{lrll}
+\fieldty(x, \Record{y : \vexpr_1, \vexpr_2}) &amp; = &amp; \vexpr_1 &amp; \text{if} ~ x \equiv y \\
+\fieldty(x, \Record{y : \vexpr_1, \vexpr_2}) &amp; = &amp; \field(x, \vexpr_2) \\
 \end{array}
 \]</p>
 

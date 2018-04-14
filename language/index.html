@@ -155,10 +155,14 @@
 <ul>
 <li><a href="language/index.html#declarations">Declarations</a></li>
 <li><a href="language/index.html#comments">Comments</a></li>
-<li><a href="language/index.html#built-in-types-and-their-literals">Built-in types and their literals</a></li>
+<li><a href="language/index.html#primitive-types-and-their-literals">Primitive types and their literals</a></li>
 <li><a href="language/index.html#type-annotations">Type annotations</a></li>
-<li><a href="language/index.html#types-of-types">Types of types</a></li>
 <li><a href="language/index.html#identifiers">Identifiers</a></li>
+<li>[Records](# value)
+<ul>
+<li><a href="language/index.html#field-lookups">Field lookups</a></li>
+</ul>
+</li>
 <li><a href="language/index.html#functions">Functions</a></li>
 </ul>
 <a class="header" href="language/index.html#declarations" id="declarations"><h2>Declarations</h2></a>
@@ -192,8 +196,8 @@ definitions:</p>
 self-aware-string : String
 self-aware-string = &quot;I am a string!&quot;
 </code></pre>
-<a class="header" href="language/index.html#built-in-types-and-their-literals" id="built-in-types-and-their-literals"><h2>Built-in types and their literals</h2></a>
-<p>Pikelet has a number of fundamental types:</p>
+<a class="header" href="language/index.html#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
+<p>Pikelet has a number of primitive types:</p>
 <table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
 <tr><td> <code>String</code> </td><td> <code>&quot;hello there!&quot;</code>                       </td></tr>
 <tr><td> <code>Char</code>   </td><td> <code>'a'</code>, <code>'b'</code>, ..., <code>'\n'</code>, <code>'\t'</code>, ... </td></tr>
@@ -209,12 +213,12 @@ self-aware-string = &quot;I am a string!&quot;
 <tr><td> <code>F64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
 </tbody></table>
 <blockquote>
-<p><strong>Note:</strong> You can't do much with these built-in types yet. In the future we
+<p><strong>Note:</strong> You can't do much with these primitive types yet. In the future we
 will add some primitive functions to allow you to maniplate them.</p>
 </blockquote>
 <a class="header" href="language/index.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
-<p>If you note <a href="language/index.html#built-in-types-and-their-literals">above</a>, a number of the
-built-in types share a literal representation. Pikelet will try to predictably
+<p>If you note <a href="language/index.html#primitive-types-and-their-literals">above</a>, a number of the
+primitive types share a literal representation. Pikelet will try to predictably
 infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1
@@ -235,6 +239,35 @@ error: found a floating point literal, but expected a type `U64`
 <blockquote>
 <p>TODO</p>
 </blockquote>
+<a class="header" href="language/index.html#records" id="records"><h2>Records</h2></a>
+<p>You can group together multiple values by using records:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
+record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+</code></pre>
+<p>Take note of the following:</p>
+<ul>
+<li>record values use the lower case <code>record</code> keyword</li>
+<li>record types use the upper case <code>Record</code> keyword</li>
+<li>we had to <a href="language/index.html#type-annotations">annotate</a> ambiguous field values</li>
+</ul>
+<p>We can make a new definition for point types:</p>
+<pre><code class="language-pikelet">Point2d = Record {
+  x : F32,
+  y : F32,
+};
+</code></pre>
+<p>You can then use this type to make it easier to define a point record:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0, y = 3.0 } : Point2d
+record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+</code></pre>
+<p>Note how we no longer needed to annotate each field! Pikelet was able to pick up
+the type of each field from the type definition during type checking. You can
+read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
+<a class="header" href="language/index.html#field-lookups" id="field-lookups"><h3>Field lookups</h3></a>
+<p>You can access the value associated with a field by using the dot operator:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
+&quot;Jane&quot; : String
+</code></pre>
 <a class="header" href="language/index.html#functions" id="functions"><h2>Functions</h2></a>
 <a class="header" href="language/index.html#simply-typed-functions" id="simply-typed-functions"><h3>Simply typed functions</h3></a>
 <p>Here are some simple functions and their types:</p>
