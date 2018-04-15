@@ -10,6 +10,9 @@
 - [Records](#records)
   - [Field lookups](#field-lookups)
 - [Functions](#functions)
+  - [Simply typed functions](#simply-typed-functions)
+  - [Polymorphic functions](#polymorphic-functions)
+  - [Syntactic sugar for functions](#syntactic-sugar-for-functions)
 
 
 ## Declarations
@@ -212,7 +215,7 @@ Pikelet> (\(x : Type) (x : a) => x) I32 1
 1 : I32
 ```
 
-### Syntactic Sugar for functions
+### Syntactic sugar for functions
 
 In Pikelet all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:
