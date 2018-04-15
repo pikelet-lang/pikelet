@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/type-inference.html"><strong aria-hidden="true">2.1.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.2.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -212,12 +212,6 @@ sooner or later the REPL will be ready for you to interact with!</p>
 <li><a href="print.html#primitive-types-and-their-literals">Primitive types and their literals</a></li>
 <li><a href="print.html#type-annotations">Type annotations</a></li>
 <li><a href="print.html#identifiers">Identifiers</a></li>
-<li><a href="print.html#records">Records</a>
-<ul>
-<li><a href="print.html#field-lookups">Field lookups</a></li>
-</ul>
-</li>
-<li><a href="print.html#functions">Functions</a></li>
 </ul>
 <a class="header" href="print.html#declarations" id="declarations"><h2>Declarations</h2></a>
 <p>Declarations are preceded by a type annotation, and followed by a definition:</p>
@@ -293,7 +287,13 @@ error: found a floating point literal, but expected a type `U64`
 <blockquote>
 <p>TODO</p>
 </blockquote>
-<a class="header" href="print.html#records" id="records"><h2>Records</h2></a>
+<a class="header" href="print.html#records" id="records"><h1>Records</h1></a>
+<a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
+<ul>
+<li><a href="print.html#record-values-and-record-types">Record values and record types</a></li>
+<li><a href="print.html#field-lookups">Field lookups</a></li>
+</ul>
+<a class="header" href="print.html#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
 record { x = 3, y = 3 } : Record { x : F32, y : F32 }
@@ -314,16 +314,22 @@ record { x = 3, y = 3 } : Record { x : F32, y : F32 }
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0, y = 3.0 } : Point2d
 record { x = 3, y = 3 } : Record { x : F32, y : F32 }
 </code></pre>
-<p>Note how we no longer needed to annotate each field! Pikelet was able to pick up
+<p>Note thaw we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
-<a class="header" href="print.html#field-lookups" id="field-lookups"><h3>Field lookups</h3></a>
+<a class="header" href="print.html#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
 <p>You can access the value associated with a field by using the dot operator:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
 &quot;Jane&quot; : String
 </code></pre>
-<a class="header" href="print.html#functions" id="functions"><h2>Functions</h2></a>
-<a class="header" href="print.html#simply-typed-functions" id="simply-typed-functions"><h3>Simply typed functions</h3></a>
+<a class="header" href="print.html#functions" id="functions"><h1>Functions</h1></a>
+<a class="header" href="print.html#contents-2" id="contents-2"><h2>Contents</h2></a>
+<ul>
+<li><a href="print.html#simply-typed-functions">Simply typed functions</a></li>
+<li><a href="print.html#polymorphic-functions">Polymorphic functions</a></li>
+<li><a href="print.html#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
+</ul>
+<a class="header" href="print.html#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
 <p>Here are some simple functions and their types:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
 I32 -&gt; I32
@@ -342,7 +348,7 @@ Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
 Pikelet&gt; (\x : Char =&gt; x) 'b'
 'b' : Char
 </code></pre>
-<a class="header" href="print.html#polymorphic-functions" id="polymorphic-functions"><h3>Polymorphic functions</h3></a>
+<a class="header" href="print.html#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
 <p>Alas, we can't reuse one of these identity functions with other, incompatible
 types:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
@@ -363,7 +369,7 @@ applying a type to it:</p>
 Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
 1 : I32
 </code></pre>
-<a class="header" href="print.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h3>Syntactic Sugar for functions</h3></a>
+<a class="header" href="print.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
 <p>In Pikelet all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:</p>
 <pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
@@ -384,7 +390,7 @@ any annotations at all!</p>
 <p>Pikelet's type inference follows some very simple rules that you can probably
 pick up on your own, but we thought it might help to give a deeper explanation
 of how it works, without getting to bogged down in the theoretical details.</p>
-<a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
+<a class="header" href="print.html#contents-3" id="contents-3"><h2>Contents</h2></a>
 <ul>
 <li><a href="print.html#bidirectional-typechecking">Bidirectional type checking</a>
 <ul>
@@ -625,7 +631,7 @@ downside of a verified implementation is that it could take a prohibitive
 amount of time to complete.</p>
 <a class="header" href="print.html#theory" id="theory"><h1>Theory</h1></a>
 <p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
-<a class="header" href="print.html#contents-2" id="contents-2"><h2>Contents</h2></a>
+<a class="header" href="print.html#contents-4" id="contents-4"><h2>Contents</h2></a>
 <ul>
 <li><a href="print.html#introduction">Introduction</a>
 <ul>
@@ -1064,7 +1070,7 @@ x:\vtype \in \Gamma
 <p>Some languages have been inspiring when building Pikelet. We list some of them
 here, and the contributions they have made in our thinking. These ideas may or
 may not be included in the final Pikelet language, but they are worth mentioning!</p>
-<a class="header" href="print.html#contents-3" id="contents-3"><h2>Contents</h2></a>
+<a class="header" href="print.html#contents-5" id="contents-5"><h2>Contents</h2></a>
 <ul>
 <li><a href="print.html#1ml">1ML</a></li>
 <li><a href="print.html#agda">Agda</a></li>

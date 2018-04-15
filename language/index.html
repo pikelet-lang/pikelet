@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/type-inference.html"><strong aria-hidden="true">2.1.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.2.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -158,12 +158,6 @@
 <li><a href="language/index.html#primitive-types-and-their-literals">Primitive types and their literals</a></li>
 <li><a href="language/index.html#type-annotations">Type annotations</a></li>
 <li><a href="language/index.html#identifiers">Identifiers</a></li>
-<li><a href="language/index.html#records">Records</a>
-<ul>
-<li><a href="language/index.html#field-lookups">Field lookups</a></li>
-</ul>
-</li>
-<li><a href="language/index.html#functions">Functions</a></li>
 </ul>
 <a class="header" href="language/index.html#declarations" id="declarations"><h2>Declarations</h2></a>
 <p>Declarations are preceded by a type annotation, and followed by a definition:</p>
@@ -239,88 +233,6 @@ error: found a floating point literal, but expected a type `U64`
 <blockquote>
 <p>TODO</p>
 </blockquote>
-<a class="header" href="language/index.html#records" id="records"><h2>Records</h2></a>
-<p>You can group together multiple values by using records:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
-</code></pre>
-<p>Take note of the following:</p>
-<ul>
-<li>record values use the lower case <code>record</code> keyword</li>
-<li>record types use the upper case <code>Record</code> keyword</li>
-<li>we had to <a href="language/index.html#type-annotations">annotate</a> ambiguous field values</li>
-</ul>
-<p>We can make a new definition for point types:</p>
-<pre><code class="language-pikelet">Point2d = Record {
-  x : F32,
-  y : F32,
-};
-</code></pre>
-<p>You can then use this type to make it easier to define a point record:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0, y = 3.0 } : Point2d
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
-</code></pre>
-<p>Note how we no longer needed to annotate each field! Pikelet was able to pick up
-the type of each field from the type definition during type checking. You can
-read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
-<a class="header" href="language/index.html#field-lookups" id="field-lookups"><h3>Field lookups</h3></a>
-<p>You can access the value associated with a field by using the dot operator:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
-&quot;Jane&quot; : String
-</code></pre>
-<a class="header" href="language/index.html#functions" id="functions"><h2>Functions</h2></a>
-<a class="header" href="language/index.html#simply-typed-functions" id="simply-typed-functions"><h3>Simply typed functions</h3></a>
-<p>Here are some simple functions and their types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
-I32 -&gt; I32
-Pikelet&gt; :t \x : String =&gt; x
-String -&gt; String
-Pikelet&gt; :t \x : Char =&gt; x
-Char -&gt; Char
-</code></pre>
-<p>Note that all of these types follow the same pattern - they are the identity
-function! This means that if you pass a value to them, they'll return the same
-thing without alteration!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 42
-42 : I32
-Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
-&quot;hi&quot; : String
-Pikelet&gt; (\x : Char =&gt; x) 'b'
-'b' : Char
-</code></pre>
-<a class="header" href="language/index.html#polymorphic-functions" id="polymorphic-functions"><h3>Polymorphic functions</h3></a>
-<p>Alas, we can't reuse one of these identity functions with other, incompatible
-types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
-error: found a floating point literal, but expected a type `I32`
-- &lt;repl&gt;:1:17
-1 | (\x : I32 =&gt; x) 4.0
-  |                 ^^^ the literal
-</code></pre>
-<p>Let's make this identity function polymorphic by adding a parameter for the type
-of the argument:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
-(a : Type) -&gt; a -&gt; a
-</code></pre>
-<p>We now have a polymorphic identity function! We can specialise this function by
-applying a type to it:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
-&quot;hello&quot; : String
-Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
-1 : I32
-</code></pre>
-<a class="header" href="language/index.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h3>Syntactic Sugar for functions</h3></a>
-<p>In Pikelet all functions take a single argument - in order to pass multiple
-arguments we use currying. The following functions are equivalent:</p>
-<pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
-\(x : Type) =&gt; \(x : a) =&gt; x
-</code></pre>
-<p>Non-dependent functions can be expressed without explicit parameter names. For
-example the following function types are equivalent:</p>
-<pre><code class="language-pikelet">(a : Type) (x : a) -&gt; a
-(a : Type) -&gt; (x : a) -&gt; a
-(a : Type) -&gt; a -&gt; a
-</code></pre>
 
                     </main>
 
@@ -333,7 +245,7 @@ example the following function types are equivalent:</p>
                         
 
                         
-                            <a rel="next" href="language/type-inference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="language/records.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -351,7 +263,7 @@ example the following function types are equivalent:</p>
                 
 
                 
-                    <a href="language/type-inference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="language/records.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

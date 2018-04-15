@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Installation - Pikelet Language Book</title>
+        <title>Functions - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html" class="active"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,35 +150,78 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="installation/index.html#installation" id="installation"><h1>Installation</h1></a>
-<p>Pikelet is written in <a href="https://www.rust-lang.org/">Rust</a> and therefore needs to be compiled with
-Cargo, because we don't yet offer prebuilt binaries. If you haven't already
-installed Rust, please <a href="https://www.rust-lang.org/downloads.html">install it</a> now!</p>
-<a class="header" href="installation/index.html#cloning-the-source-from-github" id="cloning-the-source-from-github"><h2>Cloning the source from Github</h2></a>
-<p>We've not yet published Pikelet on <a href="https://crates.io/">crates.io</a>, so you'll first need
-to clone <a href="https://github.com/brendanzab/pikelet">the repository</a> using git:</p>
-<pre><code class="language-sh">git clone https://github.com/brendanzab/pikelet.git
-cd pikelet
+                        <a class="header" href="language/functions.html#functions" id="functions"><h1>Functions</h1></a>
+<a class="header" href="language/functions.html#contents" id="contents"><h2>Contents</h2></a>
+<ul>
+<li><a href="language/functions.html#simply-typed-functions">Simply typed functions</a></li>
+<li><a href="language/functions.html#polymorphic-functions">Polymorphic functions</a></li>
+<li><a href="language/functions.html#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
+</ul>
+<a class="header" href="language/functions.html#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
+<p>Here are some simple functions and their types:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
+I32 -&gt; I32
+Pikelet&gt; :t \x : String =&gt; x
+String -&gt; String
+Pikelet&gt; :t \x : Char =&gt; x
+Char -&gt; Char
 </code></pre>
-<a class="header" href="installation/index.html#running-the-repl" id="running-the-repl"><h2>Running the REPL</h2></a>
-<p>After cloning, you can now run the <a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">REPL</a> using Cargo:</p>
-<pre><code class="language-sh">cargo run repl
+<p>Note that all of these types follow the same pattern - they are the identity
+function! This means that if you pass a value to them, they'll return the same
+thing without alteration!</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 42
+42 : I32
+Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
+&quot;hi&quot; : String
+Pikelet&gt; (\x : Char =&gt; x) 'b'
+'b' : Char
 </code></pre>
-<p>You will now need to wait for cargo to download and build the dependencies, but
-sooner or later the REPL will be ready for you to interact with!</p>
+<a class="header" href="language/functions.html#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
+<p>Alas, we can't reuse one of these identity functions with other, incompatible
+types:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
+error: found a floating point literal, but expected a type `I32`
+- &lt;repl&gt;:1:17
+1 | (\x : I32 =&gt; x) 4.0
+  |                 ^^^ the literal
+</code></pre>
+<p>Let's make this identity function polymorphic by adding a parameter for the type
+of the argument:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
+(a : Type) -&gt; a -&gt; a
+</code></pre>
+<p>We now have a polymorphic identity function! We can specialise this function by
+applying a type to it:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
+&quot;hello&quot; : String
+Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
+1 : I32
+</code></pre>
+<a class="header" href="language/functions.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
+<p>In Pikelet all functions take a single argument - in order to pass multiple
+arguments we use currying. The following functions are equivalent:</p>
+<pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
+\(x : Type) =&gt; \(x : a) =&gt; x
+</code></pre>
+<p>Non-dependent functions can be expressed without explicit parameter names. For
+example the following function types are equivalent:</p>
+<pre><code class="language-pikelet">(a : Type) (x : a) -&gt; a
+(a : Type) -&gt; (x : a) -&gt; a
+(a : Type) -&gt; a -&gt; a
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="language/records.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="language/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="language/type-inference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -190,13 +233,13 @@ sooner or later the REPL will be ready for you to interact with!</p>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="language/records.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="language/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="language/type-inference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 

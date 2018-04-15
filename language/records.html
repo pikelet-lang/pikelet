@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Installation - Pikelet Language Book</title>
+        <title>Records - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html" class="active"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html" class="active"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -150,35 +150,54 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="installation/index.html#installation" id="installation"><h1>Installation</h1></a>
-<p>Pikelet is written in <a href="https://www.rust-lang.org/">Rust</a> and therefore needs to be compiled with
-Cargo, because we don't yet offer prebuilt binaries. If you haven't already
-installed Rust, please <a href="https://www.rust-lang.org/downloads.html">install it</a> now!</p>
-<a class="header" href="installation/index.html#cloning-the-source-from-github" id="cloning-the-source-from-github"><h2>Cloning the source from Github</h2></a>
-<p>We've not yet published Pikelet on <a href="https://crates.io/">crates.io</a>, so you'll first need
-to clone <a href="https://github.com/brendanzab/pikelet">the repository</a> using git:</p>
-<pre><code class="language-sh">git clone https://github.com/brendanzab/pikelet.git
-cd pikelet
+                        <a class="header" href="language/records.html#records" id="records"><h1>Records</h1></a>
+<a class="header" href="language/records.html#contents" id="contents"><h2>Contents</h2></a>
+<ul>
+<li><a href="language/records.html#record-values-and-record-types">Record values and record types</a></li>
+<li><a href="language/records.html#field-lookups">Field lookups</a></li>
+</ul>
+<a class="header" href="language/records.html#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
+<p>You can group together multiple values by using records:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
+record { x = 3, y = 3 } : Record { x : F32, y : F32 }
 </code></pre>
-<a class="header" href="installation/index.html#running-the-repl" id="running-the-repl"><h2>Running the REPL</h2></a>
-<p>After cloning, you can now run the <a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">REPL</a> using Cargo:</p>
-<pre><code class="language-sh">cargo run repl
+<p>Take note of the following:</p>
+<ul>
+<li>record values use the lower case <code>record</code> keyword</li>
+<li>record types use the upper case <code>Record</code> keyword</li>
+<li>we had to <a href="language/records.html#type-annotations">annotate</a> ambiguous field values</li>
+</ul>
+<p>We can make a new definition for point types:</p>
+<pre><code class="language-pikelet">Point2d = Record {
+  x : F32,
+  y : F32,
+};
 </code></pre>
-<p>You will now need to wait for cargo to download and build the dependencies, but
-sooner or later the REPL will be ready for you to interact with!</p>
+<p>You can then use this type to make it easier to define a point record:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0, y = 3.0 } : Point2d
+record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+</code></pre>
+<p>Note thaw we no longer need to annotate each field! Pikelet was able to pick up
+the type of each field from the type definition during type checking. You can
+read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
+<a class="header" href="language/records.html#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
+<p>You can access the value associated with a field by using the dot operator:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
+&quot;Jane&quot; : String
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="language/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="language/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="language/functions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -190,13 +209,13 @@ sooner or later the REPL will be ready for you to interact with!</p>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="language/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="language/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="language/functions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
