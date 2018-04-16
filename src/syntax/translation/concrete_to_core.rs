@@ -83,11 +83,7 @@ fn app_to_core(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTe
     let mut term = fn_expr.to_core();
 
     for arg in args.iter() {
-        term = core::RawTerm::App(
-            Ignore(term.span().to(arg.span())),
-            Rc::new(term),
-            Rc::new(arg.to_core()),
-        )
+        term = core::RawTerm::App(Rc::new(term), Rc::new(arg.to_core()))
     }
 
     term
@@ -652,7 +648,6 @@ mod to_core {
                                     Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0),))),
                                 ),
                                 Rc::new(RawTerm::App(
-                                    Ignore::default(),
                                     Rc::new(RawTerm::Var(
                                         Ignore::default(),
                                         Var::Free(Name::user("x")),

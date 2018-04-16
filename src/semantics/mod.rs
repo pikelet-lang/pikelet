@@ -105,7 +105,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         },
 
         // E-APP
-        Term::App(_, ref expr, ref arg) => {
+        Term::App(ref expr, ref arg) => {
             let value_expr = normalize(context, expr)?;
 
             match *value_expr {
@@ -416,7 +416,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-APP
-        RawTerm::App(span, ref raw_expr, ref raw_arg) => {
+        RawTerm::App(ref raw_expr, ref raw_arg) => {
             let (expr, expr_ty) = infer(context, raw_expr)?;
 
             match *expr_ty {
@@ -429,7 +429,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                         &Rc::new(Term::from(&*body)),
                     )?;
 
-                    Ok((Rc::new(Term::App(span, expr, arg)), body))
+                    Ok((Rc::new(Term::App(expr, arg)), body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_expr.span(),

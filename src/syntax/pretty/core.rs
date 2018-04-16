@@ -236,7 +236,7 @@ impl ToDoc for RawTerm {
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
+            RawTerm::App(ref f, ref a) => pretty_app(options, f, a),
             RawTerm::If(_, ref cond, ref if_true, ref if_false) => {
                 pretty_if(options, cond, if_true, if_false)
             },
@@ -320,7 +320,7 @@ impl ToDoc for Term {
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            Term::App(_, ref f, ref a) => pretty_app(options, f, a),
+            Term::App(ref f, ref a) => pretty_app(options, f, a),
             Term::If(_, ref cond, ref if_true, ref if_false) => {
                 pretty_if(options, cond, if_true, if_false)
             },

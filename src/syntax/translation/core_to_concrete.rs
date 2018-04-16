@@ -247,7 +247,7 @@ impl ToConcrete<concrete::Term> for core::Term {
 
                 parens_if(Prec::LAM < prec, term)
             },
-            core::Term::App(_, ref fn_term, ref arg) => parens_if(
+            core::Term::App(ref fn_term, ref arg) => parens_if(
                 Prec::APP < prec,
                 concrete::Term::App(
                     Box::new(fn_term.to_concrete_prec(Prec::NO_WRAP)),

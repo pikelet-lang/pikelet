@@ -162,7 +162,7 @@ pub enum RawTerm {
         Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
     ),
     /// Term application
-    App(Ignore<ByteSpan>, Rc<RawTerm>, Rc<RawTerm>),
+    App(Rc<RawTerm>, Rc<RawTerm>),
     /// If expression
     If(Ignore<ByteIndex>, Rc<RawTerm>, Rc<RawTerm>, Rc<RawTerm>),
     /// Dependent record types
@@ -187,12 +187,12 @@ impl RawTerm {
             | RawTerm::Var(span, _)
             | RawTerm::Pi(span, _)
             | RawTerm::Lam(span, _)
-            | RawTerm::App(span, _, _)
             | RawTerm::RecordType(span, _, _, _)
             | RawTerm::Record(span, _, _, _)
             | RawTerm::EmptyRecordType(span)
             | RawTerm::EmptyRecord(span)
             | RawTerm::Proj(span, _, _, _) => span.0,
+            RawTerm::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
             RawTerm::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
     }
@@ -224,7 +224,7 @@ impl RawTerm {
                 (scope.unsafe_pattern.1).0.visit_vars(on_var);
                 scope.unsafe_body.visit_vars(on_var);
             },
-            RawTerm::App(_, ref fn_expr, ref arg_expr) => {
+            RawTerm::App(ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
             },
@@ -299,7 +299,7 @@ pub enum Term {
     /// Lambda abstractions
     Lam(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
-    App(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
+    App(Rc<Term>, Rc<Term>),
     /// If expression
     If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
@@ -323,12 +323,12 @@ impl Term {
             | Term::Var(span, _)
             | Term::Lam(span, _)
             | Term::Pi(span, _)
-            | Term::App(span, _, _)
             | Term::RecordType(span, _, _, _)
             | Term::Record(span, _, _, _)
             | Term::EmptyRecordType(span)
             | Term::EmptyRecord(span)
             | Term::Proj(span, _, _, _) => span.0,
+            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
             Term::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
     }
@@ -360,7 +360,7 @@ impl Term {
                 (scope.unsafe_pattern.1).0.visit_vars(on_var);
                 scope.unsafe_body.visit_vars(on_var);
             },
-            Term::App(_, ref fn_expr, ref arg_expr) => {
+            Term::App(ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
             },
@@ -563,11 +563,9 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         match *src {
             Neutral::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
-            Neutral::App(ref fn_expr, ref arg_expr) => Term::App(
-                Ignore::default(),
-                Rc::new(Term::from(&**fn_expr)),
-                arg_expr.clone(),
-            ),
+            Neutral::App(ref fn_expr, ref arg_expr) => {
+                Term::App(Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
+            },
             Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
                 Ignore::default(),
                 Rc::new(Term::from(&**cond)),
