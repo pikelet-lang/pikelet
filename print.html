@@ -88,7 +88,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/records.html"><strong aria-hidden="true">2.1.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.3.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.4.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -247,6 +247,7 @@ self-aware-string = &quot;I am a string!&quot;
 <a class="header" href="print.html#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
 <p>Pikelet has a number of primitive types:</p>
 <table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
+<tr><td> <code>Bool</code>   </td><td> <code>true</code>, <code>false</code>                        </td></tr>
 <tr><td> <code>String</code> </td><td> <code>&quot;hello there!&quot;</code>                       </td></tr>
 <tr><td> <code>Char</code>   </td><td> <code>'a'</code>, <code>'b'</code>, ..., <code>'\n'</code>, <code>'\t'</code>, ... </td></tr>
 <tr><td> <code>U8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
@@ -287,6 +288,18 @@ error: found a floating point literal, but expected a type `U64`
 <blockquote>
 <p>TODO</p>
 </blockquote>
+<a class="header" href="print.html#conditionals" id="conditionals"><h1>Conditionals</h1></a>
+<a class="header" href="print.html#if-then-else-expressions" id="if-then-else-expressions"><h2>If-then-else expressions</h2></a>
+<p>If expressions take an expression that evaluates to a <code>Bool</code> (the <em>condition</em>),
+and two other expressions (the <em>consequent</em> and the <em>alternative</em>) that evaluate
+to the same type. If the condition evaluates to <code>true</code>, then the consequent will
+be evaluated and returned, otherwise the alternative will be evaluated and
+returned.</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; if true then &quot;hello!&quot; else &quot;goodbye!&quot;
+&quot;hello!&quot; : String
+Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
+&quot;goodbye!&quot; : String
+</code></pre>
 <a class="header" href="print.html#records" id="records"><h1>Records</h1></a>
 <a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
 <ul>
@@ -414,8 +427,10 @@ downwards and inner definitions should not require much annotation at all.</p>
 <blockquote>
 <p>TODO: Explain examples</p>
 </blockquote>
-<pre><code class="language-pikelet-repl">Pikelet&gt; &quot;1&quot;
+<pre><code class="language-pikelet-repl">Pikelet&gt; true
+Pikelet&gt; &quot;1&quot;
 Pikelet&gt; 'a'
+Pikelet&gt; Bool
 Pikelet&gt; Type
 Pikelet&gt; Type 2
 Pikelet&gt; record { name = &quot;Jane&quot; }
@@ -695,28 +710,33 @@ We will however make an effort to explain some of the notation we use here, and 
 \newcommand{\ntype}{N}
 \
 % Term and Type constructors
-\newcommand{\const}{c}
 \newcommand{\Type}{\mathsf{Type}}
+\newcommand{\Bool}{\mathsf{Bool}}
+\newcommand{\true}{\mathsf{true}}
+\newcommand{\false}{\mathsf{false}}
 \newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \newcommand{\lam}[2]{ \lambda #1 . #2 }
+\newcommand{\ifte}[3]{ \text{if} ~ #1 ~ \text{then} ~ #2 ~ \text{else} ~ #3 }
 \newcommand{\Record}[1]{ ( #1 ) }
 \newcommand{\record}[1]{ \langle #1 \rangle }
 \
 \begin{array}{rrll}
-\rexpr,\rtype   &amp; ::= &amp; x                               &amp; \text{variables} \\
-&amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
-&amp;   | &amp; ?                               &amp; \text{holes} \\
-&amp;   | &amp; \const                          &amp; \text{constants} \\
-&amp;   | &amp; \rexpr : \rtype                 &amp; \text{term annotated with a type} \\
-&amp;   | &amp; \Pi{x:\rtype_1}{\rtype_2}       &amp; \text{dependent function type} \\
-&amp;   | &amp; \lam{x:\rtype}{\rexpr}          &amp; \text{functions} \\
-&amp;   | &amp; \rexpr_1 ~ \rexpr_2             &amp; \text{function application} \\
-&amp;   | &amp; \Record{l:\rtype_1, \rtype_2}   &amp; \text{record type extension} \\
-&amp;   | &amp; \Record{}                       &amp; \text{empty record type} \\
-&amp;   | &amp; \record{l=\rexpr_1, \rexpr_2}   &amp; \text{record extension} \\
-&amp;   | &amp; \record{}                       &amp; \text{empty record} \\
-&amp;   | &amp; \rexpr.l                        &amp; \text{record projection} \\
+\rexpr,\rtype   &amp; ::= &amp; x                                   &amp; \text{variables} \\
+&amp;   | &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; ?                                   &amp; \text{holes} \\
+&amp;   | &amp; \Bool                               &amp; \text{type of booleans} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean values} \\
+&amp;   | &amp; \rexpr : \rtype                     &amp; \text{term annotated with a type} \\
+&amp;   | &amp; \Pi{x:\rtype_1}{\rtype_2}           &amp; \text{dependent function type} \\
+&amp;   | &amp; \lam{x:\rtype}{\rexpr}              &amp; \text{functions} \\
+&amp;   | &amp; \rexpr_1 ~ \rexpr_2                 &amp; \text{function application} \\
+&amp;   | &amp; \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} &amp; \text{if expressions} \\
+&amp;   | &amp; \Record{l:\rtype_1, \rtype_2}       &amp; \text{record type extension} \\
+&amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
+&amp;   | &amp; \record{l=\rexpr_1, \rexpr_2}       &amp; \text{record extension} \\
+&amp;   | &amp; \record{}                           &amp; \text{empty record} \\
+&amp;   | &amp; \rexpr.l                            &amp; \text{record projection} \\
 \\
 \end{array}
 \]</p>
@@ -730,18 +750,20 @@ We will however make an effort to explain some of the notation we use here, and 
 <p>The core term syntax skips holes, ensuring that everything is fully elaborated:</p>
 <p>\[
 \begin{array}{rrll}
-\texpr,\ttype   &amp; ::= &amp; x                               &amp; \text{variables} \\
-&amp;   | &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
-&amp;   | &amp; \const                          &amp; \text{constants} \\
-&amp;   | &amp; \texpr : \ttype                 &amp; \text{term annotated with a type} \\
-&amp;   | &amp; \Pi{x:\ttype_1}{\ttype_2}       &amp; \text{dependent function type} \\
-&amp;   | &amp; \lam{x:\ttype}{\texpr}          &amp; \text{functions} \\
-&amp;   | &amp; \texpr_1 ~ \texpr_2             &amp; \text{function application} \\
-&amp;   | &amp; \Record{l:\ttype_1, \ttype_2}   &amp; \text{record type extension} \\
-&amp;   | &amp; \Record{}                       &amp; \text{empty record type} \\
-&amp;   | &amp; \record{l=\texpr_1, \texpr_2}   &amp; \text{record extension} \\
-&amp;   | &amp; \record{}                       &amp; \text{empty record} \\
-&amp;   | &amp; \texpr.l                        &amp; \text{record projection} \\
+\texpr,\ttype   &amp; ::= &amp; x                                   &amp; \text{variables} \\
+&amp;   | &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \Bool                               &amp; \text{type of booleans} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean values} \\
+&amp;   | &amp; \texpr : \ttype                     &amp; \text{term annotated with a type} \\
+&amp;   | &amp; \Pi{x:\ttype_1}{\ttype_2}           &amp; \text{dependent function type} \\
+&amp;   | &amp; \lam{x:\ttype}{\texpr}              &amp; \text{functions} \\
+&amp;   | &amp; \texpr_1 ~ \texpr_2                 &amp; \text{function application} \\
+&amp;   | &amp; \ifte{\texpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
+&amp;   | &amp; \Record{l:\ttype_1, \ttype_2}       &amp; \text{record type extension} \\
+&amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
+&amp;   | &amp; \record{l=\texpr_1, \texpr_2}       &amp; \text{record extension} \\
+&amp;   | &amp; \record{}                           &amp; \text{empty record} \\
+&amp;   | &amp; \texpr.l                            &amp; \text{record projection} \\
 \\
 \end{array}
 \]</p>
@@ -751,21 +773,23 @@ we separate our syntax into <a href="https://en.wikipedia.org/wiki/Lambda_calcul
 and neutral terms (\(\nexpr\)):</p>
 <p>\[
 \begin{array}{rrll}
-\vexpr,\vtype   &amp; ::= &amp; \wexpr                          &amp; \text{weak head normal forms} \\
-&amp;   | &amp; \nexpr                          &amp; \text{neutral terms} \\
+\vexpr,\vtype   &amp; ::= &amp; \wexpr                              &amp; \text{weak head normal forms} \\
+&amp;   | &amp; \nexpr                              &amp; \text{neutral terms} \\
 \\
-\nexpr,\ntype   &amp; ::= &amp; x                               &amp; \text{variables} \\
-&amp;   | &amp; \nexpr ~ \texpr                 &amp; \text{function application} \\
-&amp;   | &amp; \nexpr.l                        &amp; \text{record projection} \\
+\nexpr,\ntype   &amp; ::= &amp; x                                   &amp; \text{variables} \\
+&amp;   | &amp; \nexpr ~ \texpr                     &amp; \text{function application} \\
+&amp;   | &amp; \ifte{\nexpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
+&amp;   | &amp; \nexpr.l                            &amp; \text{record projection} \\
 \\
-\wexpr,\wtype   &amp; ::= &amp; \Type_i                         &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
-&amp;   | &amp; \const                          &amp; \text{constants} \\
-&amp;   | &amp; \Pi{x:\vtype_1}{\vtype_2}       &amp; \text{dependent function type} \\
-&amp;   | &amp; \lam{x:\vtype}{\vexpr}          &amp; \text{functions} \\
-&amp;   | &amp; \Record{l:\vtype_1, \vtype_2}   &amp; \text{record type extension} \\
-&amp;   | &amp; \Record{}                       &amp; \text{empty record type} \\
-&amp;   | &amp; \record{l=\vexpr_1, \vexpr_2}   &amp; \text{record extension} \\
-&amp;   | &amp; \record{}                       &amp; \text{empty record} \\
+\wexpr,\wtype   &amp; ::= &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
+&amp;   | &amp; \Bool                               &amp; \text{type of booleans} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean values} \\
+&amp;   | &amp; \Pi{x:\vtype_1}{\vtype_2}           &amp; \text{dependent function type} \\
+&amp;   | &amp; \lam{x:\vtype}{\vexpr}              &amp; \text{functions} \\
+&amp;   | &amp; \Record{l:\vtype_1, \vtype_2}       &amp; \text{record type extension} \\
+&amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
+&amp;   | &amp; \record{l=\vexpr_1, \vexpr_2}       &amp; \text{record extension} \\
+&amp;   | &amp; \record{}                           &amp; \text{empty record} \\
 \\
 \end{array}
 \]</p>
@@ -842,8 +866,16 @@ in the context.</p>
 \eval{ \Gamma }{ \Type_i }{ \Type_i }
 }
 \\[2em]
-\rule{E-CONST}{}{
-\eval{ \Gamma }{ \const }{ \const }
+\rule{E-BOOL}{}{
+\eval{ \Gamma }{ \Bool }{ \Bool }
+}
+\\[2em]
+\rule{E-TRUE}{}{
+\eval{ \Gamma }{ \true }{ \true }
+}
+\\[2em]
+\rule{E-FALSE}{}{
+\eval{ \Gamma }{ \false }{ \false }
 }
 \\[2em]
 \rule{E-VAR}{
@@ -884,6 +916,28 @@ x=\texpr \in \Gamma
 \eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
 }{
 \eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_3 }
+}
+\\[2em]
+\rule{E-IF}{
+\eval{ \Gamma }{ \nexpr }{ \nexpr' }
+}{
+\eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \ifte{\nexpr'}{\texpr_1}{\texpr_2} }
+}
+\\[2em]
+\rule{E-IF-TRUE}{
+\eval{ \Gamma }{ \nexpr }{ \true }
+\qquad
+\eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+}{
+\eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_1 }
+}
+\\[2em]
+\rule{E-IF-FALSE}{
+\eval{ \Gamma }{ \nexpr }{ \false }
+\qquad
+\eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+}{
+\eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_2 }
 }
 \\[2em]
 \rule{E-RECORD-TYPE}{
@@ -942,6 +996,16 @@ elaborated form.</p>
 \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
 }
 \\[2em]
+\rule{C-IF}{
+\check{ \Gamma }{ \rexpr_1 }{ \Bool }{ \texpr_1 }
+\qquad
+\check{ \Gamma }{ \rexpr_2 }{ \vtype }{ \texpr_2 }
+\qquad
+\check{ \Gamma }{ \rexpr_3 }{ \vtype }{ \texpr_3 }
+}{
+\check{ \Gamma }{ \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} }{ \vtype }{ \ifte{\texpr_1}{\texpr_2}{\texpr_3} }
+}
+\\[2em]
 \rule{C-RECORD}{
 l_1 \equiv l_2
 \qquad
@@ -987,6 +1051,18 @@ returns its elaborated form.</p>
 \\[2em]
 \rule{I-TYPE}{}{
 \infer{ \Gamma }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
+}
+\\[2em]
+\rule{I-BOOL}{}{
+\infer{ \Gamma }{ \Bool }{ \Type_0 }{ \Bool }
+}
+\\[2em]
+\rule{I-TRUE}{}{
+\infer{ \Gamma }{ \true }{ \Bool }{ \true }
+}
+\\[2em]
+\rule{I-FALSE}{}{
+\infer{ \Gamma }{ \false }{ \Bool }{ \false }
 }
 \\[2em]
 \rule{I-VAR}{
