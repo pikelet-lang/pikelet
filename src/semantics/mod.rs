@@ -145,11 +145,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         Term::EmptyRecord(_) => Ok(Rc::new(Value::EmptyRecord)),
 
         // E-PROJ
-        Term::Proj(_, ref expr, label_meta, ref label) => {
+        Term::Proj(_, ref expr, label_span, ref label) => {
             match normalize(context, expr)?.lookup_record(label) {
                 Some(value) => Ok(value.clone()),
                 None => Err(InternalError::ProjectedOnNonExistentField {
-                    label_span: label_meta.span, // FIXME: better location info
+                    label_span: label_span.0, // FIXME: better location info
                     label: label.clone(),
                 }),
             }
@@ -164,7 +164,7 @@ pub fn check(
     expected_ty: &Rc<Type>,
 ) -> Result<Rc<Term>, TypeError> {
     match (&**raw_term, &**expected_ty) {
-        (&RawTerm::Constant(meta, ref raw_c), &Value::Constant(ref c_ty)) => {
+        (&RawTerm::Constant(span, ref raw_c), &Value::Constant(ref c_ty)) => {
             use syntax::core::RawConstant as RawC;
 
             let c = match (raw_c, c_ty) {
@@ -187,18 +187,18 @@ pub fn check(
 
                 (_, _) => {
                     return Err(TypeError::LiteralMismatch {
-                        literal_span: meta.span,
+                        literal_span: span.0,
                         found: raw_c.clone(),
                         expected: Box::new(c_ty.to_concrete()),
                     });
                 },
             };
 
-            return Ok(Rc::new(Term::Constant(meta, c)));
+            return Ok(Rc::new(Term::Constant(span, c)));
         },
 
         // C-LAM
-        (&RawTerm::Lam(meta, ref lam_scope), &Value::Pi(ref pi_scope)) => {
+        (&RawTerm::Lam(span, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (pi_name, Embed(pi_ann)), pi_body) =
                 nameless::unbind2(lam_scope.clone(), pi_scope.clone());
 
@@ -208,7 +208,7 @@ pub fn check(
                 let lam_body = check(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
                 let lam_scope = nameless::bind((lam_name, Embed(lam_ann)), lam_body);
 
-                return Ok(Rc::new(Term::Lam(meta, lam_scope)));
+                return Ok(Rc::new(Term::Lam(span, lam_scope)));
             }
 
             // TODO: We might want to optimise for this case, rather than
@@ -223,22 +223,22 @@ pub fn check(
 
         // C-RECORD
         (
-            &RawTerm::Record(meta, ref label, ref raw_expr, ref raw_rest),
+            &RawTerm::Record(span, ref label, ref raw_expr, ref raw_rest),
             &Value::RecordType(ref ty_label, ref ann, ref ty_rest),
         ) => {
             if label == ty_label {
                 let expr = check(context, &raw_expr, &ann)?;
                 let body = check(context, &raw_rest, &ty_rest)?;
 
-                return Ok(Rc::new(Term::Record(meta, label.clone(), expr, body)));
+                return Ok(Rc::new(Term::Record(span, label.clone(), expr, body)));
             } else {
                 unimplemented!()
             }
         },
 
-        (&RawTerm::Hole(meta), _) => {
+        (&RawTerm::Hole(span), _) => {
             return Err(TypeError::UnableToElaborateHole {
-                span: meta.span,
+                span: span.0,
                 expected: Some(Box::new(Term::from(&**expected_ty).to_concrete())),
             });
         },
@@ -280,44 +280,44 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
 
     match **raw_term {
         //  I-ANN
-        RawTerm::Ann(meta, ref raw_expr, ref raw_ty) => {
+        RawTerm::Ann(span, ref raw_expr, ref raw_ty) => {
             let (ty, _) = infer_universe(context, raw_ty)?;
             let value_ty = normalize(context, &ty)?;
             let expr = check(context, raw_expr, &value_ty)?;
 
-            Ok((Rc::new(Term::Ann(meta, expr, ty)), value_ty))
+            Ok((Rc::new(Term::Ann(span, expr, ty)), value_ty))
         },
 
         // I-TYPE
-        RawTerm::Universe(meta, level) => Ok((
-            Rc::new(Term::Universe(meta, level)),
+        RawTerm::Universe(span, level) => Ok((
+            Rc::new(Term::Universe(span, level)),
             Rc::new(Value::Universe(level.succ())),
         )),
 
-        RawTerm::Hole(meta) => Err(TypeError::UnableToElaborateHole {
-            span: meta.span,
+        RawTerm::Hole(span) => Err(TypeError::UnableToElaborateHole {
+            span: span.0,
             expected: None,
         }),
 
-        RawTerm::Constant(meta, ref raw_c) => match *raw_c {
+        RawTerm::Constant(span, ref raw_c) => match *raw_c {
             RawConstant::String(ref value) => Ok((
-                Rc::new(Term::Constant(meta, Constant::String(value.clone()))),
+                Rc::new(Term::Constant(span, Constant::String(value.clone()))),
                 Rc::new(Value::Constant(Constant::StringType)),
             )),
             RawConstant::Char(value) => Ok((
-                Rc::new(Term::Constant(meta, Constant::Char(value))),
+                Rc::new(Term::Constant(span, Constant::Char(value))),
                 Rc::new(Value::Constant(Constant::CharType)),
             )),
-            RawConstant::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: meta.span }),
-            RawConstant::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: meta.span }),
+            RawConstant::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: span.0 }),
+            RawConstant::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: span.0 }),
         },
 
         // I-VAR
-        RawTerm::Var(meta, ref var) => match *var {
+        RawTerm::Var(span, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_claim(name) {
-                Some(ty) => Ok((Rc::new(Term::Var(meta, var.clone())), ty.clone())),
+                Some(ty) => Ok((Rc::new(Term::Var(span, var.clone())), ty.clone())),
                 None => Err(TypeError::UndefinedName {
-                    var_span: meta.span,
+                    var_span: span.0,
                     name: name.clone(),
                 }),
             },
@@ -333,7 +333,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-PI
-        RawTerm::Pi(meta, ref raw_scope) => {
+        RawTerm::Pi(span, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             let (ann, ann_level) = infer_universe(context, &raw_ann)?;
@@ -343,13 +343,13 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             };
 
             Ok((
-                Rc::new(Term::Pi(meta, nameless::bind((name, Embed(ann)), body))),
+                Rc::new(Term::Pi(span, nameless::bind((name, Embed(ann)), body))),
                 Rc::new(Value::Universe(cmp::max(ann_level, body_level))),
             ))
         },
 
         // I-LAM
-        RawTerm::Lam(meta, ref raw_scope) => {
+        RawTerm::Lam(span, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             // Check for holes before entering to ensure we get a nice error
@@ -370,13 +370,13 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             let pi_param = (name.clone(), Embed(pi_ann));
 
             Ok((
-                Rc::new(Term::Lam(meta, nameless::bind(lam_param, lam_body))),
+                Rc::new(Term::Lam(span, nameless::bind(lam_param, lam_body))),
                 Rc::new(Value::Pi(nameless::bind(pi_param, pi_body))),
             ))
         },
 
         // I-APP
-        RawTerm::App(meta, ref raw_expr, ref raw_arg) => {
+        RawTerm::App(span, ref raw_expr, ref raw_arg) => {
             let (expr, expr_ty) = infer(context, raw_expr)?;
 
             match *expr_ty {
@@ -389,7 +389,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                         &Rc::new(Term::from(&*body)),
                     )?;
 
-                    Ok((Rc::new(Term::App(meta, expr, arg)), body))
+                    Ok((Rc::new(Term::App(span, expr, arg)), body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_expr.span(),
@@ -400,7 +400,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-RECORD-TYPE
-        RawTerm::RecordType(meta, ref label, ref raw_ann, ref raw_rest) => {
+        RawTerm::RecordType(span, ref label, ref raw_ann, ref raw_rest) => {
             // Check that rest of record type is well-formed?
             // Might be able to skip that for now, because there's no way to
             // express ill-formed records in the concrete syntax...
@@ -409,13 +409,13 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             let (rest, rest_level) = infer_universe(context, &raw_rest)?;
 
             Ok((
-                Rc::new(Term::RecordType(meta, label.clone(), ann, rest)),
+                Rc::new(Term::RecordType(span, label.clone(), ann, rest)),
                 Rc::new(Value::Universe(cmp::max(ann_level, rest_level))),
             ))
         },
 
         // I-RECORD
-        RawTerm::Record(meta, ref label, ref raw_expr, ref raw_rest) => {
+        RawTerm::Record(span, ref label, ref raw_expr, ref raw_rest) => {
             // Check that rest of record is well-formed?
             // Might be able to skip that for now, because there's no way to
             // express ill-formed records in the concrete syntax...
@@ -424,34 +424,34 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             let (rest, ty_rest) = infer(context, &raw_rest)?;
 
             Ok((
-                Rc::new(Term::Record(meta, label.clone(), expr, rest)),
+                Rc::new(Term::Record(span, label.clone(), expr, rest)),
                 Rc::new(Value::RecordType(label.clone(), ann, ty_rest)),
             ))
         },
 
         // I-EMPTY-RECORD-TYPE
-        RawTerm::EmptyRecordType(meta) => Ok((
-            Rc::new(Term::EmptyRecordType(meta)),
+        RawTerm::EmptyRecordType(span) => Ok((
+            Rc::new(Term::EmptyRecordType(span)),
             Rc::new(Value::Universe(Level(0))),
         )),
 
         // I-EMPTY-RECORD
-        RawTerm::EmptyRecord(meta) => Ok((
-            Rc::new(Term::EmptyRecord(meta)),
+        RawTerm::EmptyRecord(span) => Ok((
+            Rc::new(Term::EmptyRecord(span)),
             Rc::new(Value::EmptyRecordType),
         )),
 
         // I-PROJ
-        RawTerm::Proj(meta, ref expr, label_meta, ref label) => {
+        RawTerm::Proj(span, ref expr, label_span, ref label) => {
             let (expr, ty) = infer(context, expr)?;
 
             match ty.lookup_record_ty(label) {
                 Some(ty) => Ok((
-                    Rc::new(Term::Proj(meta, expr, label_meta, label.clone())),
+                    Rc::new(Term::Proj(span, expr, label_span, label.clone())),
                     ty,
                 )),
                 None => Err(TypeError::NoFieldInType {
-                    label_span: label_meta.span,
+                    label_span: label_span.0,
                     expected_label: label.clone(),
                     found: Box::new(Term::from(&*ty).to_concrete()),
                 }),

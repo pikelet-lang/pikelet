@@ -3,7 +3,6 @@ use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 
 use syntax::concrete;
-use syntax::core::SourceMeta;
 use syntax::parse;
 use syntax::translation::ToCore;
 
