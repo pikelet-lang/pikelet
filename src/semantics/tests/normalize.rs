@@ -1,3 +1,5 @@
+use nameless::Ignore;
+
 use super::*;
 
 #[test]
@@ -5,7 +7,7 @@ fn var() {
     let context = Context::new();
 
     let x = Name::user("x");
-    let var = Rc::new(Term::Var(SourceMeta::default(), Var::Free(x.clone())));
+    let var = Rc::new(Term::Var(Ignore::default(), Var::Free(x.clone())));
 
     assert_eq!(
         normalize(&context, &var).unwrap(),
@@ -75,7 +77,7 @@ fn lam_app() {
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
                     Rc::new(Neutral::Var(Var::Free(x))),
-                    Rc::new(Term::Var(SourceMeta::default(), Var::Free(y))),
+                    Rc::new(Term::Var(Ignore::default(), Var::Free(y))),
                 ))),
             ))),
         ))),
@@ -104,7 +106,7 @@ fn pi_app() {
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
                     Rc::new(Neutral::Var(Var::Free(x))),
-                    Rc::new(Term::Var(SourceMeta::default(), Var::Free(y))),
+                    Rc::new(Term::Var(Ignore::default(), Var::Free(y))),
                 ))),
             ))),
         ))),

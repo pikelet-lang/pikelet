@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteOffset, ByteSpan};
-use nameless::{self, Embed, GenId, Name, Var};
+use nameless::{self, Embed, GenId, Ignore, Name, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -32,9 +32,7 @@ fn pi_to_core(
         for &(start, ref name) in names.iter().rev() {
             // This could be wrong... :/
             term = core::RawTerm::Pi(
-                core::SourceMeta {
-                    span: ByteSpan::new(start, term.span().end()),
-                },
+                Ignore(ByteSpan::new(start, term.span().end())),
                 nameless::bind(
                     (Name::user(name.clone()), Embed(ann.clone())),
                     Rc::new(term),
@@ -66,14 +64,15 @@ fn lam_to_core(
     for &(ref names, ref ann) in params.iter().rev() {
         for &(start, ref name) in names.iter().rev() {
             let name = Name::user(name.clone());
-            let meta = core::SourceMeta {
-                span: ByteSpan::new(start, term.span().end()),
-            };
             let ann = match *ann {
-                None => Rc::new(core::RawTerm::Hole(core::SourceMeta::default())),
+                None => Rc::new(core::RawTerm::Hole(Ignore::default())),
                 Some(ref ann) => Rc::new(ann.to_core()),
             };
-            term = core::RawTerm::Lam(meta, nameless::bind((name, Embed(ann)), Rc::new(term)));
+
+            term = core::RawTerm::Lam(
+                Ignore(ByteSpan::new(start, term.span().end())),
+                nameless::bind((name, Embed(ann)), Rc::new(term)),
+            );
         }
     }
 
@@ -84,11 +83,11 @@ fn app_to_core(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTe
     let mut term = fn_expr.to_core();
 
     for arg in args.iter() {
-        let meta = core::SourceMeta {
-            span: term.span().to(arg.span()),
-        };
-
-        term = core::RawTerm::App(meta, Rc::new(term), Rc::new(arg.to_core()))
+        term = core::RawTerm::App(
+            Ignore(term.span().to(arg.span())),
+            Rc::new(term),
+            Rc::new(arg.to_core()),
+        )
     }
 
     term
@@ -98,17 +97,11 @@ fn record_ty_to_core(
     span: ByteSpan,
     fields: &[(ByteIndex, String, Box<concrete::Term>)],
 ) -> core::RawTerm {
-    let mut term = core::RawTerm::EmptyRecordType(core::SourceMeta {
-        span: ByteSpan::new(span.end(), span.end()),
-    });
+    let mut term = core::RawTerm::EmptyRecordType(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref ann) in fields.iter().rev() {
-        let meta = core::SourceMeta {
-            span: ByteSpan::new(start, term.span().end()),
-        };
-
         term = core::RawTerm::RecordType(
-            meta,
+            Ignore(ByteSpan::new(start, term.span().end())),
             core::Label(label.clone()),
             Rc::new(ann.to_core()),
             Rc::new(term),
@@ -122,17 +115,11 @@ fn record_to_core(
     span: ByteSpan,
     fields: &[(ByteIndex, String, Box<concrete::Term>)],
 ) -> core::RawTerm {
-    let mut term = core::RawTerm::EmptyRecord(core::SourceMeta {
-        span: ByteSpan::new(span.end(), span.end()),
-    });
+    let mut term = core::RawTerm::EmptyRecord(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref value) in fields.iter().rev() {
-        let meta = core::SourceMeta {
-            span: ByteSpan::new(start, term.span().end()),
-        };
-
         term = core::RawTerm::Record(
-            meta,
+            Ignore(ByteSpan::new(start, term.span().end())),
             core::Label(label.clone()),
             Rc::new(value.to_core()),
             Rc::new(term),
@@ -167,8 +154,7 @@ impl ToCore<core::RawModule> for concrete::Module {
                             ..
                         } => match prev_claim.take() {
                             Some((name, ann)) => {
-                                let term =
-                                    Rc::new(core::RawTerm::Hole(core::SourceMeta::default()));
+                                let term = Rc::new(core::RawTerm::Hole(Ignore::default()));
                                 definitions.push(core::RawDefinition { name, term, ann });
                             },
                             None => prev_claim = Some((name.clone(), Rc::new(ann.to_core()))),
@@ -180,7 +166,7 @@ impl ToCore<core::RawModule> for concrete::Module {
                             ref wheres,
                             ..
                         } => {
-                            let default_meta = core::SourceMeta::default();
+                            let default_span = Ignore::default();
 
                             if !wheres.is_empty() {
                                 unimplemented!("where clauses");
@@ -189,7 +175,7 @@ impl ToCore<core::RawModule> for concrete::Module {
                             match prev_claim.take() {
                                 None => definitions.push(core::RawDefinition {
                                     name: name.clone(),
-                                    ann: Rc::new(core::RawTerm::Hole(default_meta)),
+                                    ann: Rc::new(core::RawTerm::Hole(default_span)),
                                     term: Rc::new(lam_to_core(params, body)),
                                 }),
                                 Some((claim_name, ann)) => {
@@ -203,11 +189,11 @@ impl ToCore<core::RawModule> for concrete::Module {
                                         definitions.push(core::RawDefinition {
                                             name: claim_name.clone(),
                                             ann,
-                                            term: Rc::new(core::RawTerm::Hole(default_meta)),
+                                            term: Rc::new(core::RawTerm::Hole(default_span)),
                                         });
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
-                                            ann: Rc::new(core::RawTerm::Hole(default_meta)),
+                                            ann: Rc::new(core::RawTerm::Hole(default_span)),
                                             term: Rc::new(lam_to_core(params, body)),
                                         });
                                     }
@@ -231,17 +217,17 @@ impl ToCore<core::RawModule> for concrete::Module {
 impl ToCore<core::RawTerm> for concrete::Term {
     /// Convert a term in the concrete syntax into a core term
     fn to_core(&self) -> core::RawTerm {
-        let meta = core::SourceMeta { span: self.span() };
+        let span = Ignore(self.span());
         match *self {
             concrete::Term::Parens(_, ref term) => term.to_core(),
             concrete::Term::Ann(ref expr, ref ty) => {
                 let expr = Rc::new(expr.to_core());
                 let ty = Rc::new(ty.to_core());
 
-                core::RawTerm::Ann(meta, expr, ty)
+                core::RawTerm::Ann(span, expr, ty)
             },
             concrete::Term::Universe(_, level) => {
-                core::RawTerm::Universe(meta, core::Level(level.unwrap_or(0)))
+                core::RawTerm::Universe(span, core::Level(level.unwrap_or(0)))
             },
             concrete::Term::Literal(_, ref lit) => {
                 let c = match *lit {
@@ -253,11 +239,11 @@ impl ToCore<core::RawTerm> for concrete::Term {
                     concrete::Literal::Float(value) => core::RawConstant::Float(value),
                 };
 
-                core::RawTerm::Constant(meta, c)
+                core::RawTerm::Constant(span, c)
             },
-            concrete::Term::Hole(_) => core::RawTerm::Hole(meta),
+            concrete::Term::Hole(_) => core::RawTerm::Hole(span),
             concrete::Term::Var(_, ref x) => {
-                core::RawTerm::Var(meta, Var::Free(Name::user(x.clone())))
+                core::RawTerm::Var(span, Var::Free(Name::user(x.clone())))
             },
             concrete::Term::Pi(_, ref params, ref body) => pi_to_core(params, body),
             concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
@@ -266,21 +252,22 @@ impl ToCore<core::RawTerm> for concrete::Term {
                 let ann = Rc::new(ann.to_core());
                 let body = Rc::new(body.to_core());
 
-                core::RawTerm::Pi(meta, nameless::bind((name, Embed(ann)), body))
+                core::RawTerm::Pi(span, nameless::bind((name, Embed(ann)), body))
             },
             concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
             concrete::Term::RecordType(span, ref fields) => record_ty_to_core(span, fields),
             concrete::Term::Record(span, ref fields) => record_to_core(span, fields),
             concrete::Term::Proj(ref tm, label_start, ref label) => {
-                let label_meta = core::SourceMeta {
-                    span: ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
-                };
+                let label_span = Ignore(ByteSpan::from_offset(
+                    label_start,
+                    ByteOffset::from_str(label),
+                ));
 
                 core::RawTerm::Proj(
-                    meta,
+                    span,
                     Rc::new(tm.to_core()),
-                    label_meta,
+                    label_span,
                     core::Label(label.clone()),
                 )
             },
@@ -336,13 +323,13 @@ mod to_core {
     mod term {
         use super::*;
 
-        use syntax::core::{Level, RawTerm, SourceMeta};
+        use syntax::core::{Level, RawTerm};
 
         #[test]
         fn var() {
             assert_term_eq!(
                 parse(r"x"),
-                RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("x"))),
+                RawTerm::Var(Ignore::default(), Var::Free(Name::user("x"))),
             );
         }
 
@@ -350,7 +337,7 @@ mod to_core {
         fn var_kebab_case() {
             assert_term_eq!(
                 parse(r"or-elim"),
-                RawTerm::Var(SourceMeta::default(), Var::Free(Name::user("or-elim"))),
+                RawTerm::Var(Ignore::default(), Var::Free(Name::user("or-elim"))),
             );
         }
 
@@ -358,7 +345,7 @@ mod to_core {
         fn ty() {
             assert_term_eq!(
                 parse(r"Type"),
-                RawTerm::Universe(SourceMeta::default(), Level(0)),
+                RawTerm::Universe(Ignore::default(), Level(0)),
             );
         }
 
@@ -366,7 +353,7 @@ mod to_core {
         fn ty_level() {
             assert_term_eq!(
                 parse(r"Type 2"),
-                RawTerm::Universe(SourceMeta::default(), Level(0).succ().succ()),
+                RawTerm::Universe(Ignore::default(), Level(0).succ().succ()),
             );
         }
 
@@ -375,9 +362,9 @@ mod to_core {
             assert_term_eq!(
                 parse(r"Type : Type"),
                 RawTerm::Ann(
-                    SourceMeta::default(),
-                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
-                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    Ignore::default(),
+                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
+                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                 ),
             );
         }
@@ -387,12 +374,12 @@ mod to_core {
             assert_term_eq!(
                 parse(r"Type : Type : Type"),
                 RawTerm::Ann(
-                    SourceMeta::default(),
-                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    Ignore::default(),
+                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     Rc::new(RawTerm::Ann(
-                        SourceMeta::default(),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Ignore::default(),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     )),
                 ),
             );
@@ -403,12 +390,12 @@ mod to_core {
             assert_term_eq!(
                 parse(r"Type : (Type : Type)"),
                 RawTerm::Ann(
-                    SourceMeta::default(),
-                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                    Ignore::default(),
+                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     Rc::new(RawTerm::Ann(
-                        SourceMeta::default(),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Ignore::default(),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     )),
                 ),
             );
@@ -419,16 +406,16 @@ mod to_core {
             assert_term_eq!(
                 parse(r"(Type : Type) : (Type : Type)"),
                 Rc::new(RawTerm::Ann(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     Rc::new(RawTerm::Ann(
-                        SourceMeta::default(),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Ignore::default(),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     )),
                     Rc::new(RawTerm::Ann(
-                        SourceMeta::default(),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Ignore::default(),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     )),
                 )),
             );
@@ -439,28 +426,25 @@ mod to_core {
             assert_term_eq!(
                 parse(r"\x : Type -> Type => x"),
                 Rc::new(RawTerm::Lam(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Pi(
-                                SourceMeta::default(),
+                                Ignore::default(),
                                 nameless::bind(
                                     (
                                         Name::user("_"),
                                         Embed(Rc::new(RawTerm::Universe(
-                                            SourceMeta::default(),
+                                            Ignore::default(),
                                             Level(0)
                                         ))),
                                     ),
-                                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                                 ),
                             ))),
                         ),
-                        Rc::new(RawTerm::Var(
-                            SourceMeta::default(),
-                            Var::Free(Name::user("x")),
-                        )),
+                        Rc::new(RawTerm::Var(Ignore::default(), Var::Free(Name::user("x")),)),
                     ),
                 )),
             );
@@ -471,28 +455,25 @@ mod to_core {
             assert_term_eq!(
                 parse(r"\x : (\y => y) => x"),
                 Rc::new(RawTerm::Lam(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Lam(
-                                SourceMeta::default(),
+                                Ignore::default(),
                                 nameless::bind(
                                     (
                                         Name::user("y"),
-                                        Embed(Rc::new(RawTerm::Hole(SourceMeta::default()))),
+                                        Embed(Rc::new(RawTerm::Hole(Ignore::default()))),
                                     ),
                                     Rc::new(RawTerm::Var(
-                                        SourceMeta::default(),
+                                        Ignore::default(),
                                         Var::Free(Name::user("y")),
                                     )),
                                 ),
                             )),),
                         ),
-                        Rc::new(RawTerm::Var(
-                            SourceMeta::default(),
-                            Var::Free(Name::user("x")),
-                        )),
+                        Rc::new(RawTerm::Var(Ignore::default(), Var::Free(Name::user("x")),)),
                     )
                 )),
             );
@@ -503,24 +484,21 @@ mod to_core {
             assert_term_eq!(
                 parse(r"\(x y : Type) => x"),
                 Rc::new(RawTerm::Lam(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
-                            Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
+                            Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Lam(
-                            SourceMeta::default(),
+                            Ignore::default(),
                             nameless::bind(
                                 (
                                     Name::user("y"),
-                                    Embed(Rc::new(RawTerm::Universe(
-                                        SourceMeta::default(),
-                                        Level(0),
-                                    ))),
+                                    Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0),))),
                                 ),
                                 Rc::new(RawTerm::Var(
-                                    SourceMeta::default(),
+                                    Ignore::default(),
                                     Var::Free(Name::user("x")),
                                 )),
                             ),
@@ -535,13 +513,13 @@ mod to_core {
             assert_term_eq!(
                 parse(r"Type -> Type"),
                 Rc::new(RawTerm::Pi(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("_"),
-                            Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
+                            Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0)))),
                         ),
-                        Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                        Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                     ),
                 )),
             );
@@ -552,28 +530,25 @@ mod to_core {
             assert_term_eq!(
                 parse(r"(x : Type -> Type) -> x"),
                 Rc::new(RawTerm::Pi(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Pi(
-                                SourceMeta::default(),
+                                Ignore::default(),
                                 nameless::bind(
                                     (
                                         Name::user("_"),
                                         Embed(Rc::new(RawTerm::Universe(
-                                            SourceMeta::default(),
+                                            Ignore::default(),
                                             Level(0),
                                         ))),
                                     ),
-                                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                                 ),
                             ))),
                         ),
-                        Rc::new(RawTerm::Var(
-                            SourceMeta::default(),
-                            Var::Free(Name::user("x")),
-                        )),
+                        Rc::new(RawTerm::Var(Ignore::default(), Var::Free(Name::user("x")),)),
                     ),
                 )),
             );
@@ -584,24 +559,21 @@ mod to_core {
             assert_term_eq!(
                 parse(r"(x y : Type) -> x"),
                 Rc::new(RawTerm::Pi(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
-                            Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
+                            Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Pi(
-                            SourceMeta::default(),
+                            Ignore::default(),
                             nameless::bind(
                                 (
                                     Name::user("y"),
-                                    Embed(Rc::new(RawTerm::Universe(
-                                        SourceMeta::default(),
-                                        Level(0),
-                                    ))),
+                                    Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0),))),
                                 ),
                                 Rc::new(RawTerm::Var(
-                                    SourceMeta::default(),
+                                    Ignore::default(),
                                     Var::Free(Name::user("x")),
                                 )),
                             ),
@@ -616,24 +588,24 @@ mod to_core {
             assert_term_eq!(
                 parse(r"(x : Type) -> x -> x"),
                 Rc::new(RawTerm::Pi(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
-                            Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
+                            Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Pi(
-                            SourceMeta::default(),
+                            Ignore::default(),
                             nameless::bind(
                                 (
                                     Name::user("_"),
                                     Embed(Rc::new(RawTerm::Var(
-                                        SourceMeta::default(),
+                                        Ignore::default(),
                                         Var::Free(Name::user("x")),
                                     ))),
                                 ),
                                 Rc::new(RawTerm::Var(
-                                    SourceMeta::default(),
+                                    Ignore::default(),
                                     Var::Free(Name::user("x")),
                                 )),
                             ),
@@ -648,42 +620,39 @@ mod to_core {
             assert_term_eq!(
                 parse(r"\(x : Type -> Type) (y : Type) => x y"),
                 Rc::new(RawTerm::Lam(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("x"),
                             Embed(Rc::new(RawTerm::Pi(
-                                SourceMeta::default(),
+                                Ignore::default(),
                                 nameless::bind(
                                     (
                                         Name::user("_"),
                                         Embed(Rc::new(RawTerm::Universe(
-                                            SourceMeta::default(),
+                                            Ignore::default(),
                                             Level(0),
                                         ))),
                                     ),
-                                    Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0))),
+                                    Rc::new(RawTerm::Universe(Ignore::default(), Level(0))),
                                 ),
                             ))),
                         ),
                         Rc::new(RawTerm::Lam(
-                            SourceMeta::default(),
+                            Ignore::default(),
                             nameless::bind(
                                 (
                                     Name::user("y"),
-                                    Embed(Rc::new(RawTerm::Universe(
-                                        SourceMeta::default(),
-                                        Level(0),
-                                    ))),
+                                    Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0),))),
                                 ),
                                 Rc::new(RawTerm::App(
-                                    SourceMeta::default(),
+                                    Ignore::default(),
                                     Rc::new(RawTerm::Var(
-                                        SourceMeta::default(),
+                                        Ignore::default(),
                                         Var::Free(Name::user("x")),
                                     )),
                                     Rc::new(RawTerm::Var(
-                                        SourceMeta::default(),
+                                        Ignore::default(),
                                         Var::Free(Name::user("y")),
                                     )),
                                 )),
@@ -701,24 +670,21 @@ mod to_core {
             assert_term_eq!(
                 parse(r"\(a : Type) (x : a) => x"),
                 Rc::new(RawTerm::Lam(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             a.clone(),
-                            Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
+                            Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Lam(
-                            SourceMeta::default(),
+                            Ignore::default(),
                             nameless::bind(
                                 (
                                     Name::user("x"),
-                                    Embed(Rc::new(RawTerm::Var(
-                                        SourceMeta::default(),
-                                        Var::Free(a),
-                                    ))),
+                                    Embed(Rc::new(RawTerm::Var(Ignore::default(), Var::Free(a),))),
                                 ),
                                 Rc::new(RawTerm::Var(
-                                    SourceMeta::default(),
+                                    Ignore::default(),
                                     Var::Free(Name::user("x")),
                                 )),
                             ),
@@ -733,24 +699,24 @@ mod to_core {
             assert_term_eq!(
                 parse(r"(a : Type) -> a -> a"),
                 Rc::new(RawTerm::Pi(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     nameless::bind(
                         (
                             Name::user("a"),
-                            Embed(Rc::new(RawTerm::Universe(SourceMeta::default(), Level(0)))),
+                            Embed(Rc::new(RawTerm::Universe(Ignore::default(), Level(0)))),
                         ),
                         Rc::new(RawTerm::Pi(
-                            SourceMeta::default(),
+                            Ignore::default(),
                             nameless::bind(
                                 (
                                     Name::user("_"),
                                     Embed(Rc::new(RawTerm::Var(
-                                        SourceMeta::default(),
+                                        Ignore::default(),
                                         Var::Free(Name::user("a")),
                                     ))),
                                 ),
                                 Rc::new(RawTerm::Var(
-                                    SourceMeta::default(),
+                                    Ignore::default(),
                                     Var::Free(Name::user("a")),
                                 )),
                             ),

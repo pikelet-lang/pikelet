@@ -145,12 +145,12 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 }
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
-    use nameless::{Name, Var};
+    use nameless::{Ignore, Name, Var};
     use std::rc::Rc;
     use std::usize;
 
     use syntax::concrete::ReplCommand;
-    use syntax::core::{SourceMeta, Term};
+    use syntax::core::Term;
     use syntax::translation::{ToConcrete, ToCore};
 
     fn term_width() -> usize {
@@ -175,7 +175,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             println!(
                 "{term:width$}",
                 term = Term::Ann(
-                    SourceMeta::default(),
+                    Ignore::default(),
                     Rc::new(Term::from(&*evaluated)),
                     Rc::new(Term::from(&*inferred)),
                 ).to_concrete(),
@@ -189,11 +189,8 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             println!(
                 "{term:width$}",
                 term = Term::Ann(
-                    SourceMeta::default(),
-                    Rc::new(Term::Var(
-                        SourceMeta::default(),
-                        Var::Free(Name::user(&*name))
-                    )),
+                    Ignore::default(),
+                    Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user(&*name)))),
                     Rc::new(Term::from(&*inferred)),
                 ).to_concrete(),
                 width = term_width(),

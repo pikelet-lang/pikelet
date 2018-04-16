@@ -1,33 +1,13 @@
 //! The core syntax of the language
 
 use codespan::ByteSpan;
-use nameless::{self, Bind, BoundTerm, Embed, Name, Var};
+use nameless::{self, Bind, Embed, Ignore, Name, Var};
 use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-
-/// Source metadata that should be ignored when checking for alpha equality
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct SourceMeta {
-    pub span: ByteSpan,
-}
-
-impl BoundTerm for SourceMeta {
-    fn term_eq(&self, _: &SourceMeta) -> bool {
-        true
-    }
-}
-
-impl Default for SourceMeta {
-    fn default() -> SourceMeta {
-        SourceMeta {
-            span: ByteSpan::default(),
-        }
-    }
-}
 
 /// A universe level
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, BoundTerm)]
@@ -160,49 +140,55 @@ impl fmt::Display for Label {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum RawTerm {
     /// A term annotated with a type
-    Ann(SourceMeta, Rc<RawTerm>, Rc<RawTerm>),
+    Ann(Ignore<ByteSpan>, Rc<RawTerm>, Rc<RawTerm>),
     /// Universes
-    Universe(SourceMeta, Level),
+    Universe(Ignore<ByteSpan>, Level),
     /// Constants
-    Constant(SourceMeta, RawConstant),
+    Constant(Ignore<ByteSpan>, RawConstant),
     /// A hole
-    Hole(SourceMeta),
+    Hole(Ignore<ByteSpan>),
     /// A variable
-    Var(SourceMeta, Var),
+    Var(Ignore<ByteSpan>, Var),
     /// Dependent function types
-    Pi(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
+    Pi(
+        Ignore<ByteSpan>,
+        Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
+    ),
     /// Lambda abstractions
-    Lam(SourceMeta, Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>),
+    Lam(
+        Ignore<ByteSpan>,
+        Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
+    ),
     /// RawTerm application
-    App(SourceMeta, Rc<RawTerm>, Rc<RawTerm>),
+    App(Ignore<ByteSpan>, Rc<RawTerm>, Rc<RawTerm>),
     /// Dependent record types
-    RecordType(SourceMeta, Label, Rc<RawTerm>, Rc<RawTerm>),
+    RecordType(Ignore<ByteSpan>, Label, Rc<RawTerm>, Rc<RawTerm>),
     /// Dependent record
-    Record(SourceMeta, Label, Rc<RawTerm>, Rc<RawTerm>),
+    Record(Ignore<ByteSpan>, Label, Rc<RawTerm>, Rc<RawTerm>),
     /// The unit type
-    EmptyRecordType(SourceMeta),
+    EmptyRecordType(Ignore<ByteSpan>),
     /// The element of the unit type
-    EmptyRecord(SourceMeta),
+    EmptyRecord(Ignore<ByteSpan>),
     /// Field projection
-    Proj(SourceMeta, Rc<RawTerm>, SourceMeta, Label),
+    Proj(Ignore<ByteSpan>, Rc<RawTerm>, Ignore<ByteSpan>, Label),
 }
 
 impl RawTerm {
     pub fn span(&self) -> ByteSpan {
         match *self {
-            RawTerm::Ann(meta, _, _)
-            | RawTerm::Universe(meta, _)
-            | RawTerm::Hole(meta)
-            | RawTerm::Constant(meta, _)
-            | RawTerm::Var(meta, _)
-            | RawTerm::Pi(meta, _)
-            | RawTerm::Lam(meta, _)
-            | RawTerm::App(meta, _, _)
-            | RawTerm::RecordType(meta, _, _, _)
-            | RawTerm::Record(meta, _, _, _)
-            | RawTerm::EmptyRecordType(meta)
-            | RawTerm::EmptyRecord(meta)
-            | RawTerm::Proj(meta, _, _, _) => meta.span,
+            RawTerm::Ann(span, _, _)
+            | RawTerm::Universe(span, _)
+            | RawTerm::Hole(span)
+            | RawTerm::Constant(span, _)
+            | RawTerm::Var(span, _)
+            | RawTerm::Pi(span, _)
+            | RawTerm::Lam(span, _)
+            | RawTerm::App(span, _, _)
+            | RawTerm::RecordType(span, _, _, _)
+            | RawTerm::Record(span, _, _, _)
+            | RawTerm::EmptyRecordType(span)
+            | RawTerm::EmptyRecord(span)
+            | RawTerm::Proj(span, _, _, _) => span.0,
         }
     }
 }
@@ -291,46 +277,46 @@ pub struct Definition {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(SourceMeta, Rc<Term>, Rc<Term>),
+    Ann(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
     /// Universes
-    Universe(SourceMeta, Level),
+    Universe(Ignore<ByteSpan>, Level),
     /// Constants
-    Constant(SourceMeta, Constant),
+    Constant(Ignore<ByteSpan>, Constant),
     /// A variable
-    Var(SourceMeta, Var),
+    Var(Ignore<ByteSpan>, Var),
     /// Dependent function types
-    Pi(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
-    Lam(SourceMeta, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
-    App(SourceMeta, Rc<Term>, Rc<Term>),
+    App(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
     /// Dependent record types
-    RecordType(SourceMeta, Label, Rc<Term>, Rc<Term>),
+    RecordType(Ignore<ByteSpan>, Label, Rc<Term>, Rc<Term>),
     /// Dependent record
-    Record(SourceMeta, Label, Rc<Term>, Rc<Term>),
+    Record(Ignore<ByteSpan>, Label, Rc<Term>, Rc<Term>),
     /// The unit type
-    EmptyRecordType(SourceMeta),
+    EmptyRecordType(Ignore<ByteSpan>),
     /// The element of the unit type
-    EmptyRecord(SourceMeta),
+    EmptyRecord(Ignore<ByteSpan>),
     /// Field projection
-    Proj(SourceMeta, Rc<Term>, SourceMeta, Label),
+    Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label),
 }
 
 impl Term {
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Term::Ann(meta, _, _)
-            | Term::Universe(meta, _)
-            | Term::Constant(meta, _)
-            | Term::Var(meta, _)
-            | Term::Lam(meta, _)
-            | Term::Pi(meta, _)
-            | Term::App(meta, _, _)
-            | Term::RecordType(meta, _, _, _)
-            | Term::Record(meta, _, _, _)
-            | Term::EmptyRecordType(meta)
-            | Term::EmptyRecord(meta)
-            | Term::Proj(meta, _, _, _) => meta.span,
+            Term::Ann(span, _, _)
+            | Term::Universe(span, _)
+            | Term::Constant(span, _)
+            | Term::Var(span, _)
+            | Term::Lam(span, _)
+            | Term::Pi(span, _)
+            | Term::App(span, _, _)
+            | Term::RecordType(span, _, _, _)
+            | Term::Record(span, _, _, _)
+            | Term::EmptyRecordType(span)
+            | Term::EmptyRecord(span)
+            | Term::Proj(span, _, _, _) => span.0,
         }
     }
 }
@@ -513,37 +499,41 @@ impl From<Neutral> for Value {
 
 impl<'a> From<&'a Value> for Term {
     fn from(src: &'a Value) -> Term {
-        let meta = SourceMeta::default();
-
         match *src {
-            Value::Universe(level) => Term::Universe(meta, level),
-            Value::Constant(ref c) => Term::Constant(meta, c.clone()),
+            Value::Universe(level) => Term::Universe(Ignore::default(), level),
+            Value::Constant(ref c) => Term::Constant(Ignore::default(), c.clone()),
             Value::Pi(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Pi(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
+                Term::Pi(
+                    Ignore::default(),
+                    nameless::bind(param, Rc::new(Term::from(&*body))),
+                )
             },
             Value::Lam(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Lam(meta, nameless::bind(param, Rc::new(Term::from(&*body))))
+                Term::Lam(
+                    Ignore::default(),
+                    nameless::bind(param, Rc::new(Term::from(&*body))),
+                )
             },
             Value::RecordType(ref label, ref ann, ref rest) => Term::RecordType(
-                meta,
+                Ignore::default(),
                 label.clone(),
                 Rc::new(Term::from(&**ann)),
                 Rc::new(Term::from(&**rest)),
             ),
             Value::Record(ref label, ref expr, ref rest) => Term::Record(
-                meta,
+                Ignore::default(),
                 label.clone(),
                 Rc::new(Term::from(&**expr)),
                 Rc::new(Term::from(&**rest)),
             ),
-            Value::EmptyRecordType => Term::EmptyRecordType(meta).into(),
-            Value::EmptyRecord => Term::EmptyRecord(meta).into(),
+            Value::EmptyRecordType => Term::EmptyRecordType(Ignore::default()).into(),
+            Value::EmptyRecord => Term::EmptyRecord(Ignore::default()).into(),
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }
@@ -551,16 +541,19 @@ impl<'a> From<&'a Value> for Term {
 
 impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
-        let meta = SourceMeta::default();
-
         match *src {
-            Neutral::Var(ref var) => Term::Var(meta, var.clone()),
-            Neutral::App(ref fn_expr, ref arg_expr) => {
-                Term::App(meta, Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
-            },
-            Neutral::Proj(ref expr, ref name) => {
-                Term::Proj(meta, Rc::new(Term::from(&**expr)), meta, name.clone()).into()
-            },
+            Neutral::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
+            Neutral::App(ref fn_expr, ref arg_expr) => Term::App(
+                Ignore::default(),
+                Rc::new(Term::from(&**fn_expr)),
+                arg_expr.clone(),
+            ),
+            Neutral::Proj(ref expr, ref name) => Term::Proj(
+                Ignore::default(),
+                Rc::new(Term::from(&**expr)),
+                Ignore::default(),
+                name.clone(),
+            ).into(),
         }
     }
 }
@@ -625,7 +618,7 @@ impl Context {
 impl Default for Context {
     fn default() -> Context {
         let universe0 = Rc::new(Value::Universe(Level(0)));
-        let constant = |c| Rc::new(Term::Constant(SourceMeta::default(), c));
+        let constant = |c| Rc::new(Term::Constant(Ignore::default(), c));
 
         Context::new()
             .claim(Name::user("String"), universe0.clone())
