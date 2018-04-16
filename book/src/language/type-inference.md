@@ -36,8 +36,10 @@ Inferrable terms can be checked on their own or based on previous definitions.
 > TODO: Explain examples
 
 ```pikelet-repl
+Pikelet> true
 Pikelet> "1"
 Pikelet> 'a'
+Pikelet> Bool
 Pikelet> Type
 Pikelet> Type 2
 Pikelet> record { name = "Jane" }

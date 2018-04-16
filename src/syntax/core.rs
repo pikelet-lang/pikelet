@@ -1,6 +1,6 @@
 //! The core syntax of the language
 
-use codespan::ByteSpan;
+use codespan::{ByteIndex, ByteSpan};
 use nameless::{self, Bind, Embed, Ignore, Name, Var};
 use rpds::List;
 use std::collections::HashSet;
@@ -55,6 +55,7 @@ impl fmt::Display for RawConstant {
 /// expensive computationally!
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
 pub enum Constant {
+    Bool(bool),
     String(String),
     Char(char),
     U8(u8),
@@ -67,6 +68,7 @@ pub enum Constant {
     I64(i64),
     F32(f32),
     F64(f64),
+    BoolType,
     StringType,
     CharType,
     U8Type,
@@ -159,8 +161,10 @@ pub enum RawTerm {
         Ignore<ByteSpan>,
         Bind<(Name, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
     ),
-    /// RawTerm application
+    /// Term application
     App(Ignore<ByteSpan>, Rc<RawTerm>, Rc<RawTerm>),
+    /// If expression
+    If(Ignore<ByteIndex>, Rc<RawTerm>, Rc<RawTerm>, Rc<RawTerm>),
     /// Dependent record types
     RecordType(Ignore<ByteSpan>, Label, Rc<RawTerm>, Rc<RawTerm>),
     /// Dependent record
@@ -189,6 +193,7 @@ impl RawTerm {
             | RawTerm::EmptyRecordType(span)
             | RawTerm::EmptyRecord(span)
             | RawTerm::Proj(span, _, _, _) => span.0,
+            RawTerm::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
     }
 }
@@ -222,6 +227,11 @@ impl RawTerm {
             RawTerm::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
+            },
+            RawTerm::If(_, ref cond, ref if_true, ref if_false) => {
+                cond.visit_vars(on_var);
+                if_true.visit_vars(on_var);
+                if_false.visit_vars(on_var);
             },
             RawTerm::RecordType(_, _, ref ann, ref rest) => {
                 ann.visit_vars(on_var);
@@ -290,6 +300,8 @@ pub enum Term {
     Lam(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
+    /// If expression
+    If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
     RecordType(Ignore<ByteSpan>, Label, Rc<Term>, Rc<Term>),
     /// Dependent record
@@ -317,6 +329,7 @@ impl Term {
             | Term::EmptyRecordType(span)
             | Term::EmptyRecord(span)
             | Term::Proj(span, _, _, _) => span.0,
+            Term::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
     }
 }
@@ -350,6 +363,11 @@ impl Term {
             Term::App(_, ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
+            },
+            Term::If(_, ref cond, ref if_true, ref if_false) => {
+                cond.visit_vars(on_var);
+                if_true.visit_vars(on_var);
+                if_false.visit_vars(on_var);
             },
             Term::RecordType(_, _, ref ann, ref rest) => {
                 ann.visit_vars(on_var);
@@ -476,6 +494,8 @@ pub enum Neutral {
     Var(Var),
     /// RawTerm application
     App(Rc<Neutral>, Rc<Term>),
+    /// If expression
+    If(Rc<Neutral>, Rc<Term>, Rc<Term>),
     /// Field projection
     Proj(Rc<Neutral>, Label),
 }
@@ -548,6 +568,12 @@ impl<'a> From<&'a Neutral> for Term {
                 Rc::new(Term::from(&**fn_expr)),
                 arg_expr.clone(),
             ),
+            Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
+                Ignore::default(),
+                Rc::new(Term::from(&**cond)),
+                if_true.clone(),
+                if_false.clone(),
+            ),
             Neutral::Proj(ref expr, ref name) => Term::Proj(
                 Ignore::default(),
                 Rc::new(Term::from(&**expr)),
@@ -619,8 +645,15 @@ impl Default for Context {
     fn default() -> Context {
         let universe0 = Rc::new(Value::Universe(Level(0)));
         let constant = |c| Rc::new(Term::Constant(Ignore::default(), c));
+        let constant_val = |c| Rc::new(Value::Constant(c));
 
         Context::new()
+            .claim(Name::user("true"), constant_val(Constant::BoolType))
+            .define(Name::user("true"), constant(Constant::Bool(true)))
+            .claim(Name::user("false"), constant_val(Constant::BoolType))
+            .define(Name::user("false"), constant(Constant::Bool(false)))
+            .claim(Name::user("Bool"), universe0.clone())
+            .define(Name::user("Bool"), constant(Constant::BoolType))
             .claim(Name::user("String"), universe0.clone())
             .define(Name::user("String"), constant(Constant::StringType))
             .claim(Name::user("Char"), universe0.clone())

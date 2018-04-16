@@ -172,6 +172,17 @@ impl ToDoc for Term {
                     .append(Doc::text("in"))
                     .append(body.to_doc(options))
             },
+            Term::If(_, ref cond, ref if_true, ref if_false) => Doc::text("if")
+                .append(Doc::space())
+                .append(cond.to_doc(options))
+                .append(Doc::space())
+                .append(Doc::text("then"))
+                .append(Doc::space())
+                .append(if_true.to_doc(options))
+                .append(Doc::space())
+                .append(Doc::text("else"))
+                .append(Doc::space())
+                .append(if_false.to_doc(options)),
             Term::RecordType(_, ref fields) if fields.is_empty() => Doc::text("Record {}"),
             Term::Record(_, ref fields) if fields.is_empty() => Doc::text("record {}"),
             Term::RecordType(_, ref fields) => Doc::text("Record {")

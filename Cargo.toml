@@ -26,7 +26,7 @@ codespan = "0.1.1"
 codespan-reporting = "0.1.1"
 failure = "0.1.1"
 lalrpop-util = "0.15.1"
-nameless = { git = "https://github.com/brendanzab/nameless", rev = "147029a", version = "0.1.0" }
+nameless = { git = "https://github.com/brendanzab/nameless", rev = "30121a6", version = "0.1.0" }
 pretty = "0.3.2"
 regex = "0.2.0"
 rpds = "0.4.0"

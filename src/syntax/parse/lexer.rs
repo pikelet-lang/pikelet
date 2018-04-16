@@ -106,13 +106,16 @@ pub enum Token<S> {
 
     // Keywords
     As,         // as
+    Else,       // else
     Hole,       // _
+    If,         // if
     In,         // in
     Let,        // let
     Module,     // module
     Import,     // import
     Record,     // record
     RecordType, // Record
+    Then,       // then
     Type,       // Type
     Where,      // where
 
@@ -147,13 +150,16 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::DecLiteral(ref value) => write!(f, "{}", value),
             Token::FloatLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
+            Token::Else => write!(f, "else"),
             Token::Hole => write!(f, "_"),
+            Token::If => write!(f, "if"),
             Token::In => write!(f, "in"),
             Token::Let => write!(f, "let"),
             Token::Module => write!(f, "module"),
             Token::Import => write!(f, "import"),
             Token::Record => write!(f, "record"),
             Token::RecordType => write!(f, "Record"),
+            Token::Then => write!(f, "then"),
             Token::Type => write!(f, "Type"),
             Token::Where => write!(f, "where"),
             Token::BSlash => write!(f, "\\"),
@@ -186,13 +192,16 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::DecLiteral(value) => Token::DecLiteral(value),
             Token::FloatLiteral(value) => Token::FloatLiteral(value),
             Token::As => Token::As,
+            Token::Else => Token::Else,
             Token::Hole => Token::Hole,
+            Token::If => Token::If,
             Token::In => Token::In,
             Token::Let => Token::Let,
             Token::Module => Token::Module,
             Token::Import => Token::Import,
             Token::Record => Token::Record,
             Token::RecordType => Token::RecordType,
+            Token::Then => Token::Then,
             Token::Type => Token::Type,
             Token::Where => Token::Where,
             Token::BSlash => Token::BSlash,
@@ -359,13 +368,16 @@ impl<'input> Lexer<'input> {
 
         let token = match ident {
             "as" => Token::As,
+            "else" => Token::Else,
             "_" => Token::Hole,
+            "if" => Token::If,
             "in" => Token::In,
             "let" => Token::Let,
             "module" => Token::Module,
             "import" => Token::Import,
             "record" => Token::Record,
             "Record" => Token::RecordType,
+            "then" => Token::Then,
             "Type" => Token::Type,
             "where" => Token::Where,
             ident => Token::Ident(ident),

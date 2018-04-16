@@ -37,13 +37,13 @@ flip a b c f x y = f y x;
 |||
 ||| This type should have no inhabitants - if it does, it's a bug in our
 ||| typechecker!
-false : Type 1;
-false = (a : Type) -> a;
+void : Type 1;
+void = (a : Type) -> a;
 
 
 ||| Logical negation
 not : Type -> Type 1;
-not a = a -> false;
+not a = a -> void;
 
 
 unit : Type 1;
@@ -90,3 +90,22 @@ or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
 
 -- or-intro-right : (p q : Type) -> q -> or p q;
 -- or-intro-right p q (y : q) c (on-p : p -> c) (on-q : q -> c) = on-q y;
+
+
+||| Module for defining equality between two terms
+Eq (a : Type) = Record {
+    ||| Compare two terms for equality
+    eq : a -> a -> Bool,
+};
+
+||| Compare two terms for equality
+eq : (a : Type) (EQ : Eq a) -> a -> a -> Bool;
+eq a EQ = EQ.eq;
+
+
+Eq-Bool : Eq Bool;
+Eq-Bool = record {
+    eq = \lhs rhs =>
+        if lhs then rhs else
+            (if rhs then false else true),
+};

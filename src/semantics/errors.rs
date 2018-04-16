@@ -18,6 +18,8 @@ pub enum InternalError {
     },
     #[fail(display = "Argument applied to non-function.")]
     ArgumentAppliedToNonFunction { span: ByteSpan },
+    #[fail(display = "Expected a boolean expression.")]
+    ExpectedBoolExpr { span: ByteSpan },
     #[fail(display = "Projected on non-existent field `{}`.", label)]
     ProjectedOnNonExistentField {
         label_span: ByteSpan,
@@ -28,8 +30,9 @@ pub enum InternalError {
 impl InternalError {
     pub fn span(&self) -> ByteSpan {
         match *self {
-            InternalError::UnsubstitutedDebruijnIndex { span, .. } => span,
-            InternalError::ArgumentAppliedToNonFunction { span, .. } => span,
+            InternalError::UnsubstitutedDebruijnIndex { span, .. }
+            | InternalError::ArgumentAppliedToNonFunction { span, .. }
+            | InternalError::ExpectedBoolExpr { span, .. } => span,
             InternalError::ProjectedOnNonExistentField { label_span, .. } => label_span,
         }
     }
@@ -45,6 +48,11 @@ impl InternalError {
             InternalError::ArgumentAppliedToNonFunction { span } => {
                 Diagnostic::new_bug(format!("argument applied to non-function"))
                     .with_label(Label::new_primary(span).with_message("not a function"))
+            },
+            InternalError::ExpectedBoolExpr { span } => {
+                Diagnostic::new_bug(format!("expected a boolean expression")).with_label(
+                    Label::new_primary(span).with_message("did not evaluate to a boolean"),
+                )
             },
             InternalError::ProjectedOnNonExistentField {
                 label_span,

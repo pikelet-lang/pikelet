@@ -211,7 +211,7 @@ pub enum Term {
     /// Type
     /// ```
     Universe(ByteSpan, Option<u32>),
-    /// Literal values
+    /// Literal value
     Literal(ByteSpan, Literal),
     /// Holes
     ///
@@ -219,13 +219,13 @@ pub enum Term {
     /// _
     /// ```
     Hole(ByteSpan),
-    /// Variables
+    /// Variable
     ///
     /// ```text
     /// x
     /// ```
     Var(ByteIndex, String),
-    /// Lambda abstractions
+    /// Lambda abstraction
     ///
     /// ```text
     /// \x => t
@@ -235,14 +235,14 @@ pub enum Term {
     /// \(x y : t1) => t3
     /// ```
     Lam(ByteIndex, LamParams, Box<Term>),
-    /// Dependent function types
+    /// Dependent function type
     ///
     /// ```text
     /// (x : t1) -> t2
     /// (x y : t1) -> t2
     /// ```
     Pi(ByteIndex, PiParams, Box<Term>),
-    /// Non-Dependent function types
+    /// Non-Dependent function type
     ///
     /// ```text
     /// t1 -> t2
@@ -263,13 +263,19 @@ pub enum Term {
     ///     x
     /// ```
     Let(ByteIndex, Vec<Declaration>, Box<Term>),
-    /// Record types
+    /// If expression
+    ///
+    /// ```text
+    /// if t1 then t2 else t3
+    /// ```
+    If(ByteIndex, Box<Term>, Box<Term>, Box<Term>),
+    /// Record type
     ///
     /// ```text
     /// Record { x : t1, .. }
     /// ```
     RecordType(ByteSpan, Vec<(ByteIndex, String, Box<Term>)>),
-    /// Record values
+    /// Record value
     ///
     /// ```text
     /// record { x = t1, .. }
@@ -301,7 +307,8 @@ impl Term {
             Term::Var(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),
             Term::Pi(start, _, ref body)
             | Term::Lam(start, _, ref body)
-            | Term::Let(start, _, ref body) => ByteSpan::new(start, body.span().end()),
+            | Term::Let(start, _, ref body)
+            | Term::If(start, _, _, ref body) => ByteSpan::new(start, body.span().end()),
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg[arg.len() - 1].span()),

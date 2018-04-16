@@ -4,6 +4,7 @@
 
 - [Installation](./installation/index.md)
 - [Language](./language/index.md)
+  - [Conditionals](./language/conditionals.md)
   - [Records](./language/records.md)
   - [Functions](./language/functions.md)
   - [Type inference](./language/type-inference.md)
