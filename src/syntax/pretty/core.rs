@@ -160,6 +160,8 @@ impl ToDoc for RawConstant {
 impl ToDoc for Constant {
     fn to_doc(&self, _options: Options) -> StaticDoc {
         match *self {
+            Constant::Bool(true) => Doc::text("#true"),
+            Constant::Bool(false) => Doc::text("#false"),
             Constant::String(ref value) => Doc::text(format!("{:?}", value)),
             Constant::Char(value) => Doc::text(format!("{:?}", value)),
             Constant::U8(value) => Doc::as_string(value),
@@ -172,6 +174,7 @@ impl ToDoc for Constant {
             Constant::I64(value) => Doc::as_string(value),
             Constant::F32(value) => Doc::as_string(value),
             Constant::F64(value) => Doc::as_string(value),
+            Constant::BoolType => Doc::text("#Bool"),
             Constant::StringType => Doc::text("#String"),
             Constant::CharType => Doc::text("#Char"),
             Constant::U8Type => Doc::text("#U8"),

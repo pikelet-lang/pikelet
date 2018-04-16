@@ -42,6 +42,9 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
 //     "import",
 //     "Type",
 //     // Primitives
+//     "true",
+//     "false",
+//     "Bool",
 //     "String",
 //     "Char",
 //     "U8",
@@ -114,6 +117,10 @@ impl ToConcrete<concrete::Term> for core::Constant {
         let span = ByteSpan::default();
 
         match *self {
+            // FIXME: Draw these names from some environment?
+            Constant::Bool(true) => Term::Var(span.start(), String::from("true")),
+            Constant::Bool(false) => Term::Var(span.start(), String::from("false")),
+
             Constant::String(ref value) => Term::Literal(span, Literal::String(value.clone())),
             Constant::Char(value) => Term::Literal(span, Literal::Char(value)),
 
@@ -132,6 +139,7 @@ impl ToConcrete<concrete::Term> for core::Constant {
             Constant::F64(value) => Term::Literal(span, Literal::Float(value)),
 
             // FIXME: Draw these names from some environment?
+            Constant::BoolType => Term::Var(span.start(), String::from("Bool")),
             Constant::StringType => Term::Var(span.start(), String::from("String")),
             Constant::CharType => Term::Var(span.start(), String::from("Char")),
             Constant::U8Type => Term::Var(span.start(), String::from("U8")),

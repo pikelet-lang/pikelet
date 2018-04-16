@@ -55,6 +55,7 @@ impl fmt::Display for RawConstant {
 /// expensive computationally!
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
 pub enum Constant {
+    Bool(bool),
     String(String),
     Char(char),
     U8(u8),
@@ -67,6 +68,7 @@ pub enum Constant {
     I64(i64),
     F32(f32),
     F64(f64),
+    BoolType,
     StringType,
     CharType,
     U8Type,
@@ -619,8 +621,15 @@ impl Default for Context {
     fn default() -> Context {
         let universe0 = Rc::new(Value::Universe(Level(0)));
         let constant = |c| Rc::new(Term::Constant(Ignore::default(), c));
+        let constant_val = |c| Rc::new(Value::Constant(c));
 
         Context::new()
+            .claim(Name::user("true"), constant_val(Constant::BoolType))
+            .define(Name::user("true"), constant(Constant::Bool(true)))
+            .claim(Name::user("false"), constant_val(Constant::BoolType))
+            .define(Name::user("false"), constant(Constant::Bool(false)))
+            .claim(Name::user("Bool"), universe0.clone())
+            .define(Name::user("Bool"), constant(Constant::BoolType))
             .claim(Name::user("String"), universe0.clone())
             .define(Name::user("String"), constant(Constant::StringType))
             .claim(Name::user("Char"), universe0.clone())

@@ -63,6 +63,7 @@ Pikelet has a number of primitive types:
 
 | Type     | Literal                                |
 |----------|----------------------------------------|
+| `Bool`   | `true`, `false`                        |
 | `String` | `"hello there!"`                       |
 | `Char`   | `'a'`, `'b'`, ..., `'\n'`, `'\t'`, ... |
 | `U8`     | `1`, `2`, `3`, ...                     |
