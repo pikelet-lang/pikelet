@@ -62,28 +62,33 @@ TODO: describe BNF syntax and natural deduction here
 \\newcommand{\ntype}{N}
 \\
 % Term and Type constructors
-\\newcommand{\const}{c}
 \\newcommand{\Type}{\mathsf{Type}}
+\\newcommand{\Bool}{\mathsf{Bool}}
+\\newcommand{\true}{\mathsf{true}}
+\\newcommand{\false}{\mathsf{false}}
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \\newcommand{\lam}[2]{ \lambda #1 . #2 }
+\\newcommand{\ifte}[3]{ \text{if} ~ #1 ~ \text{then} ~ #2 ~ \text{else} ~ #3 }
 \\newcommand{\Record}[1]{ ( #1 ) }
 \\newcommand{\record}[1]{ \langle #1 \rangle }
 \\
 \begin{array}{rrll}
-    \rexpr,\rtype   & ::= & x                               & \text{variables} \\\\
-                    &   | & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
-                    &   | & ?                               & \text{holes} \\\\
-                    &   | & \const                          & \text{constants} \\\\
-                    &   | & \rexpr : \rtype                 & \text{term annotated with a type} \\\\
-                    &   | & \Pi{x:\rtype_1}{\rtype_2}       & \text{dependent function type} \\\\
-                    &   | & \lam{x:\rtype}{\rexpr}          & \text{functions} \\\\
-                    &   | & \rexpr_1 ~ \rexpr_2             & \text{function application} \\\\
-                    &   | & \Record{l:\rtype_1, \rtype_2}   & \text{record type extension} \\\\
-                    &   | & \Record{}                       & \text{empty record type} \\\\
-                    &   | & \record{l=\rexpr_1, \rexpr_2}   & \text{record extension} \\\\
-                    &   | & \record{}                       & \text{empty record} \\\\
-                    &   | & \rexpr.l                        & \text{record projection} \\\\
+    \rexpr,\rtype   & ::= & x                                   & \text{variables} \\\\
+                    &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & ?                                   & \text{holes} \\\\
+                    &   | & \Bool                               & \text{type of booleans} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean values} \\\\
+                    &   | & \rexpr : \rtype                     & \text{term annotated with a type} \\\\
+                    &   | & \Pi{x:\rtype_1}{\rtype_2}           & \text{dependent function type} \\\\
+                    &   | & \lam{x:\rtype}{\rexpr}              & \text{functions} \\\\
+                    &   | & \rexpr_1 ~ \rexpr_2                 & \text{function application} \\\\
+                    &   | & \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} & \text{if expressions} \\\\
+                    &   | & \Record{l:\rtype_1, \rtype_2}       & \text{record type extension} \\\\
+                    &   | & \Record{}                           & \text{empty record type} \\\\
+                    &   | & \record{l=\rexpr_1, \rexpr_2}       & \text{record extension} \\\\
+                    &   | & \record{}                           & \text{empty record} \\\\
+                    &   | & \rexpr.l                            & \text{record projection} \\\\
     \\\\
 \end{array}
 \\]
@@ -101,18 +106,20 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 
 \\[
 \begin{array}{rrll}
-    \texpr,\ttype   & ::= & x                               & \text{variables} \\\\
-                    &   | & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
-                    &   | & \const                          & \text{constants} \\\\
-                    &   | & \texpr : \ttype                 & \text{term annotated with a type} \\\\
-                    &   | & \Pi{x:\ttype_1}{\ttype_2}       & \text{dependent function type} \\\\
-                    &   | & \lam{x:\ttype}{\texpr}          & \text{functions} \\\\
-                    &   | & \texpr_1 ~ \texpr_2             & \text{function application} \\\\
-                    &   | & \Record{l:\ttype_1, \ttype_2}   & \text{record type extension} \\\\
-                    &   | & \Record{}                       & \text{empty record type} \\\\
-                    &   | & \record{l=\texpr_1, \texpr_2}   & \text{record extension} \\\\
-                    &   | & \record{}                       & \text{empty record} \\\\
-                    &   | & \texpr.l                        & \text{record projection} \\\\
+    \texpr,\ttype   & ::= & x                                   & \text{variables} \\\\
+                    &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \Bool                               & \text{type of booleans} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean values} \\\\
+                    &   | & \texpr : \ttype                     & \text{term annotated with a type} \\\\
+                    &   | & \Pi{x:\ttype_1}{\ttype_2}           & \text{dependent function type} \\\\
+                    &   | & \lam{x:\ttype}{\texpr}              & \text{functions} \\\\
+                    &   | & \texpr_1 ~ \texpr_2                 & \text{function application} \\\\
+                    &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
+                    &   | & \Record{l:\ttype_1, \ttype_2}       & \text{record type extension} \\\\
+                    &   | & \Record{}                           & \text{empty record type} \\\\
+                    &   | & \record{l=\texpr_1, \texpr_2}       & \text{record extension} \\\\
+                    &   | & \record{}                           & \text{empty record} \\\\
+                    &   | & \texpr.l                            & \text{record projection} \\\\
     \\\\
 \end{array}
 \\]
@@ -125,21 +132,23 @@ and neutral terms (\\(\nexpr\\)):
 
 \\[
 \begin{array}{rrll}
-    \vexpr,\vtype   & ::= & \wexpr                          & \text{weak head normal forms} \\\\
-                    &   | & \nexpr                          & \text{neutral terms} \\\\
+    \vexpr,\vtype   & ::= & \wexpr                              & \text{weak head normal forms} \\\\
+                    &   | & \nexpr                              & \text{neutral terms} \\\\
     \\\\
-    \nexpr,\ntype   & ::= & x                               & \text{variables} \\\\
-                    &   | & \nexpr ~ \texpr                 & \text{function application} \\\\
-                    &   | & \nexpr.l                        & \text{record projection} \\\\
+    \nexpr,\ntype   & ::= & x                                   & \text{variables} \\\\
+                    &   | & \nexpr ~ \texpr                     & \text{function application} \\\\
+                    &   | & \ifte{\nexpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
+                    &   | & \nexpr.l                            & \text{record projection} \\\\
     \\\\
-    \wexpr,\wtype   & ::= & \Type_i                         & \text{universe of types ($i \in \mathbb{N}$)} \\\\
-                    &   | & \const                          & \text{constants} \\\\
-                    &   | & \Pi{x:\vtype_1}{\vtype_2}       & \text{dependent function type} \\\\
-                    &   | & \lam{x:\vtype}{\vexpr}          & \text{functions} \\\\
-                    &   | & \Record{l:\vtype_1, \vtype_2}   & \text{record type extension} \\\\
-                    &   | & \Record{}                       & \text{empty record type} \\\\
-                    &   | & \record{l=\vexpr_1, \vexpr_2}   & \text{record extension} \\\\
-                    &   | & \record{}                       & \text{empty record} \\\\
+    \wexpr,\wtype   & ::= & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \Bool                               & \text{type of booleans} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean values} \\\\
+                    &   | & \Pi{x:\vtype_1}{\vtype_2}           & \text{dependent function type} \\\\
+                    &   | & \lam{x:\vtype}{\vexpr}              & \text{functions} \\\\
+                    &   | & \Record{l:\vtype_1, \vtype_2}       & \text{record type extension} \\\\
+                    &   | & \Record{}                           & \text{empty record type} \\\\
+                    &   | & \record{l=\vexpr_1, \vexpr_2}       & \text{record extension} \\\\
+                    &   | & \record{}                           & \text{empty record} \\\\
     \\\\
 \end{array}
 \\]
@@ -236,8 +245,16 @@ in the context.
         \eval{ \Gamma }{ \Type_i }{ \Type_i }
     }
     \\\\[2em]
-    \rule{E-CONST}{}{
-        \eval{ \Gamma }{ \const }{ \const }
+    \rule{E-BOOL}{}{
+        \eval{ \Gamma }{ \Bool }{ \Bool }
+    }
+    \\\\[2em]
+    \rule{E-TRUE}{}{
+        \eval{ \Gamma }{ \true }{ \true }
+    }
+    \\\\[2em]
+    \rule{E-FALSE}{}{
+        \eval{ \Gamma }{ \false }{ \false }
     }
     \\\\[2em]
     \rule{E-VAR}{
@@ -278,6 +295,28 @@ in the context.
         \eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
     }{
         \eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_3 }
+    }
+    \\\\[2em]
+    \rule{E-IF}{
+        \eval{ \Gamma }{ \nexpr }{ \nexpr' }
+    }{
+        \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \ifte{\nexpr'}{\texpr_1}{\texpr_2} }
+    }
+    \\\\[2em]
+    \rule{E-IF-TRUE}{
+        \eval{ \Gamma }{ \nexpr }{ \true }
+        \qquad
+        \eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+    }{
+        \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_1 }
+    }
+    \\\\[2em]
+    \rule{E-IF-FALSE}{
+        \eval{ \Gamma }{ \nexpr }{ \false }
+        \qquad
+        \eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+    }{
+        \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_2 }
     }
     \\\\[2em]
     \rule{E-RECORD-TYPE}{
@@ -341,6 +380,16 @@ elaborated form.
         \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
     }
     \\\\[2em]
+    \rule{C-IF}{
+        \check{ \Gamma }{ \rexpr_1 }{ \Bool }{ \texpr_1 }
+        \qquad
+        \check{ \Gamma }{ \rexpr_2 }{ \vtype }{ \texpr_2 }
+        \qquad
+        \check{ \Gamma }{ \rexpr_3 }{ \vtype }{ \texpr_3 }
+    }{
+        \check{ \Gamma }{ \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} }{ \vtype }{ \ifte{\texpr_1}{\texpr_2}{\texpr_3} }
+    }
+    \\\\[2em]
     \rule{C-RECORD}{
         l_1 \equiv l_2
         \qquad
@@ -392,6 +441,18 @@ returns its elaborated form.
     \\\\[2em]
     \rule{I-TYPE}{}{
         \infer{ \Gamma }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
+    }
+    \\\\[2em]
+    \rule{I-BOOL}{}{
+        \infer{ \Gamma }{ \Bool }{ \Type_0 }{ \Bool }
+    }
+    \\\\[2em]
+    \rule{I-TRUE}{}{
+        \infer{ \Gamma }{ \true }{ \Bool }{ \true }
+    }
+    \\\\[2em]
+    \rule{I-FALSE}{}{
+        \infer{ \Gamma }{ \false }{ \Bool }{ \false }
     }
     \\\\[2em]
     \rule{I-VAR}{

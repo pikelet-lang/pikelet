@@ -1,4 +1,8 @@
 //! The semantics of the language
+//!
+//! Here we define the rules of normalization, type checking, and type inference.
+//!
+//! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
 use nameless::{self, BoundTerm, Embed, Name, Var};
@@ -122,6 +126,22 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             }
         },
 
+        // E-IF, E-IF-TRUE, E-IF-FALSE
+        Term::If(_, ref cond, ref if_true, ref if_false) => {
+            let value_cond = normalize(context, cond)?;
+
+            match *value_cond {
+                Value::Constant(Constant::Bool(true)) => normalize(context, if_true),
+                Value::Constant(Constant::Bool(false)) => normalize(context, if_false),
+                Value::Neutral(ref cond) => Ok(Rc::new(Value::from(Neutral::If(
+                    cond.clone(),
+                    if_true.clone(),
+                    if_false.clone(),
+                )))),
+                _ => Err(InternalError::ExpectedBoolExpr { span: cond.span() }),
+            }
+        },
+
         // E-RECORD-TYPE
         Term::RecordType(_, ref label, ref ann, ref rest) => {
             let ann = normalize(context, ann)?;
@@ -219,6 +239,16 @@ pub fn check(
                 span: raw_term.span(),
                 expected: Box::new(Term::from(&**expected_ty).to_concrete()),
             });
+        },
+
+        // C-IF
+        (&RawTerm::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
+            let bool_ty = Rc::new(Value::Constant(Constant::BoolType));
+            let cond = check(context, raw_cond, &bool_ty)?;
+            let if_true = check(context, raw_if_true, expected_ty)?;
+            let if_false = check(context, raw_if_false, expected_ty)?;
+
+            return Ok(Rc::new(Term::If(span, cond, if_true, if_false)));
         },
 
         // C-RECORD
@@ -373,6 +403,16 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 Rc::new(Term::Lam(span, nameless::bind(lam_param, lam_body))),
                 Rc::new(Value::Pi(nameless::bind(pi_param, pi_body))),
             ))
+        },
+
+        // I-IF
+        RawTerm::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
+            let bool_ty = Rc::new(Value::Constant(Constant::BoolType));
+            let cond = check(context, raw_cond, &bool_ty)?;
+            let (if_true, ty) = infer(context, raw_if_true)?;
+            let if_false = check(context, raw_if_false, &ty)?;
+
+            Ok((Rc::new(Term::If(span, cond, if_true, if_false)), ty))
         },
 
         // I-APP

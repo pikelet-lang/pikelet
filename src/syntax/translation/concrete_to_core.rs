@@ -256,6 +256,12 @@ impl ToCore<core::RawTerm> for concrete::Term {
             },
             concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
+            concrete::Term::If(start, ref cond, ref if_true, ref if_false) => core::RawTerm::If(
+                Ignore(start),
+                Rc::new(cond.to_core()),
+                Rc::new(if_true.to_core()),
+                Rc::new(if_false.to_core()),
+            ),
             concrete::Term::RecordType(span, ref fields) => record_ty_to_core(span, fields),
             concrete::Term::Record(span, ref fields) => record_to_core(span, fields),
             concrete::Term::Proj(ref tm, label_start, ref label) => {

@@ -37,9 +37,12 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
 // const USED_NAMES: &[&str] = &[
 //     // Keywords
 //     "as",
+//     "else",
 //     "_",
 //     "module",
+//     "if",
 //     "import",
+//     "then",
 //     "Type",
 //     // Primitives
 //     "true",
@@ -249,6 +252,15 @@ impl ToConcrete<concrete::Term> for core::Term {
                 concrete::Term::App(
                     Box::new(fn_term.to_concrete_prec(Prec::NO_WRAP)),
                     vec![arg.to_concrete_prec(Prec::NO_WRAP)], // TODO
+                ),
+            ),
+            core::Term::If(_, ref cond, ref if_true, ref if_false) => parens_if(
+                Prec::LAM < prec,
+                concrete::Term::If(
+                    ByteIndex::default(),
+                    Box::new(cond.to_concrete_prec(Prec::APP)),
+                    Box::new(if_true.to_concrete_prec(Prec::APP)),
+                    Box::new(if_false.to_concrete_prec(Prec::APP)),
                 ),
             ),
             core::Term::RecordType(_, ref label, ref ann, ref rest) => {

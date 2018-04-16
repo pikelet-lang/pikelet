@@ -22,13 +22,16 @@ extern {
 
         // Keywords
         "as" => Token::As,
+        "else" => Token::Else,
         "_" => Token::Hole,
+        "if" => Token::If,
         "in" => Token::In,
         "let" => Token::Let,
         "module" => Token::Module,
         "import" => Token::Import,
         "record" => Token::Record,
         "Record" => Token::RecordType,
+        "then" => Token::Then,
         "Type" => Token::Type,
         "where" => Token::Where,
 
@@ -144,6 +147,9 @@ LamTerm: Term = {
     },
     <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
         Term::Lam(start, params, Box::new(body))
+    },
+    <start: @L> "if" <cond: AppTerm> "then" <if_true: AppTerm> "else" <if_false: AppTerm> => {
+        Term::If(start, Box::new(cond), Box::new(if_true), Box::new(if_false))
     },
     <start: @L> "let" <declarations: Declaration+> "in" <body: LamTerm> => {
         Term::Let(start, declarations, Box::new(body))

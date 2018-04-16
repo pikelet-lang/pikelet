@@ -108,6 +108,28 @@ fn pretty_app<F: ToDoc, A: ToDoc>(options: Options, fn_term: &F, arg_term: &A) -
     )
 }
 
+fn pretty_if<C: ToDoc, T: ToDoc, F: ToDoc>(
+    options: Options,
+    cond: &C,
+    if_true: &T,
+    if_false: &F,
+) -> StaticDoc {
+    parens_if(
+        Prec::LAM < options.prec,
+        Doc::text("if")
+            .append(Doc::space())
+            .append(cond.to_doc(options.with_prec(Prec::APP)))
+            .append(Doc::space())
+            .append(Doc::text("then"))
+            .append(Doc::space())
+            .append(if_true.to_doc(options.with_prec(Prec::APP)))
+            .append(Doc::space())
+            .append(Doc::text("else"))
+            .append(Doc::space())
+            .append(if_false.to_doc(options.with_prec(Prec::APP))),
+    )
+}
+
 fn pretty_record_ty(inner: StaticDoc) -> StaticDoc {
     Doc::text("Record")
         .append(Doc::space())
@@ -215,6 +237,9 @@ impl ToDoc for RawTerm {
                 &scope.unsafe_body,
             ),
             RawTerm::App(_, ref f, ref a) => pretty_app(options, f, a),
+            RawTerm::If(_, ref cond, ref if_true, ref if_false) => {
+                pretty_if(options, cond, if_true, if_false)
+            },
             RawTerm::RecordType(_, ref label, ref ann, ref rest) => {
                 let mut inner = Doc::nil();
                 let mut label = label;
@@ -296,6 +321,9 @@ impl ToDoc for Term {
                 &scope.unsafe_body,
             ),
             Term::App(_, ref f, ref a) => pretty_app(options, f, a),
+            Term::If(_, ref cond, ref if_true, ref if_false) => {
+                pretty_if(options, cond, if_true, if_false)
+            },
             Term::RecordType(_, ref label, ref ann, ref rest) => {
                 let mut inner = Doc::nil();
                 let mut label = label;
@@ -440,6 +468,9 @@ impl ToDoc for Neutral {
         match *self {
             Neutral::Var(ref var) => pretty_var(options, var),
             Neutral::App(ref fn_term, ref arg_term) => pretty_app(options, fn_term, arg_term),
+            Neutral::If(ref cond, ref if_true, ref if_false) => {
+                pretty_if(options, cond, if_true, if_false)
+            },
             Neutral::Proj(ref expr, ref label) => pretty_proj(options, expr, label),
         }
     }
