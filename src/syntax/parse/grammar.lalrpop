@@ -101,8 +101,8 @@ Declaration: Declaration = {
     <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },
-    <name: IndexedIdent> <params: AtomicLamParam*> "=" <body: Term>
-        <wheres: ("where" "{" <Declaration+> "}")?> <end: @R> ";" =>
+    <_comment: "doc comment"*> <name: IndexedIdent> <params: AtomicLamParam*> "="
+        <body: Term> <wheres: ("where" "{" <Declaration+> "}")?> <end: @R> ";" =>
     {
         let (start, name) = name;
         let span = ByteSpan::new(start, end);
@@ -221,7 +221,9 @@ AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
 };
 
 RecordTypeField: (ByteIndex, String, Box<Term>) = {
-    <start: @L> <label: Ident> ":" <ty: Term> => (start, label, Box::new(ty)),
+    <_comment: "doc comment"*> <start: @L> <label: Ident> ":" <ty: Term> => {
+        (start, label, Box::new(ty))
+    },
 };
 
 RecordField: (ByteIndex, String, Box<Term>) = {

@@ -20,7 +20,7 @@ pub use self::errors::{InternalError, TypeError};
 
 /// Typecheck and elaborate a module
 pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
-    let mut context = Context::new();
+    let mut context = Context::default();
     let mut definitions = Vec::with_capacity(raw_module.definitions.len());
 
     for raw_definition in &raw_module.definitions {
