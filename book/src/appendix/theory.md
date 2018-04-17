@@ -6,6 +6,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
 
 - [Introduction](#introduction)
   - [Notation](#notation)
+  - [Where is the soundness proof?](#where-is-the-soundness-proof)
 - [Syntax](#syntax)
   - [Raw terms](#raw-terms)
   - [Terms](#terms)
@@ -29,7 +30,38 @@ universe hierarchy.
 
 ### Notation
 
-TODO: describe BNF syntax and natural deduction here
+We use a combination of some [BNF][bnf]-style syntax definitions with
+[natural deduction](natural-deduction) rules to define our language. This
+combination of notation is sometimes referred to as _computer science
+metanotation_ and is, alas, a little hard to pin down [as conventions vary][guy-steele-presentation]
+between papers and authors. The general rules stay the same however, and once
+you learn to read them they are much more succinct than an actual implementation
+could be, and are an invaluable tool for quickly getting a high-level overview
+of a programming language's semantics.
+
+> TODO: Describe BNF, natural deduction rules, overbars, variable binding, etc.
+
+Some handy links:
+
+- [A practitioner’s guide to reading programming languages papers](https://blog.acolyer.org/2018/01/26/a-practitioners-guide-to-reading-programming-languages-papers/)
+- [A path to enlightenment in Programming Language Theory](http://steshaw.org/plt/)
+
+[bnf]: https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
+[natural-deduction]: https://en.wikipedia.org/wiki/Natural_deduction
+[guy-steele-presentation]: https://www.youtube.com/watch?v=7HKbjYqqPPQ
+
+### Where is the soundness proof?
+
+Here we are only defining the rules of our language's type checking and
+evaluation. Further work needs to be done to verify that our system actually
+satisfies certain interesting [type soundness properties][type-soundness],
+like progress, preservation, [strong normalization][normalization-property],
+etc. If you would like to discuss this with us, please check out
+[the relevant github issue][formalization-issue]!
+
+[type-soundness]: https://en.wikipedia.org/wiki/Type_safety
+[normalization-property]: https://en.wikipedia.org/wiki/Normalization_property_(abstract_rewriting)
+[formalization-issue]: https://github.com/brendanzab/pikelet/issues/39
 
 ## Syntax
 
@@ -516,11 +548,11 @@ returns its elaborated form.
     }
     \\\\[2em]
     \rule{I-PROJ}{
-        \infer{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+        \infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
         \qquad
-        \ttype_2 = \fieldty(x, \vtype_1)
+        \ttype = \fieldty(x, \vtype)
     }{
-        \infer{ \Gamma }{ \rexpr_1.x }{ ? }{ \texpr_1.x }
+        \infer{ \Gamma }{ \rexpr.x }{ \ttype }{ \texpr.x }
     }
     \\\\[2em]
 \end{array}
