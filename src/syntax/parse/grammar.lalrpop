@@ -4,6 +4,7 @@ use codespan::{ByteIndex, ByteSpan};
 use syntax::concrete::{Declaration, Exposing, Literal, Module, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
+#[LALR]
 grammar<'err, 'input>(errors: &'err mut Vec<ParseError>, filemap: &'input FileMap);
 
 extern {
