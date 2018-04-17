@@ -100,7 +100,7 @@ Eq (a : Type) = Record {
 
 ||| Compare two terms for equality
 eq : (a : Type) (EQ : Eq a) -> a -> a -> Bool;
-eq a EQ = EQ.eq;
+eq _ EQ = EQ.eq;
 
 
 Eq-Bool : Eq Bool;

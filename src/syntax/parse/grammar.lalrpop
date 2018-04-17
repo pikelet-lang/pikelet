@@ -23,7 +23,6 @@ extern {
         // Keywords
         "as" => Token::As,
         "else" => Token::Else,
-        "_" => Token::Hole,
         "if" => Token::If,
         "in" => Token::In,
         "let" => Token::Let,
@@ -190,12 +189,17 @@ AppTerm: Term = {
 AtomicTerm: Term = {
     <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
     <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
-    <start: @L> "_" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
     <start: @L> <value: "string literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::String(value)),
     <start: @L> <value: "character literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Char(value)),
     <start: @L> <value: "decimal literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Int(value)),
     <start: @L> <value: "float literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Float(value)),
-    <start: @L> <ident: Ident> => Term::Var(start, ident),
+    <start: @L> <ident: Ident> <end: @R> => {
+        if ident == "_" {
+            Term::Hole(ByteSpan::new(start, end))
+        } else {
+            Term::Var(start, ident)
+        }
+    },
     <start: @L> "Record" "{" <fields: (<RecordTypeField> ",")*> <last: RecordTypeField?> "}" <end: @R> => {
         let mut fields = fields;
         fields.extend(last);
