@@ -6,6 +6,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
 
 - [Introduction](#introduction)
   - [Notation](#notation)
+  - [Where is the soundness proof?](#where-is-the-soundness-proof)
 - [Syntax](#syntax)
   - [Raw terms](#raw-terms)
   - [Terms](#terms)
@@ -30,6 +31,19 @@ universe hierarchy.
 ### Notation
 
 TODO: describe BNF syntax and natural deduction here
+
+### Where is the soundness proof?
+
+Here we are only defining the rules of our language's type checking and
+evaluation. Further work needs to be done to verify that our system actually
+satisfies certain interesting [type soundness properties][type-soundness],
+like progress, preservation, [strong normalization][normalization-property],
+etc. If you would like to discuss this with us, please check out
+[the relevant github issue][formalization-issue]!
+
+[type-soundness]: https://en.wikipedia.org/wiki/Type_safety
+[normalization-property]: https://en.wikipedia.org/wiki/Normalization_property_(abstract_rewriting)
+[formalization-issue]: https://github.com/brendanzab/pikelet/issues/39
 
 ## Syntax
 
