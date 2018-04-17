@@ -17,6 +17,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Normalization](#normalization)
   - [Type checking](#type-checking)
   - [Type inference](#type-inference)
+  - [Pattern matching](#pattern-matching)
 
 ## Introduction
 
@@ -39,7 +40,8 @@ you learn to read them they are much more succinct than an actual implementation
 could be, and are an invaluable tool for quickly getting a high-level overview
 of a programming language's semantics.
 
-> TODO: Describe BNF, natural deduction rules, overbars, variable binding, etc.
+> **TODO:**
+> Describe BNF, natural deduction rules, overbars, variable binding, etc.
 
 Some handy links:
 
@@ -69,32 +71,41 @@ etc. If you would like to discuss this with us, please check out
 ### Raw terms
 
 \\[
+% Haskell-style append https://tex.stackexchange.com/questions/4194/how-to-typeset-haskell-operator-and-friends
+\\newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
+% Small caps https://github.com/mathjax/MathJax-docs/wiki/Small-caps-%5Ctextsc-in-MathJaxx
+\\def\sc#1{\dosc#1\csod}
+\\def\dosc#1#2\csod{{\rm #1{\small #2}}}
+\\
 \\newcommand{\rule}[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } & \Tiny{\text{(#1)}} }
 \\
 \\DeclareMathOperator{\max}{max}
 \\DeclareMathOperator{\field}{field}
 \\DeclareMathOperator{\fieldty}{fieldty}
 \\DeclareMathOperator{\fieldsubst}{fieldsubst}
-\\newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
+\\DeclareMathOperator{\Match}{\sc{MATCH}}
 \\
 % Judgments
 \\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
 \\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
 \\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
+\\newcommand{\match}[3]{ \Match(#1,#2) \Rightarrow #3 }
 \\
 % Metavariables
-\\newcommand{\rexpr}{r}
-\\newcommand{\rtype}{R}
+\\newcommand{\rexpr}{r} % raw expressions
+\\newcommand{\rtype}{R} % raw types
+\\newcommand{\rpat}{s}  % raw patterns
 \\
-\\newcommand{\texpr}{t}
-\\newcommand{\ttype}{T}
+\\newcommand{\texpr}{t} % expressions
+\\newcommand{\ttype}{T} % types
+\\newcommand{\tpat}{p}  % patterns
 \\
-\\newcommand{\vexpr}{v}
-\\newcommand{\vtype}{V}
-\\newcommand{\wexpr}{w}
-\\newcommand{\wtype}{W}
-\\newcommand{\nexpr}{n}
-\\newcommand{\ntype}{N}
+\\newcommand{\vexpr}{v} % value expressions
+\\newcommand{\vtype}{V} % value types
+\\newcommand{\wexpr}{w} % whnf expressions
+\\newcommand{\wtype}{W} % whnf types
+\\newcommand{\nexpr}{n} % neutral expressions
+\\newcommand{\ntype}{N} % neutral types
 \\
 % Keywords
 \\newcommand{\kw}[1]{ \mathsf{#1} }
@@ -109,6 +120,7 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\lam}[2]{ \lambda #1 . #2 }
 \\newcommand{\app}[2]{ #1 ~ #2 }
 \\newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
+\\newcommand{\case}[2]{ \kw{case} ~ #1 \left\\{ #2 \right\\} }
 \\newcommand{\Record}[1]{ ( #1 ) }
 \\newcommand{\record}[1]{ \langle #1 \rangle }
 \\newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
@@ -118,17 +130,24 @@ etc. If you would like to discuss this with us, please check out
                     &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & ?                                   & \text{holes} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
-                    &   | & \true ~|~ \false                    & \text{boolean values} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \rexpr : \rtype                     & \text{term annotated with a type} \\\\
                     &   | & \Pi{x:\rtype_1}{\rtype_2}           & \text{dependent function type} \\\\
                     &   | & \lam{x:\rtype}{\rexpr}              & \text{functions} \\\\
                     &   | & \app{\rexpr_1}{\rexpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} & \text{if expressions} \\\\
+                    &   | & \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}}
+                                                                & \text{case expressions} \\\\
                     &   | & \Record{l:\rtype_1, \rtype_2}       & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
                     &   | & \record{l=\rexpr_1, \rexpr_2}       & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
                     &   | & \rexpr.l                            & \text{record projection} \\\\
+    \\\\
+    \rpat           & ::= & x                                   & \text{variable patterns} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean literal patterns} \\\\
+                    &   | & \record{l=\rpat_1, \rpat_2}         & \text{record extension pattern} \\\\
+                    &   | & \record{}                           & \text{empty record pattern} \\\\
     \\\\
 \end{array}
 \\]
@@ -148,18 +167,26 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 \begin{array}{rrll}
     \texpr,\ttype   & ::= & x                                   & \text{variables} \\\\
                     &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+                    &   | & \oldstyle{L}                        & \text{literals} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
-                    &   | & \true ~|~ \false                    & \text{boolean values} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \texpr : \ttype                     & \text{term annotated with a type} \\\\
                     &   | & \Pi{x:\ttype_1}{\ttype_2}           & \text{dependent function type} \\\\
                     &   | & \lam{x:\ttype}{\texpr}              & \text{functions} \\\\
                     &   | & \app{\texpr_1}{\texpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
+                    &   | & \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
+                                                                & \text{case expressions} \\\\
                     &   | & \Record{l:\ttype_1, \ttype_2}       & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
                     &   | & \record{l=\texpr_1, \texpr_2}       & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
                     &   | & \texpr.l                            & \text{record projection} \\\\
+    \\\\
+    \tpat           & ::= & x                                   & \text{variable patterns} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean literal patterns} \\\\
+                    &   | & \record{l=\tpat_1, \tpat_2}         & \text{record extension pattern} \\\\
+                    &   | & \record{}                           & \text{empty record pattern} \\\\
     \\\\
 \end{array}
 \\]
@@ -178,11 +205,13 @@ and neutral terms (\\(\nexpr\\)):
     \nexpr,\ntype   & ::= & x                                   & \text{variables} \\\\
                     &   | & \app{\nexpr}{\texpr}                & \text{function application} \\\\
                     &   | & \ifte{\nexpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
+                    &   | & \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
+                                                                & \text{case expressions} \\\\
                     &   | & \nexpr.l                            & \text{record projection} \\\\
     \\\\
     \wexpr,\wtype   & ::= & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
-                    &   | & \true ~|~ \false                    & \text{boolean values} \\\\
+                    &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \Pi{x:\vtype_1}{\vtype_2}           & \text{dependent function type} \\\\
                     &   | & \lam{x:\vtype}{\vexpr}              & \text{functions} \\\\
                     &   | & \Record{l:\vtype_1, \vtype_2}       & \text{record type extension} \\\\
@@ -203,9 +232,9 @@ even though we don't know the exact values these will eventually take during nor
 
 \\[
 \begin{array}{rrll}
-    \Gamma  & ::= & \epsilon              & \text{the empty context} \\\\
-            &   | & \Gamma,x:\vtype       & \text{context extended with a type claim} \\\\
-            &   | & \Gamma,x=\texpr       & \text{context extended with a definition} \\\\
+    \Gamma,\Delta  & ::= & \epsilon             & \text{the empty context} \\\\
+                   &   | & \Gamma,x:\vtype      & \text{context extended with a type claim} \\\\
+                   &   | & \Gamma,x=\texpr      & \text{context extended with a definition} \\\\
 \end{array}
 \\]
 
@@ -251,7 +280,8 @@ Type Inference <- - - - - - -> Type checking
  (to compiler)
 ```
 
-<!-- TODO: use SVG for this diagram -->
+> **TODO:**
+> Use SVG for this diagram
 
 ### Elaboration
 
@@ -357,6 +387,23 @@ in the context.
         \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_2 }
     }
     \\\\[2em]
+    \rule{E-CASE}{
+        \eval{ \Gamma }{ \nexpr }{ \nexpr' }
+    }{
+        \eval{ \Gamma }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
+            { \case{\nexpr'}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
+    }
+    \\\\[2em]
+    \rule{E-CASE-MATCH}{
+        \eval{ \Gamma }{ \nexpr }{ \wexpr }
+        \qquad
+        \match{ \wexpr }{ \tpat_i }{ \theta }
+        \qquad
+        \eval{ \Gamma }{ \texpr_i ~ \theta }{ \vexpr_i }
+    }{
+        \eval{ \Gamma }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }{ \vexpr_i }
+    }
+    \\\\[2em]
     \rule{E-RECORD-TYPE}{
         \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
         \qquad
@@ -426,6 +473,23 @@ elaborated form.
         \check{ \Gamma }{ \rexpr_3 }{ \vtype }{ \texpr_3 }
     }{
         \check{ \Gamma }{ \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} }{ \vtype }{ \ifte{\texpr_1}{\texpr_2}{\texpr_3} }
+    }
+    \\\\[2em]
+    \rule{C-CASE}{
+        \infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+        \qquad
+        \overline{
+            % TODO: impl pattern checks
+            % TODO: add pattern bindings to context
+            ~
+            \check{ \Gamma }{ \rpat_i }{ \vtype_1 }{ \tpat_i }
+            \qquad
+            \check{ \Gamma }{ \rexpr_i }{ \vtype_2 }{ \texpr_i }
+            ~
+        }
+    }{
+        \check{ \Gamma }{ \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}} }{ \vtype_2 }
+            { \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
     }
     \\\\[2em]
     \rule{C-RECORD}{
@@ -584,3 +648,53 @@ we project on them, we define \\(\fieldsubst(-,-,-)\\) as:
     \\\\[2em]
 \end{array}
 \\]
+
+### Pattern matching
+
+This judement takes an expression \\(\wexpr\\) in weak head normal form, and a
+pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bindings.
+
+\\[
+\boxed{
+    \match{ \wexpr }{ \tpat }{ \theta }
+}
+\\\\[2em]
+\begin{array}{cl}
+    \rule{M-VAR}{}{
+        \match{ \wexpr }{ x }{ [x \rightarrow \wexpr] }
+    }
+    \\\\[2em]
+    \rule{M-TRUE}{}{
+        \match{ \true }{ \true }{ [] }
+    }
+    \\\\[2em]
+    \rule{M-FALSE}{}{
+        \match{ \false }{ \false }{ [] }
+    }
+    \\\\[2em]
+    \rule{M-RECORD}{
+        \match{ \wexpr_1 }{ \tpat_1 }{ \theta_1 }
+        \qquad
+        \match{ \wexpr_2 }{ \tpat_2 }{ \theta_2 }
+    }{
+        \match{ \record{l=\wexpr_1, \wexpr_2} }{ \record{l=\tpat_1, \tpat_2} }{ \theta_1 \doubleplus \theta_2 }
+    }
+    \\\\[2em]
+    \rule{M-EMPTY-RECORD}{}{
+        \match{ \record{} }{ \record{} }{ [] }
+    }
+    \\\\[2em]
+\end{array}
+\\]
+
+> **TODO:**
+>
+> - Account for pattern name shadowing
+> - Coverage (ie. that a series of patterns cover all possible values)
+> - Type checking/inference
+> - Ensure that parametericity is maintained. Should we forbid [pattern matching
+>   directly on types][type-patterns]? McBride seems to [think we can have our
+>   cake and eat it][type-patterns-mcbride]!
+
+[type-patterns]: https://stackoverflow.com/questions/45439486/pattern-matching-on-type-in-idris
+[type-patterns-mcbride]: https://stackoverflow.com/questions/23220884/why-is-typecase-a-bad-thing/26012264#26012264

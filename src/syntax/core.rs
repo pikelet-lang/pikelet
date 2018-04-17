@@ -49,6 +49,12 @@ pub struct Definition {
     pub ann: Rc<Type>,
 }
 
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub enum Pattern {
+    Literal(Literal),
+    Var(Var),
+}
+
 /// The core term syntax
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {

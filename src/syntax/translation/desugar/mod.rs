@@ -263,6 +263,7 @@ impl Desugar<raw::Term> for concrete::Term {
                 Rc::new(if_true.desugar()),
                 Rc::new(if_false.desugar()),
             ),
+            concrete::Term::Case(_, _, _) => unimplemented!("case expressions"),
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(span, fields),
             concrete::Term::Record(span, ref fields) => desugar_record(span, fields),
             concrete::Term::Proj(ref tm, label_start, ref label) => {

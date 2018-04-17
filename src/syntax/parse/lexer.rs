@@ -106,11 +106,13 @@ pub enum Token<S> {
 
     // Keywords
     As,         // as
+    Case,       // case
     Else,       // else
     If,         // if
     Import,     // import
     In,         // in
     Let,        // let
+    Of,         // of
     Record,     // record
     RecordType, // Record
     Then,       // then
@@ -148,11 +150,13 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::DecLiteral(ref value) => write!(f, "{}", value),
             Token::FloatLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
+            Token::Case => write!(f, "case"),
             Token::Else => write!(f, "else"),
             Token::If => write!(f, "if"),
             Token::Import => write!(f, "import"),
             Token::In => write!(f, "in"),
             Token::Let => write!(f, "let"),
+            Token::Of => write!(f, "of"),
             Token::Record => write!(f, "record"),
             Token::RecordType => write!(f, "Record"),
             Token::Then => write!(f, "then"),
@@ -188,11 +192,13 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::DecLiteral(value) => Token::DecLiteral(value),
             Token::FloatLiteral(value) => Token::FloatLiteral(value),
             Token::As => Token::As,
+            Token::Case => Token::Case,
             Token::Else => Token::Else,
             Token::If => Token::If,
             Token::Import => Token::Import,
             Token::In => Token::In,
             Token::Let => Token::Let,
+            Token::Of => Token::Of,
             Token::Record => Token::Record,
             Token::RecordType => Token::RecordType,
             Token::Then => Token::Then,
@@ -333,11 +339,13 @@ impl<'input> Lexer<'input> {
 
         let token = match ident {
             "as" => Token::As,
+            "case" => Token::Case,
             "else" => Token::Else,
             "if" => Token::If,
             "import" => Token::Import,
             "in" => Token::In,
             "let" => Token::Let,
+            "of" => Token::Of,
             "record" => Token::Record,
             "Record" => Token::RecordType,
             "then" => Token::Then,
@@ -571,18 +579,20 @@ mod tests {
     #[test]
     fn keywords() {
         test! {
-            "  as else if import in let record Record then Type where  ",
-            "  ~~                                                      " => Token::As,
-            "     ~~~~                                                 " => Token::Else,
-            "          ~~                                              " => Token::If,
-            "             ~~~~~~                                       " => Token::Import,
-            "                    ~~                                    " => Token::In,
-            "                       ~~~                                " => Token::Let,
-            "                           ~~~~~~                         " => Token::Record,
-            "                                  ~~~~~~                  " => Token::RecordType,
-            "                                         ~~~~             " => Token::Then,
-            "                                              ~~~~        " => Token::Type,
-            "                                                   ~~~~~  " => Token::Where,
+            "  as case else if import in let of record Record then Type where  ",
+            "  ~~                                                              " => Token::As,
+            "     ~~~~                                                         " => Token::Case,
+            "          ~~~~                                                    " => Token::Else,
+            "               ~~                                                 " => Token::If,
+            "                  ~~~~~~                                          " => Token::Import,
+            "                         ~~                                       " => Token::In,
+            "                            ~~~                                   " => Token::Let,
+            "                                ~~                                " => Token::Of,
+            "                                   ~~~~~~                         " => Token::Record,
+            "                                          ~~~~~~                  " => Token::RecordType,
+            "                                                 ~~~~             " => Token::Then,
+            "                                                      ~~~~        " => Token::Type,
+            "                                                           ~~~~~  " => Token::Where,
         };
     }
 

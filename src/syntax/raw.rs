@@ -52,6 +52,12 @@ impl fmt::Display for Literal {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub enum Pattern {
+    Literal(Ignore<ByteSpan>, Literal),
+    Var(Ignore<ByteSpan>, Var),
+}
+
 /// Terms, unchecked and with implicit syntax that needs to be elaborated
 ///
 /// For now the only implicit syntax we have is holes and lambdas that lack a
