@@ -30,7 +30,25 @@ universe hierarchy.
 
 ### Notation
 
-TODO: describe BNF syntax and natural deduction here
+We use a combination of some [BNF][bnf]-style syntax definitions with
+[natural deduction](natural-deduction) rules to define our language. This
+combination of notation is sometimes referred to as _computer science
+metanotation_ and is, alas, a little hard to pin down [as conventions vary][guy-steele-presentation]
+between papers and authors. The general rules stay the same however, and once
+you learn to read them they are much more succinct than an actual implementation
+could be, and are an invaluable tool for quickly getting a high-level overview
+of a programming language's semantics.
+
+> TODO: Describe BNF, natural deduction rules, overbars, variable binding, etc.
+
+Some handy links:
+
+- [A practitioner’s guide to reading programming languages papers](https://blog.acolyer.org/2018/01/26/a-practitioners-guide-to-reading-programming-languages-papers/)
+- [A path to enlightenment in Programming Language Theory](http://steshaw.org/plt/)
+
+[bnf]: https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form
+[natural-deduction]: https://en.wikipedia.org/wiki/Natural_deduction
+[guy-steele-presentation]: https://www.youtube.com/watch?v=7HKbjYqqPPQ
 
 ### Where is the soundness proof?
 
