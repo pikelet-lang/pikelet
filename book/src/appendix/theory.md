@@ -516,11 +516,11 @@ returns its elaborated form.
     }
     \\\\[2em]
     \rule{I-PROJ}{
-        \infer{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+        \infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
         \qquad
-        \ttype_2 = \fieldty(x, \vtype_1)
+        \ttype = \fieldty(x, \vtype)
     }{
-        \infer{ \Gamma }{ \rexpr_1.x }{ ? }{ \texpr_1.x }
+        \infer{ \Gamma }{ \rexpr.x }{ \ttype }{ \texpr.x }
     }
     \\\\[2em]
 \end{array}
