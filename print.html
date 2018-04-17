@@ -457,7 +457,7 @@ Pikelet&gt; \x =&gt; x : I32 -&gt; I32
 </code></pre>
 <a class="header" href="print.html#further-reading" id="further-reading"><h2>Further reading</h2></a>
 <p>We describe Pikelet's type checking algorithm more formally
-<a href="../appendix/theory">in the appendix</a>. If you have a background in progamming
+<a href="./appendix/theory">in the appendix</a>. If you have a background in progamming
 languages and type theory this might be of interest to you. If not, that's
 ok - understanding the formal notation is not neccessary for developing a high
 level intuition of type inference in Pikelet.</p>
@@ -651,6 +651,7 @@ amount of time to complete.</p>
 <li><a href="print.html#introduction">Introduction</a>
 <ul>
 <li><a href="print.html#notation">Notation</a></li>
+<li><a href="print.html#where-is-the-soundness-proof">Where is the soundness proof?</a></li>
 </ul>
 </li>
 <li><a href="print.html#syntax">Syntax</a>
@@ -680,7 +681,29 @@ You <em>don't</em> need to understand this for general use of Pikelet, so feel f
 We will however make an effort to explain some of the notation we use here, and point to resources that might help if this piques your curiosity!</p>
 </blockquote>
 <a class="header" href="print.html#notation" id="notation"><h3>Notation</h3></a>
-<p>TODO: describe BNF syntax and natural deduction here</p>
+<p>We use a combination of some <a href="https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form">BNF</a>-style syntax definitions with
+<a href="natural-deduction">natural deduction</a> rules to define our language. This
+combination of notation is sometimes referred to as <em>computer science
+metanotation</em> and is, alas, a little hard to pin down <a href="https://www.youtube.com/watch?v=7HKbjYqqPPQ">as conventions vary</a>
+between papers and authors. The general rules stay the same however, and once
+you learn to read them they are much more succinct than an actual implementation
+could be, and are an invaluable tool for quickly getting a high-level overview
+of a programming language's semantics.</p>
+<blockquote>
+<p>TODO: Describe BNF, natural deduction rules, overbars, variable binding, etc.</p>
+</blockquote>
+<p>Some handy links:</p>
+<ul>
+<li><a href="https://blog.acolyer.org/2018/01/26/a-practitioners-guide-to-reading-programming-languages-papers/">A practitioner’s guide to reading programming languages papers</a></li>
+<li><a href="http://steshaw.org/plt/">A path to enlightenment in Programming Language Theory</a></li>
+</ul>
+<a class="header" href="print.html#where-is-the-soundness-proof" id="where-is-the-soundness-proof"><h3>Where is the soundness proof?</h3></a>
+<p>Here we are only defining the rules of our language's type checking and
+evaluation. Further work needs to be done to verify that our system actually
+satisfies certain interesting <a href="https://en.wikipedia.org/wiki/Type_safety">type soundness properties</a>,
+like progress, preservation, <a href="https://en.wikipedia.org/wiki/Normalization_property_(abstract_rewriting)">strong normalization</a>,
+etc. If you would like to discuss this with us, please check out
+<a href="https://github.com/brendanzab/pikelet/issues/39">the relevant github issue</a>!</p>
 <a class="header" href="print.html#syntax" id="syntax"><h2>Syntax</h2></a>
 <a class="header" href="print.html#raw-terms" id="raw-terms"><h3>Raw terms</h3></a>
 <p>\[
@@ -1126,11 +1149,11 @@ x:\vtype \in \Gamma
 }
 \\[2em]
 \rule{I-PROJ}{
-\infer{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
 \qquad
-\ttype_2 = \fieldty(x, \vtype_1)
+\ttype = \fieldty(x, \vtype)
 }{
-\infer{ \Gamma }{ \rexpr_1.x }{ ? }{ \texpr_1.x }
+\infer{ \Gamma }{ \rexpr.x }{ \ttype }{ \texpr.x }
 }
 \\[2em]
 \end{array}
