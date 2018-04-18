@@ -71,6 +71,35 @@ pub trait ToConcrete<T> {
     fn to_concrete_prec(&self, prec: Prec) -> T;
 }
 
+impl ToConcrete<(concrete::Declaration, concrete::Declaration)> for core::Definition {
+    fn to_concrete_prec(&self, _: Prec) -> (concrete::Declaration, concrete::Declaration) {
+        // build up the type claim
+        let new_ann = concrete::Declaration::Claim {
+            name: (ByteIndex::default(), self.name.clone()),
+            ann: core::Term::from(&*self.ann).to_concrete_prec(Prec::ANN),
+        };
+
+        // build up the concrete definition
+        let new_definition = {
+            // pull lambda arguments from the body into the definition
+            let (params, body) = match self.term.to_concrete_prec(Prec::ANN) {
+                concrete::Term::Lam(_, params, body) => (params, *body),
+                body => (vec![], body),
+            };
+
+            concrete::Declaration::Definition {
+                span: ByteSpan::default(),
+                name: self.name.clone(),
+                params,
+                body,
+                wheres: vec![],
+            }
+        };
+
+        (new_ann, new_definition)
+    }
+}
+
 impl ToConcrete<concrete::Module> for core::Module {
     fn to_concrete_prec(&self, _: Prec) -> concrete::Module {
         use std::iter;
@@ -78,29 +107,7 @@ impl ToConcrete<concrete::Module> for core::Module {
         let declarations = self.definitions
             .iter()
             .flat_map(|definition| {
-                // build up the type claim
-                let new_ann = concrete::Declaration::Claim {
-                    name: (ByteIndex::default(), definition.name.clone()),
-                    ann: core::Term::from(&*definition.ann).to_concrete_prec(Prec::ANN),
-                };
-
-                // build up the concrete definition
-                let new_definition = {
-                    // pull lambda arguments from the body into the definition
-                    let (params, body) = match definition.term.to_concrete_prec(Prec::ANN) {
-                        concrete::Term::Lam(_, params, body) => (params, *body),
-                        body => (vec![], body),
-                    };
-
-                    concrete::Declaration::Definition {
-                        span: ByteSpan::default(),
-                        name: definition.name.clone(),
-                        params,
-                        body,
-                        wheres: vec![],
-                    }
-                };
-
+                let (new_ann, new_definition) = definition.to_concrete();
                 iter::once(new_ann).chain(iter::once(new_definition))
             })
             .collect();
