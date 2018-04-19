@@ -23,7 +23,7 @@ required-features = ["cli"]
 
 [dependencies]
 codespan = "0.1.1"
-codespan-reporting = "0.1.1"
+codespan-reporting = "0.1.3"
 failure = "0.1.1"
 lalrpop-util = "0.15.1"
 nameless = { git = "https://github.com/brendanzab/nameless", rev = "30121a6", version = "0.1.0" }
