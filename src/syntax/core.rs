@@ -7,7 +7,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::pretty::{self, ToDoc};
+use syntax::pretty::ToDoc;
 
 /// A universe level
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, BoundTerm)]
@@ -41,7 +41,7 @@ pub enum RawConstant {
 
 impl fmt::Display for RawConstant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -85,7 +85,7 @@ pub enum Constant {
 
 impl fmt::Display for Constant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -101,7 +101,7 @@ pub struct RawModule {
 
 impl fmt::Display for RawModule {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -119,7 +119,7 @@ pub struct RawDefinition {
 
 impl fmt::Display for RawDefinition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -200,7 +200,7 @@ impl RawTerm {
 
 impl fmt::Display for RawTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -336,7 +336,7 @@ impl Term {
 
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -478,7 +478,7 @@ impl Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -502,7 +502,7 @@ pub enum Neutral {
 
 impl fmt::Display for Neutral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -681,7 +681,7 @@ impl Default for Context {
 
 impl fmt::Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
