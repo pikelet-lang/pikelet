@@ -93,6 +93,9 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\nexpr}{n}
 \\newcommand{\ntype}{N}
 \\
+% Keywords
+\\newcommand{\kw}[1]{ \mathsf{#1} }
+\\
 % Term and Type constructors
 \\newcommand{\Type}{\mathsf{Type}}
 \\newcommand{\Bool}{\mathsf{Bool}}
@@ -102,7 +105,7 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \\newcommand{\lam}[2]{ \lambda #1 . #2 }
 \\newcommand{\app}[2]{ #1 ~ #2 }
-\\newcommand{\ifte}[3]{ \text{if} ~ #1 ~ \text{then} ~ #2 ~ \text{else} ~ #3 }
+\\newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
 \\newcommand{\Record}[1]{ ( #1 ) }
 \\newcommand{\record}[1]{ \langle #1 \rangle }
 \\
