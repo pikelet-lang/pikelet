@@ -101,6 +101,7 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \\newcommand{\lam}[2]{ \lambda #1 . #2 }
+\\newcommand{\app}[2]{ #1 ~ #2 }
 \\newcommand{\ifte}[3]{ \text{if} ~ #1 ~ \text{then} ~ #2 ~ \text{else} ~ #3 }
 \\newcommand{\Record}[1]{ ( #1 ) }
 \\newcommand{\record}[1]{ \langle #1 \rangle }
@@ -114,7 +115,7 @@ etc. If you would like to discuss this with us, please check out
                     &   | & \rexpr : \rtype                     & \text{term annotated with a type} \\\\
                     &   | & \Pi{x:\rtype_1}{\rtype_2}           & \text{dependent function type} \\\\
                     &   | & \lam{x:\rtype}{\rexpr}              & \text{functions} \\\\
-                    &   | & \rexpr_1 ~ \rexpr_2                 & \text{function application} \\\\
+                    &   | & \app{\rexpr_1}{\rexpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} & \text{if expressions} \\\\
                     &   | & \Record{l:\rtype_1, \rtype_2}       & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
@@ -145,7 +146,7 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
                     &   | & \texpr : \ttype                     & \text{term annotated with a type} \\\\
                     &   | & \Pi{x:\ttype_1}{\ttype_2}           & \text{dependent function type} \\\\
                     &   | & \lam{x:\ttype}{\texpr}              & \text{functions} \\\\
-                    &   | & \texpr_1 ~ \texpr_2                 & \text{function application} \\\\
+                    &   | & \app{\texpr_1}{\texpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \Record{l:\ttype_1, \ttype_2}       & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
@@ -168,7 +169,7 @@ and neutral terms (\\(\nexpr\\)):
                     &   | & \nexpr                              & \text{neutral terms} \\\\
     \\\\
     \nexpr,\ntype   & ::= & x                                   & \text{variables} \\\\
-                    &   | & \nexpr ~ \texpr                     & \text{function application} \\\\
+                    &   | & \app{\nexpr}{\texpr}                & \text{function application} \\\\
                     &   | & \ifte{\nexpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \nexpr.l                            & \text{record projection} \\\\
     \\\\
@@ -326,7 +327,7 @@ in the context.
         \qquad
         \eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
     }{
-        \eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_3 }
+        \eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
     }
     \\\\[2em]
     \rule{E-IF}{
@@ -520,7 +521,7 @@ returns its elaborated form.
         \qquad
         \eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_3 }
     }{
-        \infer{ \Gamma }{ \rexpr_1 ~ \rexpr_2 }{ \vtype_3 }{ \texpr_1 ~ \texpr_2 }
+        \infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
     }
     \\\\[2em]
     \rule{I-RECORD-TYPE}{
