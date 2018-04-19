@@ -1,8 +1,7 @@
 //! The command line interface for Pikelet
 
-use codespan_reporting::termcolor::ColorChoice;
+use codespan_reporting::ColorArg;
 use failure::Error;
-use std::str::FromStr;
 
 pub mod check;
 pub mod repl;
@@ -17,46 +16,13 @@ pub struct Opts {
         long = "color",
         parse(try_from_str),
         default_value = "auto",
-        raw(possible_values = "&[\"auto\", \"always\", \"ansi\", \"never\"]")
+        raw(possible_values = "ColorArg::VARIANTS")
     )]
     pub color: ColorArg,
 
     /// Subcommand to run
     #[structopt(subcommand)]
     pub command: Command,
-}
-
-// TODO: actually use this!
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ColorArg {
-    Auto,
-    Always,
-    AlwaysAnsi,
-    Never,
-}
-
-impl Into<ColorChoice> for ColorArg {
-    fn into(self) -> ColorChoice {
-        match self {
-            ColorArg::Auto => ColorChoice::Auto,
-            ColorArg::Always => ColorChoice::Always,
-            ColorArg::AlwaysAnsi => ColorChoice::AlwaysAnsi,
-            ColorArg::Never => ColorChoice::Never,
-        }
-    }
-}
-
-impl FromStr for ColorArg {
-    type Err = &'static str;
-
-    fn from_str(src: &str) -> Result<ColorArg, &'static str> {
-        match src {
-            "auto" => Ok(ColorArg::Auto),
-            "always" => Ok(ColorArg::Always),
-            "never" => Ok(ColorArg::Never),
-            _ => Err("no match"),
-        }
-    }
 }
 
 #[derive(Debug, StructOpt)]
