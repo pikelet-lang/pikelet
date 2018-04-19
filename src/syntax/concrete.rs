@@ -3,7 +3,7 @@
 use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use std::fmt;
 
-use syntax::pretty::{self, ToDoc};
+use syntax::pretty::ToDoc;
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
@@ -72,7 +72,7 @@ pub enum Module {
 
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -139,7 +139,7 @@ impl Declaration {
 
 impl fmt::Display for Declaration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -171,7 +171,7 @@ pub enum Exposing {
 
 impl fmt::Display for Exposing {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
@@ -320,7 +320,7 @@ impl Term {
 
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc(pretty::Options::default().with_debug_indices(f.alternate()))
+        self.to_doc()
             .group()
             .render_fmt(f.width().unwrap_or(10000), f)
     }
