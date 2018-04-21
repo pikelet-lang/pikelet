@@ -43,6 +43,7 @@ of a programming language's semantics.
 
 Some handy links:
 
+- [Crash Course on Notation in Programming Language Theory](http://siek.blogspot.com.au/2012/07/crash-course-on-notation-in-programming.html)
 - [A practitioner’s guide to reading programming languages papers](https://blog.acolyer.org/2018/01/26/a-practitioners-guide-to-reading-programming-languages-papers/)
 - [A path to enlightenment in Programming Language Theory](http://steshaw.org/plt/)
 
