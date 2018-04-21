@@ -732,6 +732,9 @@ etc. If you would like to discuss this with us, please check out
 \newcommand{\nexpr}{n}
 \newcommand{\ntype}{N}
 \
+% Keywords
+\newcommand{\kw}[1]{ \mathsf{#1} }
+\
 % Term and Type constructors
 \newcommand{\Type}{\mathsf{Type}}
 \newcommand{\Bool}{\mathsf{Bool}}
@@ -740,7 +743,8 @@ etc. If you would like to discuss this with us, please check out
 \newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \newcommand{\lam}[2]{ \lambda #1 . #2 }
-\newcommand{\ifte}[3]{ \text{if} ~ #1 ~ \text{then} ~ #2 ~ \text{else} ~ #3 }
+\newcommand{\app}[2]{ #1 ~ #2 }
+\newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
 \newcommand{\Record}[1]{ ( #1 ) }
 \newcommand{\record}[1]{ \langle #1 \rangle }
 \
@@ -753,7 +757,7 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \rexpr : \rtype                     &amp; \text{term annotated with a type} \\
 &amp;   | &amp; \Pi{x:\rtype_1}{\rtype_2}           &amp; \text{dependent function type} \\
 &amp;   | &amp; \lam{x:\rtype}{\rexpr}              &amp; \text{functions} \\
-&amp;   | &amp; \rexpr_1 ~ \rexpr_2                 &amp; \text{function application} \\
+&amp;   | &amp; \app{\rexpr_1}{\rexpr_2}            &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} &amp; \text{if expressions} \\
 &amp;   | &amp; \Record{l:\rtype_1, \rtype_2}       &amp; \text{record type extension} \\
 &amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
@@ -780,7 +784,7 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \texpr : \ttype                     &amp; \text{term annotated with a type} \\
 &amp;   | &amp; \Pi{x:\ttype_1}{\ttype_2}           &amp; \text{dependent function type} \\
 &amp;   | &amp; \lam{x:\ttype}{\texpr}              &amp; \text{functions} \\
-&amp;   | &amp; \texpr_1 ~ \texpr_2                 &amp; \text{function application} \\
+&amp;   | &amp; \app{\texpr_1}{\texpr_2}            &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\texpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
 &amp;   | &amp; \Record{l:\ttype_1, \ttype_2}       &amp; \text{record type extension} \\
 &amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
@@ -800,7 +804,7 @@ and neutral terms (\(\nexpr\)):</p>
 &amp;   | &amp; \nexpr                              &amp; \text{neutral terms} \\
 \\
 \nexpr,\ntype   &amp; ::= &amp; x                                   &amp; \text{variables} \\
-&amp;   | &amp; \nexpr ~ \texpr                     &amp; \text{function application} \\
+&amp;   | &amp; \app{\nexpr}{\texpr}                &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\nexpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
 &amp;   | &amp; \nexpr.l                            &amp; \text{record projection} \\
 \\
@@ -938,7 +942,7 @@ x=\texpr \in \Gamma
 \qquad
 \eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
 }{
-\eval{ \Gamma }{ \texpr_1 ~ \texpr_2 }{ \vexpr_3 }
+\eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
 }
 \\[2em]
 \rule{E-IF}{
@@ -1121,7 +1125,7 @@ x:\vtype \in \Gamma
 \qquad
 \eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_3 }
 }{
-\infer{ \Gamma }{ \rexpr_1 ~ \rexpr_2 }{ \vtype_3 }{ \texpr_1 ~ \texpr_2 }
+\infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
 }
 \\[2em]
 \rule{I-RECORD-TYPE}{
@@ -1149,11 +1153,11 @@ x:\vtype \in \Gamma
 }
 \\[2em]
 \rule{I-PROJ}{
-\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+\infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
 \qquad
-\ttype = \fieldty(x, \vtype)
+\vtype_2 = \fieldty(x, \vtype_1)
 }{
-\infer{ \Gamma }{ \rexpr.x }{ \ttype }{ \texpr.x }
+\infer{ \Gamma }{ \rexpr.x }{ \vtype_2 }{ \texpr.x }
 }
 \\[2em]
 \end{array}
