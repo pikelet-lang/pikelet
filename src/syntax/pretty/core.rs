@@ -69,6 +69,21 @@ fn pretty_app<F: ToDoc, A: ToDoc>(fn_term: &F, arg_term: &A) -> StaticDoc {
     )
 }
 
+fn pretty_subst<A: ToDoc, B: ToDoc>(name: &Name, ann: &A, body: &B) -> StaticDoc {
+    sexpr(
+        "subst",
+        body.to_doc().append(Doc::space()).append(Doc::group(parens(
+            Doc::text("[")
+                .append(Doc::as_string(name))
+                .append(Doc::space())
+                .append(Doc::text("->"))
+                .append(Doc::space())
+                .append(ann.to_doc())
+                .append(Doc::text("]")),
+        ))),
+    )
+}
+
 fn pretty_if<C: ToDoc, T: ToDoc, F: ToDoc>(cond: &C, if_true: &T, if_false: &F) -> StaticDoc {
     sexpr(
         "if",
@@ -249,6 +264,11 @@ impl ToDoc for Term {
                 &scope.unsafe_body,
             ),
             Term::App(ref f, ref a) => pretty_app(f, a),
+            Term::Subst(ref scope) => pretty_subst(
+                &scope.unsafe_pattern.0,
+                &(scope.unsafe_pattern.1).0,
+                &scope.unsafe_body,
+            ),
             Term::If(_, ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
             Term::RecordType(_, ref label, ref ann, ref rest) => {
                 let mut inner = Doc::nil();

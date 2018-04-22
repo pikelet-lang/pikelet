@@ -170,7 +170,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         ReplCommand::Eval(parse_term) => {
             let raw_term = Rc::new(parse_term.desugar());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
-            let evaluated = semantics::normalize(context, &term)?;
+            let evaluated = semantics::whnf(context, &term)?;
 
             let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
 

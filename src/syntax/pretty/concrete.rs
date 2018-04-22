@@ -165,7 +165,9 @@ impl ToDoc for Term {
                         decls.iter().map(|decl| decl.to_doc()),
                         Doc::newline(),
                     ))
+                    .append(Doc::space())
                     .append(Doc::text("in"))
+                    .append(Doc::space())
                     .append(body.to_doc())
             },
             Term::If(_, ref cond, ref if_true, ref if_false) => Doc::text("if")

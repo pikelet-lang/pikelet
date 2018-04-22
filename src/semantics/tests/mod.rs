@@ -35,7 +35,7 @@ fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (Rc<Term>
 }
 
 fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> Rc<Value> {
-    match normalize(context, &parse_infer(codemap, context, src).0) {
+    match whnf(context, &parse_infer(codemap, context, src).0) {
         Ok(value) => value,
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);

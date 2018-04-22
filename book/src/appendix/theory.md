@@ -9,7 +9,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Where is the soundness proof?](#where-is-the-soundness-proof)
 - [Syntax](#syntax)
   - [Raw terms](#raw-terms)
-  - [Terms](#terms)
+  - [Elaborated terms](#elaborated-terms)
   - [Values](#values)
   - [Contexts](#contexts)
 - [Semantics](#semantics)
@@ -17,11 +17,24 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Normalization](#normalization)
   - [Type checking](#type-checking)
   - [Type inference](#type-inference)
+- [Related work](#related-work)
+- [Future work](#future-work)
 
 ## Introduction
 
-At its core, Pikelet is a dependently typed lambda calculus with a stratified
-universe hierarchy.
+At its core, Pikelet is a dependently typed lambda calculus that has the
+following key features:
+
+- bidirectioinal type checking
+- dependent functions
+- stratified universe hierarchy
+- explicit substitutions
+- non-dependent records with projections
+
+This feature list will no doubt grow and change as the language evolves and
+becomes more expressive. The goal of this document is to provide a birds-eye
+view of the language in its current form, and help guide future formalization
+work.
 
 > **Note:**
 > This document is intended for those who are interested in looking deeper into the formal foundations of Pikelet.
@@ -75,11 +88,6 @@ etc. If you would like to discuss this with us, please check out
 \\DeclareMathOperator{\field}{field}
 \\DeclareMathOperator{\fieldty}{fieldty}
 \\
-% Judgements
-\\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
-\\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
-\\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
-\\
 % Metavariables
 \\newcommand{\rexpr}{r}
 \\newcommand{\rtype}{R}
@@ -98,17 +106,24 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\kw}[1]{ \mathsf{#1} }
 \\
 % Term and Type constructors
-\\newcommand{\Type}{\mathsf{Type}}
-\\newcommand{\Bool}{\mathsf{Bool}}
-\\newcommand{\true}{\mathsf{true}}
-\\newcommand{\false}{\mathsf{false}}
+\\newcommand{\Type}{\kw{Type}}
+\\newcommand{\Bool}{\kw{Bool}}
+\\newcommand{\true}{\kw{true}}
+\\newcommand{\false}{\kw{false}}
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
-\\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
-\\newcommand{\lam}[2]{ \lambda #1 . #2 }
+\\newcommand{\Pi}[2]{ (#1) \rightarrow #2 }
+\\newcommand{\lam}[2]{ \lambda #1 \rightarrow #2 }
 \\newcommand{\app}[2]{ #1 ~ #2 }
+\\newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
 \\newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
-\\newcommand{\Record}[1]{ ( #1 ) }
+\\newcommand{\Record}[1]{ (#1) }
 \\newcommand{\record}[1]{ \langle #1 \rangle }
+\\
+% Judgements
+\\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
+\\newcommand{\pushSubsts}[5]{ #1 \vdash \subst{#2}{#3}{#4} \mapsto #5 }
+\\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
+\\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
 \\
 \begin{array}{rrll}
     \rexpr,\rtype   & ::= & x                                   & \text{variables} \\\\
@@ -130,6 +145,8 @@ etc. If you would like to discuss this with us, please check out
 \end{array}
 \\]
 
+We also define some syntactic sugar for dependent functions and lambdas:
+
 \\[
 \begin{array}{lrll}
     \Arrow{\rtype_1}{\rtype_2} & := & \Pi{x:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
@@ -137,9 +154,9 @@ etc. If you would like to discuss this with us, please check out
 \end{array}
 \\]
 
-### Terms
+### Elaborated terms
 
-The core term syntax skips holes, ensuring that everything is fully elaborated:
+The elaborated term syntax skips holes and adds explicit substitutions:
 
 \\[
 \begin{array}{rrll}
@@ -151,6 +168,7 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
                     &   | & \Pi{x:\ttype_1}{\ttype_2}           & \text{dependent function type} \\\\
                     &   | & \lam{x:\ttype}{\texpr}              & \text{functions} \\\\
                     &   | & \app{\texpr_1}{\texpr_2}            & \text{function application} \\\\
+                    &   | & \subst{\texpr_1}{x}{\texpr_2}       & \text{explicit substitution} \\\\
                     &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \Record{l:\ttype_1, \ttype_2}       & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
@@ -180,8 +198,8 @@ and neutral terms (\\(\nexpr\\)):
     \wexpr,\wtype   & ::= & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean values} \\\\
-                    &   | & \Pi{x:\vtype_1}{\vtype_2}           & \text{dependent function type} \\\\
-                    &   | & \lam{x:\vtype}{\vexpr}              & \text{functions} \\\\
+                    &   | & \Pi{x:\ttype_1}{\ttype_2}           & \text{dependent function type} \\\\
+                    &   | & \lam{x:\ttype}{\texpr}              & \text{functions} \\\\
                     &   | & \Record{l:\vtype_1, \vtype_2}       & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
                     &   | & \record{l=\vexpr_1, \vexpr_2}       & \text{record extension} \\\\
@@ -189,6 +207,9 @@ and neutral terms (\\(\nexpr\\)):
     \\\\
 \end{array}
 \\]
+
+Note the absence of the type annotations and explicit substitutions that were
+present in the raw and elaborated terms.
 
 [whnf-wikipedia]: https://en.wikipedia.org/wiki/Lambda_calculus_definition#Weak_head_normal_form
 
@@ -216,11 +237,12 @@ used during type checkiong.
 
 With that in mind, the next sections will describe the following judgements:
 
-| name                              | notation                                             | inputs                                   | outputs                    |
-|-----------------------------------|------------------------------------------------------|------------------------------------------|----------------------------|
-| [normalization](#normalization)   | \\(\eval{ \Gamma }{ \texpr }{ \vexpr }\\)            | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vexpr\\)               |
-| [type checking](#type-checking)   | \\(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\), \\(\vtype\\) | \\(\texpr\\)               |
-| [type inference](#type-inference) | \\(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\) | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vtype\\), \\(\texpr\\) |
+| name                                      | notation                                                  | inputs                                            | outputs                    |
+|-------------------------------------------|-----------------------------------------------------------|---------------------------------------------------|----------------------------|
+| [normalization](#normalization)           | \\(\eval{ \Gamma }{ \texpr }{ \vexpr }\\)                 | \\(\Gamma\\), \\(\rexpr\\)                        | \\(\vexpr\\)               |
+| [push substitutions](#push-substitutions) | \\(\pushSubsts{ \Gamma }{\vexpr}{x}{\texpr}{ \vexpr' }\\) | \\(\Gamma\\), \\(\vexpr\\), \\(x\\), \\(\texpr\\) | \\(\vexpr'\\)              |
+| [type checking](#type-checking)           | \\(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\)      | \\(\Gamma\\), \\(\rexpr\\), \\(\vtype\\)          | \\(\texpr\\)               |
+| [type inference](#type-inference)         | \\(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\)      | \\(\Gamma\\), \\(\rexpr\\)                        | \\(\vtype\\), \\(\texpr\\) |
 
 Normalization stands on its own, but both checking and inference are mutually
 dependent on each other. Care has been taken to design the judgments so that
@@ -308,28 +330,30 @@ in the context.
         \eval{ \Gamma }{ x }{ \vexpr }
     }
     \\\\[2em]
-    \rule{E-PI}{
-        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
-        \qquad
-        \eval{ \Gamma, x:\vtype_1 }{ \ttype_2 }{ \vtype_2 }
-    }{
-        \eval{ \Gamma }{ \Pi{x:\ttype_1}{\ttype_2} }{ \Pi{x:\vtype_1}{\vtype_2} }
+    \rule{E-PI}{}{
+        \eval{ \Gamma }{ \Pi{x:\ttype_1}{\ttype_2} }{ \Pi{x:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
-    \rule{E-LAM}{
-        \eval{ \Gamma }{ \ttype }{ \vtype }
-        \qquad
-        \eval{ \Gamma, x:\vtype }{ \texpr }{ \vexpr }
-    }{
-        \eval{ \Gamma }{ \lam{x:\ttype}{\texpr} }{ \lam{x:\vtype}{\vexpr} }
+    \rule{E-LAM}{}{
+        \eval{ \Gamma }{ \lam{x:\ttype}{\texpr} }{ \lam{x:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{E-APP}{
         \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
         \qquad
-        \eval{ \Gamma }{ \vexpr_1 ~ [x \rightarrow \texpr_2] }{ \vexpr_3 }
+        \eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+        \qquad
+        \eval{ \Gamma }{ \subst{\vexpr_1}{x}{\vexpr_2} }{ \vexpr_3 }
     }{
         \eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
+    }
+    \\\\[2em]
+    \rule{E-SUBST}{
+        \eval{ \Gamma, x=\texpr_2 }{ \texpr_1 }{ \vexpr }
+        \qquad
+        \pushSubsts{ \Gamma }{ \vexpr }{x}{\texpr_2}{ \vexpr' }
+    }{
+        \eval{ \Gamma }{ \subst{\texpr_1}{x}{\texpr_2} }{ \vexpr' }
     }
     \\\\[2em]
     \rule{E-IF}{
@@ -398,6 +422,30 @@ We define \\(\field(-,-)\\) like so:
 \end{array}
 \\]
 
+### Push substitutions
+
+We define substitution explicitly here. The main purpose of these judgements is
+to 'push' the explicit substitutions into constructors as we normalize:
+
+\\[
+\boxed{
+    \pushSubsts{ \Gamma }{ \vexpr }{ x }{ \texpr }{ \vexpr' }
+}
+\\\\[2em]
+\begin{array}{cl}
+    \rule{PS-LAM}{}{
+        \pushSubsts{ \Gamma }{ \lam{y:\ttype}{\texpr_1} }{ x }{ \texpr_2 }
+            { \lam{y:\ttype}{\subst{\texpr_1}{x}{\texpr_2}} }
+    }
+    \\\\[2em]
+    \rule{PS-APP}{}{
+        \pushSubsts{ \Gamma }{ (\app{\nexpr}{\texpr_1}) }{ x }{ \texpr_2 }
+            { \app{\nexpr}{(\subst{\texpr_1}{x}{\texpr_2})} }
+    }
+    \\\\[2em]
+\end{array}
+\\]
+
 ### Type checking
 
 This judgement checks that the given term has the expected type and returns its
@@ -410,9 +458,13 @@ elaborated form.
 \\\\[2em]
 \begin{array}{cl}
     \rule{C-LAM}{
-        \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
+        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \qquad
+        \eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
+        \qquad
+        \check{ \Gamma, x:\vtype_1 }{ \rexpr }{ \vtype_2 }{ \texpr }
     }{
-        \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+        \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\ttype_1}{\ttype_2} }{ \lam{x:\vtype_1}{\texpr} }
     }
     \\\\[2em]
     \rule{C-IF}{
@@ -511,9 +563,9 @@ returns its elaborated form.
         \qquad
         \eval{ \Gamma }{ \ttype }{ \vtype_1 }
         \qquad
-        \check{ \Gamma, x:\vtype_1 }{ \rexpr}{ \vtype_2 }{ \texpr }
+        \infer{ \Gamma, x:\vtype_1 }{ \rexpr }{ \vtype_2 }{ \texpr }
     }{
-        \infer{ \Gamma }{ \lam{x:\rtype}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\ttype}{\texpr} }
+        \infer{ \Gamma }{ \lam{x:\rtype}{\rexpr} }{ \Pi{x:\ttype}{\vtype_2} }{ \lam{x:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{I-APP}{
@@ -521,7 +573,7 @@ returns its elaborated form.
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
-        \eval{ \Gamma }{ \vtype_2 ~ [x \rightarrow \texpr_2] }{ \vtype_3 }
+        \eval{ \Gamma }{ \subst{\vtype_2}{x}{\texpr_2} }{ \vtype_3 }
     }{
         \infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
     }
@@ -569,3 +621,28 @@ We define \\(\fieldty(-,-)\\) like so:
     \fieldty(x, \Record{y : \vexpr_1, \vexpr_2}) & = & \field(x, \vexpr_2) \\\\
 \end{array}
 \\]
+
+## Related work
+
+- LambdaPi
+- PiSigma
+- UTT
+- Agda
+
+See references page
+
+> TODO: clean this up
+
+## Future work
+
+- formalization in proof system
+- additional features
+    - dependent records
+    - cumulative universes
+    - linear types and erasure
+    - coeffects/effects
+    - memory size analysis
+    - inductive data types
+    - performance optimizations
+
+> TODO: clean this up

@@ -290,6 +290,8 @@ pub enum Term {
     Lam(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(Rc<Term>, Rc<Term>),
+    /// Explicit substitution
+    Subst(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// If expression
     If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
@@ -319,6 +321,7 @@ impl Term {
             | Term::EmptyRecord(span)
             | Term::Proj(span, _, _, _) => span.0,
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
+            Term::Subst(ref scope) => scope.unsafe_body.span(),
             Term::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
     }
@@ -351,6 +354,10 @@ impl Term {
             Term::App(ref fn_expr, ref arg_expr) => {
                 fn_expr.visit_vars(on_var);
                 arg_expr.visit_vars(on_var);
+            },
+            Term::Subst(ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
             Term::If(_, ref cond, ref if_true, ref if_false) => {
                 cond.visit_vars(on_var);
@@ -389,11 +396,7 @@ impl Term {
     }
 }
 
-/// Values
-///
-/// These are either in _weak head normal form_ (they cannot be reduced further)
-/// or are _neutral terms_ (there is a possibility of reducing further depending
-/// on the bindings given in the context)
+/// Weak head normal forms
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Value {
     /// Universes
@@ -401,13 +404,13 @@ pub enum Value {
     /// Constants
     Constant(Constant),
     /// A pi type
-    Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
+    Pi(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// A lambda abstraction
-    Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
+    Lam(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Dependent record types
-    RecordType(Label, Rc<Value>, Rc<Value>),
+    RecordType(Label, Rc<Term>, Rc<Value>),
     /// Dependent record
-    Record(Label, Rc<Value>, Rc<Value>),
+    Record(Label, Rc<Term>, Rc<Value>),
     /// The unit type
     EmptyRecordType,
     /// The element of the unit type
@@ -417,14 +420,14 @@ pub enum Value {
 }
 
 impl Value {
-    fn record_ty(&self) -> Option<(&Label, &Rc<Value>, &Rc<Value>)> {
+    fn record_ty(&self) -> Option<(&Label, &Rc<Term>, &Rc<Value>)> {
         match *self {
             Value::RecordType(ref label, ref value, ref body) => Some((label, value, body)),
             _ => None,
         }
     }
 
-    pub fn lookup_record_ty(&self, label: &Label) -> Option<&Rc<Value>> {
+    pub fn lookup_record_ty(&self, label: &Label) -> Option<&Rc<Term>> {
         let mut current_scope = self.record_ty();
 
         while let Some((current_label, value, body)) = current_scope {
@@ -437,14 +440,14 @@ impl Value {
         None
     }
 
-    fn record(&self) -> Option<(&Label, &Rc<Value>, &Rc<Value>)> {
+    fn record(&self) -> Option<(&Label, &Rc<Term>, &Rc<Value>)> {
         match *self {
             Value::Record(ref label, ref value, ref body) => Some((label, value, body)),
             _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &Label) -> Option<&Rc<Value>> {
+    pub fn lookup_record(&self, label: &Label) -> Option<&Rc<Term>> {
         let mut current_scope = self.record();
 
         while let Some((current_label, value, body)) = current_scope {
@@ -473,9 +476,9 @@ pub enum Neutral {
     /// Variables
     Var(Var),
     /// RawTerm application
-    App(Rc<Neutral>, Rc<Value>),
+    App(Rc<Neutral>, Rc<Term>),
     /// If expression
-    If(Rc<Neutral>, Rc<Value>, Rc<Value>),
+    If(Rc<Neutral>, Rc<Term>, Rc<Term>),
     /// Field projection
     Proj(Rc<Neutral>, Label),
 }
@@ -502,32 +505,26 @@ impl<'a> From<&'a Value> for Term {
             Value::Constant(ref c) => Term::Constant(Ignore::default(), c.clone()),
             Value::Pi(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
-                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
+                let param = (name, Embed(param_ann.clone()));
 
-                Term::Pi(
-                    Ignore::default(),
-                    nameless::bind(param, Rc::new(Term::from(&*body))),
-                )
+                Term::Pi(Ignore::default(), nameless::bind(param, body.clone()))
             },
             Value::Lam(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
-                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
+                let param = (name, Embed(param_ann.clone()));
 
-                Term::Lam(
-                    Ignore::default(),
-                    nameless::bind(param, Rc::new(Term::from(&*body))),
-                )
+                Term::Lam(Ignore::default(), nameless::bind(param, body.clone()))
             },
             Value::RecordType(ref label, ref ann, ref rest) => Term::RecordType(
                 Ignore::default(),
                 label.clone(),
-                Rc::new(Term::from(&**ann)),
+                ann.clone(),
                 Rc::new(Term::from(&**rest)),
             ),
             Value::Record(ref label, ref expr, ref rest) => Term::Record(
                 Ignore::default(),
                 label.clone(),
-                Rc::new(Term::from(&**expr)),
+                expr.clone(),
                 Rc::new(Term::from(&**rest)),
             ),
             Value::EmptyRecordType => Term::EmptyRecordType(Ignore::default()).into(),
@@ -541,15 +538,14 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         match *src {
             Neutral::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
-            Neutral::App(ref fn_expr, ref arg_expr) => Term::App(
-                Rc::new(Term::from(&**fn_expr)),
-                Rc::new(Term::from(&**arg_expr)),
-            ),
+            Neutral::App(ref fn_expr, ref arg_expr) => {
+                Term::App(Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
+            },
             Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
                 Ignore::default(),
                 Rc::new(Term::from(&**cond)),
-                Rc::new(Term::from(&**if_true)),
-                Rc::new(Term::from(&**if_false)),
+                if_true.clone(),
+                if_false.clone(),
             ),
             Neutral::Proj(ref expr, ref name) => Term::Proj(
                 Ignore::default(),
