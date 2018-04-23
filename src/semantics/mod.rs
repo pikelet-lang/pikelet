@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use nameless::{self, BoundTerm, Embed, Name, Var};
+use nameless::{self, BoundTerm, Embed, Ignore, Name, Var};
 use std::rc::Rc;
 
 use syntax::core::{Constant, Context, Definition, Level, Module, Neutral, RawConstant, RawModule,
@@ -52,7 +52,72 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
     })
 }
 
-/// Evaluate a term in a context
+/// Apply a substitution to a value
+///
+/// Since this may 'unstick' some neutral terms, the returned term will need to
+/// be re-evaluated afterwards to ensure that it remains in its normal form.
+pub fn subst(value: &Value, subst_name: &Name, subst_term: &Rc<Term>) -> Rc<Term> {
+    match *value {
+        Value::Universe(level) => Rc::new(Term::Universe(Ignore::default(), level)),
+        Value::Constant(ref c) => Rc::new(Term::Constant(Ignore::default(), c.clone())),
+        Value::Pi(ref scope) => {
+            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
+            Rc::new(Term::Pi(
+                Ignore::default(),
+                nameless::bind(
+                    (name, Embed(subst(&ann, subst_name, subst_term))),
+                    subst(&body, subst_name, subst_term),
+                ),
+            ))
+        },
+        Value::Lam(ref scope) => {
+            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
+            Rc::new(Term::Lam(
+                Ignore::default(),
+                nameless::bind(
+                    (name, Embed(subst(&ann, subst_name, subst_term))),
+                    subst(&body, subst_name, subst_term),
+                ),
+            ))
+        },
+        Value::RecordType(ref label, ref ann, ref body) => Rc::new(Term::RecordType(
+            Ignore::default(),
+            label.clone(),
+            subst(ann, subst_name, subst_term),
+            subst(body, subst_name, subst_term),
+        )),
+        Value::Record(ref label, ref expr, ref body) => Rc::new(Term::Record(
+            Ignore::default(),
+            label.clone(),
+            subst(expr, subst_name, subst_term),
+            subst(body, subst_name, subst_term),
+        )),
+        Value::EmptyRecordType => Rc::new(Term::EmptyRecordType(Ignore::default())),
+        Value::EmptyRecord => Rc::new(Term::EmptyRecord(Ignore::default())),
+        Value::Neutral(ref n) => match **n {
+            Neutral::Var(Var::Free(ref n)) if n == subst_name => subst_term.clone(),
+            Neutral::Var(ref var) => Rc::new(Term::Var(Ignore::default(), var.clone())),
+            Neutral::App(ref expr, ref arg) => Rc::new(Term::App(
+                subst(&Value::Neutral(expr.clone()), subst_name, subst_term),
+                subst(arg, subst_name, subst_term),
+            )),
+            Neutral::If(ref cond, ref if_true, ref if_false) => Rc::new(Term::If(
+                Ignore::default(),
+                subst(&Value::Neutral(cond.clone()), subst_name, subst_term),
+                subst(if_true, subst_name, subst_term),
+                subst(if_false, subst_name, subst_term),
+            )),
+            Neutral::Proj(ref expr, ref label) => Rc::new(Term::Proj(
+                Ignore::default(),
+                subst(&Value::Neutral(expr.clone()), subst_name, subst_term),
+                Ignore::default(),
+                label.clone(),
+            )),
+        },
+    }
+}
+
+/// Reduce a term to its normal form
 pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
     match **term {
         // E-ANN
@@ -112,15 +177,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((name, Embed(_)), body) = nameless::unbind(scope.clone());
-
-                    normalize(
-                        &context.define(name, arg.clone()),
-                        &Rc::new(Term::from(&*body)),
-                    )
+                    normalize(context, &subst(&*body, &name, arg))
                 },
                 Value::Neutral(ref expr) => Ok(Rc::new(Value::from(Neutral::App(
                     expr.clone(),
-                    arg.clone(),
+                    normalize(context, arg)?,
                 )))),
                 _ => Err(InternalError::ArgumentAppliedToNonFunction { span: expr.span() }),
             }
@@ -135,8 +196,8 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Constant(Constant::Bool(false)) => normalize(context, if_false),
                 Value::Neutral(ref cond) => Ok(Rc::new(Value::from(Neutral::If(
                     cond.clone(),
-                    if_true.clone(),
-                    if_false.clone(),
+                    normalize(context, if_true)?,
+                    normalize(context, if_false)?,
                 )))),
                 _ => Err(InternalError::ExpectedBoolExpr { span: cond.span() }),
             }
@@ -424,10 +485,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                     let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
 
                     let arg = check(context, raw_arg, &ann)?;
-                    let body = normalize(
-                        &context.define(name, arg.clone()),
-                        &Rc::new(Term::from(&*body)),
-                    )?;
+                    let body = normalize(context, &subst(&*body, &name, &arg))?;
 
                     Ok((Rc::new(Term::App(expr, arg)), body))
                 },

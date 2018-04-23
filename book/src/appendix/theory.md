@@ -327,9 +327,7 @@ in the context.
     \rule{E-APP}{
         \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
         \qquad
-        \eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
-        \qquad
-        \eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
+        \eval{ \Gamma }{ \vexpr_1 ~ [x \rightarrow \texpr_2] }{ \vexpr_3 }
     }{
         \eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
     }
@@ -523,7 +521,7 @@ returns its elaborated form.
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
-        \eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_3 }
+        \eval{ \Gamma }{ \vtype_2 ~ [x \rightarrow \texpr_2] }{ \vtype_3 }
     }{
         \infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
     }
