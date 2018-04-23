@@ -12,11 +12,13 @@ use syntax::core::{Constant, Context, Definition, Level, Module, RawConstant, Ra
                    Term, Type, Value};
 use syntax::translation::Resugar;
 
+mod conversion;
 mod errors;
 mod normalize;
 #[cfg(test)]
 mod tests;
 
+pub use self::conversion::{compare, compare_whnf};
 pub use self::errors::{InternalError, TypeError};
 pub use self::normalize::whnf;
 
