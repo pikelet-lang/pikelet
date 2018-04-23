@@ -493,9 +493,9 @@ pub enum Neutral {
     /// Variables
     Var(Var),
     /// RawTerm application
-    App(Rc<Neutral>, Rc<Term>),
+    App(Rc<Neutral>, Rc<Value>),
     /// If expression
-    If(Rc<Neutral>, Rc<Term>, Rc<Term>),
+    If(Rc<Neutral>, Rc<Value>, Rc<Value>),
     /// Field projection
     Proj(Rc<Neutral>, Label),
 }
@@ -563,14 +563,15 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         match *src {
             Neutral::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
-            Neutral::App(ref fn_expr, ref arg_expr) => {
-                Term::App(Rc::new(Term::from(&**fn_expr)), arg_expr.clone())
-            },
+            Neutral::App(ref fn_expr, ref arg_expr) => Term::App(
+                Rc::new(Term::from(&**fn_expr)),
+                Rc::new(Term::from(&**arg_expr)),
+            ),
             Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
                 Ignore::default(),
                 Rc::new(Term::from(&**cond)),
-                if_true.clone(),
-                if_false.clone(),
+                Rc::new(Term::from(&**if_true)),
+                Rc::new(Term::from(&**if_false)),
             ),
             Neutral::Proj(ref expr, ref name) => Term::Proj(
                 Ignore::default(),

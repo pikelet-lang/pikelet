@@ -77,7 +77,7 @@ fn lam_app() {
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
                     Rc::new(Neutral::Var(Var::Free(x))),
-                    Rc::new(Term::Var(Ignore::default(), Var::Free(y))),
+                    Rc::new(Value::from(Neutral::Var(Var::Free(y)))),
                 ))),
             ))),
         ))),
@@ -106,7 +106,7 @@ fn pi_app() {
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
                     Rc::new(Neutral::Var(Var::Free(x))),
-                    Rc::new(Term::Var(Ignore::default(), Var::Free(y))),
+                    Rc::new(Value::from(Neutral::Var(Var::Free(y)))),
                 ))),
             ))),
         ))),
@@ -189,6 +189,32 @@ fn const_app_id_ty() {
             Type
     ";
     let expected_expr = r"\(a : Type) (x : a) => x";
+
+    assert_term_eq!(
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
+    );
+}
+
+#[test]
+fn horrifying_app_1() {
+    let context = Context::default();
+
+    let given_expr = r"(\(t : Type) (f : (a : Type) -> Type) => f t) String (\(a : Type) => a)";
+    let expected_expr = r"String";
+
+    assert_term_eq!(
+        normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
+        normalize(&context, &parse_infer(&context, expected_expr)).unwrap(),
+    );
+}
+
+#[test]
+fn horrifying_app_2() {
+    let context = Context::default();
+
+    let given_expr = r#"(\(t: String) (f: String -> String) => f t) "hello""#;
+    let expected_expr = r#"\(f : String -> String) => f "hello""#;
 
     assert_term_eq!(
         normalize(&context, &parse_infer(&context, given_expr)).unwrap(),
