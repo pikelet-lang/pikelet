@@ -939,9 +939,7 @@ x=\texpr \in \Gamma
 \rule{E-APP}{
 \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
 \qquad
-\eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
-\qquad
-\eval{ \Gamma, x=\vexpr_2 }{ \vexpr_1 }{ \vexpr_3 }
+\eval{ \Gamma }{ \vexpr_1 ~ [x \rightarrow \texpr_2] }{ \vexpr_3 }
 }{
 \eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
 }
@@ -1124,7 +1122,7 @@ x:\vtype \in \Gamma
 \qquad
 \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
 \qquad
-\eval{ \Gamma, x=\texpr_2 }{ \vtype_2 }{ \vtype_3 }
+\eval{ \Gamma }{ \vtype_2 ~ [x \rightarrow \texpr_2] }{ \vtype_3 }
 }{
 \infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
 }
@@ -1399,10 +1397,6 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <p>What follows is a non-exhaustive list of some of the references that were useful
 when building Pikelet:</p>
 <ul>
-<li>Charguéraud, Arthur (2011). “The Locally Nameless Representation”.
-In <em>Journal of Automated Reasoning (JAR)</em>.
-[<a href="http://www.chargueraud.org/softs/ln/">SITE</a>]
-[<a href="http://www.chargueraud.org/research/2009/ln/main.pdf">PAPER</a>]</li>
 <li>Christiansen, David Raymond (2013). “Bidirectional Typing Rules: A Tutorial”.
 [<a href="http://www.davidchristiansen.dk/tutorials/bidirectional.pdf">PAPER</a>]</li>
 <li>Löh, Andres, McBride, Conor and Swierstra, Wouter (2009). “A tutorial
