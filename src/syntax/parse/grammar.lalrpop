@@ -190,10 +190,7 @@ AppTerm: Term = {
 AtomicTerm: Term = {
     <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
     <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
-    <start: @L> <value: "string literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::String(value)),
-    <start: @L> <value: "character literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Char(value)),
-    <start: @L> <value: "decimal literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Int(value)),
-    <start: @L> <value: "float literal"> <end: @R> => Term::Literal(ByteSpan::new(start, end), Literal::Float(value)),
+    <start: @L> <literal: Literal> <end: @R> => Term::Literal(ByteSpan::new(start, end), literal),
     <start: @L> <ident: Ident> <end: @R> => {
         if ident == "_" {
             Term::Hole(ByteSpan::new(start, end))
@@ -241,4 +238,11 @@ IndexedIdent: (ByteIndex, String) = {
 
 Ident: String = {
     "identifier" => String::from(<>),
+};
+
+Literal: Literal = {
+    "string literal" => Literal::String(<>),
+    "character literal" => Literal::Char(<>),
+    "decimal literal" => Literal::Int(<>),
+    "float literal" => Literal::Float(<>),
 };
