@@ -6,7 +6,7 @@ use super::*;
 fn check_prelude() {
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
-    let writer = StandardStream::stderr(ColorChoice::Always);
+    let writer = StandardStream::stdout(ColorChoice::Always);
 
     let (concrete_module, errors) = parse::module(&filemap);
     if !errors.is_empty() {

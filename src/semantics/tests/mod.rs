@@ -13,7 +13,7 @@ fn parse(codemap: &mut CodeMap, src: &str) -> Rc<RawTerm> {
     let (concrete_term, errors) = parse::term(&filemap);
 
     if !errors.is_empty() {
-        let writer = StandardStream::stderr(ColorChoice::Always);
+        let writer = StandardStream::stdout(ColorChoice::Always);
         for error in errors {
             codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
         }
@@ -27,7 +27,7 @@ fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (Rc<Term>
     match infer(context, &parse(codemap, src)) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
-            let writer = StandardStream::stderr(ColorChoice::Always);
+            let writer = StandardStream::stdout(ColorChoice::Always);
             codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
             panic!("type error!");
         },
@@ -38,7 +38,7 @@ fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> Rc<Va
     match normalize(context, &parse_infer(codemap, context, src).0) {
         Ok(value) => value,
         Err(error) => {
-            let writer = StandardStream::stderr(ColorChoice::Always);
+            let writer = StandardStream::stdout(ColorChoice::Always);
             codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
             panic!("internal error!");
         },
@@ -49,7 +49,7 @@ fn parse_check(codemap: &mut CodeMap, context: &Context, src: &str, expected: &R
     match check(context, &parse(codemap, src), expected) {
         Ok(_) => {},
         Err(error) => {
-            let writer = StandardStream::stderr(ColorChoice::Always);
+            let writer = StandardStream::stdout(ColorChoice::Always);
             codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
             panic!("type error!");
         },
