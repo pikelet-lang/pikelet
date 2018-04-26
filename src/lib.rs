@@ -33,14 +33,14 @@ use codespan_reporting::Diagnostic;
 use syntax::core::Module;
 
 pub fn load_file(file: &FileMap) -> Result<Module, Vec<Diagnostic>> {
-    use syntax::translation::ToCore;
+    use syntax::translation::Desugar;
 
     let mut diagnostics = Vec::new();
 
     let (module, errors) = syntax::parse::module(&file);
     diagnostics.extend(errors.iter().map(|err| err.to_diagnostic()));
 
-    let module = module.to_core();
+    let module = module.desugar();
     match semantics::check_module(&module) {
         Ok(module) => Ok(module),
         Err(err) => {

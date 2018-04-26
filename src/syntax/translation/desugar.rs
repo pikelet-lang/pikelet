@@ -6,8 +6,8 @@ use syntax::concrete;
 use syntax::core;
 
 /// Translate something to the corresponding core representation
-pub trait ToCore<T> {
-    fn to_core(&self) -> T;
+pub trait Desugar<T> {
+    fn desugar(&self) -> T;
 }
 
 /// Convert a sugary pi type from something like:
@@ -21,14 +21,14 @@ pub trait ToCore<T> {
 /// ```text
 /// (a : t1) -> (b : t1) -> t3
 /// ```
-fn pi_to_core(
+fn desugar_pi(
     params: &[(Vec<(ByteIndex, String)>, concrete::Term)],
     body: &concrete::Term,
 ) -> core::RawTerm {
-    let mut term = body.to_core();
+    let mut term = body.desugar();
 
     for &(ref names, ref ann) in params.iter().rev() {
-        let ann = Rc::new(ann.to_core());
+        let ann = Rc::new(ann.desugar());
         for &(start, ref name) in names.iter().rev() {
             // This could be wrong... :/
             term = core::RawTerm::Pi(
@@ -55,18 +55,18 @@ fn pi_to_core(
 /// ```text
 /// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
 /// ```
-fn lam_to_core(
+fn desugar_lam(
     params: &[(Vec<(ByteIndex, String)>, Option<Box<concrete::Term>>)],
     body: &concrete::Term,
 ) -> core::RawTerm {
-    let mut term = body.to_core();
+    let mut term = body.desugar();
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(start, ref name) in names.iter().rev() {
             let name = Name::user(name.clone());
             let ann = match *ann {
                 None => Rc::new(core::RawTerm::Hole(Ignore::default())),
-                Some(ref ann) => Rc::new(ann.to_core()),
+                Some(ref ann) => Rc::new(ann.desugar()),
             };
 
             term = core::RawTerm::Lam(
@@ -79,17 +79,17 @@ fn lam_to_core(
     term
 }
 
-fn app_to_core(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTerm {
-    let mut term = fn_expr.to_core();
+fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTerm {
+    let mut term = fn_expr.desugar();
 
     for arg in args.iter() {
-        term = core::RawTerm::App(Rc::new(term), Rc::new(arg.to_core()))
+        term = core::RawTerm::App(Rc::new(term), Rc::new(arg.desugar()))
     }
 
     term
 }
 
-fn record_ty_to_core(
+fn desugar_record_ty(
     span: ByteSpan,
     fields: &[(ByteIndex, String, Box<concrete::Term>)],
 ) -> core::RawTerm {
@@ -99,7 +99,7 @@ fn record_ty_to_core(
         term = core::RawTerm::RecordType(
             Ignore(ByteSpan::new(start, term.span().end())),
             core::Label(label.clone()),
-            Rc::new(ann.to_core()),
+            Rc::new(ann.desugar()),
             Rc::new(term),
         );
     }
@@ -107,7 +107,7 @@ fn record_ty_to_core(
     term
 }
 
-fn record_to_core(
+fn desugar_record(
     span: ByteSpan,
     fields: &[(ByteIndex, String, Box<concrete::Term>)],
 ) -> core::RawTerm {
@@ -117,7 +117,7 @@ fn record_to_core(
         term = core::RawTerm::Record(
             Ignore(ByteSpan::new(start, term.span().end())),
             core::Label(label.clone()),
-            Rc::new(value.to_core()),
+            Rc::new(value.desugar()),
             Rc::new(term),
         );
     }
@@ -125,9 +125,9 @@ fn record_to_core(
     term
 }
 
-impl ToCore<core::RawModule> for concrete::Module {
+impl Desugar<core::RawModule> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
-    fn to_core(&self) -> core::RawModule {
+    fn desugar(&self) -> core::RawModule {
         match *self {
             concrete::Module::Valid {
                 ref name,
@@ -153,7 +153,7 @@ impl ToCore<core::RawModule> for concrete::Module {
                                 let term = Rc::new(core::RawTerm::Hole(Ignore::default()));
                                 definitions.push(core::RawDefinition { name, term, ann });
                             },
-                            None => prev_claim = Some((name.clone(), Rc::new(ann.to_core()))),
+                            None => prev_claim = Some((name.clone(), Rc::new(ann.desugar()))),
                         },
                         concrete::Declaration::Definition {
                             ref name,
@@ -172,14 +172,14 @@ impl ToCore<core::RawModule> for concrete::Module {
                                 None => definitions.push(core::RawDefinition {
                                     name: name.clone(),
                                     ann: Rc::new(core::RawTerm::Hole(default_span)),
-                                    term: Rc::new(lam_to_core(params, body)),
+                                    term: Rc::new(desugar_lam(params, body)),
                                 }),
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
                                             ann,
-                                            term: Rc::new(lam_to_core(params, body)),
+                                            term: Rc::new(desugar_lam(params, body)),
                                         });
                                     } else {
                                         definitions.push(core::RawDefinition {
@@ -190,7 +190,7 @@ impl ToCore<core::RawModule> for concrete::Module {
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
                                             ann: Rc::new(core::RawTerm::Hole(default_span)),
-                                            term: Rc::new(lam_to_core(params, body)),
+                                            term: Rc::new(desugar_lam(params, body)),
                                         });
                                     }
                                 },
@@ -210,15 +210,15 @@ impl ToCore<core::RawModule> for concrete::Module {
     }
 }
 
-impl ToCore<core::RawTerm> for concrete::Term {
+impl Desugar<core::RawTerm> for concrete::Term {
     /// Convert a term in the concrete syntax into a core term
-    fn to_core(&self) -> core::RawTerm {
+    fn desugar(&self) -> core::RawTerm {
         let span = Ignore(self.span());
         match *self {
-            concrete::Term::Parens(_, ref term) => term.to_core(),
+            concrete::Term::Parens(_, ref term) => term.desugar(),
             concrete::Term::Ann(ref expr, ref ty) => {
-                let expr = Rc::new(expr.to_core());
-                let ty = Rc::new(ty.to_core());
+                let expr = Rc::new(expr.desugar());
+                let ty = Rc::new(ty.desugar());
 
                 core::RawTerm::Ann(span, expr, ty)
             },
@@ -241,25 +241,25 @@ impl ToCore<core::RawTerm> for concrete::Term {
             concrete::Term::Var(_, ref x) => {
                 core::RawTerm::Var(span, Var::Free(Name::user(x.clone())))
             },
-            concrete::Term::Pi(_, ref params, ref body) => pi_to_core(params, body),
-            concrete::Term::Lam(_, ref params, ref body) => lam_to_core(params, body),
+            concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
+            concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, body),
             concrete::Term::Arrow(ref ann, ref body) => {
                 let name = Name::from(GenId::fresh());
-                let ann = Rc::new(ann.to_core());
-                let body = Rc::new(body.to_core());
+                let ann = Rc::new(ann.desugar());
+                let body = Rc::new(body.desugar());
 
                 core::RawTerm::Pi(span, nameless::bind((name, Embed(ann)), body))
             },
-            concrete::Term::App(ref fn_expr, ref args) => app_to_core(fn_expr, args),
+            concrete::Term::App(ref fn_expr, ref args) => desugar_app(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
             concrete::Term::If(start, ref cond, ref if_true, ref if_false) => core::RawTerm::If(
                 Ignore(start),
-                Rc::new(cond.to_core()),
-                Rc::new(if_true.to_core()),
-                Rc::new(if_false.to_core()),
+                Rc::new(cond.desugar()),
+                Rc::new(if_true.desugar()),
+                Rc::new(if_false.desugar()),
             ),
-            concrete::Term::RecordType(span, ref fields) => record_ty_to_core(span, fields),
-            concrete::Term::Record(span, ref fields) => record_to_core(span, fields),
+            concrete::Term::RecordType(span, ref fields) => desugar_record_ty(span, fields),
+            concrete::Term::Record(span, ref fields) => desugar_record(span, fields),
             concrete::Term::Proj(ref tm, label_start, ref label) => {
                 let label_span = Ignore(ByteSpan::from_offset(
                     label_start,
@@ -268,7 +268,7 @@ impl ToCore<core::RawTerm> for concrete::Term {
 
                 core::RawTerm::Proj(
                     span,
-                    Rc::new(tm.to_core()),
+                    Rc::new(tm.desugar()),
                     label_span,
                     core::Label(label.clone()),
                 )
@@ -279,7 +279,7 @@ impl ToCore<core::RawTerm> for concrete::Term {
 }
 
 #[cfg(test)]
-mod to_core {
+mod desugar {
     use codespan::{CodeMap, FileName};
 
     use library;
@@ -294,7 +294,7 @@ mod to_core {
         let (concrete_term, errors) = parse::term(&filemap);
         assert!(errors.is_empty());
 
-        concrete_term.to_core()
+        concrete_term.desugar()
     }
 
     mod module {
@@ -318,7 +318,7 @@ mod to_core {
                 panic!("parse error!")
             }
 
-            concrete_module.to_core();
+            concrete_module.desugar();
         }
     }
 

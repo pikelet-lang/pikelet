@@ -4,7 +4,7 @@ use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 
 use syntax::concrete;
 use syntax::parse;
-use syntax::translation::ToCore;
+use syntax::translation::Desugar;
 
 use super::*;
 
@@ -20,7 +20,7 @@ fn parse(codemap: &mut CodeMap, src: &str) -> Rc<RawTerm> {
         panic!("parse error!")
     }
 
-    Rc::new(concrete_term.to_core())
+    Rc::new(concrete_term.desugar())
 }
 
 fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (Rc<Term>, Rc<Type>) {

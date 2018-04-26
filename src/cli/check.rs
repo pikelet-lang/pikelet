@@ -17,7 +17,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 
     use semantics;
     use syntax::parse;
-    use syntax::translation::ToCore;
+    use syntax::translation::Desugar;
 
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
@@ -37,7 +37,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
             continue;
         }
 
-        match semantics::check_module(&module.to_core()) {
+        match semantics::check_module(&module.desugar()) {
             Ok(_module) => {},
             Err(err) => {
                 codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;

@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use syntax::core::{Constant, Context, Definition, Level, Module, Neutral, RawConstant, RawModule,
                    RawTerm, Term, Type, Value};
-use syntax::translation::ToConcrete;
+use syntax::translation::Resugar;
 
 mod errors;
 #[cfg(test)]
@@ -270,7 +270,7 @@ pub fn check(
                     return Err(TypeError::LiteralMismatch {
                         literal_span: span.0,
                         found: raw_c.clone(),
-                        expected: Box::new(c_ty.to_concrete()),
+                        expected: Box::new(c_ty.resugar()),
                     });
                 },
             };
@@ -298,7 +298,7 @@ pub fn check(
         (&RawTerm::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
-                expected: Box::new(expected_ty.to_concrete()),
+                expected: Box::new(expected_ty.resugar()),
             });
         },
 
@@ -330,7 +330,7 @@ pub fn check(
         (&RawTerm::Hole(span), _) => {
             return Err(TypeError::UnableToElaborateHole {
                 span: span.0,
-                expected: Some(Box::new(expected_ty.to_concrete())),
+                expected: Some(Box::new(expected_ty.resugar())),
             });
         },
 
@@ -343,8 +343,8 @@ pub fn check(
         true => Ok(term),
         false => Err(TypeError::Mismatch {
             span: term.span(),
-            found: Box::new(inferred_ty.to_concrete()),
-            expected: Box::new(expected_ty.to_concrete()),
+            found: Box::new(inferred_ty.resugar()),
+            expected: Box::new(expected_ty.resugar()),
         }),
     }
 }
@@ -364,7 +364,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             Value::Universe(level) => Ok((term, level)),
             _ => Err(TypeError::ExpectedUniverse {
                 span: raw_term.span(),
-                found: Box::new(ty.to_concrete()),
+                found: Box::new(ty.resugar()),
             }),
         }
     }
@@ -492,7 +492,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_expr.span(),
                     arg_span: raw_arg.span(),
-                    found: Box::new(expr_ty.to_concrete()),
+                    found: Box::new(expr_ty.resugar()),
                 }),
             }
         },
@@ -551,7 +551,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 None => Err(TypeError::NoFieldInType {
                     label_span: label_span.0,
                     expected_label: label.clone(),
-                    found: Box::new(ty.to_concrete()),
+                    found: Box::new(ty.resugar()),
                 }),
             }
         },

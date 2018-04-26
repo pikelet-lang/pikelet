@@ -63,26 +63,26 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
 // ];
 
 /// Translate something to the corresponding concrete representation
-pub trait ToConcrete<T> {
-    fn to_concrete(&self) -> T {
-        self.to_concrete_prec(Prec::NO_WRAP)
+pub trait Resugar<T> {
+    fn resugar(&self) -> T {
+        self.resugar_prec(Prec::NO_WRAP)
     }
 
-    fn to_concrete_prec(&self, prec: Prec) -> T;
+    fn resugar_prec(&self, prec: Prec) -> T;
 }
 
-impl ToConcrete<(concrete::Declaration, concrete::Declaration)> for core::Definition {
-    fn to_concrete_prec(&self, _: Prec) -> (concrete::Declaration, concrete::Declaration) {
+impl Resugar<(concrete::Declaration, concrete::Declaration)> for core::Definition {
+    fn resugar_prec(&self, _: Prec) -> (concrete::Declaration, concrete::Declaration) {
         // build up the type claim
         let new_ann = concrete::Declaration::Claim {
             name: (ByteIndex::default(), self.name.clone()),
-            ann: self.ann.to_concrete_prec(Prec::ANN),
+            ann: self.ann.resugar_prec(Prec::ANN),
         };
 
         // build up the concrete definition
         let new_definition = {
             // pull lambda arguments from the body into the definition
-            let (params, body) = match self.term.to_concrete_prec(Prec::ANN) {
+            let (params, body) = match self.term.resugar_prec(Prec::ANN) {
                 concrete::Term::Lam(_, params, body) => (params, *body),
                 body => (vec![], body),
             };
@@ -100,14 +100,14 @@ impl ToConcrete<(concrete::Declaration, concrete::Declaration)> for core::Defini
     }
 }
 
-impl ToConcrete<concrete::Module> for core::Module {
-    fn to_concrete_prec(&self, _: Prec) -> concrete::Module {
+impl Resugar<concrete::Module> for core::Module {
+    fn resugar_prec(&self, _: Prec) -> concrete::Module {
         use std::iter;
 
         let declarations = self.definitions
             .iter()
             .flat_map(|definition| {
-                let (new_ann, new_definition) = definition.to_concrete();
+                let (new_ann, new_definition) = definition.resugar();
                 iter::once(new_ann).chain(iter::once(new_definition))
             })
             .collect();
@@ -119,8 +119,8 @@ impl ToConcrete<concrete::Module> for core::Module {
     }
 }
 
-impl ToConcrete<concrete::Term> for core::Constant {
-    fn to_concrete_prec(&self, _: Prec) -> concrete::Term {
+impl Resugar<concrete::Term> for core::Constant {
+    fn resugar_prec(&self, _: Prec) -> concrete::Term {
         use syntax::concrete::{Literal, Term};
         use syntax::core::Constant;
 
@@ -166,14 +166,14 @@ impl ToConcrete<concrete::Term> for core::Constant {
     }
 }
 
-impl ToConcrete<concrete::Term> for core::Term {
-    fn to_concrete_prec(&self, prec: Prec) -> concrete::Term {
+impl Resugar<concrete::Term> for core::Term {
+    fn resugar_prec(&self, prec: Prec) -> concrete::Term {
         match *self {
             core::Term::Ann(_, ref term, ref ty) => parens_if(
                 Prec::ANN < prec,
                 concrete::Term::Ann(
-                    Box::new(term.to_concrete_prec(Prec::LAM)),
-                    Box::new(ty.to_concrete_prec(Prec::ANN)),
+                    Box::new(term.resugar_prec(Prec::LAM)),
+                    Box::new(ty.resugar_prec(Prec::ANN)),
                 ),
             ),
             core::Term::Universe(_, level) => {
@@ -187,7 +187,7 @@ impl ToConcrete<concrete::Term> for core::Term {
                     concrete::Term::Universe(ByteSpan::default(), level),
                 )
             },
-            core::Term::Constant(_, ref c) => c.to_concrete(),
+            core::Term::Constant(_, ref c) => c.resugar(),
             core::Term::Var(_, Var::Free(Name::User(ref name))) => {
                 concrete::Term::Var(ByteIndex::default(), name.to_string())
             },
@@ -210,14 +210,14 @@ impl ToConcrete<concrete::Term> for core::Term {
                     // TODO: add the used name to the environment
                     // TODO: convert the body using the new environment
 
-                    match body.to_concrete_prec(Prec::LAM) {
+                    match body.resugar_prec(Prec::LAM) {
                         // TODO: check if the body can be collapsed to form a 'sugary' pi
                         // concrete::Term::Pi(_, params, body) => unimplemented!(),
                         body => concrete::Term::Pi(
                             ByteIndex::default(),
                             vec![(
                                 vec![(ByteIndex::default(), name.to_string())],
-                                ann.to_concrete_prec(Prec::APP),
+                                ann.resugar_prec(Prec::APP),
                             )],
                             Box::new(body),
                         ),
@@ -225,8 +225,8 @@ impl ToConcrete<concrete::Term> for core::Term {
                 } else {
                     // The body is not dependent on the parameter - so let's use an arrow instead!
                     concrete::Term::Arrow(
-                        Box::new(ann.to_concrete_prec(Prec::APP)),
-                        Box::new(body.to_concrete_prec(Prec::LAM)),
+                        Box::new(ann.resugar_prec(Prec::APP)),
+                        Box::new(body.resugar_prec(Prec::LAM)),
                     )
                 };
 
@@ -239,14 +239,14 @@ impl ToConcrete<concrete::Term> for core::Term {
                 // TODO: add the used name to the environment
 
                 // convert the body using the new environment
-                let term = match body.to_concrete_prec(Prec::LAM) {
+                let term = match body.resugar_prec(Prec::LAM) {
                     // TODO: check if the body can be collapsed to form a 'sugary' lambda
                     // concrete::Term::Lam(_, params, body) => unimplemented!(),
                     body => concrete::Term::Lam(
                         ByteIndex::default(),
                         vec![(
                             vec![(ByteIndex::default(), name.to_string())],
-                            Some(Box::new(ann.to_concrete_prec(Prec::LAM))),
+                            Some(Box::new(ann.resugar_prec(Prec::LAM))),
                         )],
                         Box::new(body),
                     ),
@@ -257,17 +257,17 @@ impl ToConcrete<concrete::Term> for core::Term {
             core::Term::App(ref fn_term, ref arg) => parens_if(
                 Prec::APP < prec,
                 concrete::Term::App(
-                    Box::new(fn_term.to_concrete_prec(Prec::NO_WRAP)),
-                    vec![arg.to_concrete_prec(Prec::NO_WRAP)], // TODO
+                    Box::new(fn_term.resugar_prec(Prec::NO_WRAP)),
+                    vec![arg.resugar_prec(Prec::NO_WRAP)], // TODO
                 ),
             ),
             core::Term::If(_, ref cond, ref if_true, ref if_false) => parens_if(
                 Prec::LAM < prec,
                 concrete::Term::If(
                     ByteIndex::default(),
-                    Box::new(cond.to_concrete_prec(Prec::APP)),
-                    Box::new(if_true.to_concrete_prec(Prec::APP)),
-                    Box::new(if_false.to_concrete_prec(Prec::APP)),
+                    Box::new(cond.resugar_prec(Prec::APP)),
+                    Box::new(if_true.resugar_prec(Prec::APP)),
+                    Box::new(if_false.resugar_prec(Prec::APP)),
                 ),
             ),
             core::Term::RecordType(_, ref label, ref ann, ref rest) => {
@@ -280,7 +280,7 @@ impl ToConcrete<concrete::Term> for core::Term {
                     fields.push((
                         ByteIndex::default(),
                         label.0.clone(),
-                        Box::new(ann.to_concrete_prec(Prec::NO_WRAP)),
+                        Box::new(ann.resugar_prec(Prec::NO_WRAP)),
                     ));
 
                     match **rest {
@@ -306,7 +306,7 @@ impl ToConcrete<concrete::Term> for core::Term {
                     fields.push((
                         ByteIndex::default(),
                         label.0.clone(),
-                        Box::new(expr.to_concrete_prec(Prec::NO_WRAP)),
+                        Box::new(expr.resugar_prec(Prec::NO_WRAP)),
                     ));
 
                     match **rest {
@@ -327,7 +327,7 @@ impl ToConcrete<concrete::Term> for core::Term {
             },
             core::Term::EmptyRecord(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
             core::Term::Proj(_, ref expr, _, ref label) => concrete::Term::Proj(
-                Box::new(expr.to_concrete_prec(Prec::ATOMIC)),
+                Box::new(expr.resugar_prec(Prec::ATOMIC)),
                 ByteIndex::default(),
                 label.0.clone(),
             ),
@@ -335,16 +335,16 @@ impl ToConcrete<concrete::Term> for core::Term {
     }
 }
 
-impl ToConcrete<concrete::Term> for core::Value {
-    fn to_concrete_prec(&self, prec: Prec) -> concrete::Term {
+impl Resugar<concrete::Term> for core::Value {
+    fn resugar_prec(&self, prec: Prec) -> concrete::Term {
         // FIXME: Make this more efficient?
-        core::Term::from(self).to_concrete_prec(prec)
+        core::Term::from(self).resugar_prec(prec)
     }
 }
 
-impl ToConcrete<concrete::Term> for core::Neutral {
-    fn to_concrete_prec(&self, prec: Prec) -> concrete::Term {
+impl Resugar<concrete::Term> for core::Neutral {
+    fn resugar_prec(&self, prec: Prec) -> concrete::Term {
         // FIXME: Make this more efficient?
-        core::Term::from(self).to_concrete_prec(prec)
+        core::Term::from(self).resugar_prec(prec)
     }
 }

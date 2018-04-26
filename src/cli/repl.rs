@@ -151,7 +151,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
 
     use syntax::concrete::{ReplCommand, Term};
     use syntax::pretty::{self, ToDoc};
-    use syntax::translation::{ToConcrete, ToCore};
+    use syntax::translation::{Desugar, Resugar};
 
     fn term_width() -> usize {
         term_size::dimensions()
@@ -168,24 +168,21 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         ReplCommand::Help => print_help_text(),
 
         ReplCommand::Eval(parse_term) => {
-            let raw_term = Rc::new(parse_term.to_core());
+            let raw_term = Rc::new(parse_term.desugar());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
             let evaluated = semantics::normalize(context, &term)?;
 
-            let ann_term = Term::Ann(
-                Box::new(evaluated.to_concrete()),
-                Box::new(inferred.to_concrete()),
-            );
+            let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Let(name, parse_term) => {
-            let raw_term = Rc::new(parse_term.to_core());
+            let raw_term = Rc::new(parse_term.desugar());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
 
             let ann_term = Term::Ann(
                 Box::new(Term::Var(ByteIndex::default(), name.clone())),
-                Box::new(inferred.to_concrete()),
+                Box::new(inferred.resugar()),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
@@ -197,10 +194,10 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             return Ok(ControlFlow::Continue(Some(context)));
         },
         ReplCommand::TypeOf(parse_term) => {
-            let raw_term = Rc::new(parse_term.to_core());
+            let raw_term = Rc::new(parse_term.desugar());
             let (_, inferred) = semantics::infer(context, &raw_term)?;
 
-            println!("{}", inferred.to_concrete().to_doc().pretty(term_width()));
+            println!("{}", inferred.resugar().to_doc().pretty(term_width()));
         },
 
         ReplCommand::NoOp | ReplCommand::Error(_) => {},
