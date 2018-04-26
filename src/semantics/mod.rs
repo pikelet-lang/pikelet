@@ -546,7 +546,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             match ty.lookup_record_ty(label) {
                 Some(ty) => Ok((
                     Rc::new(Term::Proj(span, expr, label_span, label.clone())),
-                    ty,
+                    ty.clone(),
                 )),
                 None => Err(TypeError::NoFieldInType {
                     label_span: label_span.0,

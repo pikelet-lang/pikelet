@@ -417,50 +417,44 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn lookup_record_ty(&self, label: &Label) -> Option<Rc<Value>> {
-        fn lookup_next(value: &Value, label: &Label) -> Result<Rc<Value>, Option<Rc<Value>>> {
-            if let Value::RecordType(ref curr_label, ref value, ref body) = *value {
-                if curr_label == label {
-                    Ok(value.clone())
-                } else {
-                    Err(Some(body.clone()))
-                }
-            } else {
-                Err(None)
-            }
-        }
-
-        let mut current = lookup_next(self, label);
-        loop {
-            current = match current {
-                Ok(term) => return Some(term),
-                Err(Some(term)) => lookup_next(&*term, label),
-                Err(None) => return None,
-            };
+    fn record_ty(&self) -> Option<(&Label, &Rc<Value>, &Rc<Value>)> {
+        match *self {
+            Value::RecordType(ref label, ref value, ref body) => Some((label, value, body)),
+            _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &Label) -> Option<Rc<Value>> {
-        fn lookup_next(value: &Value, label: &Label) -> Result<Rc<Value>, Option<Rc<Value>>> {
-            if let Value::Record(ref curr_label, ref value, ref body) = *value {
-                if curr_label == label {
-                    Ok(value.clone())
-                } else {
-                    Err(Some(body.clone()))
-                }
-            } else {
-                Err(None)
+    pub fn lookup_record_ty(&self, label: &Label) -> Option<&Rc<Value>> {
+        let mut current_scope = self.record_ty();
+
+        while let Some((current_label, value, body)) = current_scope {
+            if current_label == label {
+                return Some(value);
             }
+            current_scope = body.record_ty();
         }
 
-        let mut current = lookup_next(self, label);
-        loop {
-            current = match current {
-                Ok(term) => return Some(term),
-                Err(Some(term)) => lookup_next(&*term, label),
-                Err(None) => return None,
-            };
+        None
+    }
+
+    fn record(&self) -> Option<(&Label, &Rc<Value>, &Rc<Value>)> {
+        match *self {
+            Value::Record(ref label, ref value, ref body) => Some((label, value, body)),
+            _ => None,
         }
+    }
+
+    pub fn lookup_record(&self, label: &Label) -> Option<&Rc<Value>> {
+        let mut current_scope = self.record();
+
+        while let Some((current_label, value, body)) = current_scope {
+            if current_label == label {
+                return Some(value);
+            }
+            current_scope = body.record();
+        }
+
+        None
     }
 }
 
