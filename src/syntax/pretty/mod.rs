@@ -1,5 +1,6 @@
 //! Pretty printing utilities
 
+use pretty::termcolor::ColorSpec;
 use pretty::{BoxDoc, Doc};
 use std::rc::Rc;
 
@@ -13,7 +14,7 @@ mod core;
 /// `usize::MAX`, so we'll just use a really big number instead...
 pub const FALLBACK_WIDTH: usize = 1_000_000;
 
-pub type StaticDoc = Doc<'static, BoxDoc<'static>>;
+pub type StaticDoc = Doc<'static, ColorSpec, BoxDoc<'static, ColorSpec>>;
 
 /// Convert a datatype to a pretty-printable document
 pub trait ToDoc {
