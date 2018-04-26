@@ -172,23 +172,23 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let (term, inferred) = semantics::infer(context, &raw_term)?;
             let evaluated = semantics::normalize(context, &term)?;
 
-            let doc = Term::Ann(
+            let ann_term = Term::Ann(
                 Box::new(evaluated.to_concrete()),
                 Box::new(inferred.to_concrete()),
-            ).to_doc();
+            );
 
-            println!("{}", doc.pretty(term_width()));
+            println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Let(name, parse_term) => {
             let raw_term = Rc::new(parse_term.to_core());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
 
-            let doc = Term::Ann(
+            let ann_term = Term::Ann(
                 Box::new(Term::Var(ByteIndex::default(), name.clone())),
                 Box::new(inferred.to_concrete()),
-            ).to_doc();
+            );
 
-            println!("{}", doc.pretty(term_width()));
+            println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
             let context = context
                 .claim(Name::user(&*name), inferred)
@@ -200,9 +200,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let raw_term = Rc::new(parse_term.to_core());
             let (_, inferred) = semantics::infer(context, &raw_term)?;
 
-            let doc = inferred.to_concrete().to_doc();
-
-            println!("{}", doc.pretty(term_width()));
+            println!("{}", inferred.to_concrete().to_doc().pretty(term_width()));
         },
 
         ReplCommand::NoOp | ReplCommand::Error(_) => {},
