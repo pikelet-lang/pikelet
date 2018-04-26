@@ -298,7 +298,7 @@ pub fn check(
         (&RawTerm::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
-                expected: Box::new(Term::from(&**expected_ty).to_concrete()),
+                expected: Box::new(expected_ty.to_concrete()),
             });
         },
 
@@ -330,7 +330,7 @@ pub fn check(
         (&RawTerm::Hole(span), _) => {
             return Err(TypeError::UnableToElaborateHole {
                 span: span.0,
-                expected: Some(Box::new(Term::from(&**expected_ty).to_concrete())),
+                expected: Some(Box::new(expected_ty.to_concrete())),
             });
         },
 
@@ -343,8 +343,8 @@ pub fn check(
         true => Ok(term),
         false => Err(TypeError::Mismatch {
             span: term.span(),
-            found: Box::new(Term::from(&*inferred_ty).to_concrete()),
-            expected: Box::new(Term::from(&**expected_ty).to_concrete()),
+            found: Box::new(inferred_ty.to_concrete()),
+            expected: Box::new(expected_ty.to_concrete()),
         }),
     }
 }
@@ -364,7 +364,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             Value::Universe(level) => Ok((term, level)),
             _ => Err(TypeError::ExpectedUniverse {
                 span: raw_term.span(),
-                found: Box::new(Term::from(&*ty).to_concrete()),
+                found: Box::new(ty.to_concrete()),
             }),
         }
     }
@@ -492,7 +492,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_expr.span(),
                     arg_span: raw_arg.span(),
-                    found: Box::new(Term::from(&*expr_ty).to_concrete()),
+                    found: Box::new(expr_ty.to_concrete()),
                 }),
             }
         },
@@ -551,7 +551,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 None => Err(TypeError::NoFieldInType {
                     label_span: label_span.0,
                     expected_label: label.clone(),
-                    found: Box::new(Term::from(&*ty).to_concrete()),
+                    found: Box::new(ty.to_concrete()),
                 }),
             }
         },

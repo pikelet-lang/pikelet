@@ -76,7 +76,7 @@ impl ToConcrete<(concrete::Declaration, concrete::Declaration)> for core::Defini
         // build up the type claim
         let new_ann = concrete::Declaration::Claim {
             name: (ByteIndex::default(), self.name.clone()),
-            ann: core::Term::from(&*self.ann).to_concrete_prec(Prec::ANN),
+            ann: self.ann.to_concrete_prec(Prec::ANN),
         };
 
         // build up the concrete definition
@@ -332,5 +332,19 @@ impl ToConcrete<concrete::Term> for core::Term {
                 label.0.clone(),
             ),
         }
+    }
+}
+
+impl ToConcrete<concrete::Term> for core::Value {
+    fn to_concrete_prec(&self, prec: Prec) -> concrete::Term {
+        // FIXME: Make this more efficient?
+        core::Term::from(self).to_concrete_prec(prec)
+    }
+}
+
+impl ToConcrete<concrete::Term> for core::Neutral {
+    fn to_concrete_prec(&self, prec: Prec) -> concrete::Term {
+        // FIXME: Make this more efficient?
+        core::Term::from(self).to_concrete_prec(prec)
     }
 }

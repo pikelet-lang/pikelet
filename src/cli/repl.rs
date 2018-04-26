@@ -145,18 +145,18 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 }
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
-    use nameless::{Ignore, Name, Var};
+    use codespan::ByteIndex;
+    use nameless::Name;
     use std::rc::Rc;
-    use std::usize;
 
-    use syntax::concrete::ReplCommand;
-    use syntax::core::Term;
+    use syntax::concrete::{ReplCommand, Term};
+    use syntax::pretty::{self, ToDoc};
     use syntax::translation::{ToConcrete, ToCore};
 
     fn term_width() -> usize {
         term_size::dimensions()
             .map(|(width, _)| width)
-            .unwrap_or(usize::MAX)
+            .unwrap_or(pretty::FALLBACK_WIDTH)
     }
 
     let (repl_command, parse_errors) = parse::repl_command(filemap);
@@ -172,29 +172,23 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let (term, inferred) = semantics::infer(context, &raw_term)?;
             let evaluated = semantics::normalize(context, &term)?;
 
-            println!(
-                "{term:width$}",
-                term = Term::Ann(
-                    Ignore::default(),
-                    Rc::new(Term::from(&*evaluated)),
-                    Rc::new(Term::from(&*inferred)),
-                ).to_concrete(),
-                width = term_width(),
-            );
+            let doc = Term::Ann(
+                Box::new(evaluated.to_concrete()),
+                Box::new(inferred.to_concrete()),
+            ).to_doc();
+
+            println!("{}", doc.pretty(term_width()));
         },
         ReplCommand::Let(name, parse_term) => {
             let raw_term = Rc::new(parse_term.to_core());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
 
-            println!(
-                "{term:width$}",
-                term = Term::Ann(
-                    Ignore::default(),
-                    Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user(&*name)))),
-                    Rc::new(Term::from(&*inferred)),
-                ).to_concrete(),
-                width = term_width(),
-            );
+            let doc = Term::Ann(
+                Box::new(Term::Var(ByteIndex::default(), name.clone())),
+                Box::new(inferred.to_concrete()),
+            ).to_doc();
+
+            println!("{}", doc.pretty(term_width()));
 
             let context = context
                 .claim(Name::user(&*name), inferred)
@@ -206,11 +200,9 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let raw_term = Rc::new(parse_term.to_core());
             let (_, inferred) = semantics::infer(context, &raw_term)?;
 
-            println!(
-                "{term:width$}",
-                term = Term::from(&*inferred).to_concrete(),
-                width = term_width(),
-            );
+            let doc = inferred.to_concrete().to_doc();
+
+            println!("{}", doc.pretty(term_width()));
         },
 
         ReplCommand::NoOp | ReplCommand::Error(_) => {},

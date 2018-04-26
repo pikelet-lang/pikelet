@@ -6,6 +6,13 @@ use std::rc::Rc;
 mod concrete;
 mod core;
 
+/// An effectively 'infinite' line length for when we don't have an explicit
+/// width provided for pretty printing.
+///
+/// `pretty.rs` seems to bug-out and break on every line when using
+/// `usize::MAX`, so we'll just use a really big number instead...
+pub const FALLBACK_WIDTH: usize = 1_000_000;
+
 pub type StaticDoc = Doc<'static, BoxDoc<'static>>;
 
 /// Convert a datatype to a pretty-printable document
