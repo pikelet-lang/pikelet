@@ -248,7 +248,7 @@ impl Resugar<concrete::Term> for core::Term {
                             params.push((
                                 vec![(ByteIndex::default(), next_name.to_string())],
                                 next_ann.resugar_prec(Prec::APP),
-                            ))
+                            ));
                         } else {
                             // Stop collapsing parameters if we encounter a
                             // non-dependent pi type.
@@ -333,7 +333,7 @@ impl Resugar<concrete::Term> for core::Term {
                         params.push((
                             vec![(ByteIndex::default(), next_name.to_string())],
                             Some(Box::new(next_ann.resugar_prec(Prec::LAM))),
-                        ))
+                        ));
                     }
 
                     ann = next_ann;
