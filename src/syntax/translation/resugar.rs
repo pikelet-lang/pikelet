@@ -1,5 +1,6 @@
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{self, BoundTerm, Embed, Name, Var};
+use nameless::{self, Bind, BoundTerm, Embed, Name, Var};
+use std::rc::Rc;
 
 use syntax::concrete;
 use syntax::core;
@@ -153,6 +154,162 @@ fn resugar_constant(constant: &core::Constant) -> concrete::Term {
     }
 }
 
+fn resugar_pi(
+    scope: &Bind<(Name, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    prec: Prec,
+) -> concrete::Term {
+    let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
+
+    // Only use explict parameter names if the body is dependent on
+    // the parameter or there is a human-readable name given.
+    //
+    // We'll be checking for readable names as we go, because if the've
+    // survived until now they're probably desirable to retain!
+    if body.free_vars().contains(&name) || name.name().is_some() {
+        // TODO: use name if it is present, and not used in the current scope
+        // TODO: otherwise create a pretty name
+        // TODO: add the used name to the environment
+
+        let mut params = vec![(
+            vec![(ByteIndex::default(), name.to_string())],
+            resugar_term(&ann, Prec::APP),
+        )];
+
+        // Argument resugaring
+        loop {
+            // Share a parameter list if another pi is nested directly inside.
+            // For example:
+            //
+            // ```
+            // (a : Type) -> (b : Type -> Type) -> ...
+            // (a : Type) (b : Type -> Type) -> ...
+            // ```
+            let ((next_name, Embed(next_ann)), next_body) = match *body {
+                core::Term::Pi(_, ref scope) => nameless::unbind(scope.clone()),
+                _ => break,
+            };
+
+            if core::Term::term_eq(&ann, &next_ann) && next_name.name().is_some() {
+                // Combine the parameters if the type annotations are
+                // alpha-equivalent. For example:
+                //
+                // ```
+                // (a : Type) (b : Type) -> ...
+                // (a b : Type) -> ...
+                // ```
+                let next_name = (ByteIndex::default(), next_name.to_string());
+                params.last_mut().unwrap().0.push(next_name);
+            } else if next_body.free_vars().contains(&next_name) || next_name.name().is_some() {
+                // Add a new parameter if the body is dependent on the parameter
+                // or there is a human-readable name given
+                params.push((
+                    vec![(ByteIndex::default(), next_name.to_string())],
+                    resugar_term(&next_ann, Prec::APP),
+                ));
+            } else {
+                // Stop collapsing parameters if we encounter a non-dependent pi type.
+                return parens_if(
+                    Prec::PI < prec,
+                    concrete::Term::Pi(
+                        ByteIndex::default(),
+                        params,
+                        Box::new(concrete::Term::Arrow(
+                            Box::new(resugar_term(&next_ann, Prec::APP)),
+                            Box::new(resugar_term(&next_body, Prec::LAM)),
+                        )),
+                    ),
+                );
+            }
+
+            ann = next_ann;
+            body = next_body;
+        }
+
+        parens_if(
+            Prec::PI < prec,
+            concrete::Term::Pi(
+                ByteIndex::default(),
+                params,
+                Box::new(resugar_term(&body, Prec::LAM)),
+            ),
+        )
+    } else {
+        // The body is not dependent on the parameter - so let's use an arrow
+        // instead! For example:
+        //
+        // ```
+        // (a : Type) -> Type
+        // Type -> Type
+        // ```
+        parens_if(
+            Prec::PI < prec,
+            concrete::Term::Arrow(
+                Box::new(resugar_term(&ann, Prec::APP)),
+                Box::new(resugar_term(&body, Prec::LAM)),
+            ),
+        )
+    }
+}
+
+fn resugar_lam(
+    scope: &Bind<(Name, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    prec: Prec,
+) -> concrete::Term {
+    let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
+
+    // TODO: use name if it is present, and not used in the current scope
+    // TODO: otherwise create a pretty name
+    // TODO: add the used name to the environment
+    let mut params = vec![(
+        vec![(ByteIndex::default(), name.to_string())],
+        Some(Box::new(resugar_term(&ann, Prec::LAM))),
+    )];
+
+    // Argument resugaring
+    loop {
+        // Share a parameter list if another lambda is nested directly inside.
+        // For example:
+        //
+        // ```
+        // \(a : Type) => \(b : Type -> Type) => ...
+        // \(a : Type) (b : Type -> Type) => ...
+        // ```
+        let ((next_name, Embed(next_ann)), next_body) = match *body {
+            core::Term::Lam(_, ref scope) => nameless::unbind(scope.clone()),
+            _ => break,
+        };
+
+        // Combine the parameters if the type annotations are alpha-equivalent.
+        // For example:
+        //
+        // ```
+        // \(a : Type) (b : Type) => ...
+        // \(a b : Type) => ...
+        // ```
+        if core::Term::term_eq(&ann, &next_ann) {
+            let next_name = (ByteIndex::default(), next_name.to_string());
+            params.last_mut().unwrap().0.push(next_name);
+        } else {
+            params.push((
+                vec![(ByteIndex::default(), next_name.to_string())],
+                Some(Box::new(resugar_term(&next_ann, Prec::LAM))),
+            ));
+        }
+
+        ann = next_ann;
+        body = next_body;
+    }
+
+    parens_if(
+        Prec::LAM < prec,
+        concrete::Term::Lam(
+            ByteIndex::default(),
+            params,
+            Box::new(resugar_term(&body, Prec::LAM)),
+        ),
+    )
+}
+
 fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
     match *term {
         core::Term::Ann(_, ref term, ref ty) => parens_if(
@@ -187,157 +344,8 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },
-        core::Term::Pi(_, ref scope) => {
-            let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
-
-            // Only use explict parameter names if the body is dependent on
-            // the parameter or there is a human-readable name given.
-            //
-            // We'll be checking for readable names as we go, because if the've
-            // survived until now they're probably desirable to retain!
-            if body.free_vars().contains(&name) || name.name().is_some() {
-                // TODO: use name if it is present, and not used in the current scope
-                // TODO: otherwise create a pretty name
-                // TODO: add the used name to the environment
-
-                let mut params = vec![(
-                    vec![(ByteIndex::default(), name.to_string())],
-                    resugar_term(&ann, Prec::APP),
-                )];
-
-                // Argument resugaring
-                loop {
-                    // Share a parameter list if another pi is nested
-                    // directly inside. For example:
-                    //
-                    // ```
-                    // (a : Type) -> (b : Type -> Type) -> ...
-                    // (a : Type) (b : Type -> Type) -> ...
-                    // ```
-                    let ((next_name, Embed(next_ann)), next_body) = match *body {
-                        core::Term::Pi(_, ref scope) => nameless::unbind(scope.clone()),
-                        _ => break,
-                    };
-
-                    if core::Term::term_eq(&ann, &next_ann) && next_name.name().is_some() {
-                        // Combine the parameters if the type annotations are
-                        // alpha-equivalent. For example:
-                        //
-                        // ```
-                        // (a : Type) (b : Type) -> ...
-                        // (a b : Type) -> ...
-                        // ```
-                        let next_name = (ByteIndex::default(), next_name.to_string());
-                        params.last_mut().unwrap().0.push(next_name);
-                    } else if next_body.free_vars().contains(&next_name)
-                        || next_name.name().is_some()
-                    {
-                        // Add a new parameter if the body is dependent on the
-                        // parameter or there is a human-readable name given
-                        params.push((
-                            vec![(ByteIndex::default(), next_name.to_string())],
-                            resugar_term(&next_ann, Prec::APP),
-                        ));
-                    } else {
-                        // Stop collapsing parameters if we encounter a
-                        // non-dependent pi type.
-                        return parens_if(
-                            Prec::PI < prec,
-                            concrete::Term::Pi(
-                                ByteIndex::default(),
-                                params,
-                                Box::new(concrete::Term::Arrow(
-                                    Box::new(resugar_term(&next_ann, Prec::APP)),
-                                    Box::new(resugar_term(&next_body, Prec::LAM)),
-                                )),
-                            ),
-                        );
-                    }
-
-                    ann = next_ann;
-                    body = next_body;
-                }
-
-                parens_if(
-                    Prec::PI < prec,
-                    concrete::Term::Pi(
-                        ByteIndex::default(),
-                        params,
-                        Box::new(resugar_term(&body, Prec::LAM)),
-                    ),
-                )
-            } else {
-                // The body is not dependent on the parameter - so let's use
-                // an arrow instead! For example:
-                //
-                // ```
-                // (a : Type) -> Type
-                // Type -> Type
-                // ```
-                parens_if(
-                    Prec::PI < prec,
-                    concrete::Term::Arrow(
-                        Box::new(resugar_term(&ann, Prec::APP)),
-                        Box::new(resugar_term(&body, Prec::LAM)),
-                    ),
-                )
-            }
-        },
-        core::Term::Lam(_, ref scope) => {
-            let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
-
-            // TODO: use name if it is present, and not used in the current scope
-            // TODO: otherwise create a pretty name
-            // TODO: add the used name to the environment
-            let mut params = vec![(
-                vec![(ByteIndex::default(), name.to_string())],
-                Some(Box::new(resugar_term(&ann, Prec::LAM))),
-            )];
-
-            // Argument resugaring
-            loop {
-                // Share a parameter list if another lambda is nested
-                // directly inside. For example:
-                //
-                // ```
-                // \(a : Type) => \(b : Type -> Type) => ...
-                // \(a : Type) (b : Type -> Type) => ...
-                // ```
-                let ((next_name, Embed(next_ann)), next_body) = match *body {
-                    core::Term::Lam(_, ref scope) => nameless::unbind(scope.clone()),
-                    _ => break,
-                };
-
-                // Combine the parameters if the type annotations are
-                // alpha-equivalent. For example:
-                //
-                // ```
-                // \(a : Type) (b : Type) => ...
-                // \(a b : Type) => ...
-                // ```
-                if core::Term::term_eq(&ann, &next_ann) {
-                    let next_name = (ByteIndex::default(), next_name.to_string());
-                    params.last_mut().unwrap().0.push(next_name);
-                } else {
-                    params.push((
-                        vec![(ByteIndex::default(), next_name.to_string())],
-                        Some(Box::new(resugar_term(&next_ann, Prec::LAM))),
-                    ));
-                }
-
-                ann = next_ann;
-                body = next_body;
-            }
-
-            parens_if(
-                Prec::LAM < prec,
-                concrete::Term::Lam(
-                    ByteIndex::default(),
-                    params,
-                    Box::new(resugar_term(&body, Prec::LAM)),
-                ),
-            )
-        },
+        core::Term::Pi(_, ref scope) => resugar_pi(scope, prec),
+        core::Term::Lam(_, ref scope) => resugar_lam(scope, prec),
         core::Term::App(ref fn_term, ref arg) => parens_if(
             Prec::APP < prec,
             concrete::Term::App(
