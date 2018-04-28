@@ -132,7 +132,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         // E-VAR, E-VAR-DEF
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_definition(name) {
-                Some(term) => normalize(context, term),
+                Some(term) => normalize(context, &term),
                 None => Ok(Rc::new(Value::from(Neutral::Var(var.clone())))),
             },
 

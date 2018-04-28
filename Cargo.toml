@@ -25,11 +25,11 @@ required-features = ["cli"]
 codespan = "0.1.1"
 codespan-reporting = "0.1.3"
 failure = "0.1.1"
+im = "10.2"
 lalrpop-util = "0.15.1"
 nameless = { git = "https://github.com/brendanzab/nameless", rev = "30121a6", version = "0.1.0" }
 pretty = { version = "0.4.0", features = ["termcolor"] }
 regex = "0.2.0"
-rpds = "0.5.0"
 unicode-xid = "0.1.0"
 
 # cli dependencies

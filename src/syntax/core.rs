@@ -1,8 +1,8 @@
 //! The core syntax of the language
 
 use codespan::{ByteIndex, ByteSpan};
+use im::Vector;
 use nameless::{self, Bind, Embed, Ignore, Name, Var};
-use rpds::List;
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
@@ -571,16 +571,20 @@ pub enum ContextEntry {
 }
 
 /// A list of binders that have been accumulated during typechecking
+///
+/// We use a persistent vector internally so that we don't need to deal with the
+/// error-prone tedium of dealing with a mutable context when entering and
+/// exiting binders.
 #[derive(Clone, PartialEq)]
 pub struct Context {
-    pub entries: List<ContextEntry>,
+    pub entries: Vector<ContextEntry>,
 }
 
 impl Context {
     /// Create a new, empty context
     pub fn new() -> Context {
         Context {
-            entries: List::new(),
+            entries: Vector::new(),
         }
     }
 
@@ -597,21 +601,21 @@ impl Context {
         }
     }
 
-    pub fn lookup_claim(&self, name: &Name) -> Option<&Rc<Type>> {
+    pub fn lookup_claim(&self, name: &Name) -> Option<Rc<Type>> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {
-                ContextEntry::Claim(ref n, ref ty) if n == name => Some(ty),
+                ContextEntry::Claim(ref n, ref ty) if n == name => Some(ty.clone()),
                 ContextEntry::Claim(_, _) | ContextEntry::Definition(_, _) => None,
             })
             .next()
     }
 
-    pub fn lookup_definition(&self, name: &Name) -> Option<&Rc<Term>> {
+    pub fn lookup_definition(&self, name: &Name) -> Option<Rc<Term>> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {
-                ContextEntry::Definition(ref n, ref term) if n == name => Some(term),
+                ContextEntry::Definition(ref n, ref term) if n == name => Some(term.clone()),
                 ContextEntry::Definition(_, _) | ContextEntry::Claim(_, _) => None,
             })
             .next()
@@ -666,7 +670,7 @@ impl fmt::Display for Context {
 
 impl fmt::Debug for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        struct FmtContextEntries<'a>(&'a List<ContextEntry>);
+        struct FmtContextEntries<'a>(&'a Vector<ContextEntry>);
 
         impl<'a> fmt::Debug for FmtContextEntries<'a> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
