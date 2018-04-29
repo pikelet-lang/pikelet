@@ -2,6 +2,7 @@ extern crate codespan;
 extern crate codespan_reporting;
 #[macro_use]
 extern crate failure;
+extern crate im;
 extern crate lalrpop_util;
 #[macro_use]
 extern crate nameless;
@@ -9,7 +10,6 @@ extern crate pretty;
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;
-extern crate rpds;
 extern crate unicode_xid;
 
 mod library;
