@@ -305,7 +305,7 @@ Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 <ul>
 <li><a href="print.html#record-values-and-record-types">Record values and record types</a></li>
 <li><a href="print.html#field-lookups">Field lookups</a></li>
-<li><a href="print.html#dependent_record_types">Dependent record types</a></li>
+<li><a href="print.html#dependent-record-types">Dependent record types</a></li>
 </ul>
 <a class="header" href="print.html#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
@@ -340,10 +340,10 @@ read more about Pikelet's type inference on <a href="./type-inference">the type 
 <p>Field types can depend on data from previous fields. Here we turn a
 fixed-length array into a dynamically sized array, by using the <code>len</code> field
 later on to define the <code>data</code> field's annotation:</p>
-<pre><code>DArray (a : Type) = Record {
+<pre><code class="language-pikelet">DArray (a : Type) = Record {
     len : I32,
     data : Box (Array len a),
-}
+};
 </code></pre>
 <a class="header" href="print.html#functions" id="functions"><h1>Functions</h1></a>
 <a class="header" href="print.html#contents-2" id="contents-2"><h2>Contents</h2></a>
