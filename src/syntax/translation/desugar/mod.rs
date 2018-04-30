@@ -101,9 +101,13 @@ fn desugar_record_ty(
     for &(start, ref label, ref ann) in fields.iter().rev() {
         term = core::RawTerm::RecordType(
             Ignore(ByteSpan::new(start, term.span().end())),
-            core::Label(label.clone()),
-            Rc::new(ann.desugar()),
-            Rc::new(term),
+            nameless::bind(
+                (
+                    core::Label(Name::user(label.clone())),
+                    Embed(Rc::new(ann.desugar())),
+                ),
+                Rc::new(term),
+            ),
         );
     }
 
@@ -119,9 +123,13 @@ fn desugar_record(
     for &(start, ref label, ref value) in fields.iter().rev() {
         term = core::RawTerm::Record(
             Ignore(ByteSpan::new(start, term.span().end())),
-            core::Label(label.clone()),
-            Rc::new(value.desugar()),
-            Rc::new(term),
+            nameless::bind(
+                (
+                    core::Label(Name::user(label.clone())),
+                    Embed(Rc::new(value.desugar())),
+                ),
+                Rc::new(term),
+            ),
         );
     }
 
@@ -273,7 +281,7 @@ impl Desugar<core::RawTerm> for concrete::Term {
                     span,
                     Rc::new(tm.desugar()),
                     label_span,
-                    core::Label(label.clone()),
+                    core::Label(Name::user(label.clone())),
                 )
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),

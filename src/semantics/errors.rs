@@ -111,6 +111,14 @@ pub enum TypeError {
     },
     #[fail(display = "Undefined name `{}`", name)]
     UndefinedName { var_span: ByteSpan, name: Name },
+    #[fail(display = "Label mismatch: found label `{}` but `{}` was expected", found, expected)]
+    LabelMismatch {
+        span: ByteSpan,
+        found: core::Label,
+        expected: core::Label,
+    },
+    #[fail(display = "Ambiguous record")]
+    AmbiguousRecord { span: ByteSpan },
     #[fail(display = "The type `{}` does not contain a field named `{}`.", found, expected_label)]
     NoFieldInType {
         label_span: ByteSpan,
@@ -210,6 +218,16 @@ impl TypeError {
                     Label::new_primary(var_span).with_message("not found in this scope"),
                 )
             },
+            TypeError::LabelMismatch {
+                span,
+                ref expected,
+                ref found,
+            } => Diagnostic::new_error(format!(
+                "expected field called `{}`, but found a field called `{}",
+                expected, found,
+            )).with_label(Label::new_primary(span)),
+            TypeError::AmbiguousRecord { span } => Diagnostic::new_error("ambiguous record")
+                .with_label(Label::new_primary(span).with_message("type annotations needed here")),
             TypeError::NoFieldInType {
                 label_span,
                 ref expected_label,

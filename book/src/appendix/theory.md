@@ -74,6 +74,8 @@ etc. If you would like to discuss this with us, please check out
 \\DeclareMathOperator{\max}{max}
 \\DeclareMathOperator{\field}{field}
 \\DeclareMathOperator{\fieldty}{fieldty}
+\\DeclareMathOperator{\fieldsubst}{fieldsubst}
+\\newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
 \\
 % Judgements
 \\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
@@ -109,6 +111,7 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
 \\newcommand{\Record}[1]{ ( #1 ) }
 \\newcommand{\record}[1]{ \langle #1 \rangle }
+\\newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
 \\
 \begin{array}{rrll}
     \rexpr,\rtype   & ::= & x                                   & \text{variables} \\\\
@@ -311,7 +314,7 @@ in the context.
     \rule{E-PI}{
         \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \eval{ \Gamma, x:\vtype_1 }{ \ttype_2 }{ \vtype_2 }
+        \eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
     }{
         \eval{ \Gamma }{ \Pi{x:\ttype_1}{\ttype_2} }{ \Pi{x:\vtype_1}{\vtype_2} }
     }
@@ -319,7 +322,7 @@ in the context.
     \rule{E-LAM}{
         \eval{ \Gamma }{ \ttype }{ \vtype }
         \qquad
-        \eval{ \Gamma, x:\vtype }{ \texpr }{ \vexpr }
+        \eval{ \Gamma }{ \texpr }{ \vexpr }
     }{
         \eval{ \Gamma }{ \lam{x:\ttype}{\texpr} }{ \lam{x:\vtype}{\vexpr} }
     }
@@ -327,7 +330,7 @@ in the context.
     \rule{E-APP}{
         \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
         \qquad
-        \eval{ \Gamma }{ \vexpr_1 ~ [x \rightarrow \texpr_2] }{ \vexpr_3 }
+        \eval{ \Gamma }{ \subst{\vexpr_1}{x}{\texpr_2} }{ \vexpr_3 }
     }{
         \eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
     }
@@ -381,9 +384,9 @@ in the context.
     \rule{E-PROJ}{
         \eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
         \qquad
-        \vexpr_2 = \field(x, \vexpr_1)
+        \vexpr_2 = \field(l, \vexpr_1)
     }{
-        \eval{ \Gamma }{ \texpr_1.x }{ \vexpr_2 }
+        \eval{ \Gamma }{ \texpr_1.l }{ \vexpr_2 }
     }
     \\\\[2em]
 \end{array}
@@ -393,8 +396,8 @@ We define \\(\field(-,-)\\) like so:
 
 \\[
 \begin{array}{lrll}
-    \field(x, \record{y = \vexpr_1, \vexpr_2}) & = & \vexpr_1 & \text{if} ~ x \equiv y \\\\
-    \field(x, \record{y = \vexpr_1, \vexpr_2}) & = & \field(x, \vexpr_2) \\\\
+    \field(l_1, \record{l_2 = \vexpr_1, \vexpr_2}) & = & \vexpr_1 & \text{if} ~ l_1 \equiv l_2 \\\\
+    \field(l_1, \record{l_2 = \vexpr_1, \vexpr_2}) & = & \field(l_1, \vexpr_2) \\\\
 \end{array}
 \\]
 
@@ -430,7 +433,9 @@ elaborated form.
         \qquad
         \check{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
         \qquad
-        \check{ \Gamma }{ \rexpr_2 }{ \vtype_2 }{ \texpr_2 }
+        \eval{ \Gamma }{ \subst{\vtype_2}{l_1}{\texpr_1} }{ \vtype_3 }
+        \qquad
+        \check{ \Gamma }{ \rexpr_2 }{ \vtype_3 }{ \texpr_2 }
     }{
         \check{ \Gamma }{ \record{l_1=\rexpr_1, \rexpr_2} }{ \Record{l_2:\vtype_1, \vtype_2} }{ \record{l_1=\texpr_1, \texpr_2} }
     }
@@ -521,7 +526,7 @@ returns its elaborated form.
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
-        \eval{ \Gamma }{ \vtype_2 ~ [x \rightarrow \texpr_2] }{ \vtype_3 }
+        \eval{ \Gamma }{ \subst{\vtype_2}{x}{\texpr_2} }{ \vtype_3 }
     }{
         \infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
     }
@@ -529,17 +534,11 @@ returns its elaborated form.
     \rule{I-RECORD-TYPE}{
         \infer{ \Gamma }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
         \qquad
-        \infer{ \Gamma }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \qquad
+        \infer{ \Gamma, x:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
     }{
         \infer{ \Gamma }{ \Record{l:\rtype_1, \rtype_2} }{ \Type_{\max(i,j)} }{ \Record{l:\ttype_1, \ttype_2} }
-    }
-    \\\\[2em]
-    \rule{I-RECORD}{
-        \infer{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
-        \qquad
-        \infer{ \Gamma }{ \rexpr_2 }{ \vtype_2 }{ \texpr_2 }
-    }{
-        \infer{ \Gamma }{ \record{l=\rexpr_1, \rexpr_2} }{ \Record{l:\vtype_1, \vtype_2} }{ \record{l=\texpr_1, \texpr_2} }
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD-TYPE}{}{
@@ -553,19 +552,35 @@ returns its elaborated form.
     \rule{I-PROJ}{
         \infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
         \qquad
-        \vtype_2 = \fieldty(x, \vtype_1)
+        \vtype_2 = \fieldty(l, \vtype_1)
+        \qquad
+        \theta = \fieldsubst(\texpr, l, \vtype_1)
     }{
-        \infer{ \Gamma }{ \rexpr.x }{ \vtype_2 }{ \texpr.x }
+        \infer{ \Gamma }{ \rexpr.l }{ \vtype_2 ~ \theta }{ \texpr.l }
     }
     \\\\[2em]
 \end{array}
 \\]
 
-We define \\(\fieldty(-,-)\\) like so:
+We define \\(\fieldty(-,-)\\) and \\(\fieldsubst(-,-,-)\\) like so:
 
 \\[
 \begin{array}{lrll}
-    \fieldty(x, \Record{y : \vexpr_1, \vexpr_2}) & = & \vexpr_1 & \text{if} ~ x \equiv y \\\\
-    \fieldty(x, \Record{y : \vexpr_1, \vexpr_2}) & = & \field(x, \vexpr_2) \\\\
+    \fieldty(l_1, \Record{l_2 : \vtype_1, \vtype_2}) & = & \vtype_1 & \text{if} ~ l_1 \equiv l_2 \\\\
+    \fieldty(l_1, \Record{l_2 : \vtype_1, \vtype_2}) & = & \fieldty(l_1, \vtype_2) \\\\
+    \\\\[2em]
+\end{array}
+\\]
+
+In order to ensure that we maintain maintain the proper paths to variables when
+we project on them, we define \\(\fieldsubst(-,-,-)\\) as:
+
+\\[
+\begin{array}{lrll}
+    \fieldsubst(\texpr, l_1, \Record{l_2 : \vtype_1, \vtype_2}) & =
+        & [] & \text{if} ~ l_1 \equiv l_2 \\\\
+    \fieldsubst(\texpr, l_1, \Record{l_2 : \vtype_1, \vtype_2}) & =
+        & \fieldsubst(\texpr, l_1, \vtype_2) \doubleplus [ l_2 \rightarrow \texpr.l_2 ] \\\\
+    \\\\[2em]
 \end{array}
 \\]
