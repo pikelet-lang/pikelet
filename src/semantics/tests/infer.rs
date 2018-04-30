@@ -408,12 +408,12 @@ fn empty_record() {
 }
 
 #[test]
-fn record_ty() {
+fn dependent_record_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
     let expected_ty = r"Type 2";
-    let given_expr = r"Record { t : Type 1, x : String }";
+    let given_expr = r"Record { t : Type 1, x : t }";
 
     assert_term_eq!(
         parse_infer(&mut codemap, &context, given_expr).1,
@@ -426,13 +426,12 @@ fn record() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"Record { t : Type, x : String }";
-    let given_expr = r#"record { t = String, x = "hello" }"#;
+    let given_expr = r#"record { x = "Hello" }"#;
 
-    assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
-        parse_normalize(&mut codemap, &context, expected_ty),
-    );
+    match infer(&context, &parse(&mut codemap, given_expr)) {
+        Err(TypeError::AmbiguousRecord { .. }) => {},
+        x => panic!("expected an ambiguous record error, found {:?}", x),
+    }
 }
 
 #[test]
@@ -441,7 +440,7 @@ fn proj() {
     let context = Context::default();
 
     let expected_ty = r"String";
-    let given_expr = r#"record { t = String, x = "hello" }.x"#;
+    let given_expr = r#"(record { t = String, x = "hello" } : Record { t : Type, x : String }).x"#;
 
     assert_term_eq!(
         parse_infer(&mut codemap, &context, given_expr).1,
@@ -452,12 +451,33 @@ fn proj() {
 #[test]
 fn proj_missing() {
     let mut codemap = CodeMap::new();
-    let context = Context::new();
+    let context = Context::default();
 
-    let given_expr = r#"record { x = "hello" }.bloop"#;
+    let given_expr = r#"(record { x = "hello" } : Record { x : String }).bloop"#;
 
     match infer(&context, &parse(&mut codemap, given_expr)) {
         Err(TypeError::NoFieldInType { .. }) => {},
         x => panic!("expected a field lookup error, found {:?}", x),
     }
+}
+
+#[test]
+fn proj_weird() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"Type 1";
+    let given_expr = r"Record {
+            Array : U16 -> Type -> Type,
+            t : Record { n : U16, x : Array n I8, y : Array n I8 },
+            inner-prod : (len : U16) -> Array len I8 -> Array len I8 -> I32,
+
+            test1 : I32 -> Type,
+            test2 : test1 (inner-prod t.n t.x t.y),
+        }";
+
+    assert_term_eq!(
+        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_normalize(&mut codemap, &context, expected_ty),
+    );
 }

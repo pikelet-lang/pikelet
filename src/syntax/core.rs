@@ -2,7 +2,8 @@
 
 use codespan::{ByteIndex, ByteSpan};
 use im::Vector;
-use nameless::{self, Bind, Embed, Ignore, Name, Var};
+use nameless::{self, Bind, BoundName, BoundPattern, BoundTerm, Embed, Ignore, Name, ScopeState,
+               Var};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
@@ -118,12 +119,46 @@ impl fmt::Display for RawDefinition {
 }
 
 /// A record label
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
-pub struct Label(pub String);
+///
+/// Labels are significant when comparing for alpha-equality, both in terms and
+/// in patterns
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label(pub Name);
+
+impl BoundTerm for Label {
+    fn term_eq(&self, other: &Label) -> bool {
+        match (self.0.name(), other.0.name()) {
+            (Some(lhs), Some(rhs)) => lhs == rhs,
+            (_, _) => Name::term_eq(&self.0, &other.0),
+        }
+    }
+}
+
+impl BoundPattern for Label {
+    fn pattern_eq(&self, other: &Label) -> bool {
+        Label::term_eq(self, other)
+    }
+
+    fn freshen(&mut self) -> Vec<Name> {
+        self.0.freshen()
+    }
+
+    fn rename(&mut self, perm: &[Name]) {
+        self.0.rename(perm)
+    }
+
+    fn on_free(&self, state: ScopeState, name: &Name) -> Option<BoundName> {
+        self.0.on_free(state, name)
+    }
+
+    fn on_bound(&self, state: ScopeState, name: BoundName) -> Option<Name> {
+        self.0.on_bound(state, name)
+    }
+}
 
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        self.0.fmt(f)
     }
 }
 
@@ -158,9 +193,15 @@ pub enum RawTerm {
     /// If expression
     If(Ignore<ByteIndex>, Rc<RawTerm>, Rc<RawTerm>, Rc<RawTerm>),
     /// Dependent record types
-    RecordType(Ignore<ByteSpan>, Label, Rc<RawTerm>, Rc<RawTerm>),
+    RecordType(
+        Ignore<ByteSpan>,
+        Bind<(Label, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
+    ),
     /// Dependent record
-    Record(Ignore<ByteSpan>, Label, Rc<RawTerm>, Rc<RawTerm>),
+    Record(
+        Ignore<ByteSpan>,
+        Bind<(Label, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
+    ),
     /// The unit type
     EmptyRecordType(Ignore<ByteSpan>),
     /// The element of the unit type
@@ -179,8 +220,8 @@ impl RawTerm {
             | RawTerm::Var(span, _)
             | RawTerm::Pi(span, _)
             | RawTerm::Lam(span, _)
-            | RawTerm::RecordType(span, _, _, _)
-            | RawTerm::Record(span, _, _, _)
+            | RawTerm::RecordType(span, _)
+            | RawTerm::Record(span, _)
             | RawTerm::EmptyRecordType(span)
             | RawTerm::EmptyRecord(span)
             | RawTerm::Proj(span, _, _, _) => span.0,
@@ -223,21 +264,17 @@ impl RawTerm {
                 if_true.visit_vars(on_var);
                 if_false.visit_vars(on_var);
             },
-            RawTerm::RecordType(_, _, ref ann, ref rest) => {
-                ann.visit_vars(on_var);
-                rest.visit_vars(on_var);
-                return;
+            RawTerm::RecordType(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
-            RawTerm::Record(_, _, ref expr, ref rest) => {
-                expr.visit_vars(on_var);
-                rest.visit_vars(on_var);
-                return;
+            RawTerm::Record(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
-            RawTerm::EmptyRecordType(_) => return,
-            RawTerm::EmptyRecord(_) => return,
+            RawTerm::EmptyRecordType(_) | RawTerm::EmptyRecord(_) => {},
             RawTerm::Proj(_, ref expr, _, _) => {
                 expr.visit_vars(on_var);
-                return;
             },
         };
     }
@@ -293,9 +330,9 @@ pub enum Term {
     /// If expression
     If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
-    RecordType(Ignore<ByteSpan>, Label, Rc<Term>, Rc<Term>),
+    RecordType(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// Dependent record
-    Record(Ignore<ByteSpan>, Label, Rc<Term>, Rc<Term>),
+    Record(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The unit type
     EmptyRecordType(Ignore<ByteSpan>),
     /// The element of the unit type
@@ -313,8 +350,8 @@ impl Term {
             | Term::Var(span, _)
             | Term::Lam(span, _)
             | Term::Pi(span, _)
-            | Term::RecordType(span, _, _, _)
-            | Term::Record(span, _, _, _)
+            | Term::RecordType(span, _)
+            | Term::Record(span, _)
             | Term::EmptyRecordType(span)
             | Term::EmptyRecord(span)
             | Term::Proj(span, _, _, _) => span.0,
@@ -357,21 +394,17 @@ impl Term {
                 if_true.visit_vars(on_var);
                 if_false.visit_vars(on_var);
             },
-            Term::RecordType(_, _, ref ann, ref rest) => {
-                ann.visit_vars(on_var);
-                rest.visit_vars(on_var);
-                return;
+            Term::RecordType(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
-            Term::Record(_, _, ref expr, ref rest) => {
-                expr.visit_vars(on_var);
-                rest.visit_vars(on_var);
-                return;
+            Term::Record(_, ref scope) => {
+                (scope.unsafe_pattern.1).0.visit_vars(on_var);
+                scope.unsafe_body.visit_vars(on_var);
             },
-            Term::EmptyRecordType(_) => return,
-            Term::EmptyRecord(_) => return,
+            Term::EmptyRecordType(_) | Term::EmptyRecord(_) => {},
             Term::Proj(_, ref expr, _, _) => {
                 expr.visit_vars(on_var);
-                return;
             },
         };
     }
@@ -405,9 +438,9 @@ pub enum Value {
     /// A lambda abstraction
     Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// Dependent record types
-    RecordType(Label, Rc<Value>, Rc<Value>),
+    RecordType(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
     /// Dependent record
-    Record(Label, Rc<Value>, Rc<Value>),
+    Record(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
     /// The unit type
     EmptyRecordType,
     /// The element of the unit type
@@ -417,18 +450,19 @@ pub enum Value {
 }
 
 impl Value {
-    fn record_ty(&self) -> Option<(&Label, &Rc<Value>, &Rc<Value>)> {
+    pub fn record_ty(&self) -> Option<Bind<(Label, Embed<Rc<Value>>), Rc<Value>>> {
         match *self {
-            Value::RecordType(ref label, ref value, ref body) => Some((label, value, body)),
+            Value::RecordType(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record_ty(&self, label: &Label) -> Option<&Rc<Value>> {
+    pub fn lookup_record_ty(&self, label: &Label) -> Option<Rc<Value>> {
         let mut current_scope = self.record_ty();
 
-        while let Some((current_label, value, body)) = current_scope {
-            if current_label == label {
+        while let Some(scope) = current_scope {
+            let ((current_label, Embed(value)), body) = nameless::unbind(scope);
+            if Label::pattern_eq(&current_label, label) {
                 return Some(value);
             }
             current_scope = body.record_ty();
@@ -437,18 +471,19 @@ impl Value {
         None
     }
 
-    fn record(&self) -> Option<(&Label, &Rc<Value>, &Rc<Value>)> {
+    pub fn record(&self) -> Option<Bind<(Label, Embed<Rc<Value>>), Rc<Value>>> {
         match *self {
-            Value::Record(ref label, ref value, ref body) => Some((label, value, body)),
+            Value::Record(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &Label) -> Option<&Rc<Value>> {
+    pub fn lookup_record(&self, label: &Label) -> Option<Rc<Value>> {
         let mut current_scope = self.record();
 
-        while let Some((current_label, value, body)) = current_scope {
-            if current_label == label {
+        while let Some(scope) = current_scope {
+            let ((current_label, Embed(value)), body) = nameless::unbind(scope);
+            if Label::pattern_eq(&current_label, label) {
                 return Some(value);
             }
             current_scope = body.record();
@@ -518,18 +553,24 @@ impl<'a> From<&'a Value> for Term {
                     nameless::bind(param, Rc::new(Term::from(&*body))),
                 )
             },
-            Value::RecordType(ref label, ref ann, ref rest) => Term::RecordType(
-                Ignore::default(),
-                label.clone(),
-                Rc::new(Term::from(&**ann)),
-                Rc::new(Term::from(&**rest)),
-            ),
-            Value::Record(ref label, ref expr, ref rest) => Term::Record(
-                Ignore::default(),
-                label.clone(),
-                Rc::new(Term::from(&**expr)),
-                Rc::new(Term::from(&**rest)),
-            ),
+            Value::RecordType(ref scope) => {
+                let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
+                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
+
+                Term::RecordType(
+                    Ignore::default(),
+                    nameless::bind(param, Rc::new(Term::from(&*body))),
+                )
+            },
+            Value::Record(ref scope) => {
+                let ((name, Embed(param_value)), body) = nameless::unbind(scope.clone());
+                let param = (name, Embed(Rc::new(Term::from(&*param_value))));
+
+                Term::Record(
+                    Ignore::default(),
+                    nameless::bind(param, Rc::new(Term::from(&*body))),
+                )
+            },
             Value::EmptyRecordType => Term::EmptyRecordType(Ignore::default()).into(),
             Value::EmptyRecord => Term::EmptyRecord(Ignore::default()).into(),
             Value::Neutral(ref n) => Term::from(&**n),
