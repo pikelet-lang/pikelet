@@ -4,7 +4,7 @@
 
 - [Record values and record types](#record-values-and-record-types)
 - [Field lookups](#field-lookups)
-- [Dependent record types](#dependent_record_types)
+- [Dependent record types](#dependent-record-types)
 
 ## Record values and record types
 
@@ -56,9 +56,9 @@ Field types can depend on data from previous fields. Here we turn a
 fixed-length array into a dynamically sized array, by using the `len` field
 later on to define the `data` field's annotation:
 
-```
+```pikelet
 DArray (a : Type) = Record {
     len : I32,
     data : Box (Array len a),
-}
+};
 ```
