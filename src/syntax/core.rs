@@ -424,8 +424,8 @@ impl Term {
 
 /// Values
 ///
-/// These are either in _weak head normal form_ (they cannot be reduced further)
-/// or are _neutral terms_ (there is a possibility of reducing further depending
+/// These are either in _normal form_ (they cannot be reduced further) or are
+/// _neutral terms_ (there is a possibility of reducing further depending
 /// on the bindings given in the context)
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Value {
