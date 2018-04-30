@@ -468,13 +468,13 @@ fn proj_weird() {
 
     let expected_ty = r"Type 1";
     let given_expr = r"Record {
-            Array : U16 -> Type -> Type,
-            t : Record { n : U16, x : Array n I8, y : Array n I8 },
-            inner-prod : (len : U16) -> Array len I8 -> Array len I8 -> I32,
+        Array : U16 -> Type -> Type,
+        t : Record { n : U16, x : Array n I8, y : Array n I8 },
+        inner-prod : (len : U16) -> Array len I8 -> Array len I8 -> I32,
 
-            test1 : I32 -> Type,
-            test2 : test1 (inner-prod t.n t.x t.y),
-        }";
+        test1 : I32 -> Type,
+        test2 : test1 (inner-prod t.n t.x t.y),
+    }";
 
     assert_term_eq!(
         parse_infer(&mut codemap, &context, given_expr).1,
