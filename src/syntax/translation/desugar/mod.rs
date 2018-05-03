@@ -236,17 +236,17 @@ impl Desugar<core::RawTerm> for concrete::Term {
             concrete::Term::Universe(_, level) => {
                 core::RawTerm::Universe(span, core::Level(level.unwrap_or(0)))
             },
-            concrete::Term::Literal(_, ref lit) => {
-                let c = match *lit {
-                    concrete::Literal::String(ref value) => {
-                        core::RawConstant::String(value.clone())
-                    },
-                    concrete::Literal::Char(value) => core::RawConstant::Char(value),
-                    concrete::Literal::Int(value) => core::RawConstant::Int(value),
-                    concrete::Literal::Float(value) => core::RawConstant::Float(value),
-                };
-
-                core::RawTerm::Constant(span, c)
+            concrete::Term::String(_, ref value) => {
+                core::RawTerm::Constant(span, core::RawConstant::String(value.clone()))
+            },
+            concrete::Term::Char(_, value) => {
+                core::RawTerm::Constant(span, core::RawConstant::Char(value))
+            },
+            concrete::Term::Int(_, value) => {
+                core::RawTerm::Constant(span, core::RawConstant::Int(value))
+            },
+            concrete::Term::Float(_, value) => {
+                core::RawTerm::Constant(span, core::RawConstant::Float(value))
             },
             concrete::Term::Hole(_) => core::RawTerm::Hole(span),
             concrete::Term::Var(_, ref x) => {

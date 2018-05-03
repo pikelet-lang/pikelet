@@ -177,19 +177,6 @@ impl fmt::Display for Exposing {
     }
 }
 
-/// Literal values
-#[derive(Debug, Clone, PartialEq)]
-pub enum Literal {
-    /// String literals
-    String(String),
-    /// Character literals
-    Char(char),
-    /// Integer literals
-    Int(u64),
-    /// Floating point literals
-    Float(f64),
-}
-
 /// Terms
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
@@ -211,8 +198,14 @@ pub enum Term {
     /// Type
     /// ```
     Universe(ByteSpan, Option<u32>),
-    /// Literal value
-    Literal(ByteSpan, Literal),
+    /// String literals
+    String(ByteSpan, String),
+    /// Character literals
+    Char(ByteSpan, char),
+    /// Integer literals
+    Int(ByteSpan, u64),
+    /// Floating point literals
+    Float(ByteSpan, f64),
     /// Holes
     ///
     /// ```text
@@ -299,7 +292,10 @@ impl Term {
         match *self {
             Term::Parens(span, _)
             | Term::Universe(span, _)
-            | Term::Literal(span, _)
+            | Term::String(span, _)
+            | Term::Char(span, _)
+            | Term::Int(span, _)
+            | Term::Float(span, _)
             | Term::Hole(span)
             | Term::RecordType(span, _)
             | Term::Record(span, _)

@@ -110,47 +110,44 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
 // ];
 
 fn resugar_constant(constant: &core::Constant) -> concrete::Term {
-    use syntax::concrete::{Literal, Term};
-    use syntax::core::Constant;
-
     let span = ByteSpan::default();
 
     match *constant {
         // FIXME: Draw these names from some environment?
-        Constant::Bool(true) => Term::Var(span.start(), String::from("true")),
-        Constant::Bool(false) => Term::Var(span.start(), String::from("false")),
+        core::Constant::Bool(true) => concrete::Term::Var(span.start(), String::from("true")),
+        core::Constant::Bool(false) => concrete::Term::Var(span.start(), String::from("false")),
 
-        Constant::String(ref value) => Term::Literal(span, Literal::String(value.clone())),
-        Constant::Char(value) => Term::Literal(span, Literal::Char(value)),
+        core::Constant::String(ref value) => concrete::Term::String(span, value.clone()),
+        core::Constant::Char(value) => concrete::Term::Char(span, value),
 
-        Constant::U8(value) => Term::Literal(span, Literal::Int(value as u64)),
-        Constant::U16(value) => Term::Literal(span, Literal::Int(value as u64)),
-        Constant::U32(value) => Term::Literal(span, Literal::Int(value as u64)),
-        Constant::U64(value) => Term::Literal(span, Literal::Int(value)),
+        core::Constant::U8(value) => concrete::Term::Int(span, value as u64),
+        core::Constant::U16(value) => concrete::Term::Int(span, value as u64),
+        core::Constant::U32(value) => concrete::Term::Int(span, value as u64),
+        core::Constant::U64(value) => concrete::Term::Int(span, value),
 
         // FIXME: Underflow for negative numbers
-        Constant::I8(value) => Term::Literal(span, Literal::Int(value as u64)),
-        Constant::I16(value) => Term::Literal(span, Literal::Int(value as u64)),
-        Constant::I32(value) => Term::Literal(span, Literal::Int(value as u64)),
-        Constant::I64(value) => Term::Literal(span, Literal::Int(value as u64)),
+        core::Constant::I8(value) => concrete::Term::Int(span, value as u64),
+        core::Constant::I16(value) => concrete::Term::Int(span, value as u64),
+        core::Constant::I32(value) => concrete::Term::Int(span, value as u64),
+        core::Constant::I64(value) => concrete::Term::Int(span, value as u64),
 
-        Constant::F32(value) => Term::Literal(span, Literal::Float(value as f64)),
-        Constant::F64(value) => Term::Literal(span, Literal::Float(value)),
+        core::Constant::F32(value) => concrete::Term::Float(span, value as f64),
+        core::Constant::F64(value) => concrete::Term::Float(span, value),
 
         // FIXME: Draw these names from some environment?
-        Constant::BoolType => Term::Var(span.start(), String::from("Bool")),
-        Constant::StringType => Term::Var(span.start(), String::from("String")),
-        Constant::CharType => Term::Var(span.start(), String::from("Char")),
-        Constant::U8Type => Term::Var(span.start(), String::from("U8")),
-        Constant::U16Type => Term::Var(span.start(), String::from("U16")),
-        Constant::U32Type => Term::Var(span.start(), String::from("U32")),
-        Constant::U64Type => Term::Var(span.start(), String::from("U64")),
-        Constant::I8Type => Term::Var(span.start(), String::from("I8")),
-        Constant::I16Type => Term::Var(span.start(), String::from("I16")),
-        Constant::I32Type => Term::Var(span.start(), String::from("I32")),
-        Constant::I64Type => Term::Var(span.start(), String::from("I64")),
-        Constant::F32Type => Term::Var(span.start(), String::from("F32")),
-        Constant::F64Type => Term::Var(span.start(), String::from("F64")),
+        core::Constant::BoolType => concrete::Term::Var(span.start(), String::from("Bool")),
+        core::Constant::StringType => concrete::Term::Var(span.start(), String::from("String")),
+        core::Constant::CharType => concrete::Term::Var(span.start(), String::from("Char")),
+        core::Constant::U8Type => concrete::Term::Var(span.start(), String::from("U8")),
+        core::Constant::U16Type => concrete::Term::Var(span.start(), String::from("U16")),
+        core::Constant::U32Type => concrete::Term::Var(span.start(), String::from("U32")),
+        core::Constant::U64Type => concrete::Term::Var(span.start(), String::from("U64")),
+        core::Constant::I8Type => concrete::Term::Var(span.start(), String::from("I8")),
+        core::Constant::I16Type => concrete::Term::Var(span.start(), String::from("I16")),
+        core::Constant::I32Type => concrete::Term::Var(span.start(), String::from("I32")),
+        core::Constant::I64Type => concrete::Term::Var(span.start(), String::from("I64")),
+        core::Constant::F32Type => concrete::Term::Var(span.start(), String::from("F32")),
+        core::Constant::F64Type => concrete::Term::Var(span.start(), String::from("F64")),
     }
 }
 

@@ -2,7 +2,7 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Declaration, Exposing, LamParams, Literal, Module, PiParams, Term};
+use syntax::concrete::{Declaration, Exposing, LamParams, Module, PiParams, Term};
 
 use super::{StaticDoc, ToDoc};
 
@@ -132,10 +132,10 @@ impl ToDoc for Term {
                     Doc::space().append(Doc::as_string(level))
                 }))
             },
-            Term::Literal(_, Literal::String(ref value)) => Doc::text(format!("{:?}", value)),
-            Term::Literal(_, Literal::Char(value)) => Doc::text(format!("{:?}", value)),
-            Term::Literal(_, Literal::Int(value)) => Doc::as_string(value),
-            Term::Literal(_, Literal::Float(value)) => Doc::as_string(value),
+            Term::String(_, ref value) => Doc::text(format!("{:?}", value)),
+            Term::Char(_, value) => Doc::text(format!("{:?}", value)),
+            Term::Int(_, value) => Doc::as_string(value),
+            Term::Float(_, value) => Doc::as_string(value),
             Term::Hole(_) => Doc::text("_"),
             Term::Var(_, ref name) => Doc::as_string(name),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
