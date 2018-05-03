@@ -1,8 +1,9 @@
 //! The core syntax of the language
 
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{self, Bind, BoundName, BoundPattern, BoundTerm, Embed, Ignore, Name, ScopeState,
-               Var};
+use nameless::{
+    self, Bind, BoundName, BoundPattern, BoundTerm, Embed, Ignore, Name, ScopeState, Var,
+};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;

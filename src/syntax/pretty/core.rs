@@ -3,8 +3,10 @@
 use nameless::{Name, Var};
 use pretty::Doc;
 
-use syntax::core::{Constant, Definition, Label, Level, Module, Neutral, RawConstant,
-                   RawDefinition, RawModule, RawTerm, Term, Value};
+use syntax::core::{
+    Constant, Definition, Label, Level, Module, Neutral, RawConstant, RawDefinition, RawModule,
+    RawTerm, Term, Value,
+};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
