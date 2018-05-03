@@ -248,6 +248,7 @@ impl Desugar<core::RawTerm> for concrete::Term {
             concrete::Term::Float(_, value) => {
                 core::RawTerm::Constant(span, core::RawConstant::Float(value))
             },
+            concrete::Term::Array(_, ref _elems) => unimplemented!("array literals"),
             concrete::Term::Hole(_) => core::RawTerm::Hole(span),
             concrete::Term::Var(_, ref x) => {
                 core::RawTerm::Var(span, Var::Free(Name::user(x.clone())))

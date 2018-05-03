@@ -206,6 +206,8 @@ pub enum Term {
     Int(ByteSpan, u64),
     /// Floating point literals
     Float(ByteSpan, f64),
+    /// Array literals
+    Array(ByteSpan, Vec<Term>),
     /// Holes
     ///
     /// ```text
@@ -296,6 +298,7 @@ impl Term {
             | Term::Char(span, _)
             | Term::Int(span, _)
             | Term::Float(span, _)
+            | Term::Array(span, _)
             | Term::Hole(span)
             | Term::RecordType(span, _)
             | Term::Record(span, _)

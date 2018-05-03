@@ -136,6 +136,12 @@ impl ToDoc for Term {
             Term::Char(_, value) => Doc::text(format!("{:?}", value)),
             Term::Int(_, value) => Doc::as_string(value),
             Term::Float(_, value) => Doc::as_string(value),
+            Term::Array(_, ref elems) => Doc::text("[")
+                .append(Doc::intersperse(
+                    elems.iter().map(Term::to_doc),
+                    Doc::text(",").append(Doc::space()),
+                ))
+                .append(Doc::text("]")),
             Term::Hole(_) => Doc::text("_"),
             Term::Var(_, ref name) => Doc::as_string(name),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
