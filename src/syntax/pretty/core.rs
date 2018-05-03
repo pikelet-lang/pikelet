@@ -3,22 +3,10 @@
 use nameless::{Name, Var};
 use pretty::Doc;
 
-use syntax::core::{Constant, Context, ContextEntry, Definition, Label, Level, Module, Neutral,
-                   RawConstant, RawDefinition, RawModule, RawTerm, Term, Value};
+use syntax::core::{Constant, Definition, Label, Level, Module, Neutral, RawConstant,
+                   RawDefinition, RawModule, RawTerm, Term, Value};
 
-use super::{StaticDoc, ToDoc};
-
-fn parens(doc: StaticDoc) -> StaticDoc {
-    Doc::text("(").append(doc.append(Doc::text(")").nest(1)))
-}
-
-fn sexpr(name: &'static str, doc: StaticDoc) -> StaticDoc {
-    parens(
-        Doc::text(name)
-            .append(Doc::space())
-            .append(doc.nest(name.len())),
-    )
-}
+use super::{parens, sexpr, StaticDoc, ToDoc};
 
 fn pretty_ann<E: ToDoc, T: ToDoc>(expr: &E, ty: &T) -> StaticDoc {
     sexpr(
@@ -385,34 +373,6 @@ impl ToDoc for Neutral {
             Neutral::If(ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
             Neutral::Proj(ref expr, ref label) => pretty_proj(expr, label),
         }
-    }
-}
-
-impl ToDoc for ContextEntry {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            ContextEntry::Claim(ref name, ref ty) => sexpr(
-                "claim",
-                Doc::text(format!("{:#}", name))
-                    .append(Doc::space())
-                    .append(ty.to_doc()),
-            ),
-            ContextEntry::Definition(ref name, ref term) => sexpr(
-                "define",
-                Doc::text(format!("{:#}", name))
-                    .append(Doc::space())
-                    .append(term.to_doc()),
-            ),
-        }
-    }
-}
-
-impl ToDoc for Context {
-    fn to_doc(&self) -> StaticDoc {
-        parens(Doc::intersperse(
-            self.entries.iter().map(|entry| entry.to_doc()),
-            Doc::space(),
-        ))
     }
 }
 

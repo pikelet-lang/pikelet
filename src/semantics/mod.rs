@@ -8,8 +8,9 @@ use codespan::ByteSpan;
 use nameless::{self, BoundPattern, BoundTerm, Embed, Ignore, Name, Var};
 use std::rc::Rc;
 
-use syntax::core::{Constant, Context, Definition, Label, Level, Module, Neutral, RawConstant,
-                   RawModule, RawTerm, Term, Type, Value};
+use syntax::context::Context;
+use syntax::core::{Constant, Definition, Label, Level, Module, Neutral, RawConstant, RawModule,
+                   RawTerm, Term, Type, Value};
 use syntax::translation::Resugar;
 
 mod errors;

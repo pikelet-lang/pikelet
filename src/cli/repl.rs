@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use term_size;
 
 use semantics;
-use syntax::core::Context;
+use syntax::context::Context;
 use syntax::parse;
 
 /// Options for the `repl` subcommand

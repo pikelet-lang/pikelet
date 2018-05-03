@@ -5,6 +5,7 @@ use pretty::{BoxDoc, Doc};
 use std::rc::Rc;
 
 mod concrete;
+mod context;
 mod core;
 
 /// An effectively 'infinite' line length for when we don't have an explicit
@@ -31,4 +32,16 @@ impl<T: ToDoc> ToDoc for Rc<T> {
     fn to_doc(&self) -> StaticDoc {
         (**self).to_doc()
     }
+}
+
+fn parens(doc: StaticDoc) -> StaticDoc {
+    Doc::text("(").append(doc.append(Doc::text(")").nest(1)))
+}
+
+fn sexpr(name: &'static str, doc: StaticDoc) -> StaticDoc {
+    parens(
+        Doc::text(name)
+            .append(Doc::space())
+            .append(doc.nest(name.len())),
+    )
 }
