@@ -597,7 +597,7 @@ impl<'a> From<&'a Neutral> for Term {
                 Rc::new(Term::from(&**expr)),
                 Ignore::default(),
                 name.clone(),
-            ).into(),
+            ),
         }
     }
 }
