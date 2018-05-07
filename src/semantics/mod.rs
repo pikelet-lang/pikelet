@@ -90,30 +90,44 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
         },
         Value::EmptyRecordType => Rc::new(Term::EmptyRecordType(Ignore::default())),
         Value::EmptyRecord => Rc::new(Term::EmptyRecord(Ignore::default())),
-        Value::Neutral(ref neutral) => match **neutral {
-            Neutral::Head(Head::Var(Var::Free(ref name))) => {
-                match substs.iter().find(|s| *name == s.0) {
-                    Some(&(_, ref term)) => term.clone(),
-                    None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
-                }
-            },
-            Neutral::Head(Head::Var(ref var)) => Rc::new(Term::Var(Ignore::default(), var.clone())),
-            Neutral::App(ref expr, ref arg) => Rc::new(Term::App(
-                subst(&Value::Neutral(expr.clone()), substs),
-                subst(arg, substs),
-            )),
-            Neutral::If(ref cond, ref if_true, ref if_false) => Rc::new(Term::If(
-                Ignore::default(),
-                subst(&Value::Neutral(cond.clone()), substs),
-                subst(if_true, substs),
-                subst(if_false, substs),
-            )),
-            Neutral::Proj(ref expr, ref label) => Rc::new(Term::Proj(
-                Ignore::default(),
-                subst(&Value::Neutral(expr.clone()), substs),
-                Ignore::default(),
-                label.clone(),
-            )),
+        Value::Neutral(ref neutral) => {
+            let (head, spine) = match **neutral {
+                Neutral::App(Head::Var(Var::Free(ref name)), ref spine) => {
+                    let head = match substs.iter().find(|s| *name == s.0) {
+                        Some(&(_, ref term)) => term.clone(),
+                        None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
+                    };
+
+                    (head, spine)
+                },
+                Neutral::App(Head::Var(ref var), ref spine) => {
+                    (Rc::new(Term::Var(Ignore::default(), var.clone())), spine)
+                },
+                Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
+                    let head = Rc::new(Term::If(
+                        Ignore::default(),
+                        subst(&Value::Neutral(cond.clone()), substs),
+                        subst(if_true, substs),
+                        subst(if_false, substs),
+                    ));
+
+                    (head, spine)
+                },
+                Neutral::Proj(ref expr, ref label, ref spine) => {
+                    let head = Rc::new(Term::Proj(
+                        Ignore::default(),
+                        subst(&Value::Neutral(expr.clone()), substs),
+                        Ignore::default(),
+                        label.clone(),
+                    ));
+
+                    (head, spine)
+                },
+            };
+
+            spine
+                .iter()
+                .fold(head, |acc, arg| Rc::new(Term::App(acc, subst(arg, substs))))
         },
     }
 }
@@ -172,18 +186,25 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
         // E-APP
         Term::App(ref expr, ref arg) => {
-            let value_expr = normalize(context, expr)?;
+            let mut value_expr = normalize(context, expr)?;
 
-            match *value_expr {
+            match Rc::make_mut(&mut value_expr) {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((name, Embed(_)), body) = nameless::unbind(scope.clone());
                     normalize(context, &subst(&*body, &vec![(name, arg.clone())]))
                 },
-                Value::Neutral(ref expr) => Ok(Rc::new(Value::from(Neutral::App(
-                    expr.clone(),
-                    normalize(context, arg)?,
-                )))),
+                Value::Neutral(ref mut neutral) => {
+                    let arg = normalize(context, arg)?;
+
+                    match *Rc::make_mut(neutral) {
+                        Neutral::App(_, ref mut spine) => spine.push(arg),
+                        Neutral::If(_, _, _, ref mut spine) => spine.push(arg),
+                        Neutral::Proj(_, _, ref mut spine) => spine.push(arg),
+                    }
+
+                    Ok(Rc::new(Value::Neutral(neutral.clone())))
+                },
                 _ => Err(InternalError::ArgumentAppliedToNonFunction { span: expr.span() }),
             }
         },
@@ -199,6 +220,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                     cond.clone(),
                     normalize(context, if_true)?,
                     normalize(context, if_false)?,
+                    vec![],
                 )))),
                 _ => Err(InternalError::ExpectedBoolExpr { span: cond.span() }),
             }
@@ -234,6 +256,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Neutral(ref neutral) => Ok(Rc::new(Value::from(Neutral::Proj(
                     neutral.clone(),
                     label.clone(),
+                    vec![],
                 )))),
                 ref expr => match expr.lookup_record(label) {
                     Some(value) => Ok(value.clone()),

@@ -81,8 +81,8 @@ fn lam_app() {
             Rc::new(Value::Lam(nameless::bind(
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
-                    Rc::new(Neutral::from(Var::Free(x))),
-                    Rc::new(Value::from(Var::Free(y))),
+                    Head::Var(Var::Free(x)),
+                    vec![Rc::new(Value::from(Var::Free(y)))],
                 ))),
             ))),
         ))),
@@ -112,8 +112,8 @@ fn pi_app() {
             Rc::new(Value::Pi(nameless::bind(
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
-                    Rc::new(Neutral::from(Var::Free(x))),
-                    Rc::new(Value::from(Var::Free(y))),
+                    Head::Var(Var::Free(x)),
+                    vec![Rc::new(Value::from(Var::Free(y)))],
                 ))),
             ))),
         ))),

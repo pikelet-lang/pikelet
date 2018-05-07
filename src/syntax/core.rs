@@ -504,20 +504,23 @@ pub enum Head {
     // TODO: Primitives
 }
 
+/// The spine of a neutral term
+///
+/// These are arguments that are awaiting application
+pub type Spine = Vec<Rc<Value>>;
+
 /// Neutral terms
 ///
 /// These might be able to be reduced further depending on the bindings in the
 /// context
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
-    /// The head of an application
-    Head(Head),
     /// Term application
-    App(Rc<Neutral>, Rc<Value>),
+    App(Head, Spine),
     /// If expression
-    If(Rc<Neutral>, Rc<Value>, Rc<Value>),
+    If(Rc<Neutral>, Rc<Value>, Rc<Value>, Spine),
     /// Field projection
-    Proj(Rc<Neutral>, Label),
+    Proj(Rc<Neutral>, Label, Spine),
 }
 
 impl fmt::Display for Neutral {
@@ -531,7 +534,7 @@ pub type Type = Value;
 
 impl From<Var> for Neutral {
     fn from(src: Var) -> Neutral {
-        Neutral::Head(Head::Var(src))
+        Neutral::App(Head::Var(src), vec![])
     }
 }
 
@@ -597,25 +600,31 @@ impl<'a> From<&'a Value> for Term {
 
 impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
-        match *src {
-            Neutral::Head(ref head) => Term::from(head),
-            Neutral::App(ref fn_expr, ref arg_expr) => Term::App(
-                Rc::new(Term::from(&**fn_expr)),
-                Rc::new(Term::from(&**arg_expr)),
-            ),
-            Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
-                Ignore::default(),
-                Rc::new(Term::from(&**cond)),
-                Rc::new(Term::from(&**if_true)),
-                Rc::new(Term::from(&**if_false)),
-            ),
-            Neutral::Proj(ref expr, ref name) => Term::Proj(
-                Ignore::default(),
-                Rc::new(Term::from(&**expr)),
-                Ignore::default(),
-                name.clone(),
-            ),
-        }
+        let (head, spine) = match *src {
+            Neutral::App(ref head, ref spine) => (Term::from(head), spine),
+            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
+                let head = Term::If(
+                    Ignore::default(),
+                    Rc::new(Term::from(&**cond)),
+                    Rc::new(Term::from(&**if_true)),
+                    Rc::new(Term::from(&**if_false)),
+                );
+                (head, spine)
+            },
+            Neutral::Proj(ref expr, ref name, ref spine) => {
+                let head = Term::Proj(
+                    Ignore::default(),
+                    Rc::new(Term::from(&**expr)),
+                    Ignore::default(),
+                    name.clone(),
+                );
+                (head, spine)
+            },
+        };
+
+        spine.iter().fold(head, |acc, arg| {
+            Term::App(Rc::new(acc), Rc::new(Term::from(&**arg)))
+        })
     }
 }
 

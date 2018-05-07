@@ -2,6 +2,7 @@
 
 use nameless::{Name, Var};
 use pretty::Doc;
+use std::iter;
 
 use syntax::core::{
     Constant, Definition, Head, Label, Level, Module, Neutral, RawConstant, RawDefinition,
@@ -49,13 +50,17 @@ fn pretty_pi<A: ToDoc, B: ToDoc>(name: &Name, ann: &A, body: &B) -> StaticDoc {
     )
 }
 
-fn pretty_app<F: ToDoc, A: ToDoc>(fn_term: &F, arg_term: &A) -> StaticDoc {
+fn pretty_app<'a, As, A>(expr: StaticDoc, args: As) -> StaticDoc
+where
+    As: 'a + IntoIterator<Item = &'a A>,
+    A: 'a + ToDoc,
+{
     sexpr(
         "app",
-        Doc::nil()
-            .append(fn_term.to_doc())
-            .append(Doc::space())
-            .append(arg_term.to_doc()),
+        expr.append(Doc::space()).append(Doc::intersperse(
+            args.into_iter().map(A::to_doc),
+            Doc::space(),
+        )),
     )
 }
 
@@ -158,7 +163,7 @@ impl ToDoc for RawTerm {
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            RawTerm::App(ref f, ref a) => pretty_app(f, a),
+            RawTerm::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
             RawTerm::If(_, ref cond, ref if_true, ref if_false) => {
                 pretty_if(cond, if_true, if_false)
             },
@@ -236,7 +241,7 @@ impl ToDoc for Term {
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            Term::App(ref f, ref a) => pretty_app(f, a),
+            Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
             Term::If(_, ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
             Term::RecordType(_, ref scope) => {
                 let mut inner = Doc::nil();
@@ -370,10 +375,21 @@ impl ToDoc for Value {
 impl ToDoc for Neutral {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Neutral::Head(Head::Var(ref var)) => pretty_var(var),
-            Neutral::App(ref fn_term, ref arg_term) => pretty_app(fn_term, arg_term),
-            Neutral::If(ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
-            Neutral::Proj(ref expr, ref label) => pretty_proj(expr, label),
+            Neutral::App(ref head, ref spine) => pretty_app(head.to_doc(), spine),
+            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
+                pretty_app(pretty_if(cond, if_true, if_false), spine)
+            },
+            Neutral::Proj(ref expr, ref label, ref spine) => {
+                pretty_app(pretty_proj(expr, label), spine)
+            },
+        }
+    }
+}
+
+impl ToDoc for Head {
+    fn to_doc(&self) -> StaticDoc {
+        match *self {
+            Head::Var(ref var) => pretty_var(var),
         }
     }
 }
