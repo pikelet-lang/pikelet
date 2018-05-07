@@ -10,8 +10,8 @@ use std::rc::Rc;
 
 use syntax::context::Context;
 use syntax::core::{
-    Constant, Definition, Label, Level, Module, Neutral, RawConstant, RawModule, RawTerm, Term,
-    Type, Value,
+    Constant, Definition, Head, Label, Level, Module, Neutral, RawConstant, RawModule, RawTerm,
+    Term, Type, Value,
 };
 use syntax::translation::Resugar;
 
@@ -91,11 +91,13 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
         Value::EmptyRecordType => Rc::new(Term::EmptyRecordType(Ignore::default())),
         Value::EmptyRecord => Rc::new(Term::EmptyRecord(Ignore::default())),
         Value::Neutral(ref neutral) => match **neutral {
-            Neutral::Var(Var::Free(ref name)) => match substs.iter().find(|s| *name == s.0) {
-                Some(&(_, ref term)) => term.clone(),
-                None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
+            Neutral::Head(Head::Var(Var::Free(ref name))) => {
+                match substs.iter().find(|s| *name == s.0) {
+                    Some(&(_, ref term)) => term.clone(),
+                    None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
+                }
             },
-            Neutral::Var(ref var) => Rc::new(Term::Var(Ignore::default(), var.clone())),
+            Neutral::Head(Head::Var(ref var)) => Rc::new(Term::Var(Ignore::default(), var.clone())),
             Neutral::App(ref expr, ref arg) => Rc::new(Term::App(
                 subst(&Value::Neutral(expr.clone()), substs),
                 subst(arg, substs),
@@ -132,7 +134,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_definition(name) {
                 Some(term) => normalize(context, &term),
-                None => Ok(Rc::new(Value::from(Neutral::Var(var.clone())))),
+                None => Ok(Rc::new(Value::from(var.clone()))),
             },
 
             // We should always be substituting bound variables with fresh

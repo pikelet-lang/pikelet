@@ -4,8 +4,8 @@ use nameless::{Name, Var};
 use pretty::Doc;
 
 use syntax::core::{
-    Constant, Definition, Label, Level, Module, Neutral, RawConstant, RawDefinition, RawModule,
-    RawTerm, Term, Value,
+    Constant, Definition, Head, Label, Level, Module, Neutral, RawConstant, RawDefinition,
+    RawModule, RawTerm, Term, Value,
 };
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
@@ -370,7 +370,7 @@ impl ToDoc for Value {
 impl ToDoc for Neutral {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Neutral::Var(ref var) => pretty_var(var),
+            Neutral::Head(Head::Var(ref var)) => pretty_var(var),
             Neutral::App(ref fn_term, ref arg_term) => pretty_app(fn_term, arg_term),
             Neutral::If(ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
             Neutral::Proj(ref expr, ref label) => pretty_proj(expr, label),

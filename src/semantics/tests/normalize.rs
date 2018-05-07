@@ -11,7 +11,7 @@ fn var() {
 
     assert_eq!(
         normalize(&context, &var).unwrap(),
-        Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
+        Rc::new(Value::from(Var::Free(x))),
     );
 }
 
@@ -37,7 +37,7 @@ fn lam() {
         parse_normalize(&mut codemap, &context, r"\x : Type => x"),
         Rc::new(Value::Lam(nameless::bind(
             (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
-            Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
+            Rc::new(Value::from(Var::Free(x))),
         ))),
     );
 }
@@ -53,7 +53,7 @@ fn pi() {
         parse_normalize(&mut codemap, &context, r"(x : Type) -> x"),
         Rc::new(Value::Pi(nameless::bind(
             (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
-            Rc::new(Value::from(Neutral::Var(Var::Free(x)))),
+            Rc::new(Value::from(Var::Free(x))),
         ))),
     );
 }
@@ -81,8 +81,8 @@ fn lam_app() {
             Rc::new(Value::Lam(nameless::bind(
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
-                    Rc::new(Neutral::Var(Var::Free(x))),
-                    Rc::new(Value::from(Neutral::Var(Var::Free(y)))),
+                    Rc::new(Neutral::from(Var::Free(x))),
+                    Rc::new(Value::from(Var::Free(y))),
                 ))),
             ))),
         ))),
@@ -112,8 +112,8 @@ fn pi_app() {
             Rc::new(Value::Pi(nameless::bind(
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
-                    Rc::new(Neutral::Var(Var::Free(x))),
-                    Rc::new(Value::from(Neutral::Var(Var::Free(y)))),
+                    Rc::new(Neutral::from(Var::Free(x))),
+                    Rc::new(Value::from(Var::Free(y))),
                 ))),
             ))),
         ))),
