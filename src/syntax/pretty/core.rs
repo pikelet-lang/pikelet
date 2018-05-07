@@ -395,14 +395,12 @@ impl ToDoc for RawModule {
     fn to_doc(&self) -> StaticDoc {
         sexpr(
             "module",
-            Doc::as_string(&self.name)
-                .append(Doc::newline())
-                .append(Doc::intersperse(
-                    self.definitions
-                        .iter()
-                        .map(|definition| definition.to_doc()),
-                    Doc::newline().append(Doc::newline()),
-                )),
+            Doc::intersperse(
+                self.definitions
+                    .iter()
+                    .map(|definition| definition.to_doc()),
+                Doc::newline().append(Doc::newline()),
+            ),
         )
     }
 }
@@ -424,14 +422,12 @@ impl ToDoc for Module {
     fn to_doc(&self) -> StaticDoc {
         sexpr(
             "module",
-            Doc::as_string(&self.name)
-                .append(Doc::newline())
-                .append(Doc::intersperse(
-                    self.definitions
-                        .iter()
-                        .map(|definition| definition.to_doc()),
-                    Doc::newline().append(Doc::newline()),
-                )),
+            Doc::intersperse(
+                self.definitions
+                    .iter()
+                    .map(|definition| definition.to_doc()),
+                Doc::newline().append(Doc::newline()),
+            ),
         )
     }
 }

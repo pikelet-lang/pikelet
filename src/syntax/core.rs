@@ -90,8 +90,6 @@ impl fmt::Display for Constant {
 
 /// A module definition
 pub struct RawModule {
-    /// The name of the module
-    pub name: String,
     /// The definitions contained in the module
     pub definitions: Vec<RawDefinition>,
 }
@@ -294,8 +292,6 @@ impl RawTerm {
 
 /// A typechecked and elaborated module
 pub struct Module {
-    /// The name of the module
-    pub name: String,
     /// The definitions contained in the module
     pub definitions: Vec<Definition>,
 }

@@ -44,10 +44,7 @@ impl Resugar<concrete::Module> for core::Module {
             declarations.push(new_definition);
         }
 
-        concrete::Module::Valid {
-            name: (ByteIndex::default(), self.name.clone()),
-            declarations,
-        }
+        concrete::Module::Valid { declarations }
     }
 }
 
@@ -86,7 +83,6 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
 //     "as",
 //     "else",
 //     "_",
-//     "module",
 //     "if",
 //     "import",
 //     "then",

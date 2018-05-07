@@ -1,6 +1,3 @@
-module prelude;
-
-
 -- NOTE: Many of these functions could benefit from implicit arguments for
 -- improved ergonomics. For example, the identity function could be written as:
 --

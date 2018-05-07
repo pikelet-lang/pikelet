@@ -60,10 +60,7 @@ pub enum Module {
     ///
     /// <declarations>
     /// ```
-    Valid {
-        name: (ByteIndex, String),
-        declarations: Vec<Declaration>,
-    },
+    Valid { declarations: Vec<Declaration> },
     /// Modules commands that could not be parsed correctly
     ///
     /// This is used for error recovery
@@ -81,19 +78,6 @@ impl fmt::Display for Module {
 /// Top level declarations
 #[derive(Debug, Clone, PartialEq)]
 pub enum Declaration {
-    /// Imports a module into the current scope
-    ///
-    /// ```text
-    /// import foo;
-    /// import foo as my-foo;
-    /// import foo as my-foo (..);
-    /// ```
-    Import {
-        span: ByteSpan,
-        name: (ByteIndex, String),
-        rename: Option<(ByteIndex, String)>,
-        exposing: Option<Exposing>,
-    },
     /// Claims that a term abides by the given type
     ///
     /// ```text
@@ -130,7 +114,7 @@ impl Declaration {
     /// Return the span of source code that this declaration originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Declaration::Import { span, .. } | Declaration::Definition { span, .. } => span,
+            Declaration::Definition { span, .. } => span,
             Declaration::Claim { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
             Declaration::Error(span) => span,
         }
@@ -138,38 +122,6 @@ impl Declaration {
 }
 
 impl fmt::Display for Declaration {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc()
-            .group()
-            .render_fmt(f.width().unwrap_or(10000), f)
-    }
-}
-
-/// A list of the definitions imported from a module
-#[derive(Debug, Clone, PartialEq)]
-pub enum Exposing {
-    /// Import all the definitions in the module into the current scope
-    ///
-    /// ```text
-    /// (..)
-    /// ```
-    All(ByteSpan),
-    /// Import an exact set of definitions into the current scope
-    ///
-    /// ```text
-    /// (foo, bar as baz)
-    /// ```
-    Exact(
-        ByteSpan,
-        Vec<((ByteIndex, String), Option<(ByteIndex, String)>)>,
-    ),
-    /// Exposing declarations that could not be correctly parsed
-    ///
-    /// This is used for error recovery
-    Error(ByteSpan),
-}
-
-impl fmt::Display for Exposing {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc()
             .group()

@@ -140,10 +140,7 @@ impl Desugar<core::RawModule> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
     fn desugar(&self) -> core::RawModule {
         match *self {
-            concrete::Module::Valid {
-                ref name,
-                ref declarations,
-            } => {
+            concrete::Module::Valid { ref declarations } => {
                 // The type claims that we have encountered so far! We'll use these when
                 // we encounter their corresponding definitions later as type annotations
                 let mut prev_claim = None;
@@ -152,9 +149,6 @@ impl Desugar<core::RawModule> for concrete::Module {
 
                 for declaration in declarations {
                     match *declaration {
-                        concrete::Declaration::Import { .. } => {
-                            unimplemented!("import declarations")
-                        },
                         concrete::Declaration::Claim {
                             name: (_, ref name),
                             ref ann,
@@ -211,10 +205,7 @@ impl Desugar<core::RawModule> for concrete::Module {
                     }
                 }
 
-                core::RawModule {
-                    name: name.1.clone(),
-                    definitions,
-                }
+                core::RawModule { definitions }
             },
             concrete::Module::Error(_) => unimplemented!("error recovery"),
         }

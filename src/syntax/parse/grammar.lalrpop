@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use syntax::concrete::{Declaration, Exposing, Module, Term, ReplCommand};
+use syntax::concrete::{Declaration, Module, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
 #[LALR]
@@ -27,7 +27,6 @@ extern {
         "if" => Token::If,
         "in" => Token::In,
         "let" => Token::Let,
-        "module" => Token::Module,
         "import" => Token::Import,
         "record" => Token::Record,
         "Record" => Token::RecordType,
@@ -87,17 +86,13 @@ pub ReplCommand: ReplCommand = {
 };
 
 pub Module: Module = {
-    <_comment: "doc comment"*> "module" <name: IndexedIdent> ";" <declarations: Declaration*> => {
-        Module::Valid { name, declarations }
+    // FIXME: module doc comments
+    <declarations: Declaration*> => {
+        Module::Valid { declarations }
     },
 };
 
 Declaration: Declaration = {
-    <start: @L> "import" <name: IndexedIdent> <rename: ("as" <IndexedIdent>)?>
-        <exposing: Exposing?> <end: @R> ";" =>
-    {
-        Declaration::Import { span: ByteSpan::new(start, end), name, rename, exposing }
-    },
     <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },
@@ -114,23 +109,6 @@ Declaration: Declaration = {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Declaration::Error(ByteSpan::new(start, end))
     },
-};
-
-Exposing : Exposing = {
-    <start: @L> "(" ".." ")" <end: @R> => Exposing::All(ByteSpan::new(start, end)),
-    <start: @L> "(" <names: (<ExposedIdent> ",")*> <last: ExposedIdent> <end: @R> => {
-        let mut names = names;
-        names.push(last);
-        Exposing::Exact(ByteSpan::new(start, end), names)
-    },
-    <start: @L> <recovered: !> <end: @R> => {
-        errors.push(super::errors::from_lalrpop(filemap, recovered.error));
-        Exposing::Error(ByteSpan::new(start, end))
-    },
-};
-
-ExposedIdent : ((ByteIndex, String), Option<(ByteIndex, String)>) = {
-    <IndexedIdent> <("as" <IndexedIdent>)?>
 };
 
 pub Term: Term = {

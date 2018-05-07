@@ -111,7 +111,6 @@ pub enum Token<S> {
     Import,     // import
     In,         // in
     Let,        // let
-    Module,     // module
     Record,     // record
     RecordType, // Record
     Then,       // then
@@ -154,7 +153,6 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Import => write!(f, "import"),
             Token::In => write!(f, "in"),
             Token::Let => write!(f, "let"),
-            Token::Module => write!(f, "module"),
             Token::Record => write!(f, "record"),
             Token::RecordType => write!(f, "Record"),
             Token::Then => write!(f, "then"),
@@ -195,7 +193,6 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Import => Token::Import,
             Token::In => Token::In,
             Token::Let => Token::Let,
-            Token::Module => Token::Module,
             Token::Record => Token::Record,
             Token::RecordType => Token::RecordType,
             Token::Then => Token::Then,
@@ -370,7 +367,6 @@ impl<'input> Lexer<'input> {
             "import" => Token::Import,
             "in" => Token::In,
             "let" => Token::Let,
-            "module" => Token::Module,
             "record" => Token::Record,
             "Record" => Token::RecordType,
             "then" => Token::Then,
@@ -621,19 +617,18 @@ mod tests {
     #[test]
     fn keywords() {
         test! {
-            "  as else if import in let module record Record then Type where  ",
-            "  ~~                                                             " => Token::As,
-            "     ~~~~                                                        " => Token::Else,
-            "          ~~                                                     " => Token::If,
-            "             ~~~~~~                                              " => Token::Import,
-            "                    ~~                                           " => Token::In,
-            "                       ~~~                                       " => Token::Let,
-            "                           ~~~~~~                                " => Token::Module,
-            "                                  ~~~~~~                         " => Token::Record,
-            "                                         ~~~~~~                  " => Token::RecordType,
-            "                                                ~~~~             " => Token::Then,
-            "                                                     ~~~~        " => Token::Type,
-            "                                                          ~~~~~  " => Token::Where,
+            "  as else if import in let record Record then Type where  ",
+            "  ~~                                                      " => Token::As,
+            "     ~~~~                                                 " => Token::Else,
+            "          ~~                                              " => Token::If,
+            "             ~~~~~~                                       " => Token::Import,
+            "                    ~~                                    " => Token::In,
+            "                       ~~~                                " => Token::Let,
+            "                           ~~~~~~                         " => Token::Record,
+            "                                  ~~~~~~                  " => Token::RecordType,
+            "                                         ~~~~             " => Token::Then,
+            "                                              ~~~~        " => Token::Type,
+            "                                                   ~~~~~  " => Token::Where,
         };
     }
 

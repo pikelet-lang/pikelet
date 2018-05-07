@@ -2,7 +2,7 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Declaration, Exposing, LamParams, Module, PiParams, Term};
+use syntax::concrete::{Declaration, LamParams, Module, PiParams, Term};
 
 use super::{StaticDoc, ToDoc};
 
@@ -11,20 +11,10 @@ const INDENT_WIDTH: usize = 4;
 impl ToDoc for Module {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Module::Valid {
-                ref name,
-                ref declarations,
-            } => Doc::group(
-                Doc::text("module")
-                    .append(Doc::space())
-                    .append(Doc::as_string(&name.1))
-                    .append(Doc::text(";")),
-            ).append(Doc::newline())
-                .append(Doc::newline())
-                .append(Doc::intersperse(
-                    declarations.iter().map(|declaration| declaration.to_doc()),
-                    Doc::newline().append(Doc::newline()),
-                )),
+            Module::Valid { ref declarations } => Doc::intersperse(
+                declarations.iter().map(|declaration| declaration.to_doc()),
+                Doc::newline().append(Doc::newline()),
+            ),
             Module::Error(_) => Doc::text("<error>"),
         }
     }
@@ -33,23 +23,6 @@ impl ToDoc for Module {
 impl ToDoc for Declaration {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Declaration::Import {
-                ref name,
-                ref rename,
-                ref exposing,
-                ..
-            } => Doc::text("module")
-                .append(Doc::space())
-                .append(Doc::as_string(&name.1))
-                .append(rename.as_ref().map_or(Doc::nil(), |&(_, ref rename)| {
-                    Doc::space()
-                        .append(Doc::text("as"))
-                        .append(Doc::space())
-                        .append(Doc::as_string(rename))
-                }))
-                .append(exposing.as_ref().map_or(Doc::nil(), |exposing| {
-                    Doc::space().append(exposing.to_doc())
-                })),
             Declaration::Claim {
                 ref name, ref ann, ..
             } => Doc::as_string(&name.1)
@@ -90,29 +63,6 @@ impl ToDoc for Declaration {
                 }),
             Declaration::Error(_) => Doc::text("<error>"),
         }.append(Doc::text(";"))
-    }
-}
-
-impl ToDoc for Exposing {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Exposing::All(_) => Doc::text("(..)"),
-            Exposing::Exact(_, ref imports) => Doc::intersperse(
-                imports.iter().map(|&((_, ref name), ref rename)| {
-                    Doc::as_string(name).append(rename.as_ref().map_or(
-                        Doc::nil(),
-                        |&(_, ref rename)| {
-                            Doc::space()
-                                .append(Doc::text("as"))
-                                .append(Doc::space())
-                                .append(Doc::as_string(rename))
-                        },
-                    ))
-                }),
-                Doc::text(",").append(Doc::space()),
-            ),
-            Exposing::Error(_) => Doc::text("<error>"),
-        }
     }
 }
 

@@ -49,10 +49,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
         definitions.push(Definition { name, term, ann })
     }
 
-    Ok(Module {
-        name: raw_module.name.clone(),
-        definitions,
-    })
+    Ok(Module { definitions })
 }
 
 /// Apply a substitution to a value
