@@ -106,3 +106,128 @@ Eq-Bool = record {
         if lhs then rhs else
             (if rhs then false else true),
 };
+
+
+||| An associative operation on `a`.
+|||
+||| This means the following laws must hold:
+|||
+||| ```
+||| (a : Type) (S : Semigroup a) (x y z: a) ->
+|||     S.append x (S.append y z) == S.append (S.append x y) z
+||| ```
+Semigroup (a : Type) = Record {
+    ||| The associative operation
+    append : a -> a -> a,
+
+    -- TODO: Laws via quickcheck or proofs?
+};
+
+append : (a : Type) (S : Semigroup a) -> a -> a -> a;
+append _ S = S.append;
+
+
+||| A semigroup that also has an identity.
+|||
+||| This means the following additional laws must hold:
+|||
+||| ```
+||| (a : Type) (M : Monoid a) (x : a) -> M.semigroup.append x M.empty == x
+||| (a : Type) (M : Monoid a) (x : a) -> M.semigroup.append M.empty x == x
+||| ```
+Monoid (a : Type) = Record {
+    ||| The semigroup
+    semigroup : Semigroup a,
+    ||| The identity of `.semigroup.append`
+    empty : a,
+
+    -- TODO: Laws via quickcheck or proofs?
+};
+
+empty : (a : Type) (M : Monoid a) -> a;
+empty _ M = M.empty;
+
+
+||| General trait for numeric types
+Num (a : Type) = Record {
+    ||| The additive monoid
+    additive : Monoid a,
+    ||| The multiplicative monoid
+    multiplicative : Monoid a,
+};
+
+add : (a : Type) (N : Num a) -> a -> a -> a;
+add a N = append a N.additive.semigroup;
+
+zero : (a : Type) (N : Num a) -> a;
+zero a N = empty a N.additive;
+
+mul : (a : Type) (N : Num a) -> a -> a -> a;
+mul a N = append a N.multiplicative.semigroup;
+
+one : (a : Type) (N : Num a) -> a;
+one a N = empty a N.multiplicative;
+
+
+||| A category is a very general structure that provides a common way of composing
+||| units of functionality
+|||
+||| The most common category programmers would be familiar with would be `Type`s
+||| are the objects, and the functions between those types are the arrows. Many
+||| other categories exist though, for example:
+|||
+||| - nodes in a directed graph, and the edges between those nodes.
+||| - etc.
+Category = Record {
+    ||| An object in the category
+    Object : Type,
+    ||| Arrows between the objects in the category
+    Arrow : Object -> Object -> Type,
+    ||| The identity arrow
+    id : (a : Object) -> Arrow a a,
+    ||| The sequencing of two arrows
+    seq : (a b c : Object) -> Arrow a b -> Arrow b c -> Arrow a c,
+
+    -- TODO: Laws via quickcheck or proofs?
+    -- TODO: E-Category - ie. equivalence relation on morphisms?
+    -- https://gist.github.com/brendanzab/9285eb8dfef5b6d6ccd87d90d6579590#gistcomment-2401643
+};
+
+||| The identity arrow
+id : (C : Category) (a : C.Object) -> C.Arrow a a;
+id C = C.id;
+
+||| The sequencing of two arrows
+seq : (C : Category) (a b c : C.Object) -> C.Arrow a b -> C.Arrow b c -> C.Arrow a c;
+seq C = C.seq;
+
+||| The composition of two arrows
+compose : (C : Category) (a b c : C.Object) -> C.Arrow b c -> C.Arrow a b -> C.Arrow a c;
+compose C a b c f g = seq C a b c g f;
+
+
+||| Provides a mapping from objects-to-objects and arrows-to-arrows for two
+||| categories, `Source` and `Target`
+|||
+||| Mappings can be anything from applying a function to each element of a
+||| collection, to compiling a source language to a target language.
+|||
+||| Haskell programmers might find this definition a little foreign - this
+||| is because we use general categories in the definition, rather than
+||| specializing it into the category of Pikelet functions
+Functor = Record {
+    ||| The source category
+    Source : Category,
+    ||| The target category
+    Target : Category,
+    ||| Maps an object in `Source` to an object in `Target`
+    Map : Source.Object -> Target.Object,
+    ||| Maps an arrow in `Source` into an arrow in `Target`
+    map : (a b : Source.Object) -> Source.Arrow a b -> Target.Arrow (Map a) (Map b),
+
+    -- TODO: Laws via quickcheck or proofs?
+};
+
+||| Maps an arrow in `F.Source` into an arrow in `F.Target`
+map : (F : Functor) (a b : F.Source.Object) -> F.Source.Arrow a b -> F.Target.Arrow (F.Map a) (F.Map b);
+map F = F.map;
