@@ -89,6 +89,18 @@ or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
 -- or-intro-right p q (y : q) c (on-p : p -> c) (on-q : q -> c) = on-q y;
 
 
+||| Dependent products
+Prod : (A : Type) (B : A -> Type) -> Type;
+Prod A B = (a : A) -> B a;
+
+||| Dependent sums (subtypes)
+Sum : (A : Type) (B : A -> Type) -> Type;
+Sum A B = Record {
+    val : A,
+    proof : B val,
+};
+
+
 ||| Module for defining equality between two terms
 Eq (a : Type) = Record {
     ||| Compare two terms for equality
