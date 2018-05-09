@@ -187,9 +187,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            let context = context
-                .claim(Name::user(&*name), inferred)
-                .define(Name::user(&*name), term);
+            let context = context.define_term(Name::user(&*name), inferred, term);
 
             return Ok(ControlFlow::Continue(Some(context)));
         },

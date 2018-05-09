@@ -43,8 +43,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
         };
 
         // Add the definition to the context
-        context = context.claim(Name::user(name.clone()), ann.clone());
-        context = context.define(Name::user(name.clone()), term.clone());
+        context = context.define_term(Name::user(name.clone()), ann.clone(), term.clone());
 
         definitions.push(Definition { name, term, ann })
     }
@@ -134,6 +133,8 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
 
 /// Reduce a term to its normal form
 pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
+    use syntax::context::Definition;
+
     match **term {
         // E-ANN
         Term::Ann(_, ref expr, _) => normalize(context, expr),
@@ -147,8 +148,8 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         // E-VAR, E-VAR-DEF
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_definition(name) {
-                Some(term) => normalize(context, &term),
-                None => Ok(Rc::new(Value::from(var.clone()))),
+                Some(Definition::Term(term)) => normalize(context, &term),
+                Some(Definition::Prim(_)) | None => Ok(Rc::new(Value::from(var.clone()))),
             },
 
             // We should always be substituting bound variables with fresh
@@ -198,7 +199,21 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                     let arg = normalize(context, arg)?;
 
                     match *Rc::make_mut(neutral) {
-                        Neutral::App(_, ref mut spine) => spine.push(arg),
+                        Neutral::App(ref head, ref mut spine) => {
+                            spine.push(arg);
+
+                            if let Head::Var(Var::Free(ref name)) = *head {
+                                if let Some(Definition::Prim(prim)) =
+                                    context.lookup_definition(name)
+                                {
+                                    if prim.arity == spine.len()
+                                        && spine.iter().all(|arg| arg.is_nf())
+                                    {
+                                        return Ok((prim.fun)(spine).unwrap());
+                                    }
+                                }
+                            }
+                        },
                         Neutral::If(_, _, _, ref mut spine) => spine.push(arg),
                         Neutral::Proj(_, _, ref mut spine) => spine.push(arg),
                     }

@@ -487,6 +487,38 @@ impl Value {
 
         None
     }
+
+    /// Returns `true` if the value is in weak head normal form
+    pub fn is_whnf(&self) -> bool {
+        match *self {
+            Value::Universe(_)
+            | Value::Constant(_)
+            | Value::Pi(_)
+            | Value::Lam(_)
+            | Value::RecordType(_)
+            | Value::Record(_)
+            | Value::EmptyRecordType
+            | Value::EmptyRecord => true,
+            Value::Neutral(_) => false,
+        }
+    }
+
+    /// Returns `true` if the value is in normal form (ie. it contains no neutral terms within it)
+    pub fn is_nf(&self) -> bool {
+        match *self {
+            Value::Universe(_)
+            | Value::Constant(_)
+            | Value::EmptyRecordType
+            | Value::EmptyRecord => true,
+            Value::Pi(ref scope) | Value::Lam(ref scope) => {
+                (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
+            },
+            Value::RecordType(ref scope) | Value::Record(ref scope) => {
+                (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
+            },
+            Value::Neutral(_) => false,
+        }
+    }
 }
 
 impl fmt::Display for Value {
@@ -501,7 +533,6 @@ pub enum Head {
     /// Variables that have not yet been replaced with a definition
     Var(Var),
     // TODO: Metavariables
-    // TODO: Primitives
 }
 
 /// The spine of a neutral term
