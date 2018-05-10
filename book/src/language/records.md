@@ -11,8 +11,8 @@
 You can group together multiple values by using records:
 
 ```pikelet-repl
-Pikelet> record { x = 3.0 : F32, y = 3.0 : F32 }
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+Pikelet> record { x = 3.0 : F32; y = 3.0 : F32 }
+record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 ```
 
 Take note of the following:
@@ -25,16 +25,16 @@ We can make a new definition for point types:
 
 ```pikelet
 Point2d = Record {
-  x : F32,
-  y : F32,
+  x : F32;
+  y : F32;
 };
 ```
 
 You can then use this type to make it easier to define a point record:
 
 ```pikelet-repl
-Pikelet> record { x = 3.0, y = 3.0 } : Point2d
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+Pikelet> record { x = 3.0; y = 3.0 } : Point2d
+record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 ```
 
 Note thaw we no longer need to annotate each field! Pikelet was able to pick up
@@ -58,7 +58,7 @@ later on to define the `data` field's annotation:
 
 ```pikelet
 DArray (a : Type) = Record {
-    len : I32,
-    data : Box (Array len a),
+    len : I32;
+    data : Box (Array len a);
 };
 ```

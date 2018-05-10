@@ -96,15 +96,15 @@ Prod A B = (a : A) -> B a;
 ||| Dependent sums (subtypes)
 Sum : (A : Type) (B : A -> Type) -> Type;
 Sum A B = Record {
-    val : A,
-    proof : B val,
+    val : A;
+    proof : B val;
 };
 
 
 ||| Module for defining equality between two terms
 Eq (a : Type) = Record {
     ||| Compare two terms for equality
-    eq : a -> a -> Bool,
+    eq : a -> a -> Bool;
 };
 
 ||| Compare two terms for equality
@@ -136,7 +136,7 @@ Eq-F64 : Eq F64 = record { eq = prim-f64-eq };
 ||| ```
 Semigroup (a : Type) = Record {
     ||| The associative operation
-    append : a -> a -> a,
+    append : a -> a -> a;
 
     -- TODO: Laws via quickcheck or proofs?
 };
@@ -180,9 +180,9 @@ Semigroup-F64-Mul : Semigroup F64 = record { append = prim-f64-mul };
 ||| ```
 Monoid (a : Type) = Record {
     ||| The semigroup
-    semigroup : Semigroup a,
+    semigroup : Semigroup a;
     ||| The identity of `.semigroup.append`
-    empty : a,
+    empty : a;
 
     -- TODO: Laws via quickcheck or proofs?
 };
@@ -191,37 +191,37 @@ empty : (a : Type) (M : Monoid a) -> a;
 empty _ M = M.empty;
 
 
-Monoid-String : Monoid String = record { semigroup = Semigroup-String, empty = "" };
+Monoid-String : Monoid String = record { semigroup = Semigroup-String; empty = "" };
 
-Monoid-U8-Add : Monoid U8 = record { semigroup = Semigroup-U8-Add, empty = 0 };
-Monoid-U16-Add : Monoid U16 = record { semigroup = Semigroup-U16-Add, empty = 0 };
-Monoid-U32-Add : Monoid U32 = record { semigroup = Semigroup-U32-Add, empty = 0 };
-Monoid-U64-Add : Monoid U64 = record { semigroup = Semigroup-U64-Add, empty = 0 };
-Monoid-I8-Add : Monoid I8 = record { semigroup = Semigroup-I8-Add, empty = 0 };
-Monoid-I16-Add : Monoid I16 = record { semigroup = Semigroup-I16-Add, empty = 0 };
-Monoid-I32-Add : Monoid I32 = record { semigroup = Semigroup-I32-Add, empty = 0 };
-Monoid-I64-Add : Monoid I64 = record { semigroup = Semigroup-I64-Add, empty = 0 };
-Monoid-F32-Add : Monoid F32 = record { semigroup = Semigroup-F32-Add, empty = 0 };
-Monoid-F64-Add : Monoid F64 = record { semigroup = Semigroup-F64-Add, empty = 0 };
+Monoid-U8-Add : Monoid U8 = record { semigroup = Semigroup-U8-Add; empty = 0 };
+Monoid-U16-Add : Monoid U16 = record { semigroup = Semigroup-U16-Add; empty = 0 };
+Monoid-U32-Add : Monoid U32 = record { semigroup = Semigroup-U32-Add; empty = 0 };
+Monoid-U64-Add : Monoid U64 = record { semigroup = Semigroup-U64-Add; empty = 0 };
+Monoid-I8-Add : Monoid I8 = record { semigroup = Semigroup-I8-Add; empty = 0 };
+Monoid-I16-Add : Monoid I16 = record { semigroup = Semigroup-I16-Add; empty = 0 };
+Monoid-I32-Add : Monoid I32 = record { semigroup = Semigroup-I32-Add; empty = 0 };
+Monoid-I64-Add : Monoid I64 = record { semigroup = Semigroup-I64-Add; empty = 0 };
+Monoid-F32-Add : Monoid F32 = record { semigroup = Semigroup-F32-Add; empty = 0 };
+Monoid-F64-Add : Monoid F64 = record { semigroup = Semigroup-F64-Add; empty = 0 };
 
-Monoid-U8-Mul : Monoid U8 = record { semigroup = Semigroup-U8-Mul, empty = 1 };
-Monoid-U16-Mul : Monoid U16 = record { semigroup = Semigroup-U16-Mul, empty = 1 };
-Monoid-U32-Mul : Monoid U32 = record { semigroup = Semigroup-U32-Mul, empty = 1 };
-Monoid-U64-Mul : Monoid U64 = record { semigroup = Semigroup-U64-Mul, empty = 1 };
-Monoid-I8-Mul : Monoid I8 = record { semigroup = Semigroup-I8-Mul, empty = 1 };
-Monoid-I16-Mul : Monoid I16 = record { semigroup = Semigroup-I16-Mul, empty = 1 };
-Monoid-I32-Mul : Monoid I32 = record { semigroup = Semigroup-I32-Mul, empty = 1 };
-Monoid-I64-Mul : Monoid I64 = record { semigroup = Semigroup-I64-Mul, empty = 1 };
-Monoid-F32-Mul : Monoid F32 = record { semigroup = Semigroup-F32-Mul, empty = 1 };
-Monoid-F64-Mul : Monoid F64 = record { semigroup = Semigroup-F64-Mul, empty = 1 };
+Monoid-U8-Mul : Monoid U8 = record { semigroup = Semigroup-U8-Mul; empty = 1 };
+Monoid-U16-Mul : Monoid U16 = record { semigroup = Semigroup-U16-Mul; empty = 1 };
+Monoid-U32-Mul : Monoid U32 = record { semigroup = Semigroup-U32-Mul; empty = 1 };
+Monoid-U64-Mul : Monoid U64 = record { semigroup = Semigroup-U64-Mul; empty = 1 };
+Monoid-I8-Mul : Monoid I8 = record { semigroup = Semigroup-I8-Mul; empty = 1 };
+Monoid-I16-Mul : Monoid I16 = record { semigroup = Semigroup-I16-Mul; empty = 1 };
+Monoid-I32-Mul : Monoid I32 = record { semigroup = Semigroup-I32-Mul; empty = 1 };
+Monoid-I64-Mul : Monoid I64 = record { semigroup = Semigroup-I64-Mul; empty = 1 };
+Monoid-F32-Mul : Monoid F32 = record { semigroup = Semigroup-F32-Mul; empty = 1 };
+Monoid-F64-Mul : Monoid F64 = record { semigroup = Semigroup-F64-Mul; empty = 1 };
 
 
 ||| General trait for numeric types
 Num (a : Type) = Record {
     ||| The additive monoid
-    add : Monoid a,
+    add : Monoid a;
     ||| The multiplicative monoid
-    mul : Monoid a,
+    mul : Monoid a;
 
     -- TODO: Subtraction?
     -- TODO: Division?
@@ -241,16 +241,16 @@ one : (a : Type) (N : Num a) -> a;
 one a N = empty a N.mul;
 
 
-Num-U8-Add : Num U8 = record { add = Monoid-U8-Add, mul = Monoid-U8-Mul };
-Num-U16-Add : Num U16 = record { add = Monoid-U16-Add, mul = Monoid-U16-Mul };
-Num-U32-Add : Num U32 = record { add = Monoid-U32-Add, mul = Monoid-U32-Mul };
-Num-U64-Add : Num U64 = record { add = Monoid-U64-Add, mul = Monoid-U64-Mul };
-Num-I8-Add : Num I8 = record { add = Monoid-I8-Add, mul = Monoid-I8-Mul };
-Num-I16-Add : Num I16 = record { add = Monoid-I16-Add, mul = Monoid-I16-Mul };
-Num-I32-Add : Num I32 = record { add = Monoid-I32-Add, mul = Monoid-I32-Mul };
-Num-I64-Add : Num I64 = record { add = Monoid-I64-Add, mul = Monoid-I64-Mul };
-Num-F32-Add : Num F32 = record { add = Monoid-F32-Add, mul = Monoid-F32-Mul };
-Num-F64-Add : Num F64 = record { add = Monoid-F64-Add, mul = Monoid-F64-Mul };
+Num-U8-Add : Num U8 = record { add = Monoid-U8-Add; mul = Monoid-U8-Mul };
+Num-U16-Add : Num U16 = record { add = Monoid-U16-Add; mul = Monoid-U16-Mul };
+Num-U32-Add : Num U32 = record { add = Monoid-U32-Add; mul = Monoid-U32-Mul };
+Num-U64-Add : Num U64 = record { add = Monoid-U64-Add; mul = Monoid-U64-Mul };
+Num-I8-Add : Num I8 = record { add = Monoid-I8-Add; mul = Monoid-I8-Mul };
+Num-I16-Add : Num I16 = record { add = Monoid-I16-Add; mul = Monoid-I16-Mul };
+Num-I32-Add : Num I32 = record { add = Monoid-I32-Add; mul = Monoid-I32-Mul };
+Num-I64-Add : Num I64 = record { add = Monoid-I64-Add; mul = Monoid-I64-Mul };
+Num-F32-Add : Num F32 = record { add = Monoid-F32-Add; mul = Monoid-F32-Mul };
+Num-F64-Add : Num F64 = record { add = Monoid-F64-Add; mul = Monoid-F64-Mul };
 
 
 ||| A category is a very general structure that provides a common way of composing
@@ -264,13 +264,13 @@ Num-F64-Add : Num F64 = record { add = Monoid-F64-Add, mul = Monoid-F64-Mul };
 ||| - etc.
 Category = Record {
     ||| An object in the category
-    Object : Type 1, -- FIXME: universe polymorphism!
+    Object : Type 1; -- FIXME: universe polymorphism!
     ||| Arrows between the objects in the category
-    Arrow : Object -> Object -> Type,
+    Arrow : Object -> Object -> Type;
     ||| The identity arrow
-    id : (a : Object) -> Arrow a a,
+    id : (a : Object) -> Arrow a a;
     ||| The sequencing of two arrows
-    seq : (a b c : Object) -> Arrow a b -> Arrow b c -> Arrow a c,
+    seq : (a b c : Object) -> Arrow a b -> Arrow b c -> Arrow a c;
 
     -- TODO: Laws via quickcheck or proofs?
     -- TODO: E-Category - ie. equivalence relation on morphisms?
@@ -291,10 +291,10 @@ compose C a b c f g = seq C a b c g f;
 
 
 Category-Function : Category = record {
-    Object = Type,
-    Arrow a b = a -> b,
-    id (a : Type) (x : a) = x,
-    seq (a b c : Type) (f : a -> b) (g : b -> c) (x : a) = g (f x),
+    Object = Type;
+    Arrow a b = a -> b;
+    id (a : Type) (x : a) = x;
+    seq (a b c : Type) (f : a -> b) (g : b -> c) (x : a) = g (f x);
 };
 
 
@@ -309,13 +309,13 @@ Category-Function : Category = record {
 ||| specializing it into the category of Pikelet functions
 Functor = Record {
     ||| The source category
-    Source : Category,
+    Source : Category;
     ||| The target category
-    Target : Category,
+    Target : Category;
     ||| Maps an object in `Source` to an object in `Target`
-    Map : Source.Object -> Target.Object,
+    Map : Source.Object -> Target.Object;
     ||| Maps an arrow in `Source` into an arrow in `Target`
-    map : (a b : Source.Object) -> Source.Arrow a b -> Target.Arrow (Map a) (Map b),
+    map : (a b : Source.Object) -> Source.Arrow a b -> Target.Arrow (Map a) (Map b);
 
     -- TODO: Laws via quickcheck or proofs?
 };
@@ -326,8 +326,8 @@ map F = F.map;
 
 
 Endofunctor-Function : Functor = record {
-    Source = Category-Function,
-    Target = Category-Function,
-    Map x = x,
-    map (a b : Type) (f : a -> b) (x : a) = f x,
+    Source = Category-Function;
+    Target = Category-Function;
+    Map x = x;
+    map (a b : Type) (f : a -> b) (x : a) = f x;
 };

@@ -173,7 +173,7 @@ AtomicTerm: Term = {
     <start: @L> <value: "character literal"> <end: @R> => Term::Char(ByteSpan::new(start, end), value),
     <start: @L> <value: "decimal literal"> <end: @R> => Term::Int(ByteSpan::new(start, end), value),
     <start: @L> <value: "float literal"> <end: @R> => Term::Float(ByteSpan::new(start, end), value),
-    <start: @L> "[" <elems: (<Term> ",")*> <last: Term?> "]" <end: @R> => {
+    <start: @L> "[" <elems: (<Term> ";")*> <last: Term?> "]" <end: @R> => {
         let mut elems = elems;
         elems.extend(last);
         Term::Array(ByteSpan::new(start, end), elems)
@@ -185,12 +185,12 @@ AtomicTerm: Term = {
             Term::Var(start, ident)
         }
     },
-    <start: @L> "Record" "{" <fields: (<RecordTypeField> ",")*> <last: RecordTypeField?> "}" <end: @R> => {
+    <start: @L> "Record" "{" <fields: (<RecordTypeField> ";")*> <last: RecordTypeField?> "}" <end: @R> => {
         let mut fields = fields;
         fields.extend(last);
         Term::RecordType(ByteSpan::new(start, end), fields)
     },
-    <start: @L> "record" "{" <fields: (<RecordField> ",")*> <last: RecordField?> "}" <end: @R> => {
+    <start: @L> "record" "{" <fields: (<RecordField> ";")*> <last: RecordField?> "}" <end: @R> => {
         let mut fields = fields;
         fields.extend(last);
         Term::Record(ByteSpan::new(start, end), fields)

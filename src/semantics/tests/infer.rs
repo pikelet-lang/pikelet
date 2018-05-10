@@ -413,7 +413,7 @@ fn dependent_record_ty() {
     let context = Context::default();
 
     let expected_ty = r"Type 2";
-    let given_expr = r"Record { t : Type 1, x : t }";
+    let given_expr = r"Record { t : Type 1; x : t }";
 
     assert_term_eq!(
         parse_infer(&mut codemap, &context, given_expr).1,
@@ -440,7 +440,7 @@ fn proj() {
     let context = Context::default();
 
     let expected_ty = r"String";
-    let given_expr = r#"(record { t = String, x = "hello" } : Record { t : Type, x : String }).x"#;
+    let given_expr = r#"(record { t = String; x = "hello" } : Record { t : Type; x : String }).x"#;
 
     assert_term_eq!(
         parse_infer(&mut codemap, &context, given_expr).1,
@@ -468,12 +468,12 @@ fn proj_weird() {
 
     let expected_ty = r"Type 1";
     let given_expr = r"Record {
-        Array : U16 -> Type -> Type,
-        t : Record { n : U16, x : Array n I8, y : Array n I8 },
-        inner-prod : (len : U16) -> Array len I8 -> Array len I8 -> I32,
+        Array : U16 -> Type -> Type;
+        t : Record { n : U16; x : Array n I8; y : Array n I8 };
+        inner-prod : (len : U16) -> Array len I8 -> Array len I8 -> I32;
 
-        test1 : I32 -> Type,
-        test2 : test1 (inner-prod t.n t.x t.y),
+        test1 : I32 -> Type;
+        test2 : test1 (inner-prod t.n t.x t.y);
     }";
 
     assert_term_eq!(

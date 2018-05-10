@@ -14,15 +14,15 @@
 Declarations are preceded by a type annotation, and followed by a definition:
 
 ```pikelet
-greeting : String
-greeting = "hello there!"
+greeting : String;
+greeting = "hello there!";
 ```
 
 We can also make type aliases in the same way:
 
 ```pikelet
-name : Type
-name = String
+name : Type;
+name = String;
 ```
 
 ## Comments
@@ -53,8 +53,8 @@ definitions:
 ||| Pikelet> self-aware-string
 ||| "I am a string!" : String
 ||| ```
-self-aware-string : String
-self-aware-string = "I am a string!"
+self-aware-string : String;
+self-aware-string = "I am a string!";
 ```
 
 ## Primitive types and their literals

@@ -44,7 +44,7 @@ Pikelet> Type
 Pikelet> Type 2
 Pikelet> record { name = "Jane" }
 Pikelet> Record { name : String }
-Pikelet> record { x = 3.0 : F32, y = 3.0 : F32 }
+Pikelet> record { x = 3.0 : F32; y = 3.0 : F32 }
 Pikelet> \x : Int => x
 Pikelet> (a : Type) -> a
 ```
@@ -59,14 +59,14 @@ information can be supplied.
 ```pikelet-repl
 Pikelet> 1
 Pikelet> 2.0
-Pikelet> record { x = 3.0, y = 3.0 }
+Pikelet> record { x = 3.0; y = 3.0 }
 Pikelet> \x => x
 ```
 
 ```pikelet-repl
 Pikelet> 1 : I32
 Pikelet> 2.0 : F32
-Pikelet> record { x = 3.0, y = 3.0 } : Record { x : F32, y : F32 }
+Pikelet> record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
 Pikelet> \x => x : I32 -> I32
 ```
 

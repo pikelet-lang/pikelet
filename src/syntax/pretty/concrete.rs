@@ -99,7 +99,7 @@ impl ToDoc for Term {
             Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(Term::to_doc),
-                    Doc::text(",").append(Doc::space()),
+                    Doc::text(";").append(Doc::space()),
                 ))
                 .append(Doc::text("]")),
             Term::Hole(_) => Doc::text("_"),
@@ -158,7 +158,7 @@ impl ToDoc for Term {
                                 .append(Doc::space())
                                 .append(ann.to_doc())
                         }),
-                        Doc::text(",").append(Doc::space()),
+                        Doc::text(";").append(Doc::space()),
                     ).nest(INDENT_WIDTH),
                 )
                 .append(Doc::space())
@@ -186,7 +186,7 @@ impl ToDoc for Term {
                                     .append(Doc::space())
                                     .append(expr.to_doc())
                             }),
-                        Doc::text(",").append(Doc::space()),
+                        Doc::text(";").append(Doc::space()),
                     ).nest(INDENT_WIDTH),
                 )
                 .append(Doc::space())
