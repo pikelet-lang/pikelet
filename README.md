@@ -11,13 +11,13 @@
 For more information, see [The Pikelet Book][pikelet-book].
 
 This is an implementation of a small [dependently typed][dependent-type-wikipedia]
-lambda calculus in Rust. This project is intended as an explaratory exercise,
-and to serve as a basis for more fully featured dependently typed languages.
+lambda calculus in Rust. This project is intended as an exploratory exercise,
+and to serve as a basis for more fully-featured dependently typed languages.
 
 Thanks to the hard work of our academics, it has become much easier for the
-average developer to try their hand at building dependent type systems. Alas the
+average developer to try their hand at building dependent type systems. Alas, the
 materials required to tackle this are scattered throughout the literature, and
-can be time consuming to track down. Hopefully this project makes it easier to
+can be time-consuming to track down. Hopefully this project makes it easier to
 see how this can be done in Rust!
 
 We take a [bidirectional approach][bidirectional-typing-paper] to building the
