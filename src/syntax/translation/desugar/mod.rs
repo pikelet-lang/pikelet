@@ -98,7 +98,7 @@ fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTe
 
 fn desugar_record_ty(
     span: ByteSpan,
-    fields: &[(ByteIndex, String, Box<concrete::Term>)],
+    fields: &[(ByteIndex, String, concrete::Term)],
 ) -> core::RawTerm {
     let mut term = core::RawTerm::EmptyRecordType(Ignore(ByteSpan::new(span.end(), span.end())));
 
@@ -120,17 +120,27 @@ fn desugar_record_ty(
 
 fn desugar_record(
     span: ByteSpan,
-    fields: &[(ByteIndex, String, Box<concrete::Term>)],
+    fields: &[(
+        ByteIndex,
+        String,
+        concrete::LamParams,
+        Option<Box<concrete::Term>>,
+        concrete::Term,
+    )],
 ) -> core::RawTerm {
     let mut term = core::RawTerm::EmptyRecord(Ignore(ByteSpan::new(span.end(), span.end())));
 
-    for &(start, ref label, ref value) in fields.iter().rev() {
+    for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {
         term = core::RawTerm::Record(
             Ignore(ByteSpan::new(start, term.span().end())),
             nameless::bind(
                 (
                     core::Label(Name::user(label.clone())),
-                    Embed(Rc::new(value.desugar())),
+                    Embed(Rc::new(desugar_lam(
+                        params,
+                        ret_ann.as_ref().map(<_>::as_ref),
+                        value,
+                    ))),
                 ),
                 Rc::new(term),
             ),
@@ -182,7 +192,11 @@ impl Desugar<core::RawModule> for concrete::Module {
                                 None => definitions.push(core::RawDefinition {
                                     name: name.clone(),
                                     ann: Rc::new(core::RawTerm::Hole(default_span)),
-                                    term: Rc::new(desugar_lam(params, ann.as_ref(), body)),
+                                    term: Rc::new(desugar_lam(
+                                        params,
+                                        ann.as_ref().map(<_>::as_ref),
+                                        body,
+                                    )),
                                 }),
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {

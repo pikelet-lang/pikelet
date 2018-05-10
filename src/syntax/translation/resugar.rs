@@ -366,7 +366,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 fields.push((
                     ByteIndex::default(),
                     label.0.to_string(),
-                    Box::new(resugar_term(&expr, Prec::NO_WRAP)),
+                    resugar_term(&expr, Prec::NO_WRAP),
                 ));
 
                 match *body {
@@ -384,11 +384,17 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
 
             loop {
                 let ((label, Embed(expr)), body) = nameless::unbind(scope);
+                let (expr_params, expr_body) = match resugar_term(&expr, Prec::NO_WRAP) {
+                    concrete::Term::Lam(_, params, expr_body) => (params, *expr_body),
+                    expr_body => (vec![], expr_body),
+                };
 
                 fields.push((
                     ByteIndex::default(),
                     label.0.to_string(),
-                    Box::new(resugar_term(&expr, Prec::NO_WRAP)),
+                    expr_params,
+                    None,
+                    expr_body,
                 ));
 
                 match *body {

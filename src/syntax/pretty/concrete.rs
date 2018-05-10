@@ -36,12 +36,22 @@ impl ToDoc for Declaration {
             Declaration::Definition {
                 ref name,
                 ref params,
+                ref ann,
                 ref body,
                 ref wheres,
                 ..
             } => Doc::as_string(name)
                 .append(Doc::space())
-                .append(pretty_lam_params(params))
+                .append(match params[..] {
+                    [] => Doc::nil(),
+                    _ => pretty_lam_params(params).append(Doc::space()),
+                })
+                .append(match *ann {
+                    Some(ref ret_ann) => {
+                        Doc::text(":").append(ret_ann.to_doc()).append(Doc::space())
+                    },
+                    None => Doc::nil(),
+                })
                 .append(Doc::text("="))
                 .append(Doc::space())
                 .append(body.to_doc().nest(INDENT_WIDTH))
@@ -157,13 +167,25 @@ impl ToDoc for Term {
                 .append(Doc::space())
                 .append(
                     Doc::intersperse(
-                        fields.iter().map(|&(_, ref name, ref expr)| {
-                            Doc::as_string(name)
-                                .append(Doc::space())
-                                .append(Doc::text("="))
-                                .append(Doc::space())
-                                .append(expr.to_doc())
-                        }),
+                        fields
+                            .iter()
+                            .map(|&(_, ref name, ref params, ref ret_ann, ref expr)| {
+                                Doc::as_string(name)
+                                    .append(Doc::space())
+                                    .append(match params[..] {
+                                        [] => Doc::nil(),
+                                        _ => pretty_lam_params(params).append(Doc::space()),
+                                    })
+                                    .append(match *ret_ann {
+                                        Some(ref ret_ann) => Doc::text(":")
+                                            .append(ret_ann.to_doc())
+                                            .append(Doc::space()),
+                                        None => Doc::nil(),
+                                    })
+                                    .append(Doc::text("="))
+                                    .append(Doc::space())
+                                    .append(expr.to_doc())
+                            }),
                         Doc::text(",").append(Doc::space()),
                     ).nest(INDENT_WIDTH),
                 )

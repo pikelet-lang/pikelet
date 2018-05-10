@@ -4,7 +4,9 @@ cache:
   directories:
     - book/highlight.js/node_modules
 rust:
-  - stable
+  # FIXME: Blocked on slice pattern stabilization (lands in 1.26)
+  # - 1.26.0
+  # - stable
   - beta
   - nightly
 

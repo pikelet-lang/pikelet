@@ -114,7 +114,7 @@ eq _ EQ = EQ.eq;
 
 Eq-Bool : Eq Bool;
 Eq-Bool = record {
-    eq = \lhs rhs =>
+    eq lhs rhs =
         if lhs then rhs else
             (if rhs then false else true),
 };
@@ -220,9 +220,9 @@ compose C a b c f g = seq C a b c g f;
 
 Category-Function : Category = record {
     Object = Type,
-    Arrow = \a b => a -> b,
-    id = \(a : Type) (x : a) => x,
-    seq = \(a b c : Type) (f : a -> b) (g : b -> c) (x : a) => g (f x),
+    Arrow a b = a -> b,
+    id (a : Type) (x : a) = x,
+    seq (a b c : Type) (f : a -> b) (g : b -> c) (x : a) = g (f x),
 };
 
 
@@ -256,6 +256,6 @@ map F = F.map;
 Endofunctor-Function : Functor = record {
     Source = Category-Function,
     Target = Category-Function,
-    Map = \x => x,
-    map = \(a b : Type) (f : a -> b) (x : a) => f x,
+    Map x = x,
+    map (a b : Type) (f : a -> b) (x : a) = f x,
 };
