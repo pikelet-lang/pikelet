@@ -1,9 +1,13 @@
+//! Primitive operations
+
 use std::fmt;
 use std::rc::Rc;
 
 use syntax::core::{Constant, Type, Value};
 
 // Some helper traits for marshalling beteen Rust and Pikelet values
+//
+// I'm not super happy with the API at the moment, so these are currently private
 
 trait IntoValue {
     fn into_value(self) -> Rc<Value>;
@@ -18,7 +22,7 @@ trait HasType {
 }
 
 macro_rules! impl_into_value {
-    ($Variant:ident, $T:ty) => {
+    ($T:ty, $Variant:ident) => {
         impl IntoValue for $T {
             fn into_value(self) -> Rc<Value> {
                 Rc::new(Value::Constant(Constant::$Variant(self)))
@@ -28,21 +32,21 @@ macro_rules! impl_into_value {
 }
 
 impl_into_value!(String, String);
-impl_into_value!(Char, char);
-impl_into_value!(Bool, bool);
-impl_into_value!(U8, u8);
-impl_into_value!(U16, u16);
-impl_into_value!(U32, u32);
-impl_into_value!(U64, u64);
-impl_into_value!(I8, i8);
-impl_into_value!(I16, i16);
-impl_into_value!(I32, i32);
-impl_into_value!(I64, i64);
-impl_into_value!(F32, f32);
-impl_into_value!(F64, f64);
+impl_into_value!(char, Char);
+impl_into_value!(bool, Bool);
+impl_into_value!(u8, U8);
+impl_into_value!(u16, U16);
+impl_into_value!(u32, U32);
+impl_into_value!(u64, U64);
+impl_into_value!(i8, I8);
+impl_into_value!(i16, I16);
+impl_into_value!(i32, I32);
+impl_into_value!(i64, I64);
+impl_into_value!(f32, F32);
+impl_into_value!(f64, F64);
 
 macro_rules! impl_try_from_value_ref {
-    ($Variant:ident, $T:ty) => {
+    ($T:ty, $Variant:ident) => {
         impl TryFromValueRef for $T {
             fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
                 match *src {
@@ -55,18 +59,18 @@ macro_rules! impl_try_from_value_ref {
 }
 
 impl_try_from_value_ref!(String, String);
-impl_try_from_value_ref!(Char, char);
-impl_try_from_value_ref!(Bool, bool);
-impl_try_from_value_ref!(U8, u8);
-impl_try_from_value_ref!(U16, u16);
-impl_try_from_value_ref!(U32, u32);
-impl_try_from_value_ref!(U64, u64);
-impl_try_from_value_ref!(I8, i8);
-impl_try_from_value_ref!(I16, i16);
-impl_try_from_value_ref!(I32, i32);
-impl_try_from_value_ref!(I64, i64);
-impl_try_from_value_ref!(F32, f32);
-impl_try_from_value_ref!(F64, f64);
+impl_try_from_value_ref!(char, Char);
+impl_try_from_value_ref!(bool, Bool);
+impl_try_from_value_ref!(u8, U8);
+impl_try_from_value_ref!(u16, U16);
+impl_try_from_value_ref!(u32, U32);
+impl_try_from_value_ref!(u64, U64);
+impl_try_from_value_ref!(i8, I8);
+impl_try_from_value_ref!(i16, I16);
+impl_try_from_value_ref!(i32, I32);
+impl_try_from_value_ref!(i64, I64);
+impl_try_from_value_ref!(f32, F32);
+impl_try_from_value_ref!(f64, F64);
 
 macro_rules! impl_has_ty {
     ($T:ty, $ty:expr) => {
@@ -92,11 +96,17 @@ impl_has_ty!(i64, Rc::new(Value::Constant(Constant::I64Type)));
 impl_has_ty!(f32, Rc::new(Value::Constant(Constant::F32Type)));
 impl_has_ty!(f64, Rc::new(Value::Constant(Constant::F64Type)));
 
+/// Primitive functions
 #[derive(Clone)]
 pub struct PrimFn {
+    /// A name to be used when translating the primitive to the target language
+    /// during compilation
     pub name: String,
+    /// The number of arguments to pass to the primitive during normalization
     pub arity: usize,
+    /// The type of the primitive
     pub ann: Rc<Type>,
+    /// The primitive definition to be used during normalization
     pub fun: fn(&Vec<Rc<Value>>) -> Result<Rc<Value>, ()>, // TODO: Better errors
 }
 
@@ -111,11 +121,16 @@ impl fmt::Debug for PrimFn {
     }
 }
 
+/// Boilerplate macro for counting the number of supplied token trees
 macro_rules! count {
     () => (0usize);
     ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
 }
 
+/// Define a primitive function
+///
+/// In order to access these from within a gluon program you will need to add
+/// them to the context by using `Context::define_prim`.
 macro_rules! def_prim {
     ($id:ident, $name:expr,fn($($pname:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
@@ -143,6 +158,11 @@ macro_rules! def_prim {
         }
     };
 }
+
+// Primitive functions
+//
+// These are included in the default context, which can be created by via the
+// `Context::default` function.
 
 def_prim!(string_eq, "prim-string-eq", fn(x: String, y: String) -> bool { x == y });
 def_prim!(bool_eq, "prim-bool-eq", fn(x: bool, y: bool) -> bool { x == y });
