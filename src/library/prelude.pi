@@ -192,7 +192,7 @@ one a N = empty a N.multiplicative;
 ||| - etc.
 Category = Record {
     ||| An object in the category
-    Object : Type,
+    Object : Type 1, -- FIXME: universe polymorphism!
     ||| Arrows between the objects in the category
     Arrow : Object -> Object -> Type,
     ||| The identity arrow
@@ -216,6 +216,14 @@ seq C = C.seq;
 ||| The composition of two arrows
 compose : (C : Category) (a b c : C.Object) -> C.Arrow b c -> C.Arrow a b -> C.Arrow a c;
 compose C a b c f g = seq C a b c g f;
+
+
+Category-Function : Category = record {
+    Object = Type,
+    Arrow = \a b => a -> b,
+    id = \(a : Type) (x : a) => x,
+    seq = \(a b c : Type) (f : a -> b) (g : b -> c) (x : a) => g (f x),
+};
 
 
 ||| Provides a mapping from objects-to-objects and arrows-to-arrows for two
@@ -243,3 +251,11 @@ Functor = Record {
 ||| Maps an arrow in `F.Source` into an arrow in `F.Target`
 map : (F : Functor) (a b : F.Source.Object) -> F.Source.Arrow a b -> F.Target.Arrow (F.Map a) (F.Map b);
 map F = F.map;
+
+
+Endofunctor-Function : Functor = record {
+    Source = Category-Function,
+    Target = Category-Function,
+    Map = \x => x,
+    map = \(a b : Type) (f : a -> b) (x : a) => f x,
+};

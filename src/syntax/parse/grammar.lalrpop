@@ -96,14 +96,14 @@ Declaration: Declaration = {
     <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {
         Declaration::Claim { name, ann }
     },
-    <_comment: "doc comment"*> <name: IndexedIdent> <params: AtomicLamParam*> "="
+    <_comment: "doc comment"*> <name: IndexedIdent> <params: AtomicLamParam*> <ann: (":" <Term>)?> "="
         <body: Term> <wheres: ("where" "{" <Declaration+> "}")?> <end: @R> ";" =>
     {
         let (start, name) = name;
         let span = ByteSpan::new(start, end);
         let wheres = wheres.unwrap_or(vec![]);
 
-        Declaration::Definition { span, name, params, body, wheres }
+        Declaration::Definition { span, name, params, ann, body, wheres }
     },
     <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));

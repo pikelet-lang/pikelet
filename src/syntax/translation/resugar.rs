@@ -26,6 +26,7 @@ impl Resugar<(concrete::Declaration, concrete::Declaration)> for core::Definitio
             concrete::Declaration::Definition {
                 span: ByteSpan::default(),
                 name: self.name.clone(),
+                ann: None,
                 params,
                 body,
                 wheres: vec![],

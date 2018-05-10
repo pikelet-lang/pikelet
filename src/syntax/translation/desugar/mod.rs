@@ -60,9 +60,13 @@ fn desugar_pi(
 /// ```
 fn desugar_lam(
     params: &[(Vec<(ByteIndex, String)>, Option<Box<concrete::Term>>)],
+    ret_ann: Option<&concrete::Term>,
     body: &concrete::Term,
 ) -> core::RawTerm {
     let mut term = body.desugar();
+    if let Some(ann) = ret_ann {
+        term = core::RawTerm::Ann(Ignore::default(), Rc::new(term), Rc::new(ann.desugar()));
+    }
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(start, ref name) in names.iter().rev() {
@@ -163,6 +167,7 @@ impl Desugar<core::RawModule> for concrete::Module {
                         concrete::Declaration::Definition {
                             ref name,
                             ref params,
+                            ref ann,
                             ref body,
                             ref wheres,
                             ..
@@ -177,14 +182,14 @@ impl Desugar<core::RawModule> for concrete::Module {
                                 None => definitions.push(core::RawDefinition {
                                     name: name.clone(),
                                     ann: Rc::new(core::RawTerm::Hole(default_span)),
-                                    term: Rc::new(desugar_lam(params, body)),
+                                    term: Rc::new(desugar_lam(params, ann.as_ref(), body)),
                                 }),
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
                                             ann,
-                                            term: Rc::new(desugar_lam(params, body)),
+                                            term: Rc::new(desugar_lam(params, None, body)),
                                         });
                                     } else {
                                         definitions.push(core::RawDefinition {
@@ -195,7 +200,7 @@ impl Desugar<core::RawModule> for concrete::Module {
                                         definitions.push(core::RawDefinition {
                                             name: name.clone(),
                                             ann: Rc::new(core::RawTerm::Hole(default_span)),
-                                            term: Rc::new(desugar_lam(params, body)),
+                                            term: Rc::new(desugar_lam(params, None, body)),
                                         });
                                     }
                                 },
@@ -245,7 +250,7 @@ impl Desugar<core::RawTerm> for concrete::Term {
                 core::RawTerm::Var(span, Var::Free(Name::user(x.clone())))
             },
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
-            concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, body),
+            concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, None, body),
             concrete::Term::Arrow(ref ann, ref body) => {
                 let name = Name::from(GenId::fresh());
                 let ann = Rc::new(ann.desugar());

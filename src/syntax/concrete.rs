@@ -101,6 +101,7 @@ pub enum Declaration {
         span: ByteSpan,
         name: String,
         params: LamParams,
+        ann: Option<Term>,
         body: Term,
         wheres: Vec<Declaration>,
     },
