@@ -487,6 +487,38 @@ impl Value {
 
         None
     }
+
+    /// Returns `true` if the value is in weak head normal form
+    pub fn is_whnf(&self) -> bool {
+        match *self {
+            Value::Universe(_)
+            | Value::Constant(_)
+            | Value::Pi(_)
+            | Value::Lam(_)
+            | Value::RecordType(_)
+            | Value::Record(_)
+            | Value::EmptyRecordType
+            | Value::EmptyRecord => true,
+            Value::Neutral(_) => false,
+        }
+    }
+
+    /// Returns `true` if the value is in normal form (ie. it contains no neutral terms within it)
+    pub fn is_nf(&self) -> bool {
+        match *self {
+            Value::Universe(_)
+            | Value::Constant(_)
+            | Value::EmptyRecordType
+            | Value::EmptyRecord => true,
+            Value::Pi(ref scope) | Value::Lam(ref scope) => {
+                (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
+            },
+            Value::RecordType(ref scope) | Value::Record(ref scope) => {
+                (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
+            },
+            Value::Neutral(_) => false,
+        }
+    }
 }
 
 impl fmt::Display for Value {
@@ -495,20 +527,31 @@ impl fmt::Display for Value {
     }
 }
 
+/// The head of an application
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub enum Head {
+    /// Variables that have not yet been replaced with a definition
+    Var(Var),
+    // TODO: Metavariables
+}
+
+/// The spine of a neutral term
+///
+/// These are arguments that are awaiting application
+pub type Spine = Vec<Rc<Value>>;
+
 /// Neutral terms
 ///
 /// These might be able to be reduced further depending on the bindings in the
 /// context
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
-    /// Variables
-    Var(Var),
-    /// RawTerm application
-    App(Rc<Neutral>, Rc<Value>),
+    /// Term application
+    App(Head, Spine),
     /// If expression
-    If(Rc<Neutral>, Rc<Value>, Rc<Value>),
+    If(Rc<Neutral>, Rc<Value>, Rc<Value>, Spine),
     /// Field projection
-    Proj(Rc<Neutral>, Label),
+    Proj(Rc<Neutral>, Label, Spine),
 }
 
 impl fmt::Display for Neutral {
@@ -519,6 +562,18 @@ impl fmt::Display for Neutral {
 
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
+
+impl From<Var> for Neutral {
+    fn from(src: Var) -> Neutral {
+        Neutral::App(Head::Var(src), vec![])
+    }
+}
+
+impl From<Var> for Value {
+    fn from(src: Var) -> Value {
+        Value::from(Neutral::from(src))
+    }
+}
 
 impl From<Neutral> for Value {
     fn from(src: Neutral) -> Value {
@@ -576,24 +631,38 @@ impl<'a> From<&'a Value> for Term {
 
 impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
+        let (head, spine) = match *src {
+            Neutral::App(ref head, ref spine) => (Term::from(head), spine),
+            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
+                let head = Term::If(
+                    Ignore::default(),
+                    Rc::new(Term::from(&**cond)),
+                    Rc::new(Term::from(&**if_true)),
+                    Rc::new(Term::from(&**if_false)),
+                );
+                (head, spine)
+            },
+            Neutral::Proj(ref expr, ref name, ref spine) => {
+                let head = Term::Proj(
+                    Ignore::default(),
+                    Rc::new(Term::from(&**expr)),
+                    Ignore::default(),
+                    name.clone(),
+                );
+                (head, spine)
+            },
+        };
+
+        spine.iter().fold(head, |acc, arg| {
+            Term::App(Rc::new(acc), Rc::new(Term::from(&**arg)))
+        })
+    }
+}
+
+impl<'a> From<&'a Head> for Term {
+    fn from(src: &'a Head) -> Term {
         match *src {
-            Neutral::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
-            Neutral::App(ref fn_expr, ref arg_expr) => Term::App(
-                Rc::new(Term::from(&**fn_expr)),
-                Rc::new(Term::from(&**arg_expr)),
-            ),
-            Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
-                Ignore::default(),
-                Rc::new(Term::from(&**cond)),
-                Rc::new(Term::from(&**if_true)),
-                Rc::new(Term::from(&**if_false)),
-            ),
-            Neutral::Proj(ref expr, ref name) => Term::Proj(
-                Ignore::default(),
-                Rc::new(Term::from(&**expr)),
-                Ignore::default(),
-                name.clone(),
-            ),
+            Head::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
         }
     }
 }

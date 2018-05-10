@@ -111,13 +111,19 @@ Eq (a : Type) = Record {
 eq : (a : Type) (EQ : Eq a) -> a -> a -> Bool;
 eq _ EQ = EQ.eq;
 
-
-Eq-Bool : Eq Bool;
-Eq-Bool = record {
-    eq lhs rhs =
-        if lhs then rhs else
-            (if rhs then false else true),
-};
+Eq-String : Eq String = record { eq = prim-string-eq };
+Eq-Char : Eq Char = record { eq = prim-char-eq };
+Eq-Bool : Eq Bool = record { eq = prim-bool-eq };
+Eq-U8 : Eq U8 = record { eq = prim-u8-eq };
+Eq-U16 : Eq U16 = record { eq = prim-u16-eq };
+Eq-U32 : Eq U32 = record { eq = prim-u32-eq };
+Eq-U64 : Eq U64 = record { eq = prim-u64-eq };
+Eq-I8 : Eq I8 = record { eq = prim-i8-eq };
+Eq-I16 : Eq I16 = record { eq = prim-i16-eq };
+Eq-I32 : Eq I32 = record { eq = prim-i32-eq };
+Eq-I64 : Eq I64 = record { eq = prim-i64-eq };
+Eq-F32 : Eq F32 = record { eq = prim-f32-eq };
+Eq-F64 : Eq F64 = record { eq = prim-f64-eq };
 
 
 ||| An associative operation on `a`.
@@ -137,6 +143,31 @@ Semigroup (a : Type) = Record {
 
 append : (a : Type) (S : Semigroup a) -> a -> a -> a;
 append _ S = S.append;
+
+
+Semigroup-String : Semigroup String = record { append = prim-string-append };
+
+Semigroup-U8-Add : Semigroup U8 = record { append = prim-u8-add };
+Semigroup-U16-Add : Semigroup U16 = record { append = prim-u16-add };
+Semigroup-U32-Add : Semigroup U32 = record { append = prim-u32-add };
+Semigroup-U64-Add : Semigroup U64 = record { append = prim-u64-add };
+Semigroup-I8-Add : Semigroup I8 = record { append = prim-i8-add };
+Semigroup-I16-Add : Semigroup I16 = record { append = prim-i16-add };
+Semigroup-I32-Add : Semigroup I32 = record { append = prim-i32-add };
+Semigroup-I64-Add : Semigroup I64 = record { append = prim-i64-add };
+Semigroup-F32-Add : Semigroup F32 = record { append = prim-f32-add };
+Semigroup-F64-Add : Semigroup F64 = record { append = prim-f64-add };
+
+Semigroup-U8-Mul : Semigroup U8 = record { append = prim-u8-mul };
+Semigroup-U16-Mul : Semigroup U16 = record { append = prim-u16-mul };
+Semigroup-U32-Mul : Semigroup U32 = record { append = prim-u32-mul };
+Semigroup-U64-Mul : Semigroup U64 = record { append = prim-u64-mul };
+Semigroup-I8-Mul : Semigroup I8 = record { append = prim-i8-mul };
+Semigroup-I16-Mul : Semigroup I16 = record { append = prim-i16-mul };
+Semigroup-I32-Mul : Semigroup I32 = record { append = prim-i32-mul };
+Semigroup-I64-Mul : Semigroup I64 = record { append = prim-i64-mul };
+Semigroup-F32-Mul : Semigroup F32 = record { append = prim-f32-mul };
+Semigroup-F64-Mul : Semigroup F64 = record { append = prim-f64-mul };
 
 
 ||| A semigroup that also has an identity.
@@ -160,25 +191,66 @@ empty : (a : Type) (M : Monoid a) -> a;
 empty _ M = M.empty;
 
 
+Monoid-String : Monoid String = record { semigroup = Semigroup-String, empty = "" };
+
+Monoid-U8-Add : Monoid U8 = record { semigroup = Semigroup-U8-Add, empty = 0 };
+Monoid-U16-Add : Monoid U16 = record { semigroup = Semigroup-U16-Add, empty = 0 };
+Monoid-U32-Add : Monoid U32 = record { semigroup = Semigroup-U32-Add, empty = 0 };
+Monoid-U64-Add : Monoid U64 = record { semigroup = Semigroup-U64-Add, empty = 0 };
+Monoid-I8-Add : Monoid I8 = record { semigroup = Semigroup-I8-Add, empty = 0 };
+Monoid-I16-Add : Monoid I16 = record { semigroup = Semigroup-I16-Add, empty = 0 };
+Monoid-I32-Add : Monoid I32 = record { semigroup = Semigroup-I32-Add, empty = 0 };
+Monoid-I64-Add : Monoid I64 = record { semigroup = Semigroup-I64-Add, empty = 0 };
+Monoid-F32-Add : Monoid F32 = record { semigroup = Semigroup-F32-Add, empty = 0 };
+Monoid-F64-Add : Monoid F64 = record { semigroup = Semigroup-F64-Add, empty = 0 };
+
+Monoid-U8-Mul : Monoid U8 = record { semigroup = Semigroup-U8-Mul, empty = 1 };
+Monoid-U16-Mul : Monoid U16 = record { semigroup = Semigroup-U16-Mul, empty = 1 };
+Monoid-U32-Mul : Monoid U32 = record { semigroup = Semigroup-U32-Mul, empty = 1 };
+Monoid-U64-Mul : Monoid U64 = record { semigroup = Semigroup-U64-Mul, empty = 1 };
+Monoid-I8-Mul : Monoid I8 = record { semigroup = Semigroup-I8-Mul, empty = 1 };
+Monoid-I16-Mul : Monoid I16 = record { semigroup = Semigroup-I16-Mul, empty = 1 };
+Monoid-I32-Mul : Monoid I32 = record { semigroup = Semigroup-I32-Mul, empty = 1 };
+Monoid-I64-Mul : Monoid I64 = record { semigroup = Semigroup-I64-Mul, empty = 1 };
+Monoid-F32-Mul : Monoid F32 = record { semigroup = Semigroup-F32-Mul, empty = 1 };
+Monoid-F64-Mul : Monoid F64 = record { semigroup = Semigroup-F64-Mul, empty = 1 };
+
+
 ||| General trait for numeric types
 Num (a : Type) = Record {
     ||| The additive monoid
-    additive : Monoid a,
+    add : Monoid a,
     ||| The multiplicative monoid
-    multiplicative : Monoid a,
+    mul : Monoid a,
+
+    -- TODO: Subtraction?
+    -- TODO: Division?
+    -- TODO: Lawfulness?
 };
 
 add : (a : Type) (N : Num a) -> a -> a -> a;
-add a N = append a N.additive.semigroup;
+add a N = append a N.add.semigroup;
 
 zero : (a : Type) (N : Num a) -> a;
-zero a N = empty a N.additive;
+zero a N = empty a N.add;
 
 mul : (a : Type) (N : Num a) -> a -> a -> a;
-mul a N = append a N.multiplicative.semigroup;
+mul a N = append a N.mul.semigroup;
 
 one : (a : Type) (N : Num a) -> a;
-one a N = empty a N.multiplicative;
+one a N = empty a N.mul;
+
+
+Num-U8-Add : Num U8 = record { add = Monoid-U8-Add, mul = Monoid-U8-Mul };
+Num-U16-Add : Num U16 = record { add = Monoid-U16-Add, mul = Monoid-U16-Mul };
+Num-U32-Add : Num U32 = record { add = Monoid-U32-Add, mul = Monoid-U32-Mul };
+Num-U64-Add : Num U64 = record { add = Monoid-U64-Add, mul = Monoid-U64-Mul };
+Num-I8-Add : Num I8 = record { add = Monoid-I8-Add, mul = Monoid-I8-Mul };
+Num-I16-Add : Num I16 = record { add = Monoid-I16-Add, mul = Monoid-I16-Mul };
+Num-I32-Add : Num I32 = record { add = Monoid-I32-Add, mul = Monoid-I32-Mul };
+Num-I64-Add : Num I64 = record { add = Monoid-I64-Add, mul = Monoid-I64-Mul };
+Num-F32-Add : Num F32 = record { add = Monoid-F32-Add, mul = Monoid-F32-Mul };
+Num-F64-Add : Num F64 = record { add = Monoid-F64-Add, mul = Monoid-F64-Mul };
 
 
 ||| A category is a very general structure that provides a common way of composing

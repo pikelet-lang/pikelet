@@ -10,8 +10,8 @@ use std::rc::Rc;
 
 use syntax::context::Context;
 use syntax::core::{
-    Constant, Definition, Label, Level, Module, Neutral, RawConstant, RawModule, RawTerm, Term,
-    Type, Value,
+    Constant, Definition, Head, Label, Level, Module, Neutral, RawConstant, RawModule, RawTerm,
+    Term, Type, Value,
 };
 use syntax::translation::Resugar;
 
@@ -43,8 +43,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
         };
 
         // Add the definition to the context
-        context = context.claim(Name::user(name.clone()), ann.clone());
-        context = context.define(Name::user(name.clone()), term.clone());
+        context = context.define_term(Name::user(name.clone()), ann.clone(), term.clone());
 
         definitions.push(Definition { name, term, ann })
     }
@@ -90,34 +89,52 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
         },
         Value::EmptyRecordType => Rc::new(Term::EmptyRecordType(Ignore::default())),
         Value::EmptyRecord => Rc::new(Term::EmptyRecord(Ignore::default())),
-        Value::Neutral(ref neutral) => match **neutral {
-            Neutral::Var(Var::Free(ref name)) => match substs.iter().find(|s| *name == s.0) {
-                Some(&(_, ref term)) => term.clone(),
-                None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
-            },
-            Neutral::Var(ref var) => Rc::new(Term::Var(Ignore::default(), var.clone())),
-            Neutral::App(ref expr, ref arg) => Rc::new(Term::App(
-                subst(&Value::Neutral(expr.clone()), substs),
-                subst(arg, substs),
-            )),
-            Neutral::If(ref cond, ref if_true, ref if_false) => Rc::new(Term::If(
-                Ignore::default(),
-                subst(&Value::Neutral(cond.clone()), substs),
-                subst(if_true, substs),
-                subst(if_false, substs),
-            )),
-            Neutral::Proj(ref expr, ref label) => Rc::new(Term::Proj(
-                Ignore::default(),
-                subst(&Value::Neutral(expr.clone()), substs),
-                Ignore::default(),
-                label.clone(),
-            )),
+        Value::Neutral(ref neutral) => {
+            let (head, spine) = match **neutral {
+                Neutral::App(Head::Var(Var::Free(ref name)), ref spine) => {
+                    let head = match substs.iter().find(|s| *name == s.0) {
+                        Some(&(_, ref term)) => term.clone(),
+                        None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
+                    };
+
+                    (head, spine)
+                },
+                Neutral::App(Head::Var(ref var), ref spine) => {
+                    (Rc::new(Term::Var(Ignore::default(), var.clone())), spine)
+                },
+                Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
+                    let head = Rc::new(Term::If(
+                        Ignore::default(),
+                        subst(&Value::Neutral(cond.clone()), substs),
+                        subst(if_true, substs),
+                        subst(if_false, substs),
+                    ));
+
+                    (head, spine)
+                },
+                Neutral::Proj(ref expr, ref label, ref spine) => {
+                    let head = Rc::new(Term::Proj(
+                        Ignore::default(),
+                        subst(&Value::Neutral(expr.clone()), substs),
+                        Ignore::default(),
+                        label.clone(),
+                    ));
+
+                    (head, spine)
+                },
+            };
+
+            spine
+                .iter()
+                .fold(head, |acc, arg| Rc::new(Term::App(acc, subst(arg, substs))))
         },
     }
 }
 
 /// Reduce a term to its normal form
 pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
+    use syntax::context::Definition;
+
     match **term {
         // E-ANN
         Term::Ann(_, ref expr, _) => normalize(context, expr),
@@ -131,8 +148,8 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         // E-VAR, E-VAR-DEF
         Term::Var(_, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_definition(name) {
-                Some(term) => normalize(context, &term),
-                None => Ok(Rc::new(Value::from(Neutral::Var(var.clone())))),
+                Some(Definition::Term(term)) => normalize(context, &term),
+                Some(Definition::Prim(_)) | None => Ok(Rc::new(Value::from(var.clone()))),
             },
 
             // We should always be substituting bound variables with fresh
@@ -170,18 +187,39 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
         // E-APP
         Term::App(ref expr, ref arg) => {
-            let value_expr = normalize(context, expr)?;
+            let mut value_expr = normalize(context, expr)?;
 
-            match *value_expr {
+            match Rc::make_mut(&mut value_expr) {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((name, Embed(_)), body) = nameless::unbind(scope.clone());
                     normalize(context, &subst(&*body, &vec![(name, arg.clone())]))
                 },
-                Value::Neutral(ref expr) => Ok(Rc::new(Value::from(Neutral::App(
-                    expr.clone(),
-                    normalize(context, arg)?,
-                )))),
+                Value::Neutral(ref mut neutral) => {
+                    let arg = normalize(context, arg)?;
+
+                    // Update the spine in place, if possible
+                    match *Rc::make_mut(neutral) {
+                        Neutral::App(Head::Var(Var::Free(ref name)), ref mut spine) => {
+                            spine.push(arg);
+
+                            // Apply the arguments to primitive definitions if the number of
+                            // arguments matches the arity of the primitive, all aof the arguments
+                            // are fully normalized
+                            if let Some(Definition::Prim(prim)) = context.lookup_definition(name) {
+                                if prim.arity == spine.len() && spine.iter().all(|arg| arg.is_nf())
+                                {
+                                    return Ok((prim.fun)(spine).unwrap());
+                                }
+                            }
+                        },
+                        Neutral::App(_, ref mut spine)
+                        | Neutral::If(_, _, _, ref mut spine)
+                        | Neutral::Proj(_, _, ref mut spine) => spine.push(arg),
+                    }
+
+                    Ok(Rc::new(Value::Neutral(neutral.clone())))
+                },
                 _ => Err(InternalError::ArgumentAppliedToNonFunction { span: expr.span() }),
             }
         },
@@ -197,6 +235,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                     cond.clone(),
                     normalize(context, if_true)?,
                     normalize(context, if_false)?,
+                    vec![],
                 )))),
                 _ => Err(InternalError::ExpectedBoolExpr { span: cond.span() }),
             }
@@ -232,6 +271,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Neutral(ref neutral) => Ok(Rc::new(Value::from(Neutral::Proj(
                     neutral.clone(),
                     label.clone(),
+                    vec![],
                 )))),
                 ref expr => match expr.lookup_record(label) {
                     Some(value) => Ok(value.clone()),
