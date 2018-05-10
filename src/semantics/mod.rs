@@ -198,24 +198,24 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Neutral(ref mut neutral) => {
                     let arg = normalize(context, arg)?;
 
+                    // Update the spine in place, if possible
                     match *Rc::make_mut(neutral) {
-                        Neutral::App(ref head, ref mut spine) => {
+                        Neutral::App(Head::Var(Var::Free(ref name)), ref mut spine) => {
                             spine.push(arg);
 
-                            if let Head::Var(Var::Free(ref name)) = *head {
-                                if let Some(Definition::Prim(prim)) =
-                                    context.lookup_definition(name)
+                            // Apply the arguments to primitive definitions if the number of
+                            // arguments matches the arity of the primitive, all aof the arguments
+                            // are fully normalized
+                            if let Some(Definition::Prim(prim)) = context.lookup_definition(name) {
+                                if prim.arity == spine.len() && spine.iter().all(|arg| arg.is_nf())
                                 {
-                                    if prim.arity == spine.len()
-                                        && spine.iter().all(|arg| arg.is_nf())
-                                    {
-                                        return Ok((prim.fun)(spine).unwrap());
-                                    }
+                                    return Ok((prim.fun)(spine).unwrap());
                                 }
                             }
                         },
-                        Neutral::If(_, _, _, ref mut spine) => spine.push(arg),
-                        Neutral::Proj(_, _, ref mut spine) => spine.push(arg),
+                        Neutral::App(_, ref mut spine)
+                        | Neutral::If(_, _, _, ref mut spine)
+                        | Neutral::Proj(_, _, ref mut spine) => spine.push(arg),
                     }
 
                     Ok(Rc::new(Value::Neutral(neutral.clone())))
