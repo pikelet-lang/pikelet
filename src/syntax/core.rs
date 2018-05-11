@@ -26,34 +26,26 @@ impl fmt::Display for Level {
     }
 }
 
-/// Raw primitive constants
-///
-/// These are either the literal values or the types that describe them.
-///
-/// We could church encode all the things, but that would be prohibitively
-/// expensive computationally!
+/// Raw literals
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
-pub enum RawConstant {
+pub enum RawLiteral {
     String(String),
     Char(char),
     Int(u64),
     Float(f64),
 }
 
-impl fmt::Display for RawConstant {
+impl fmt::Display for RawLiteral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
     }
 }
 
-/// Primitive constants
+/// Literals
 ///
-/// These are either the literal values or the types that describe them.
-///
-/// We could church encode all the things, but that would be prohibitively
-/// expensive computationally!
+/// We could church encode all the things, but that would be prohibitively expensive!
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
-pub enum Constant {
+pub enum Literal {
     Bool(bool),
     String(String),
     Char(char),
@@ -67,22 +59,9 @@ pub enum Constant {
     I64(i64),
     F32(f32),
     F64(f64),
-    BoolType,
-    StringType,
-    CharType,
-    U8Type,
-    U16Type,
-    U32Type,
-    U64Type,
-    I8Type,
-    I16Type,
-    I32Type,
-    I64Type,
-    F32Type,
-    F64Type,
 }
 
-impl fmt::Display for Constant {
+impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
     }
@@ -170,8 +149,8 @@ pub enum RawTerm {
     Ann(Ignore<ByteSpan>, Rc<RawTerm>, Rc<RawTerm>),
     /// Universes
     Universe(Ignore<ByteSpan>, Level),
-    /// Constants
-    Constant(Ignore<ByteSpan>, RawConstant),
+    /// Literals
+    Literal(Ignore<ByteSpan>, RawLiteral),
     /// A hole
     Hole(Ignore<ByteSpan>),
     /// A variable
@@ -214,7 +193,7 @@ impl RawTerm {
             RawTerm::Ann(span, _, _)
             | RawTerm::Universe(span, _)
             | RawTerm::Hole(span)
-            | RawTerm::Constant(span, _)
+            | RawTerm::Literal(span, _)
             | RawTerm::Var(span, _)
             | RawTerm::Pi(span, _)
             | RawTerm::Lam(span, _)
@@ -243,7 +222,7 @@ impl RawTerm {
                 expr.visit_vars(on_var);
                 ty.visit_vars(on_var);
             },
-            RawTerm::Universe(_, _) | RawTerm::Hole(_) | RawTerm::Constant(_, _) => {},
+            RawTerm::Universe(_, _) | RawTerm::Hole(_) | RawTerm::Literal(_, _) => {},
             RawTerm::Var(_, ref var) => on_var(var),
             RawTerm::Pi(_, ref scope) => {
                 (scope.unsafe_pattern.1).0.visit_vars(on_var);
@@ -313,8 +292,8 @@ pub enum Term {
     Ann(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
     /// Universes
     Universe(Ignore<ByteSpan>, Level),
-    /// Constants
-    Constant(Ignore<ByteSpan>, Constant),
+    /// Literals
+    Literal(Ignore<ByteSpan>, Literal),
     /// A variable
     Var(Ignore<ByteSpan>, Var),
     /// Dependent function types
@@ -342,7 +321,7 @@ impl Term {
         match *self {
             Term::Ann(span, _, _)
             | Term::Universe(span, _)
-            | Term::Constant(span, _)
+            | Term::Literal(span, _)
             | Term::Var(span, _)
             | Term::Lam(span, _)
             | Term::Pi(span, _)
@@ -371,7 +350,7 @@ impl Term {
                 expr.visit_vars(on_var);
                 ty.visit_vars(on_var);
             },
-            Term::Universe(_, _) | Term::Constant(_, _) => {},
+            Term::Universe(_, _) | Term::Literal(_, _) => {},
             Term::Var(_, ref var) => on_var(var),
             Term::Pi(_, ref scope) => {
                 (scope.unsafe_pattern.1).0.visit_vars(on_var);
@@ -427,8 +406,8 @@ impl Term {
 pub enum Value {
     /// Universes
     Universe(Level),
-    /// Constants
-    Constant(Constant),
+    /// Literals
+    Literal(Literal),
     /// A pi type
     Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
@@ -492,7 +471,7 @@ impl Value {
     pub fn is_whnf(&self) -> bool {
         match *self {
             Value::Universe(_)
-            | Value::Constant(_)
+            | Value::Literal(_)
             | Value::Pi(_)
             | Value::Lam(_)
             | Value::RecordType(_)
@@ -507,7 +486,7 @@ impl Value {
     pub fn is_nf(&self) -> bool {
         match *self {
             Value::Universe(_)
-            | Value::Constant(_)
+            | Value::Literal(_)
             | Value::EmptyRecordType
             | Value::EmptyRecord => true,
             Value::Pi(ref scope) | Value::Lam(ref scope) => {
@@ -585,7 +564,7 @@ impl<'a> From<&'a Value> for Term {
     fn from(src: &'a Value) -> Term {
         match *src {
             Value::Universe(level) => Term::Universe(Ignore::default(), level),
-            Value::Constant(ref c) => Term::Constant(Ignore::default(), c.clone()),
+            Value::Literal(ref lit) => Term::Literal(Ignore::default(), lit.clone()),
             Value::Pi(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));

@@ -1,9 +1,10 @@
 //! Primitive operations
 
+use nameless::{Name, Var};
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::core::{Constant, Type, Value};
+use syntax::core::{Literal, Type, Value};
 
 // Some helper traits for marshalling beteen Rust and Pikelet values
 //
@@ -25,7 +26,7 @@ macro_rules! impl_into_value {
     ($T:ty, $Variant:ident) => {
         impl IntoValue for $T {
             fn into_value(self) -> Rc<Value> {
-                Rc::new(Value::Constant(Constant::$Variant(self)))
+                Rc::new(Value::Literal(Literal::$Variant(self)))
             }
         }
     };
@@ -50,7 +51,7 @@ macro_rules! impl_try_from_value_ref {
         impl TryFromValueRef for $T {
             fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
                 match *src {
-                    Value::Constant(Constant::$Variant(ref x)) => Ok(x),
+                    Value::Literal(Literal::$Variant(ref x)) => Ok(x),
                     _ => Err(()),
                 }
             }
@@ -73,28 +74,28 @@ impl_try_from_value_ref!(f32, F32);
 impl_try_from_value_ref!(f64, F64);
 
 macro_rules! impl_has_ty {
-    ($T:ty, $ty:expr) => {
+    ($T:ty, $ty_name:expr) => {
         impl HasType for $T {
             fn ty() -> Rc<Type> {
-                $ty
+                Rc::new(Value::from(Var::Free(Name::user($ty_name))))
             }
         }
     };
 }
 
-impl_has_ty!(String, Rc::new(Value::Constant(Constant::StringType)));
-impl_has_ty!(char, Rc::new(Value::Constant(Constant::CharType)));
-impl_has_ty!(bool, Rc::new(Value::Constant(Constant::BoolType)));
-impl_has_ty!(u8, Rc::new(Value::Constant(Constant::U8Type)));
-impl_has_ty!(u16, Rc::new(Value::Constant(Constant::U16Type)));
-impl_has_ty!(u32, Rc::new(Value::Constant(Constant::U32Type)));
-impl_has_ty!(u64, Rc::new(Value::Constant(Constant::U64Type)));
-impl_has_ty!(i8, Rc::new(Value::Constant(Constant::I8Type)));
-impl_has_ty!(i16, Rc::new(Value::Constant(Constant::I16Type)));
-impl_has_ty!(i32, Rc::new(Value::Constant(Constant::I32Type)));
-impl_has_ty!(i64, Rc::new(Value::Constant(Constant::I64Type)));
-impl_has_ty!(f32, Rc::new(Value::Constant(Constant::F32Type)));
-impl_has_ty!(f64, Rc::new(Value::Constant(Constant::F64Type)));
+impl_has_ty!(String, "String");
+impl_has_ty!(char, "Char");
+impl_has_ty!(bool, "Bool");
+impl_has_ty!(u8, "U8");
+impl_has_ty!(u16, "U16");
+impl_has_ty!(u32, "U32");
+impl_has_ty!(u64, "U64");
+impl_has_ty!(i8, "I8");
+impl_has_ty!(i16, "I16");
+impl_has_ty!(i32, "I32");
+impl_has_ty!(i64, "I64");
+impl_has_ty!(f32, "F32");
+impl_has_ty!(f64, "F64");
 
 /// Primitive functions
 #[derive(Clone)]

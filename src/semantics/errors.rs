@@ -5,7 +5,7 @@ use codespan_reporting::{Diagnostic, Label};
 use nameless::{BoundName, Name};
 
 use syntax::concrete;
-use syntax::core::{self, RawConstant};
+use syntax::core::{self, RawLiteral};
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -81,7 +81,7 @@ pub enum TypeError {
     #[fail(display = "found a `{}`, but expected a type `{}`", found, expected)]
     LiteralMismatch {
         literal_span: ByteSpan,
-        found: RawConstant,
+        found: RawLiteral,
         expected: Box<concrete::Term>,
     },
     #[fail(display = "Ambiguous integer literal")]
@@ -160,10 +160,10 @@ impl TypeError {
                 ref expected,
             } => {
                 let found_text = match *found {
-                    RawConstant::String(_) => "string",
-                    RawConstant::Char(_) => "character",
-                    RawConstant::Int(_) => "numeric",
-                    RawConstant::Float(_) => "floating point",
+                    RawLiteral::String(_) => "string",
+                    RawLiteral::Char(_) => "character",
+                    RawLiteral::Int(_) => "numeric",
+                    RawLiteral::Float(_) => "floating point",
                 };
 
                 Diagnostic::new_error(format!(

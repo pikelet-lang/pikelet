@@ -247,16 +247,16 @@ impl Desugar<core::RawTerm> for concrete::Term {
                 core::RawTerm::Universe(span, core::Level(level.unwrap_or(0)))
             },
             concrete::Term::String(_, ref value) => {
-                core::RawTerm::Constant(span, core::RawConstant::String(value.clone()))
+                core::RawTerm::Literal(span, core::RawLiteral::String(value.clone()))
             },
             concrete::Term::Char(_, value) => {
-                core::RawTerm::Constant(span, core::RawConstant::Char(value))
+                core::RawTerm::Literal(span, core::RawLiteral::Char(value))
             },
             concrete::Term::Int(_, value) => {
-                core::RawTerm::Constant(span, core::RawConstant::Int(value))
+                core::RawTerm::Literal(span, core::RawLiteral::Int(value))
             },
             concrete::Term::Float(_, value) => {
-                core::RawTerm::Constant(span, core::RawConstant::Float(value))
+                core::RawTerm::Literal(span, core::RawLiteral::Float(value))
             },
             concrete::Term::Array(_, ref _elems) => unimplemented!("array literals"),
             concrete::Term::Hole(_) => core::RawTerm::Hole(span),
