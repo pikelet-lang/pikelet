@@ -191,7 +191,7 @@ Pikelet&gt; Type
 Pikelet&gt; Type 2
 Pikelet&gt; record { name = &quot;Jane&quot; }
 Pikelet&gt; Record { name : String }
-Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
+Pikelet&gt; record { x = 3.0 : F32; y = 3.0 : F32 }
 Pikelet&gt; \x : Int =&gt; x
 Pikelet&gt; (a : Type) -&gt; a
 </code></pre>
@@ -203,12 +203,12 @@ information can be supplied.</p>
 </blockquote>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1
 Pikelet&gt; 2.0
-Pikelet&gt; record { x = 3.0, y = 3.0 }
+Pikelet&gt; record { x = 3.0; y = 3.0 }
 Pikelet&gt; \x =&gt; x
 </code></pre>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1 : I32
 Pikelet&gt; 2.0 : F32
-Pikelet&gt; record { x = 3.0, y = 3.0 } : Record { x : F32, y : F32 }
+Pikelet&gt; record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
 Pikelet&gt; \x =&gt; x : I32 -&gt; I32
 </code></pre>
 <a class="header" href="language/type-inference.html#further-reading" id="further-reading"><h2>Further reading</h2></a>

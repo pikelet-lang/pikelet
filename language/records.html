@@ -159,8 +159,8 @@
 </ul>
 <a class="header" href="language/records.html#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32; y = 3.0 : F32 }
+record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 </code></pre>
 <p>Take note of the following:</p>
 <ul>
@@ -170,13 +170,13 @@ record { x = 3, y = 3 } : Record { x : F32, y : F32 }
 </ul>
 <p>We can make a new definition for point types:</p>
 <pre><code class="language-pikelet">Point2d = Record {
-  x : F32,
-  y : F32,
+  x : F32;
+  y : F32;
 };
 </code></pre>
 <p>You can then use this type to make it easier to define a point record:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0, y = 3.0 } : Point2d
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0; y = 3.0 } : Point2d
+record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 </code></pre>
 <p>Note thaw we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
@@ -191,8 +191,8 @@ read more about Pikelet's type inference on <a href="./type-inference">the type 
 fixed-length array into a dynamically sized array, by using the <code>len</code> field
 later on to define the <code>data</code> field's annotation:</p>
 <pre><code class="language-pikelet">DArray (a : Type) = Record {
-    len : I32,
-    data : Box (Array len a),
+    len : I32;
+    data : Box (Array len a);
 };
 </code></pre>
 

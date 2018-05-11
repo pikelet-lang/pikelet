@@ -215,12 +215,12 @@ sooner or later the REPL will be ready for you to interact with!</p>
 </ul>
 <a class="header" href="print.html#declarations" id="declarations"><h2>Declarations</h2></a>
 <p>Declarations are preceded by a type annotation, and followed by a definition:</p>
-<pre><code class="language-pikelet">greeting : String
-greeting = &quot;hello there!&quot;
+<pre><code class="language-pikelet">greeting : String;
+greeting = &quot;hello there!&quot;;
 </code></pre>
 <p>We can also make type aliases in the same way:</p>
-<pre><code class="language-pikelet">name : Type
-name = String
+<pre><code class="language-pikelet">name : Type;
+name = String;
 </code></pre>
 <a class="header" href="print.html#comments" id="comments"><h2>Comments</h2></a>
 <p>Line comments are proceeded by a double dash:</p>
@@ -241,8 +241,8 @@ definitions:</p>
 ||| Pikelet&gt; self-aware-string
 ||| &quot;I am a string!&quot; : String
 ||| ```
-self-aware-string : String
-self-aware-string = &quot;I am a string!&quot;
+self-aware-string : String;
+self-aware-string = &quot;I am a string!&quot;;
 </code></pre>
 <a class="header" href="print.html#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
 <p>Pikelet has a number of primitive types:</p>
@@ -309,8 +309,8 @@ Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 </ul>
 <a class="header" href="print.html#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32; y = 3.0 : F32 }
+record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 </code></pre>
 <p>Take note of the following:</p>
 <ul>
@@ -320,13 +320,13 @@ record { x = 3, y = 3 } : Record { x : F32, y : F32 }
 </ul>
 <p>We can make a new definition for point types:</p>
 <pre><code class="language-pikelet">Point2d = Record {
-  x : F32,
-  y : F32,
+  x : F32;
+  y : F32;
 };
 </code></pre>
 <p>You can then use this type to make it easier to define a point record:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0, y = 3.0 } : Point2d
-record { x = 3, y = 3 } : Record { x : F32, y : F32 }
+<pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0; y = 3.0 } : Point2d
+record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 </code></pre>
 <p>Note thaw we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
@@ -341,8 +341,8 @@ read more about Pikelet's type inference on <a href="./type-inference">the type 
 fixed-length array into a dynamically sized array, by using the <code>len</code> field
 later on to define the <code>data</code> field's annotation:</p>
 <pre><code class="language-pikelet">DArray (a : Type) = Record {
-    len : I32,
-    data : Box (Array len a),
+    len : I32;
+    data : Box (Array len a);
 };
 </code></pre>
 <a class="header" href="print.html#functions" id="functions"><h1>Functions</h1></a>
@@ -445,7 +445,7 @@ Pikelet&gt; Type
 Pikelet&gt; Type 2
 Pikelet&gt; record { name = &quot;Jane&quot; }
 Pikelet&gt; Record { name : String }
-Pikelet&gt; record { x = 3.0 : F32, y = 3.0 : F32 }
+Pikelet&gt; record { x = 3.0 : F32; y = 3.0 : F32 }
 Pikelet&gt; \x : Int =&gt; x
 Pikelet&gt; (a : Type) -&gt; a
 </code></pre>
@@ -457,12 +457,12 @@ information can be supplied.</p>
 </blockquote>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1
 Pikelet&gt; 2.0
-Pikelet&gt; record { x = 3.0, y = 3.0 }
+Pikelet&gt; record { x = 3.0; y = 3.0 }
 Pikelet&gt; \x =&gt; x
 </code></pre>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1 : I32
 Pikelet&gt; 2.0 : F32
-Pikelet&gt; record { x = 3.0, y = 3.0 } : Record { x : F32, y : F32 }
+Pikelet&gt; record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
 Pikelet&gt; \x =&gt; x : I32 -&gt; I32
 </code></pre>
 <a class="header" href="print.html#further-reading" id="further-reading"><h2>Further reading</h2></a>
