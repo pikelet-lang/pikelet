@@ -64,6 +64,7 @@ fn print_help_text() {
         "",
         "<term>                         evaluate a term",
         ":? :h :help                    display this help text",
+        ":core         <term>           print the core representation of a term",
         ":let          <name> = <term>  add a named term to the REPL context",
         ":q :quit                       quit the repl",
         ":t :type      <term>           infer the type of a term",
@@ -146,7 +147,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
-    use nameless::Name;
+    use nameless::{Ignore, Name};
     use std::rc::Rc;
 
     use syntax::concrete::{ReplCommand, Term};
@@ -173,6 +174,16 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let evaluated = semantics::normalize(context, &term)?;
 
             let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
+
+            println!("{}", ann_term.to_doc().group().pretty(term_width()));
+        },
+        ReplCommand::Core(parse_term) => {
+            use syntax::core::Term;
+
+            let raw_term = Rc::new(parse_term.desugar());
+            let (term, inferred) = semantics::infer(context, &raw_term)?;
+
+            let ann_term = Term::Ann(Ignore::default(), term, Rc::new(Term::from(&*inferred)));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },

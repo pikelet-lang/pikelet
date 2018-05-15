@@ -68,6 +68,7 @@ pub ReplCommand: ReplCommand = {
         },
     },
     <start: @L> <command: "REPL command"> <end: @R> <term: Term> =>? match command {
+        "core" => Ok(ReplCommand::Core(Box::new(term))),
         "t" | "type" => Ok(ReplCommand::TypeOf(Box::new(term))),
         command => {
             let span = ByteSpan::new(start, end);
