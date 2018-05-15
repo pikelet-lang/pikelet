@@ -14,6 +14,12 @@ pub enum ReplCommand {
     /// <term>
     /// ```
     Eval(Box<Term>),
+    /// Show the core representation of a term
+    ///
+    /// ```text
+    /// :core <term>
+    /// ```
+    Core(Box<Term>),
     /// Print some help about using the REPL
     ///
     /// ```text
