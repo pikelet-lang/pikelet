@@ -10,8 +10,8 @@ use std::rc::Rc;
 
 use syntax::context::Context;
 use syntax::core::{
-    Constant, Definition, Head, Label, Level, Module, Neutral, RawConstant, RawModule, RawTerm,
-    Term, Type, Value,
+    Definition, Head, Label, Level, Literal, Module, Neutral, RawLiteral, RawModule, RawTerm, Term,
+    Type, Value,
 };
 use syntax::translation::Resugar;
 
@@ -58,7 +58,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
 pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
     match *value {
         Value::Universe(level) => Rc::new(Term::Universe(Ignore::default(), level)),
-        Value::Constant(ref c) => Rc::new(Term::Constant(Ignore::default(), c.clone())),
+        Value::Literal(ref lit) => Rc::new(Term::Literal(Ignore::default(), lit.clone())),
         Value::Pi(ref scope) => {
             let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
             Rc::new(Term::Pi(
@@ -142,8 +142,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         // E-TYPE
         Term::Universe(_, level) => Ok(Rc::new(Value::Universe(level))),
 
-        // E-CONST
-        Term::Constant(_, ref c) => Ok(Rc::new(Value::Constant(c.clone()))),
+        Term::Literal(_, ref lit) => Ok(Rc::new(Value::Literal(lit.clone()))),
 
         // E-VAR, E-VAR-DEF
         Term::Var(_, ref var) => match *var {
@@ -229,8 +228,8 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             let value_cond = normalize(context, cond)?;
 
             match *value_cond {
-                Value::Constant(Constant::Bool(true)) => normalize(context, if_true),
-                Value::Constant(Constant::Bool(false)) => normalize(context, if_false),
+                Value::Literal(Literal::Bool(true)) => normalize(context, if_true),
+                Value::Literal(Literal::Bool(false)) => normalize(context, if_false),
                 Value::Neutral(ref cond) => Ok(Rc::new(Value::from(Neutral::If(
                     cond.clone(),
                     normalize(context, if_true)?,
@@ -292,37 +291,46 @@ pub fn check(
     expected_ty: &Rc<Type>,
 ) -> Result<Rc<Term>, TypeError> {
     match (&**raw_term, &**expected_ty) {
-        (&RawTerm::Constant(span, ref raw_c), &Value::Constant(ref c_ty)) => {
-            use syntax::core::RawConstant as RawC;
+        (&RawTerm::Literal(span, ref raw_literal), ty) => {
+            fn is_name(ty: &Type, name: &str) -> bool {
+                if let Value::Neutral(ref neutral) = *ty {
+                    if let Neutral::App(Head::Var(Var::Free(ref n)), ref spine) = **neutral {
+                        return Name::user(name) == *n && spine.is_empty();
+                    }
+                }
+                false
+            }
 
-            let c = match (raw_c, c_ty) {
-                (&RawC::String(ref val), &Constant::StringType) => Constant::String(val.clone()),
-                (&RawC::Char(val), &Constant::CharType) => Constant::Char(val),
+            let literal = match *raw_literal {
+                RawLiteral::String(ref val) if is_name(ty, "String") => {
+                    Literal::String(val.clone())
+                },
+                RawLiteral::Char(val) if is_name(ty, "Char") => Literal::Char(val),
 
                 // FIXME: overflow?
-                (&RawC::Int(val), &Constant::U8Type) => Constant::U8(val as u8),
-                (&RawC::Int(val), &Constant::U16Type) => Constant::U16(val as u16),
-                (&RawC::Int(val), &Constant::U32Type) => Constant::U32(val as u32),
-                (&RawC::Int(val), &Constant::U64Type) => Constant::U64(val),
-                (&RawC::Int(val), &Constant::I8Type) => Constant::I8(val as i8),
-                (&RawC::Int(val), &Constant::I16Type) => Constant::I16(val as i16),
-                (&RawC::Int(val), &Constant::I32Type) => Constant::I32(val as i32),
-                (&RawC::Int(val), &Constant::I64Type) => Constant::I64(val as i64),
-                (&RawC::Int(val), &Constant::F32Type) => Constant::F32(val as f32),
-                (&RawC::Int(val), &Constant::F64Type) => Constant::F64(val as f64),
-                (&RawC::Float(val), &Constant::F32Type) => Constant::F32(val as f32),
-                (&RawC::Float(val), &Constant::F64Type) => Constant::F64(val),
+                RawLiteral::Int(val) if is_name(ty, "U8") => Literal::U8(val as u8),
+                RawLiteral::Int(val) if is_name(ty, "U16") => Literal::U16(val as u16),
+                RawLiteral::Int(val) if is_name(ty, "U32") => Literal::U32(val as u32),
+                RawLiteral::Int(val) if is_name(ty, "U64") => Literal::U64(val),
+                RawLiteral::Int(val) if is_name(ty, "I8") => Literal::I8(val as i8),
+                RawLiteral::Int(val) if is_name(ty, "I16") => Literal::I16(val as i16),
+                RawLiteral::Int(val) if is_name(ty, "I32") => Literal::I32(val as i32),
+                RawLiteral::Int(val) if is_name(ty, "I64") => Literal::I64(val as i64),
+                RawLiteral::Int(val) if is_name(ty, "F32") => Literal::F32(val as f32),
+                RawLiteral::Int(val) if is_name(ty, "F64") => Literal::F64(val as f64),
+                RawLiteral::Float(val) if is_name(ty, "F32") => Literal::F32(val as f32),
+                RawLiteral::Float(val) if is_name(ty, "F64") => Literal::F64(val),
 
-                (_, _) => {
+                _ => {
                     return Err(TypeError::LiteralMismatch {
                         literal_span: span.0,
-                        found: raw_c.clone(),
-                        expected: Box::new(c_ty.resugar()),
+                        found: raw_literal.clone(),
+                        expected: Box::new(expected_ty.resugar()),
                     });
                 },
             };
 
-            return Ok(Rc::new(Term::Constant(span, c)));
+            return Ok(Rc::new(Term::Literal(span, literal)));
         },
 
         // C-LAM
@@ -351,7 +359,7 @@ pub fn check(
 
         // C-IF
         (&RawTerm::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
-            let bool_ty = Rc::new(Value::Constant(Constant::BoolType));
+            let bool_ty = Rc::new(Value::from(Var::Free(Name::user("Bool"))));
             let cond = check(context, raw_cond, &bool_ty)?;
             let if_true = check(context, raw_if_true, expected_ty)?;
             let if_false = check(context, raw_if_false, expected_ty)?;
@@ -448,17 +456,17 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             expected: None,
         }),
 
-        RawTerm::Constant(span, ref raw_c) => match *raw_c {
-            RawConstant::String(ref value) => Ok((
-                Rc::new(Term::Constant(span, Constant::String(value.clone()))),
-                Rc::new(Value::Constant(Constant::StringType)),
+        RawTerm::Literal(span, ref raw_literal) => match *raw_literal {
+            RawLiteral::String(ref value) => Ok((
+                Rc::new(Term::Literal(span, Literal::String(value.clone()))),
+                Rc::new(Value::from(Var::Free(Name::user("String")))),
             )),
-            RawConstant::Char(value) => Ok((
-                Rc::new(Term::Constant(span, Constant::Char(value))),
-                Rc::new(Value::Constant(Constant::CharType)),
+            RawLiteral::Char(value) => Ok((
+                Rc::new(Term::Literal(span, Literal::Char(value))),
+                Rc::new(Value::from(Var::Free(Name::user("Char")))),
             )),
-            RawConstant::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: span.0 }),
-            RawConstant::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: span.0 }),
+            RawLiteral::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: span.0 }),
+            RawLiteral::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: span.0 }),
         },
 
         // I-VAR
@@ -526,7 +534,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
 
         // I-IF
         RawTerm::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
-            let bool_ty = Rc::new(Value::Constant(Constant::BoolType));
+            let bool_ty = Rc::new(Value::from(Var::Free(Name::user("Bool"))));
             let cond = check(context, raw_cond, &bool_ty)?;
             let (if_true, ty) = infer(context, raw_if_true)?;
             let if_false = check(context, raw_if_false, &ty)?;

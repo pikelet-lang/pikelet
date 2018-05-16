@@ -5,8 +5,8 @@ use pretty::Doc;
 use std::iter;
 
 use syntax::core::{
-    Constant, Definition, Head, Label, Level, Module, Neutral, RawConstant, RawDefinition,
-    RawModule, RawTerm, Term, Value,
+    Definition, Head, Label, Level, Literal, Module, Neutral, RawDefinition, RawLiteral, RawModule,
+    RawTerm, Term, Value,
 };
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
@@ -100,47 +100,34 @@ fn pretty_proj<E: ToDoc>(expr: &E, label: &Label) -> StaticDoc {
     )
 }
 
-impl ToDoc for RawConstant {
+impl ToDoc for RawLiteral {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            RawConstant::String(ref value) => Doc::text(format!("{:?}", value)),
-            RawConstant::Char(value) => Doc::text(format!("{:?}", value)),
-            RawConstant::Int(value) => Doc::as_string(value),
-            RawConstant::Float(value) => Doc::as_string(value),
+            RawLiteral::String(ref value) => Doc::text(format!("{:?}", value)),
+            RawLiteral::Char(value) => Doc::text(format!("{:?}", value)),
+            RawLiteral::Int(value) => Doc::as_string(value),
+            RawLiteral::Float(value) => Doc::as_string(value),
         }
     }
 }
 
-impl ToDoc for Constant {
+impl ToDoc for Literal {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Constant::Bool(true) => Doc::text("#true"),
-            Constant::Bool(false) => Doc::text("#false"),
-            Constant::String(ref value) => Doc::text(format!("{:?}", value)),
-            Constant::Char(value) => Doc::text(format!("{:?}", value)),
-            Constant::U8(value) => Doc::as_string(value),
-            Constant::U16(value) => Doc::as_string(value),
-            Constant::U32(value) => Doc::as_string(value),
-            Constant::U64(value) => Doc::as_string(value),
-            Constant::I8(value) => Doc::as_string(value),
-            Constant::I16(value) => Doc::as_string(value),
-            Constant::I32(value) => Doc::as_string(value),
-            Constant::I64(value) => Doc::as_string(value),
-            Constant::F32(value) => Doc::as_string(value),
-            Constant::F64(value) => Doc::as_string(value),
-            Constant::BoolType => Doc::text("#Bool"),
-            Constant::StringType => Doc::text("#String"),
-            Constant::CharType => Doc::text("#Char"),
-            Constant::U8Type => Doc::text("#U8"),
-            Constant::U16Type => Doc::text("#U16"),
-            Constant::U32Type => Doc::text("#U32"),
-            Constant::U64Type => Doc::text("#U64"),
-            Constant::I8Type => Doc::text("#I8"),
-            Constant::I16Type => Doc::text("#I16"),
-            Constant::I32Type => Doc::text("#I32"),
-            Constant::I64Type => Doc::text("#I64"),
-            Constant::F32Type => Doc::text("#F32"),
-            Constant::F64Type => Doc::text("#F64"),
+            Literal::Bool(true) => Doc::text("true"),
+            Literal::Bool(false) => Doc::text("false"),
+            Literal::String(ref value) => Doc::text(format!("{:?}", value)),
+            Literal::Char(value) => Doc::text(format!("{:?}", value)),
+            Literal::U8(value) => Doc::as_string(value),
+            Literal::U16(value) => Doc::as_string(value),
+            Literal::U32(value) => Doc::as_string(value),
+            Literal::U64(value) => Doc::as_string(value),
+            Literal::I8(value) => Doc::as_string(value),
+            Literal::I16(value) => Doc::as_string(value),
+            Literal::I32(value) => Doc::as_string(value),
+            Literal::I64(value) => Doc::as_string(value),
+            Literal::F32(value) => Doc::as_string(value),
+            Literal::F64(value) => Doc::as_string(value),
         }
     }
 }
@@ -151,7 +138,7 @@ impl ToDoc for RawTerm {
             RawTerm::Ann(_, ref expr, ref ty) => pretty_ann(expr, ty),
             RawTerm::Universe(_, level) => pretty_universe(level),
             RawTerm::Hole(_) => parens(Doc::text("hole")),
-            RawTerm::Constant(_, ref c) => c.to_doc(),
+            RawTerm::Literal(_, ref lit) => lit.to_doc(),
             RawTerm::Var(_, ref var) => pretty_var(var),
             RawTerm::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
@@ -229,7 +216,7 @@ impl ToDoc for Term {
         match *self {
             Term::Ann(_, ref expr, ref ty) => pretty_ann(expr, ty),
             Term::Universe(_, level) => pretty_universe(level),
-            Term::Constant(_, ref c) => c.to_doc(),
+            Term::Literal(_, ref lit) => lit.to_doc(),
             Term::Var(_, ref var) => pretty_var(var),
             Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
@@ -304,7 +291,7 @@ impl ToDoc for Value {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Value::Universe(level) => pretty_universe(level),
-            Value::Constant(ref c) => c.to_doc(),
+            Value::Literal(ref lit) => lit.to_doc(),
             Value::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0,

@@ -106,45 +106,30 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
 //     "F64",
 // ];
 
-fn resugar_constant(constant: &core::Constant) -> concrete::Term {
+fn resugar_literal(constant: &core::Literal) -> concrete::Term {
     let span = ByteSpan::default();
 
     match *constant {
         // FIXME: Draw these names from some environment?
-        core::Constant::Bool(true) => concrete::Term::Var(span.start(), String::from("true")),
-        core::Constant::Bool(false) => concrete::Term::Var(span.start(), String::from("false")),
+        core::Literal::Bool(true) => concrete::Term::Var(span.start(), String::from("true")),
+        core::Literal::Bool(false) => concrete::Term::Var(span.start(), String::from("false")),
 
-        core::Constant::String(ref value) => concrete::Term::String(span, value.clone()),
-        core::Constant::Char(value) => concrete::Term::Char(span, value),
+        core::Literal::String(ref value) => concrete::Term::String(span, value.clone()),
+        core::Literal::Char(value) => concrete::Term::Char(span, value),
 
-        core::Constant::U8(value) => concrete::Term::Int(span, value as u64),
-        core::Constant::U16(value) => concrete::Term::Int(span, value as u64),
-        core::Constant::U32(value) => concrete::Term::Int(span, value as u64),
-        core::Constant::U64(value) => concrete::Term::Int(span, value),
+        core::Literal::U8(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::U16(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::U32(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::U64(value) => concrete::Term::Int(span, value),
 
         // FIXME: Underflow for negative numbers
-        core::Constant::I8(value) => concrete::Term::Int(span, value as u64),
-        core::Constant::I16(value) => concrete::Term::Int(span, value as u64),
-        core::Constant::I32(value) => concrete::Term::Int(span, value as u64),
-        core::Constant::I64(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::I8(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::I16(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::I32(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::I64(value) => concrete::Term::Int(span, value as u64),
 
-        core::Constant::F32(value) => concrete::Term::Float(span, value as f64),
-        core::Constant::F64(value) => concrete::Term::Float(span, value),
-
-        // FIXME: Draw these names from some environment?
-        core::Constant::BoolType => concrete::Term::Var(span.start(), String::from("Bool")),
-        core::Constant::StringType => concrete::Term::Var(span.start(), String::from("String")),
-        core::Constant::CharType => concrete::Term::Var(span.start(), String::from("Char")),
-        core::Constant::U8Type => concrete::Term::Var(span.start(), String::from("U8")),
-        core::Constant::U16Type => concrete::Term::Var(span.start(), String::from("U16")),
-        core::Constant::U32Type => concrete::Term::Var(span.start(), String::from("U32")),
-        core::Constant::U64Type => concrete::Term::Var(span.start(), String::from("U64")),
-        core::Constant::I8Type => concrete::Term::Var(span.start(), String::from("I8")),
-        core::Constant::I16Type => concrete::Term::Var(span.start(), String::from("I16")),
-        core::Constant::I32Type => concrete::Term::Var(span.start(), String::from("I32")),
-        core::Constant::I64Type => concrete::Term::Var(span.start(), String::from("I64")),
-        core::Constant::F32Type => concrete::Term::Var(span.start(), String::from("F32")),
-        core::Constant::F64Type => concrete::Term::Var(span.start(), String::from("F64")),
+        core::Literal::F32(value) => concrete::Term::Float(span, value as f64),
+        core::Literal::F64(value) => concrete::Term::Float(span, value),
     }
 }
 
@@ -324,7 +309,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 concrete::Term::Universe(ByteSpan::default(), level),
             )
         },
-        core::Term::Constant(_, ref c) => resugar_constant(c),
+        core::Term::Literal(_, ref lit) => resugar_literal(lit),
         core::Term::Var(_, Var::Free(Name::User(ref name))) => {
             concrete::Term::Var(ByteIndex::default(), name.to_string())
         },
@@ -416,9 +401,9 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
     }
 }
 
-impl Resugar<concrete::Term> for core::Constant {
+impl Resugar<concrete::Term> for core::Literal {
     fn resugar(&self) -> concrete::Term {
-        resugar_constant(self)
+        resugar_literal(self)
     }
 }
 

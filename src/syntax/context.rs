@@ -1,5 +1,5 @@
 use im::Vector;
-use nameless::{Ignore, Name};
+use nameless::{Ignore, Name, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -85,30 +85,29 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Context {
-        use syntax::core::Constant::*;
-        use syntax::core::{Level, Value};
+        use syntax::core::{Level, Literal, Value};
 
         let name = Name::user;
+        let free_var = |n| Rc::new(Value::from(Var::Free(name(n))));
         let universe0 = Rc::new(Value::Universe(Level(0)));
-        let constant = |c| Rc::new(Term::Constant(Ignore::default(), c));
-        let constant_val = |c| Rc::new(Value::Constant(c));
+        let bool_lit = |val| Rc::new(Term::Literal(Ignore::default(), Literal::Bool(val)));
 
         Context::new()
-            .define_term(name("true"), constant_val(BoolType), constant(Bool(true)))
-            .define_term(name("false"), constant_val(BoolType), constant(Bool(false)))
-            .define_term(name("Bool"), universe0.clone(), constant(BoolType))
-            .define_term(name("String"), universe0.clone(), constant(StringType))
-            .define_term(name("Char"), universe0.clone(), constant(CharType))
-            .define_term(name("U8"), universe0.clone(), constant(U8Type))
-            .define_term(name("U16"), universe0.clone(), constant(U16Type))
-            .define_term(name("U32"), universe0.clone(), constant(U32Type))
-            .define_term(name("U64"), universe0.clone(), constant(U64Type))
-            .define_term(name("I8"), universe0.clone(), constant(I8Type))
-            .define_term(name("I16"), universe0.clone(), constant(I16Type))
-            .define_term(name("I32"), universe0.clone(), constant(I32Type))
-            .define_term(name("I64"), universe0.clone(), constant(I64Type))
-            .define_term(name("F32"), universe0.clone(), constant(F32Type))
-            .define_term(name("F64"), universe0.clone(), constant(F64Type))
+            .claim(name("Bool"), universe0.clone())
+            .define_term(name("true"), free_var("Bool"), bool_lit(true))
+            .define_term(name("false"), free_var("Bool"), bool_lit(false))
+            .claim(name("String"), universe0.clone())
+            .claim(name("Char"), universe0.clone())
+            .claim(name("U8"), universe0.clone())
+            .claim(name("U16"), universe0.clone())
+            .claim(name("U32"), universe0.clone())
+            .claim(name("U64"), universe0.clone())
+            .claim(name("I8"), universe0.clone())
+            .claim(name("I16"), universe0.clone())
+            .claim(name("I32"), universe0.clone())
+            .claim(name("I64"), universe0.clone())
+            .claim(name("F32"), universe0.clone())
+            .claim(name("F64"), universe0.clone())
             .define_prim(name("prim-string-eq"), Rc::new(prim::string_eq()))
             .define_prim(name("prim-bool-eq"), Rc::new(prim::bool_eq()))
             .define_prim(name("prim-char-eq"), Rc::new(prim::char_eq()))
