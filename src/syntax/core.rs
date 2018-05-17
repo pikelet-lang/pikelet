@@ -4,7 +4,6 @@ use codespan::{ByteIndex, ByteSpan};
 use nameless::{
     self, Bind, BoundName, BoundPattern, BoundTerm, Embed, Ignore, Name, ScopeState, Var,
 };
-use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 
@@ -214,61 +213,6 @@ impl fmt::Display for RawTerm {
     }
 }
 
-impl RawTerm {
-    // TODO: Move to nameless crate
-    fn visit_vars<F: FnMut(&Var)>(&self, on_var: &mut F) {
-        match *self {
-            RawTerm::Ann(_, ref expr, ref ty) => {
-                expr.visit_vars(on_var);
-                ty.visit_vars(on_var);
-            },
-            RawTerm::Universe(_, _) | RawTerm::Hole(_) | RawTerm::Literal(_, _) => {},
-            RawTerm::Var(_, ref var) => on_var(var),
-            RawTerm::Pi(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            RawTerm::Lam(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            RawTerm::App(ref fn_expr, ref arg_expr) => {
-                fn_expr.visit_vars(on_var);
-                arg_expr.visit_vars(on_var);
-            },
-            RawTerm::If(_, ref cond, ref if_true, ref if_false) => {
-                cond.visit_vars(on_var);
-                if_true.visit_vars(on_var);
-                if_false.visit_vars(on_var);
-            },
-            RawTerm::RecordType(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            RawTerm::Record(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            RawTerm::EmptyRecordType(_) | RawTerm::EmptyRecord(_) => {},
-            RawTerm::Proj(_, ref expr, _, _) => {
-                expr.visit_vars(on_var);
-            },
-        };
-    }
-
-    // TODO: move to nameless crate
-    pub fn free_vars(&self) -> HashSet<Name> {
-        let mut free_vars = HashSet::new();
-        self.visit_vars(&mut |var| match *var {
-            Var::Bound(_, _) => {},
-            Var::Free(ref name) => {
-                free_vars.insert(name.clone());
-            },
-        });
-        free_vars
-    }
-}
-
 /// A typechecked and elaborated module
 pub struct Module {
     /// The definitions contained in the module
@@ -339,61 +283,6 @@ impl Term {
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
-    }
-}
-
-impl Term {
-    // TODO: Move to nameless crate
-    fn visit_vars<F: FnMut(&Var)>(&self, on_var: &mut F) {
-        match *self {
-            Term::Ann(_, ref expr, ref ty) => {
-                expr.visit_vars(on_var);
-                ty.visit_vars(on_var);
-            },
-            Term::Universe(_, _) | Term::Literal(_, _) => {},
-            Term::Var(_, ref var) => on_var(var),
-            Term::Pi(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            Term::Lam(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            Term::App(ref fn_expr, ref arg_expr) => {
-                fn_expr.visit_vars(on_var);
-                arg_expr.visit_vars(on_var);
-            },
-            Term::If(_, ref cond, ref if_true, ref if_false) => {
-                cond.visit_vars(on_var);
-                if_true.visit_vars(on_var);
-                if_false.visit_vars(on_var);
-            },
-            Term::RecordType(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            Term::Record(_, ref scope) => {
-                (scope.unsafe_pattern.1).0.visit_vars(on_var);
-                scope.unsafe_body.visit_vars(on_var);
-            },
-            Term::EmptyRecordType(_) | Term::EmptyRecord(_) => {},
-            Term::Proj(_, ref expr, _, _) => {
-                expr.visit_vars(on_var);
-            },
-        };
-    }
-
-    // TODO: move to nameless crate
-    pub fn free_vars(&self) -> HashSet<Name> {
-        let mut free_vars = HashSet::new();
-        self.visit_vars(&mut |var| match *var {
-            Var::Bound(_, _) => {},
-            Var::Free(ref name) => {
-                free_vars.insert(name.clone());
-            },
-        });
-        free_vars
     }
 }
 
