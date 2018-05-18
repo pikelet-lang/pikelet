@@ -19,7 +19,7 @@ Take note of the following:
 
 - record values use the lower case `record` keyword
 - record types use the upper case `Record` keyword
-- we had to [annotate](#type-annotations) ambiguous field values
+- we have to [annotate](#type-annotations) ambiguous field values
 
 We can make a new definition for point types:
 
@@ -37,7 +37,7 @@ Pikelet> record { x = 3.0; y = 3.0 } : Point2d
 record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 ```
 
-Note thaw we no longer need to annotate each field! Pikelet was able to pick up
+Note that we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on [the type inference page](./type-inference).
 

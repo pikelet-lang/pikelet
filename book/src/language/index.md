@@ -27,7 +27,7 @@ name = String;
 
 ## Comments
 
-Line comments are proceeded by a double dash:
+Line comments are preceded by a double dash:
 
 ```pikelet
 -- this is a comment!
@@ -41,7 +41,7 @@ Block comments go between curly-dashes like so:
 -}
 ```
 
-Doc comments are proceeded by a triple pipe, and are used to document
+Doc comments are preceded by a triple pipe, and are used to document
 definitions:
 
 ```pikelet

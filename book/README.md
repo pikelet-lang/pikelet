@@ -20,7 +20,7 @@ mdbook serve
 
 Highlight.js can be [hard to extend][mdbook-custom-highlighting-issue], so we've
 had to make a [custom fork][highlightjs-fork] that supports Pikelet syntax. For
-better our worse, we've included this as a submodule as a temporary solution.
+better or worse, we've included this as a submodule as a temporary solution.
 To build this, we've included a handy script:
 
 ```sh

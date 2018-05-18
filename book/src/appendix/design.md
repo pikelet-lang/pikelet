@@ -8,7 +8,7 @@ Pikelet should feel:
 - Liberating
 - Sympathetic
 
-This is a rough list things that might be interesting to explore with Pikelet:
+This is a rough list of things that might be interesting to explore with Pikelet:
 
 - Sympathetic to humans
     - Programs should look pretty, and read clearly

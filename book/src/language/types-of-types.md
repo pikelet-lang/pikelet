@@ -21,7 +21,7 @@ Pikelet> :t Type 0
 Type 1
 ```
 
-In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
+In fact, Pikelet has an infinte number of 'universes', each one 'bigger' than the
 previous:
 
 ```pikelet-repl
