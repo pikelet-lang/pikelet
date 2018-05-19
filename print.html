@@ -223,7 +223,7 @@ greeting = &quot;hello there!&quot;;
 name = String;
 </code></pre>
 <a class="header" href="print.html#comments" id="comments"><h2>Comments</h2></a>
-<p>Line comments are proceeded by a double dash:</p>
+<p>Line comments are preceded by a double dash:</p>
 <pre><code class="language-pikelet">-- this is a comment!
 </code></pre>
 <p>Block comments go between curly-dashes like so:</p>
@@ -231,7 +231,7 @@ name = String;
   this is a block comment!
 -}
 </code></pre>
-<p>Doc comments are proceeded by a triple pipe, and are used to document
+<p>Doc comments are preceded by a triple pipe, and are used to document
 definitions:</p>
 <pre><code class="language-pikelet">||| This is a documented definition
 |||
@@ -290,7 +290,7 @@ error: found a floating point literal, but expected a type `U64`
 </blockquote>
 <a class="header" href="print.html#conditionals" id="conditionals"><h1>Conditionals</h1></a>
 <a class="header" href="print.html#if-then-else-expressions" id="if-then-else-expressions"><h2>If-then-else expressions</h2></a>
-<p>If expressions take an expression that evaluates to a <code>Bool</code> (the <em>condition</em>),
+<p><code>if</code> expressions take an expression that evaluates to a <code>Bool</code> (the <em>condition</em>),
 and two other expressions (the <em>consequent</em> and the <em>alternative</em>) that evaluate
 to the same type. If the condition evaluates to <code>true</code>, then the consequent will
 be evaluated and returned, otherwise the alternative will be evaluated and
@@ -316,7 +316,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 <ul>
 <li>record values use the lower case <code>record</code> keyword</li>
 <li>record types use the upper case <code>Record</code> keyword</li>
-<li>we had to <a href="print.html#type-annotations">annotate</a> ambiguous field values</li>
+<li>we have to <a href="print.html#type-annotations">annotate</a> ambiguous field values</li>
 </ul>
 <p>We can make a new definition for point types:</p>
 <pre><code class="language-pikelet">Point2d = Record {
@@ -328,7 +328,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0; y = 3.0 } : Point2d
 record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 </code></pre>
-<p>Note thaw we no longer need to annotate each field! Pikelet was able to pick up
+<p>Note that we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
 <a class="header" href="print.html#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
@@ -393,7 +393,7 @@ Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
 1 : I32
 </code></pre>
 <a class="header" href="print.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
-<p>In Pikelet all functions take a single argument - in order to pass multiple
+<p>In Pikelet, all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:</p>
 <pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
 \(x : Type) =&gt; \(x : a) =&gt; x
@@ -405,14 +405,14 @@ example the following function types are equivalent:</p>
 (a : Type) -&gt; a -&gt; a
 </code></pre>
 <a class="header" href="print.html#type-inference" id="type-inference"><h1>Type inference</h1></a>
-<p>Many statically typed languages perform type inference, to varying degrees, and
+<p>Many statically typed languages perform type inference to varying degrees, and
 Pikelet is no different! The goal is to reduce the burden of writing type
 annotations everywhere. Some languages like <a href="https://ocaml.org/">OCaml</a> and
 <a href="http://elm-lang.org/">Elm</a> can even infer the types of a whole program without
 any annotations at all!</p>
 <p>Pikelet's type inference follows some very simple rules that you can probably
 pick up on your own, but we thought it might help to give a deeper explanation
-of how it works, without getting to bogged down in the theoretical details.</p>
+of how it works, without getting too bogged down in the theoretical details.</p>
 <a class="header" href="print.html#contents-3" id="contents-3"><h2>Contents</h2></a>
 <ul>
 <li><a href="print.html#bidirectional-typechecking">Bidirectional type checking</a>
@@ -484,7 +484,7 @@ Type 1
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
 Type 1
 </code></pre>
-<p>In fact Pikelet has an infinte number of 'universes', each one 'bigger' than the
+<p>In fact, Pikelet has an infinte number of 'universes', each one 'bigger' than the
 previous:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
 Type 1
@@ -516,7 +516,7 @@ theoretical foundations behind Pikelet.</p>
 <li>Liberating</li>
 <li>Sympathetic</li>
 </ul>
-<p>This is a rough list things that might be interesting to explore with Pikelet:</p>
+<p>This is a rough list of things that might be interesting to explore with Pikelet:</p>
 <ul>
 <li>Sympathetic to humans
 <ul>

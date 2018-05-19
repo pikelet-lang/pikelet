@@ -166,7 +166,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 <ul>
 <li>record values use the lower case <code>record</code> keyword</li>
 <li>record types use the upper case <code>Record</code> keyword</li>
-<li>we had to <a href="language/records.html#type-annotations">annotate</a> ambiguous field values</li>
+<li>we have to <a href="language/records.html#type-annotations">annotate</a> ambiguous field values</li>
 </ul>
 <p>We can make a new definition for point types:</p>
 <pre><code class="language-pikelet">Point2d = Record {
@@ -178,7 +178,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0; y = 3.0 } : Point2d
 record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 </code></pre>
-<p>Note thaw we no longer need to annotate each field! Pikelet was able to pick up
+<p>Note that we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
 <a class="header" href="language/records.html#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
