@@ -65,7 +65,7 @@ Pikelet> (\(x : Type) (x : a) => x) I32 1
 
 ## Syntactic sugar for functions
 
-In Pikelet all functions take a single argument - in order to pass multiple
+In Pikelet, all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:
 
 ```pikelet

@@ -1,6 +1,6 @@
 # Type inference
 
-Many statically typed languages perform type inference, to varying degrees, and
+Many statically typed languages perform type inference to varying degrees, and
 Pikelet is no different! The goal is to reduce the burden of writing type
 annotations everywhere. Some languages like [OCaml](https://ocaml.org/) and
 [Elm](http://elm-lang.org/) can even infer the types of a whole program without
@@ -8,7 +8,7 @@ any annotations at all!
 
 Pikelet's type inference follows some very simple rules that you can probably
 pick up on your own, but we thought it might help to give a deeper explanation
-of how it works, without getting to bogged down in the theoretical details.
+of how it works, without getting too bogged down in the theoretical details.
 
 ## Contents
 
