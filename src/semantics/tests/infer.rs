@@ -481,3 +481,17 @@ fn proj_weird() {
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
+
+#[test]
+fn array_ambiguous() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let given_expr = r#"[1; 2 : I32]"#;
+
+    match infer(&context, &parse(&mut codemap, given_expr)) {
+        Err(TypeError::AmbiguousArrayLiteral { .. }) => {},
+        Err(err) => panic!("unexpected error: {:?}", err),
+        Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
+    }
+}

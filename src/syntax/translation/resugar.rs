@@ -363,6 +363,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
+        core::Term::RecordTypeEmpty(_) => concrete::Term::RecordType(ByteSpan::default(), vec![]),
         core::Term::Record(_, ref scope) => {
             let mut fields = vec![];
             let mut scope = scope.clone();
@@ -391,8 +392,14 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
 
             concrete::Term::Record(ByteSpan::default(), fields)
         },
-        core::Term::RecordTypeEmpty(_) => concrete::Term::RecordType(ByteSpan::default(), vec![]),
         core::Term::RecordEmpty(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
+        core::Term::Array(_, ref elems) => concrete::Term::Array(
+            ByteSpan::default(),
+            elems
+                .iter()
+                .map(|elem| resugar_term(elem, Prec::NO_WRAP))
+                .collect(),
+        ),
         core::Term::Proj(_, ref expr, _, ref label) => concrete::Term::Proj(
             Box::new(resugar_term(expr, Prec::ATOMIC)),
             ByteIndex::default(),

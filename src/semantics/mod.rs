@@ -89,6 +89,10 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
         },
         Value::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty(Ignore::default())),
         Value::RecordEmpty => Rc::new(Term::RecordEmpty(Ignore::default())),
+        Value::Array(ref elems) => Rc::new(Term::Array(
+            Ignore::default(),
+            elems.iter().map(|elem| subst(elem, substs)).collect(),
+        )),
         Value::Neutral(ref neutral) => {
             let (head, spine) = match **neutral {
                 Neutral::App(Head::Var(Var::Free(ref name)), ref spine) => {
@@ -249,6 +253,9 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             Ok(Value::RecordType(nameless::bind((label, Embed(ann)), body)).into())
         },
 
+        // E-EMPTY-RECORD-TYPE
+        Term::RecordTypeEmpty(_) => Ok(Rc::new(Value::RecordTypeEmpty)),
+
         // E-RECORD
         Term::Record(_, ref scope) => {
             let ((label, Embed(term)), body) = nameless::unbind(scope.clone());
@@ -257,9 +264,6 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
             Ok(Value::Record(nameless::bind((label, Embed(value)), body)).into())
         },
-
-        // E-EMPTY-RECORD-TYPE
-        Term::RecordTypeEmpty(_) => Ok(Rc::new(Value::RecordTypeEmpty)),
 
         // E-EMPTY-RECORD
         Term::RecordEmpty(_) => Ok(Rc::new(Value::RecordEmpty)),
@@ -281,6 +285,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 },
             }
         },
+
+        Term::Array(_, ref elems) => Ok(Rc::new(Value::Array(elems
+            .iter()
+            .map(|elem| normalize(context, elem))
+            .collect::<Result<_, _>>()?))),
     }
 }
 
@@ -391,6 +400,29 @@ pub fn check(
                     expected: ty_label,
                 });
             }
+        },
+
+        (&RawTerm::Array(span, ref elems), ty) => match ty.free_app() {
+            Some((name, [ref len, ref elem_ty])) if *name == Name::user("Array") => {
+                if let Value::Literal(Literal::U64(len)) = **len {
+                    if len != elems.len() as u64 {
+                        return Err(TypeError::ArrayLengthMismatch {
+                            span: span.0,
+                            found_len: elems.len() as u64,
+                            expected_len: len,
+                        });
+                    }
+                }
+
+                return Ok(Rc::new(Term::Array(
+                    span,
+                    elems
+                        .iter()
+                        .map(|elem| check(context, elem, elem_ty))
+                        .collect::<Result<_, _>>()?,
+                )));
+            },
+            Some(_) | None => unimplemented!(),
         },
 
         (&RawTerm::Hole(span), _) => {
@@ -618,6 +650,8 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                 }),
             }
         },
+
+        RawTerm::Array(span, _) => Err(TypeError::AmbiguousArrayLiteral { span: span.0 }),
     }
 }
 

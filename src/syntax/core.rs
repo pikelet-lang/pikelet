@@ -184,6 +184,8 @@ pub enum RawTerm {
     RecordEmpty(Ignore<ByteSpan>),
     /// Field projection
     Proj(Ignore<ByteSpan>, Rc<RawTerm>, Ignore<ByteSpan>, Label),
+    /// Array literals
+    Array(Ignore<ByteSpan>, Vec<Rc<RawTerm>>),
 }
 
 impl RawTerm {
@@ -200,7 +202,8 @@ impl RawTerm {
             | RawTerm::Record(span, _)
             | RawTerm::RecordTypeEmpty(span)
             | RawTerm::RecordEmpty(span)
-            | RawTerm::Proj(span, _, _, _) => span.0,
+            | RawTerm::Proj(span, _, _, _)
+            | RawTerm::Array(span, _) => span.0,
             RawTerm::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
             RawTerm::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
@@ -250,14 +253,16 @@ pub enum Term {
     If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
     RecordType(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
-    /// Dependent record
-    Record(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The unit type
     RecordTypeEmpty(Ignore<ByteSpan>),
+    /// Dependent record
+    Record(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The element of the unit type
     RecordEmpty(Ignore<ByteSpan>),
     /// Field projection
     Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label),
+    /// Array literals
+    Array(Ignore<ByteSpan>, Vec<Rc<Term>>),
 }
 
 impl Term {
@@ -270,10 +275,11 @@ impl Term {
             | Term::Lam(span, _)
             | Term::Pi(span, _)
             | Term::RecordType(span, _)
-            | Term::Record(span, _)
             | Term::RecordTypeEmpty(span)
+            | Term::Record(span, _)
             | Term::RecordEmpty(span)
-            | Term::Proj(span, _, _, _) => span.0,
+            | Term::Proj(span, _, _, _)
+            | Term::Array(span, _) => span.0,
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
             Term::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
         }
@@ -303,12 +309,14 @@ pub enum Value {
     Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
     /// Dependent record types
     RecordType(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
-    /// Dependent record
-    Record(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
     /// The unit type
     RecordTypeEmpty,
+    /// Dependent record
+    Record(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
     /// The element of the unit type
     RecordEmpty,
+    /// Array literals
+    Array(Vec<Rc<Value>>),
     /// Neutral terms
     Neutral(Rc<Neutral>),
 }
@@ -364,9 +372,10 @@ impl Value {
             | Value::Pi(_)
             | Value::Lam(_)
             | Value::RecordType(_)
-            | Value::Record(_)
             | Value::RecordTypeEmpty
-            | Value::RecordEmpty => true,
+            | Value::Record(_)
+            | Value::RecordEmpty
+            | Value::Array(_) => true,
             Value::Neutral(_) => false,
         }
     }
@@ -384,8 +393,18 @@ impl Value {
             Value::RecordType(ref scope) | Value::Record(ref scope) => {
                 (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
             },
+            Value::Array(ref elems) => elems.iter().all(|elem| elem.is_nf()),
             Value::Neutral(_) => false,
         }
+    }
+
+    pub fn free_app(&self) -> Option<(&Name, &[Rc<Value>])> {
+        if let Value::Neutral(ref neutral) = *self {
+            if let Neutral::App(Head::Var(Var::Free(ref name)), ref spine) = **neutral {
+                return Some((name, spine));
+            }
+        }
+        None
     }
 }
 
@@ -481,6 +500,7 @@ impl<'a> From<&'a Value> for Term {
                     nameless::bind(param, Rc::new(Term::from(&*body))),
                 )
             },
+            Value::RecordTypeEmpty => Term::RecordTypeEmpty(Ignore::default()).into(),
             Value::Record(ref scope) => {
                 let ((name, Embed(param_value)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_value))));
@@ -490,8 +510,14 @@ impl<'a> From<&'a Value> for Term {
                     nameless::bind(param, Rc::new(Term::from(&*body))),
                 )
             },
-            Value::RecordTypeEmpty => Term::RecordTypeEmpty(Ignore::default()).into(),
             Value::RecordEmpty => Term::RecordEmpty(Ignore::default()).into(),
+            Value::Array(ref elems) => Term::Array(
+                Ignore::default(),
+                elems
+                    .iter()
+                    .map(|elem| Rc::new(Term::from(&**elem)))
+                    .collect(),
+            ).into(),
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }

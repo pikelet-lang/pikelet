@@ -179,6 +179,7 @@ impl ToDoc for RawTerm {
 
                 pretty_record_ty(inner)
             },
+            RawTerm::RecordTypeEmpty(_) => pretty_empty_record_ty(),
             RawTerm::Record(_, ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
@@ -204,8 +205,13 @@ impl ToDoc for RawTerm {
 
                 pretty_record(inner)
             },
-            RawTerm::RecordTypeEmpty(_) => pretty_empty_record_ty(),
             RawTerm::RecordEmpty(_) => pretty_empty_record(),
+            RawTerm::Array(_, ref elems) => Doc::text("[")
+                .append(Doc::intersperse(
+                    elems.iter().map(|elem| elem.to_doc()),
+                    Doc::text(";").append(Doc::space()),
+                ))
+                .append(Doc::text("]")),
             RawTerm::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
         }
     }
@@ -255,6 +261,7 @@ impl ToDoc for Term {
 
                 pretty_record_ty(inner)
             },
+            Term::RecordTypeEmpty(_) => pretty_empty_record_ty(),
             Term::Record(_, ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
@@ -280,8 +287,13 @@ impl ToDoc for Term {
 
                 pretty_record(inner)
             },
-            Term::RecordTypeEmpty(_) => pretty_empty_record_ty(),
             Term::RecordEmpty(_) => pretty_empty_record(),
+            Term::Array(_, ref elems) => Doc::text("[")
+                .append(Doc::intersperse(
+                    elems.iter().map(|elem| elem.to_doc()),
+                    Doc::text(";").append(Doc::space()),
+                ))
+                .append(Doc::text("]")),
             Term::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
         }
     }
@@ -327,6 +339,7 @@ impl ToDoc for Value {
 
                 pretty_record_ty(inner)
             },
+            Value::RecordTypeEmpty => pretty_empty_record_ty(),
             Value::Record(ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
@@ -352,8 +365,13 @@ impl ToDoc for Value {
 
                 pretty_record(inner)
             },
-            Value::RecordTypeEmpty => pretty_empty_record_ty(),
             Value::RecordEmpty => pretty_empty_record(),
+            Value::Array(ref elems) => Doc::text("[")
+                .append(Doc::intersperse(
+                    elems.iter().map(|elem| elem.to_doc()),
+                    Doc::text(";").append(Doc::space()),
+                ))
+                .append(Doc::text("]")),
             Value::Neutral(ref n) => n.to_doc(),
         }
     }
