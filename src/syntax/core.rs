@@ -179,9 +179,9 @@ pub enum RawTerm {
         Bind<(Label, Embed<Rc<RawTerm>>), Rc<RawTerm>>,
     ),
     /// The unit type
-    EmptyRecordType(Ignore<ByteSpan>),
+    RecordTypeEmpty(Ignore<ByteSpan>),
     /// The element of the unit type
-    EmptyRecord(Ignore<ByteSpan>),
+    RecordEmpty(Ignore<ByteSpan>),
     /// Field projection
     Proj(Ignore<ByteSpan>, Rc<RawTerm>, Ignore<ByteSpan>, Label),
 }
@@ -198,8 +198,8 @@ impl RawTerm {
             | RawTerm::Lam(span, _)
             | RawTerm::RecordType(span, _)
             | RawTerm::Record(span, _)
-            | RawTerm::EmptyRecordType(span)
-            | RawTerm::EmptyRecord(span)
+            | RawTerm::RecordTypeEmpty(span)
+            | RawTerm::RecordEmpty(span)
             | RawTerm::Proj(span, _, _, _) => span.0,
             RawTerm::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
             RawTerm::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
@@ -253,9 +253,9 @@ pub enum Term {
     /// Dependent record
     Record(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The unit type
-    EmptyRecordType(Ignore<ByteSpan>),
+    RecordTypeEmpty(Ignore<ByteSpan>),
     /// The element of the unit type
-    EmptyRecord(Ignore<ByteSpan>),
+    RecordEmpty(Ignore<ByteSpan>),
     /// Field projection
     Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label),
 }
@@ -271,8 +271,8 @@ impl Term {
             | Term::Pi(span, _)
             | Term::RecordType(span, _)
             | Term::Record(span, _)
-            | Term::EmptyRecordType(span)
-            | Term::EmptyRecord(span)
+            | Term::RecordTypeEmpty(span)
+            | Term::RecordEmpty(span)
             | Term::Proj(span, _, _, _) => span.0,
             Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
             Term::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
@@ -306,9 +306,9 @@ pub enum Value {
     /// Dependent record
     Record(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
     /// The unit type
-    EmptyRecordType,
+    RecordTypeEmpty,
     /// The element of the unit type
-    EmptyRecord,
+    RecordEmpty,
     /// Neutral terms
     Neutral(Rc<Neutral>),
 }
@@ -365,8 +365,8 @@ impl Value {
             | Value::Lam(_)
             | Value::RecordType(_)
             | Value::Record(_)
-            | Value::EmptyRecordType
-            | Value::EmptyRecord => true,
+            | Value::RecordTypeEmpty
+            | Value::RecordEmpty => true,
             Value::Neutral(_) => false,
         }
     }
@@ -376,8 +376,8 @@ impl Value {
         match *self {
             Value::Universe(_)
             | Value::Literal(_)
-            | Value::EmptyRecordType
-            | Value::EmptyRecord => true,
+            | Value::RecordTypeEmpty
+            | Value::RecordEmpty => true,
             Value::Pi(ref scope) | Value::Lam(ref scope) => {
                 (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
             },
@@ -490,8 +490,8 @@ impl<'a> From<&'a Value> for Term {
                     nameless::bind(param, Rc::new(Term::from(&*body))),
                 )
             },
-            Value::EmptyRecordType => Term::EmptyRecordType(Ignore::default()).into(),
-            Value::EmptyRecord => Term::EmptyRecord(Ignore::default()).into(),
+            Value::RecordTypeEmpty => Term::RecordTypeEmpty(Ignore::default()).into(),
+            Value::RecordEmpty => Term::RecordEmpty(Ignore::default()).into(),
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }

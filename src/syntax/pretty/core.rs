@@ -172,7 +172,7 @@ impl ToDoc for RawTerm {
 
                     match *scope.unsafe_body {
                         RawTerm::RecordType(_, ref next_scope) => scope = next_scope,
-                        RawTerm::EmptyRecordType(_) => break,
+                        RawTerm::RecordTypeEmpty(_) => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
@@ -197,15 +197,15 @@ impl ToDoc for RawTerm {
 
                     match *scope.unsafe_body {
                         RawTerm::Record(_, ref next_scope) => scope = next_scope,
-                        RawTerm::EmptyRecord(_) => break,
+                        RawTerm::RecordEmpty(_) => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record(inner)
             },
-            RawTerm::EmptyRecordType(_) => pretty_empty_record_ty(),
-            RawTerm::EmptyRecord(_) => pretty_empty_record(),
+            RawTerm::RecordTypeEmpty(_) => pretty_empty_record_ty(),
+            RawTerm::RecordEmpty(_) => pretty_empty_record(),
             RawTerm::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
         }
     }
@@ -248,7 +248,7 @@ impl ToDoc for Term {
 
                     match *scope.unsafe_body {
                         Term::RecordType(_, ref next_scope) => scope = next_scope,
-                        Term::EmptyRecordType(_) => break,
+                        Term::RecordTypeEmpty(_) => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
@@ -273,15 +273,15 @@ impl ToDoc for Term {
 
                     match *scope.unsafe_body {
                         Term::Record(_, ref next_scope) => scope = next_scope,
-                        Term::EmptyRecord(_) => break,
+                        Term::RecordEmpty(_) => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record(inner)
             },
-            Term::EmptyRecordType(_) => pretty_empty_record_ty(),
-            Term::EmptyRecord(_) => pretty_empty_record(),
+            Term::RecordTypeEmpty(_) => pretty_empty_record_ty(),
+            Term::RecordEmpty(_) => pretty_empty_record(),
             Term::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
         }
     }
@@ -320,7 +320,7 @@ impl ToDoc for Value {
 
                     match *scope.unsafe_body {
                         Value::RecordType(ref next_scope) => scope = next_scope,
-                        Value::EmptyRecordType => break,
+                        Value::RecordTypeEmpty => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
@@ -345,15 +345,15 @@ impl ToDoc for Value {
 
                     match *scope.unsafe_body {
                         Value::Record(ref next_scope) => scope = next_scope,
-                        Value::EmptyRecord => break,
+                        Value::RecordEmpty => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record(inner)
             },
-            Value::EmptyRecordType => pretty_empty_record_ty(),
-            Value::EmptyRecord => pretty_empty_record(),
+            Value::RecordTypeEmpty => pretty_empty_record_ty(),
+            Value::RecordEmpty => pretty_empty_record(),
             Value::Neutral(ref n) => n.to_doc(),
         }
     }

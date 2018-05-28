@@ -356,7 +356,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
 
                 match *body {
                     core::Term::RecordType(_, ref next_scope) => scope = next_scope.clone(),
-                    core::Term::EmptyRecordType(_) => break,
+                    core::Term::RecordTypeEmpty(_) => break,
                     _ => panic!("ill-formed record type"), // FIXME: better error
                 }
             }
@@ -384,15 +384,15 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
 
                 match *body {
                     core::Term::Record(_, ref next_scope) => scope = next_scope.clone(),
-                    core::Term::EmptyRecord(_) => break,
+                    core::Term::RecordEmpty(_) => break,
                     _ => panic!("ill-formed record"), // FIXME: better error
                 }
             }
 
             concrete::Term::Record(ByteSpan::default(), fields)
         },
-        core::Term::EmptyRecordType(_) => concrete::Term::RecordType(ByteSpan::default(), vec![]),
-        core::Term::EmptyRecord(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
+        core::Term::RecordTypeEmpty(_) => concrete::Term::RecordType(ByteSpan::default(), vec![]),
+        core::Term::RecordEmpty(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
         core::Term::Proj(_, ref expr, _, ref label) => concrete::Term::Proj(
             Box::new(resugar_term(expr, Prec::ATOMIC)),
             ByteIndex::default(),

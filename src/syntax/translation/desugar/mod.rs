@@ -100,7 +100,7 @@ fn desugar_record_ty(
     span: ByteSpan,
     fields: &[(ByteIndex, String, concrete::Term)],
 ) -> core::RawTerm {
-    let mut term = core::RawTerm::EmptyRecordType(Ignore(ByteSpan::new(span.end(), span.end())));
+    let mut term = core::RawTerm::RecordTypeEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref ann) in fields.iter().rev() {
         term = core::RawTerm::RecordType(
@@ -128,7 +128,7 @@ fn desugar_record(
         concrete::Term,
     )],
 ) -> core::RawTerm {
-    let mut term = core::RawTerm::EmptyRecord(Ignore(ByteSpan::new(span.end(), span.end())));
+    let mut term = core::RawTerm::RecordEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {
         term = core::RawTerm::Record(

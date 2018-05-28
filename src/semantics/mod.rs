@@ -87,8 +87,8 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
                 nameless::bind((label, Embed(subst(&expr, substs))), subst(&body, substs)),
             ))
         },
-        Value::EmptyRecordType => Rc::new(Term::EmptyRecordType(Ignore::default())),
-        Value::EmptyRecord => Rc::new(Term::EmptyRecord(Ignore::default())),
+        Value::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty(Ignore::default())),
+        Value::RecordEmpty => Rc::new(Term::RecordEmpty(Ignore::default())),
         Value::Neutral(ref neutral) => {
             let (head, spine) = match **neutral {
                 Neutral::App(Head::Var(Var::Free(ref name)), ref spine) => {
@@ -259,10 +259,10 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         },
 
         // E-EMPTY-RECORD-TYPE
-        Term::EmptyRecordType(_) => Ok(Rc::new(Value::EmptyRecordType)),
+        Term::RecordTypeEmpty(_) => Ok(Rc::new(Value::RecordTypeEmpty)),
 
         // E-EMPTY-RECORD
-        Term::EmptyRecord(_) => Ok(Rc::new(Value::EmptyRecord)),
+        Term::RecordEmpty(_) => Ok(Rc::new(Value::RecordEmpty)),
 
         // E-PROJ
         Term::Proj(_, ref expr, label_span, ref label) => {
@@ -588,15 +588,15 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         RawTerm::Record(span, _) => Err(TypeError::AmbiguousRecord { span: span.0 }),
 
         // I-EMPTY-RECORD-TYPE
-        RawTerm::EmptyRecordType(span) => Ok((
-            Rc::new(Term::EmptyRecordType(span)),
+        RawTerm::RecordTypeEmpty(span) => Ok((
+            Rc::new(Term::RecordTypeEmpty(span)),
             Rc::new(Value::Universe(Level(0))),
         )),
 
         // I-EMPTY-RECORD
-        RawTerm::EmptyRecord(span) => Ok((
-            Rc::new(Term::EmptyRecord(span)),
-            Rc::new(Value::EmptyRecordType),
+        RawTerm::RecordEmpty(span) => Ok((
+            Rc::new(Term::RecordEmpty(span)),
+            Rc::new(Value::RecordTypeEmpty),
         )),
 
         // I-PROJ
