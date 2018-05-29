@@ -1,5 +1,5 @@
 use im::Vector;
-use nameless::{Ignore, Name, Var};
+use nameless::Name;
 use std::fmt;
 use std::rc::Rc;
 
@@ -48,7 +48,8 @@ impl Context {
 
     pub fn define_term(&self, name: Name, ann: Rc<Type>, term: Rc<Term>) -> Context {
         Context {
-            entries: self.entries
+            entries: self
+                .entries
                 .push_front(Entry::Claim(name.clone(), ann))
                 .push_front(Entry::Definition(name, Definition::Term(term))),
         }
@@ -56,7 +57,8 @@ impl Context {
 
     fn define_prim(&self, name: Name, prim: Rc<PrimFn>) -> Context {
         Context {
-            entries: self.entries
+            entries: self
+                .entries
                 .push_front(Entry::Claim(name.clone(), prim.ann.clone()))
                 .push_front(Entry::Definition(name, Definition::Prim(prim))),
         }
@@ -85,9 +87,12 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Context {
+        use nameless::{self, Embed, GenId, Ignore, Var};
+
         use syntax::core::{Level, Literal, Value};
 
         let name = Name::user;
+        let fresh_name = || Name::from(GenId::fresh());
         let free_var = |n| Rc::new(Value::from(Var::Free(name(n))));
         let universe0 = Rc::new(Value::Universe(Level(0)));
         let bool_lit = |val| Rc::new(Term::Literal(Ignore::default(), Literal::Bool(val)));
@@ -108,6 +113,16 @@ impl Default for Context {
             .claim(name("I64"), universe0.clone())
             .claim(name("F32"), universe0.clone())
             .claim(name("F64"), universe0.clone())
+            .claim(
+                name("Array"),
+                Rc::new(Value::Pi(nameless::bind(
+                    (fresh_name(), Embed(free_var("U64"))),
+                    Rc::new(Value::Pi(nameless::bind(
+                        (fresh_name(), Embed(universe0.clone())),
+                        universe0.clone(),
+                    ))),
+                ))),
+            )
             .define_prim(name("prim-string-eq"), Rc::new(prim::string_eq()))
             .define_prim(name("prim-bool-eq"), Rc::new(prim::bool_eq()))
             .define_prim(name("prim-char-eq"), Rc::new(prim::char_eq()))

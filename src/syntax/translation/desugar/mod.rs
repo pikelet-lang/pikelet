@@ -100,7 +100,7 @@ fn desugar_record_ty(
     span: ByteSpan,
     fields: &[(ByteIndex, String, concrete::Term)],
 ) -> core::RawTerm {
-    let mut term = core::RawTerm::EmptyRecordType(Ignore(ByteSpan::new(span.end(), span.end())));
+    let mut term = core::RawTerm::RecordTypeEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref ann) in fields.iter().rev() {
         term = core::RawTerm::RecordType(
@@ -128,7 +128,7 @@ fn desugar_record(
         concrete::Term,
     )],
 ) -> core::RawTerm {
-    let mut term = core::RawTerm::EmptyRecord(Ignore(ByteSpan::new(span.end(), span.end())));
+    let mut term = core::RawTerm::RecordEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {
         term = core::RawTerm::Record(
@@ -258,7 +258,10 @@ impl Desugar<core::RawTerm> for concrete::Term {
             concrete::Term::Float(_, value) => {
                 core::RawTerm::Literal(span, core::RawLiteral::Float(value))
             },
-            concrete::Term::Array(_, ref _elems) => unimplemented!("array literals"),
+            concrete::Term::Array(_, ref elems) => core::RawTerm::Array(
+                span,
+                elems.iter().map(|elem| Rc::new(elem.desugar())).collect(),
+            ),
             concrete::Term::Hole(_) => core::RawTerm::Hole(span),
             concrete::Term::Var(_, ref x) => {
                 core::RawTerm::Var(span, Var::Free(Name::user(x.clone())))

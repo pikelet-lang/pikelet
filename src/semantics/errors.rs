@@ -119,6 +119,18 @@ pub enum TypeError {
     },
     #[fail(display = "Ambiguous record")]
     AmbiguousRecord { span: ByteSpan },
+    #[fail(
+        display = "Mismatched array length: expected {} elements but found {}",
+        expected_len,
+        found_len
+    )]
+    ArrayLengthMismatch {
+        span: ByteSpan,
+        found_len: u64,
+        expected_len: u64,
+    },
+    #[fail(display = "Ambiguous record")]
+    AmbiguousArrayLiteral { span: ByteSpan },
     #[fail(display = "The type `{}` does not contain a field named `{}`.", found, expected_label)]
     NoFieldInType {
         label_span: ByteSpan,
@@ -228,6 +240,21 @@ impl TypeError {
             )).with_label(Label::new_primary(span)),
             TypeError::AmbiguousRecord { span } => Diagnostic::new_error("ambiguous record")
                 .with_label(Label::new_primary(span).with_message("type annotations needed here")),
+            TypeError::ArrayLengthMismatch {
+                span,
+                found_len,
+                expected_len,
+            } => Diagnostic::new_error(format!(
+                "mismatched array length: expected {} elements but found {}",
+                expected_len, found_len
+            )).with_label(
+                Label::new_primary(span).with_message(format!("array with {} elements", found_len)),
+            ),
+            TypeError::AmbiguousArrayLiteral { span } => {
+                Diagnostic::new_error("ambiguous array literal").with_label(
+                    Label::new_primary(span).with_message("type annotations needed here"),
+                )
+            },
             TypeError::NoFieldInType {
                 label_span,
                 ref expected_label,
