@@ -33,7 +33,7 @@ flip a b c f x y = f y x;
 ||| Logical absurdity
 |||
 ||| This type should have no inhabitants - if it does, it's a bug in our
-||| typechecker!
+||| type checker!
 void : Type 1;
 void = (a : Type) -> a;
 
@@ -63,7 +63,7 @@ and p q = (c : Type) -> (p -> q -> c) -> c;
 and-intro : (p q : Type) -> p -> q -> and p q;
 and-intro p q x y c f = f x y;
 
--- FIXME: These don't typecheck - I might have got the definitions wrong, or
+-- FIXME: These don't type check - I might have got the definitions wrong, or
 -- there is a bug in the type checker!
 
 -- and-elim-left : (p q : Type) -> and p q -> p;
@@ -79,7 +79,7 @@ and-intro p q x y c f = f x y;
 or : Type -> Type -> Type 1;
 or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
 
--- FIXME: These don't typecheck - I might have got the definitions wrong, or
+-- FIXME: These don't type check - I might have got the definitions wrong, or
 -- there is a bug in the type checker!
 
 -- or-intro-left : (p q : Type) -> p -> or p q;
@@ -138,7 +138,7 @@ Semigroup (a : Type) = Record {
     ||| The associative operation
     append : a -> a -> a;
 
-    -- TODO: Laws via quickcheck or proofs?
+    -- TODO: Laws via property testing or proofs?
 };
 
 append : (a : Type) (S : Semigroup a) -> a -> a -> a;
@@ -184,7 +184,7 @@ Monoid (a : Type) = Record {
     ||| The identity of `.semigroup.append`
     empty : a;
 
-    -- TODO: Laws via quickcheck or proofs?
+    -- TODO: Laws via property testing or proofs?
 };
 
 empty : (a : Type) (M : Monoid a) -> a;
@@ -272,7 +272,7 @@ Category = Record {
     ||| The sequencing of two arrows
     seq : (a b c : Object) -> Arrow a b -> Arrow b c -> Arrow a c;
 
-    -- TODO: Laws via quickcheck or proofs?
+    -- TODO: Laws via property testing or proofs?
     -- TODO: E-Category - ie. equivalence relation on morphisms?
     -- https://gist.github.com/brendanzab/9285eb8dfef5b6d6ccd87d90d6579590#gistcomment-2401643
 };
@@ -317,7 +317,7 @@ Functor = Record {
     ||| Maps an arrow in `Source` into an arrow in `Target`
     map : (a b : Source.Object) -> Source.Arrow a b -> Target.Arrow (Map a) (Map b);
 
-    -- TODO: Laws via quickcheck or proofs?
+    -- TODO: Laws via property testing or proofs?
 };
 
 ||| Maps an arrow in `F.Source` into an arrow in `F.Target`
