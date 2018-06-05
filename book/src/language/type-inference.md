@@ -13,7 +13,7 @@ of how it works, without getting too bogged down in the theoretical details.
 ## Contents
 
 - [Bidirectional type checking](#bidirectional-typechecking)
-    - [Inferrable terms](#inferrable-terms)
+    - [Inferable terms](#inferable-terms)
     - [Checkable terms](#checkable-terms)
 - [Further reading](#further-reading)
 
@@ -27,11 +27,11 @@ write annotations on top-level definitions, but the types should propagate
 downwards and inner definitions should not require much annotation at all.
 
 To do this we break the terms of the language into two groups. We call these
-[_inferrable terms_](#inferrable-terms) and [_checkable terms_](#checkable-terms).
+[_inferable terms_](#inferable-terms) and [_checkable terms_](#checkable-terms).
 
-### Inferrable terms
+### Inferable terms
 
-Inferrable terms can be checked on their own or based on previous definitions.
+Inferable terms can be checked on their own or based on previous definitions.
 
 > TODO: Explain examples
 
