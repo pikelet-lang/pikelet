@@ -22,7 +22,7 @@ pub enum Definition {
     Prim(Rc<PrimFn>),
 }
 
-/// A list of binders that have been accumulated during typechecking
+/// A list of binders that have been accumulated during type checking
 ///
 /// We use a persistent vector internally so that we don't need to deal with the
 /// error-prone tedium of dealing with a mutable context when entering and

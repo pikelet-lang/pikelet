@@ -139,10 +139,10 @@ fn resugar_pi(
 ) -> concrete::Term {
     let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
 
-    // Only use explict parameter names if the body is dependent on
+    // Only use explicit parameter names if the body is dependent on
     // the parameter or there is a human-readable name given.
     //
-    // We'll be checking for readable names as we go, because if the've
+    // We'll be checking for readable names as we go, because if they've
     // survived until now they're probably desirable to retain!
     if body.free_vars().contains(&name) || name.name().is_some() {
         // TODO: use name if it is present, and not used in the current scope

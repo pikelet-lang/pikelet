@@ -55,7 +55,7 @@ mod grammar {
 }
 
 /// This is an ugly hack that cobbles together a pi type from a binder term and
-/// a body. See the comments on the `PiTerm` rule in the `grammer.lalrpop` for
+/// a body. See the comments on the `PiTerm` rule in the `grammar.lalrpop` for
 /// more information.
 fn reparse_pi_type_hack<L, T>(
     span: ByteSpan,

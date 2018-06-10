@@ -63,7 +63,7 @@ impl InternalError {
     }
 }
 
-/// An error produced during typechecking
+/// An error produced during type checking
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum TypeError {
     #[fail(display = "Applied an argument to a non-function type `{}`", found)]
