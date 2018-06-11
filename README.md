@@ -3,8 +3,8 @@
 [![Build Status][travis-badge]][travis-url]
 [![Gitter][gitter-badge]][gitter-lobby]
 
-[travis-badge]: https://travis-ci.org/brendanzab/pikelet.svg?branch=master
-[travis-url]: https://travis-ci.org/brendanzab/pikelet
+[travis-badge]: https://travis-ci.org/pikelet-lang/pikelet.svg?branch=master
+[travis-url]: https://travis-ci.org/pikelet-lang/pikelet
 [gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
 
@@ -26,7 +26,7 @@ type system, similar to the one described in the excellent
 local type inference while still maintaining a simple, easy to understand type
 checking algorithm.
 
-[pikelet-book]: https://brendanzab.github.io/pikelet/
+[pikelet-book]: https://pikelet-lang.github.io/pikelet/
 [dependent-type-wikipedia]: https://en.wikipedia.org/wiki/Dependent_type
 [bidirectional-typing-paper]: http://www.davidchristiansen.dk/tutorials/bidirectional.pdf
 [lambdapi-site]: https://www.andres-loeh.de/LambdaPi/

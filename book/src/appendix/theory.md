@@ -62,7 +62,7 @@ etc. If you would like to discuss this with us, please check out
 
 [type-soundness]: https://en.wikipedia.org/wiki/Type_safety
 [normalization-property]: https://en.wikipedia.org/wiki/Normalization_property_(abstract_rewriting)
-[formalization-issue]: https://github.com/brendanzab/pikelet/issues/39
+[formalization-issue]: https://github.com/pikelet-lang/pikelet/issues/39
 
 ## Syntax
 
