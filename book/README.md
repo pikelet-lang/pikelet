@@ -33,4 +33,4 @@ this is an optional step for developing locally - the CI pipeline will take care
 of building and deploying this automatically.
 
 [mdbook-custom-highlighting-issue]: https://github.com/rust-lang-nursery/mdBook/issues/657
-[highlightjs-fork]: https://github.com/brendanzab/highlight.js/tree/add-pikelet
+[highlightjs-fork]: https://github.com/pikelet-lang/highlight.js/tree/add-pikelet

@@ -13,12 +13,12 @@ We've not yet published Pikelet on [crates.io][crates-io], so you'll first need
 to clone [the repository][pikelet-repository] using git:
 
 ```sh
-git clone https://github.com/brendanzab/pikelet.git
+git clone https://github.com/pikelet-lang/pikelet.git
 cd pikelet
 ```
 
 [crates-io]: https://crates.io/
-[pikelet-repository]: https://github.com/brendanzab/pikelet
+[pikelet-repository]: https://github.com/pikelet-lang/pikelet
 
 ## Running the REPL
 

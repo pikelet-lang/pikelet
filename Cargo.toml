@@ -5,8 +5,8 @@ readme = "README.md"
 license = "Apache-2.0"
 authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
 description = "An implementation of a small dependently typed lambda calculus in Rust."
-homepage = "https://github.com/brendanzab/pikelet"
-repository = "https://github.com/brendanzab/pikelet"
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
 publish = false
 
 [features]
