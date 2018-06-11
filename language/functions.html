@@ -190,7 +190,7 @@ of the argument:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
 (a : Type) -&gt; a -&gt; a
 </code></pre>
-<p>We now have a polymorphic identity function! We can specialise this function by
+<p>We now have a polymorphic identity function! We can specialize this function by
 applying a type to it:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
 &quot;hello&quot; : String

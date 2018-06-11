@@ -222,7 +222,7 @@ etc. If you would like to discuss this with us, please check out
 \DeclareMathOperator{\fieldsubst}{fieldsubst}
 \newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
 \
-% Judgements
+% Judgments
 \newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
 \newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
 \newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
@@ -331,7 +331,7 @@ and neutral terms (\(\nexpr\)):</p>
 \end{array}
 \]</p>
 <a class="header" href="appendix/theory.html#contexts" id="contexts"><h3>Contexts</h3></a>
-<p>As we typecheck terms, we'll be passing over bindings like lambdas and pi types.
+<p>As we type check terms, we'll be passing over bindings like lambdas and pi types.
 Contexts allow us to keep track of the bound parameters,
 even though we don't know the exact values these will eventually take during normalization.</p>
 <p>\[
@@ -346,8 +346,8 @@ even though we don't know the exact values these will eventually take during nor
 phases: type checking and type inference. This makes the flow of information
 through the type checker clear and relatively easy to reason about.
 Normalization happens after inference, and before types are fed back in to be
-used during type checkiong.</p>
-<p>With that in mind, the next sections will describe the following judgements:</p>
+used during type checking.</p>
+<p>With that in mind, the next sections will describe the following judgments:</p>
 <table><thead><tr><th> name                              </th><th> notation                                             </th><th> inputs                                   </th><th> outputs                    </th></tr></thead><tbody>
 <tr><td> <a href="appendix/theory.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
 <tr><td> <a href="appendix/theory.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
@@ -568,7 +568,7 @@ expected term for <a href="https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_e
 alternatively check for subtyping instead of alpha equivalence. This could be
 useful for implementing a cumulative universe hierarchy.</p>
 <a class="header" href="appendix/theory.html#type-inference" id="type-inference"><h3>Type inference</h3></a>
-<p>Here we define a jugement that synthesizes a type from the given term and
+<p>Here we define a judgement that synthesizes a type from the given term and
 returns its elaborated form.</p>
 <p>\[
 \boxed{

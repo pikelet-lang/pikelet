@@ -213,9 +213,9 @@ for <a href="https://en.wikipedia.org/wiki/Type_erasure">erasure</a> and
 <li>Explicit tail-call elimination</li>
 <li>Interactive program development using holes</li>
 </ul>
-<p>Some more handwavey ideas:</p>
+<p>Some more hand-wavey ideas:</p>
 <ul>
-<li>Monomorphisation by partial-evaluation of instance arguments</li>
+<li>Monomorphization by partial-evaluation of instance arguments</li>
 <li>Optional/configurable garbage collection</li>
 <li>Alternatives to currying for function application?</li>
 <li>First-class declarations (Levitation or Elaborator Reflection could be useful here)</li>
@@ -230,7 +230,7 @@ features and design goals:</p>
 <li>how do we makes this <em>fast</em> for systems programming?
 <ul>
 <li>should compile down in a similar way to the equivalent procedural code in Rust or C</li>
-<li>most systems cause lots of intemediate allocations or stack switching</li>
+<li>most systems cause lots of intermediate allocations or stack switching</li>
 </ul>
 </li>
 </ul>
@@ -245,7 +245,7 @@ features and design goals:</p>
 </li>
 <li>Row polymorphism
 <ul>
-<li>no research on integrating these with dependent records and inductive datatypes</li>
+<li>no research on integrating these with dependent records and inductive data types</li>
 </ul>
 </li>
 <li>Program composition via category theory
@@ -270,7 +270,7 @@ data structures, instead we want to build up stack allocated state machines
 <li>better universe handling (or a flag to turn on <code>Type : Type</code> in the interim)</li>
 </ul>
 </li>
-<li>Implement backend(s)
+<li>Implement back end(s)
 <ul>
 <li>JIT and embeddable runtime (for bootstrapping usage) - possibly with
 <a href="https://github.com/nbp/holyjit">HolyJIT</a>?</li>

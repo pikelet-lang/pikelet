@@ -263,7 +263,7 @@ self-aware-string = &quot;I am a string!&quot;;
 </tbody></table>
 <blockquote>
 <p><strong>Note:</strong> You can't do much with these primitive types yet. In the future we
-will add some primitive functions to allow you to maniplate them.</p>
+will add some primitive functions to allow you to manipulate them.</p>
 </blockquote>
 <a class="header" href="print.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
 <p>If you note <a href="print.html#primitive-types-and-their-literals">above</a>, a number of the
@@ -385,7 +385,7 @@ of the argument:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
 (a : Type) -&gt; a -&gt; a
 </code></pre>
-<p>We now have a polymorphic identity function! We can specialise this function by
+<p>We now have a polymorphic identity function! We can specialize this function by
 applying a type to it:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
 &quot;hello&quot; : String
@@ -571,9 +571,9 @@ for <a href="https://en.wikipedia.org/wiki/Type_erasure">erasure</a> and
 <li>Explicit tail-call elimination</li>
 <li>Interactive program development using holes</li>
 </ul>
-<p>Some more handwavey ideas:</p>
+<p>Some more hand-wavey ideas:</p>
 <ul>
-<li>Monomorphisation by partial-evaluation of instance arguments</li>
+<li>Monomorphization by partial-evaluation of instance arguments</li>
 <li>Optional/configurable garbage collection</li>
 <li>Alternatives to currying for function application?</li>
 <li>First-class declarations (Levitation or Elaborator Reflection could be useful here)</li>
@@ -588,7 +588,7 @@ features and design goals:</p>
 <li>how do we makes this <em>fast</em> for systems programming?
 <ul>
 <li>should compile down in a similar way to the equivalent procedural code in Rust or C</li>
-<li>most systems cause lots of intemediate allocations or stack switching</li>
+<li>most systems cause lots of intermediate allocations or stack switching</li>
 </ul>
 </li>
 </ul>
@@ -603,7 +603,7 @@ features and design goals:</p>
 </li>
 <li>Row polymorphism
 <ul>
-<li>no research on integrating these with dependent records and inductive datatypes</li>
+<li>no research on integrating these with dependent records and inductive data types</li>
 </ul>
 </li>
 <li>Program composition via category theory
@@ -628,7 +628,7 @@ data structures, instead we want to build up stack allocated state machines
 <li>better universe handling (or a flag to turn on <code>Type : Type</code> in the interim)</li>
 </ul>
 </li>
-<li>Implement backend(s)
+<li>Implement back end(s)
 <ul>
 <li>JIT and embeddable runtime (for bootstrapping usage) - possibly with
 <a href="https://github.com/nbp/holyjit">HolyJIT</a>?</li>
@@ -726,7 +726,7 @@ etc. If you would like to discuss this with us, please check out
 \DeclareMathOperator{\fieldsubst}{fieldsubst}
 \newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
 \
-% Judgements
+% Judgments
 \newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
 \newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
 \newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
@@ -835,7 +835,7 @@ and neutral terms (\(\nexpr\)):</p>
 \end{array}
 \]</p>
 <a class="header" href="print.html#contexts" id="contexts"><h3>Contexts</h3></a>
-<p>As we typecheck terms, we'll be passing over bindings like lambdas and pi types.
+<p>As we type check terms, we'll be passing over bindings like lambdas and pi types.
 Contexts allow us to keep track of the bound parameters,
 even though we don't know the exact values these will eventually take during normalization.</p>
 <p>\[
@@ -850,8 +850,8 @@ even though we don't know the exact values these will eventually take during nor
 phases: type checking and type inference. This makes the flow of information
 through the type checker clear and relatively easy to reason about.
 Normalization happens after inference, and before types are fed back in to be
-used during type checkiong.</p>
-<p>With that in mind, the next sections will describe the following judgements:</p>
+used during type checking.</p>
+<p>With that in mind, the next sections will describe the following judgments:</p>
 <table><thead><tr><th> name                              </th><th> notation                                             </th><th> inputs                                   </th><th> outputs                    </th></tr></thead><tbody>
 <tr><td> <a href="print.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
 <tr><td> <a href="print.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
@@ -1072,7 +1072,7 @@ expected term for <a href="https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_e
 alternatively check for subtyping instead of alpha equivalence. This could be
 useful for implementing a cumulative universe hierarchy.</p>
 <a class="header" href="print.html#type-inference-1" id="type-inference-1"><h3>Type inference</h3></a>
-<p>Here we define a jugement that synthesizes a type from the given term and
+<p>Here we define a judgement that synthesizes a type from the given term and
 returns its elaborated form.</p>
 <p>\[
 \boxed{
