@@ -46,11 +46,11 @@ impl InternalError {
             } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index))
                 .with_label(Label::new_primary(span).with_message("index found here")),
             InternalError::ArgumentAppliedToNonFunction { span } => {
-                Diagnostic::new_bug(format!("argument applied to non-function"))
+                Diagnostic::new_bug("argument applied to non-function")
                     .with_label(Label::new_primary(span).with_message("not a function"))
             },
             InternalError::ExpectedBoolExpr { span } => {
-                Diagnostic::new_bug(format!("expected a boolean expression")).with_label(
+                Diagnostic::new_bug("expected a boolean expression").with_label(
                     Label::new_primary(span).with_message("did not evaluate to a boolean"),
                 )
             },

@@ -79,6 +79,22 @@ impl fmt::Display for Module {
     }
 }
 
+/// A group of lambda parameters that share an annotation
+pub type LamParamGroup = (Vec<(ByteIndex, String)>, Option<Box<Term>>);
+
+/// The parameters to a lambda abstraction
+pub type LamParams = Vec<LamParamGroup>;
+
+/// A group of parameters to a dependent function that share an annotation
+pub type PiParamGroup = (Vec<(ByteIndex, String)>, Term);
+
+/// The parameters to a dependent function type
+pub type PiParams = Vec<PiParamGroup>;
+
+pub type RecordTypeField = (ByteIndex, String, Term);
+
+pub type RecordField = (ByteIndex, String, LamParams, Option<Box<Term>>, Term);
+
 /// Top level declarations
 #[derive(Debug, Clone, PartialEq)]
 pub enum Declaration {
@@ -224,17 +240,14 @@ pub enum Term {
     /// ```text
     /// Record { x : t1, .. }
     /// ```
-    RecordType(ByteSpan, Vec<(ByteIndex, String, Term)>),
+    RecordType(ByteSpan, Vec<RecordTypeField>),
     /// Record value
     ///
     /// ```text
     /// record { x = t1, .. }
     /// record { id (a : Type) (x : a) : a = x, .. }
     /// ```
-    Record(
-        ByteSpan,
-        Vec<(ByteIndex, String, LamParams, Option<Box<Term>>, Term)>,
-    ),
+    Record(ByteSpan, Vec<RecordField>),
     /// Record field projection
     ///
     /// ```text
@@ -282,9 +295,3 @@ impl fmt::Display for Term {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
     }
 }
-
-/// The parameters to a lambda abstraction
-pub type LamParams = Vec<(Vec<(ByteIndex, String)>, Option<Box<Term>>)>;
-
-/// The parameters to a dependent function type
-pub type PiParams = Vec<(Vec<(ByteIndex, String)>, Term)>;

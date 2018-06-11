@@ -14,7 +14,7 @@ pub use self::lexer::{LexerError, Token};
 
 // TODO: DRY up these wrappers...
 
-pub fn repl_command<'input>(filemap: &'input FileMap) -> (concrete::ReplCommand, Vec<ParseError>) {
+pub fn repl_command(filemap: &FileMap) -> (concrete::ReplCommand, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
     match grammar::ReplCommandParser::new().parse(&mut errors, filemap, lexer) {
@@ -26,7 +26,7 @@ pub fn repl_command<'input>(filemap: &'input FileMap) -> (concrete::ReplCommand,
     }
 }
 
-pub fn module<'input>(filemap: &'input FileMap) -> (concrete::Module, Vec<ParseError>) {
+pub fn module(filemap: &FileMap) -> (concrete::Module, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
     match grammar::ModuleParser::new().parse(&mut errors, filemap, lexer) {
@@ -38,7 +38,7 @@ pub fn module<'input>(filemap: &'input FileMap) -> (concrete::Module, Vec<ParseE
     }
 }
 
-pub fn term<'input>(filemap: &'input FileMap) -> (concrete::Term, Vec<ParseError>) {
+pub fn term(filemap: &FileMap) -> (concrete::Term, Vec<ParseError>) {
     let mut errors = Vec::new();
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
     match grammar::TermParser::new().parse(&mut errors, filemap, lexer) {
@@ -51,6 +51,8 @@ pub fn term<'input>(filemap: &'input FileMap) -> (concrete::Term, Vec<ParseError
 }
 
 mod grammar {
+    #![cfg_attr(feature = "cargo-clippy", allow(clippy))]
+
     include!(concat!(env!("OUT_DIR"), "/syntax/parse/grammar.rs"));
 }
 
@@ -66,7 +68,7 @@ fn reparse_pi_type_hack<L, T>(
 
     fn pi_binder<L, T>(
         binder: &Term,
-    ) -> Result<Option<(Vec<(ByteIndex, String)>, Term)>, LalrpopError<L, T, ParseError>> {
+    ) -> Result<Option<concrete::PiParamGroup>, LalrpopError<L, T, ParseError>> {
         match *binder {
             Term::Parens(_, ref term) => match **term {
                 Term::Ann(ref params, ref ann) => {

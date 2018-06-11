@@ -72,9 +72,10 @@ impl Prec {
 }
 
 fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
-    match should_wrap {
-        false => inner,
-        true => concrete::Term::Parens(ByteSpan::default(), Box::new(inner)),
+    if should_wrap {
+        concrete::Term::Parens(ByteSpan::default(), Box::new(inner))
+    } else {
+        inner
     }
 }
 
@@ -117,9 +118,9 @@ fn resugar_literal(constant: &core::Literal) -> concrete::Term {
         core::Literal::String(ref value) => concrete::Term::String(span, value.clone()),
         core::Literal::Char(value) => concrete::Term::Char(span, value),
 
-        core::Literal::U8(value) => concrete::Term::Int(span, value as u64),
-        core::Literal::U16(value) => concrete::Term::Int(span, value as u64),
-        core::Literal::U32(value) => concrete::Term::Int(span, value as u64),
+        core::Literal::U8(value) => concrete::Term::Int(span, u64::from(value)),
+        core::Literal::U16(value) => concrete::Term::Int(span, u64::from(value)),
+        core::Literal::U32(value) => concrete::Term::Int(span, u64::from(value)),
         core::Literal::U64(value) => concrete::Term::Int(span, value),
 
         // FIXME: Underflow for negative numbers
@@ -128,7 +129,7 @@ fn resugar_literal(constant: &core::Literal) -> concrete::Term {
         core::Literal::I32(value) => concrete::Term::Int(span, value as u64),
         core::Literal::I64(value) => concrete::Term::Int(span, value as u64),
 
-        core::Literal::F32(value) => concrete::Term::Float(span, value as f64),
+        core::Literal::F32(value) => concrete::Term::Float(span, f64::from(value)),
         core::Literal::F64(value) => concrete::Term::Float(span, value),
     }
 }
@@ -155,6 +156,7 @@ fn resugar_pi(
         )];
 
         // Argument resugaring
+        #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))] // Need NLL in stable!
         loop {
             // Share a parameter list if another pi is nested directly inside.
             // For example:
@@ -245,6 +247,7 @@ fn resugar_lam(
     )];
 
     // Argument resugaring
+    #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))] // Need NLL in stable!
     loop {
         // Share a parameter list if another lambda is nested directly inside.
         // For example:
