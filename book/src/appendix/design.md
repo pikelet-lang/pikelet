@@ -55,9 +55,9 @@ if you'd like to give your input and get involved!
 - Explicit tail-call elimination
 - Interactive program development using holes
 
-Some more handwavey ideas:
+Some more hand-wavey ideas:
 
-- Monomorphisation by partial-evaluation of instance arguments
+- Monomorphization by partial-evaluation of instance arguments
 - Optional/configurable garbage collection
 - Alternatives to currying for function application?
 - First-class declarations (Levitation or Elaborator Reflection could be useful here)
@@ -70,14 +70,14 @@ features and design goals:
     - how do cubical type theory and observational type theory play into this?
     - how do we makes this *fast* for systems programming?
         - should compile down in a similar way to the equivalent procedural code in Rust or C
-        - most systems cause lots of intemediate allocations or stack switching
+        - most systems cause lots of intermediate allocations or stack switching
 - [Combined Effects/Coeffects](https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf)
     - allow for statically checked compilation configurations
     - explicit variable capture could be modelled as a coeffect
     - could subsume quantitative type theory, implicit arguments, etc
     - not yet integrated into dependent types in the research literature
 - Row polymorphism
-    - no research on integrating these with dependent records and inductive datatypes
+    - no research on integrating these with dependent records and inductive data types
 - Program composition via category theory
     - Challenging to integrate in the presence of strict evaluation
     - Similar problems to effect systems: we don't want to allocate intermediate
@@ -94,7 +94,7 @@ features and design goals:
     - implicit arguments
     - instance arguments
     - better universe handling (or a flag to turn on `Type : Type` in the interim)
-3. Implement backend(s)
+3. Implement back end(s)
     - JIT and embeddable runtime (for bootstrapping usage) - possibly with
       [HolyJIT](https://github.com/nbp/holyjit)?
     - Optimizing compiler - Possibly with LLVM or [Cretonne](https://github.com/Cretonne/cretonne),

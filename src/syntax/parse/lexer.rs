@@ -217,7 +217,7 @@ impl<'input> From<Token<&'input str>> for Token<String> {
     }
 }
 
-/// An iterator over a source string that yeilds `Token`s for subsequent use by
+/// An iterator over a source string that yields `Token`s for subsequent use by
 /// the parser
 pub struct Lexer<'input> {
     filemap: &'input FileMap,
@@ -264,7 +264,7 @@ impl<'input> Lexer<'input> {
         &self.filemap.src_slice(ByteSpan::new(start, end)).unwrap()
     }
 
-    // /// Test a predicate againt the next character in the source
+    // /// Test a predicate against the next character in the source
     // fn test_lookahead<F>(&self, mut pred: F) -> bool
     // where
     //     F: FnMut(char) -> bool,

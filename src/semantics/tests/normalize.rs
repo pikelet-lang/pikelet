@@ -120,7 +120,7 @@ fn pi_app() {
     );
 }
 
-// Passing `Type` to the polymorphic identity function should yeild the type
+// Passing `Type` to the polymorphic identity function should yield the type
 // identity function
 #[test]
 fn id_app_ty() {
@@ -136,7 +136,7 @@ fn id_app_ty() {
     );
 }
 
-// Passing `Type` to the `Type` identity function should yeild `Type`
+// Passing `Type` to the `Type` identity function should yield `Type`
 #[test]
 fn id_app_ty_ty() {
     let mut codemap = CodeMap::new();
@@ -151,7 +151,7 @@ fn id_app_ty_ty() {
     );
 }
 
-// Passing `Type -> Type` to the `Type` identity function should yeild
+// Passing `Type -> Type` to the `Type` identity function should yield
 // `Type -> Type`
 #[test]
 fn id_app_ty_arr_ty() {
@@ -186,7 +186,7 @@ fn id_app_id() {
     );
 }
 
-// Passing the id function to the 'const' combinator should yeild a
+// Passing the id function to the 'const' combinator should yield a
 // function that always returns the id function
 #[test]
 fn const_app_id_ty() {

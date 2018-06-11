@@ -29,7 +29,7 @@ ci/build-highlight-js
 
 This should update/initialize the submodule, update the npm dependencies,
 and copy the minified highlighting source to the proper directory. Note that
-this is an optional step for developing locally - the CI pipline will take care
+this is an optional step for developing locally - the CI pipeline will take care
 of building and deploying this automatically.
 
 [mdbook-custom-highlighting-issue]: https://github.com/rust-lang-nursery/mdBook/issues/657

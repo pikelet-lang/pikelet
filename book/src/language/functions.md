@@ -53,7 +53,7 @@ Pikelet> :t \(a : Type) (x : a) => x
 (a : Type) -> a -> a
 ```
 
-We now have a polymorphic identity function! We can specialise this function by
+We now have a polymorphic identity function! We can specialize this function by
 applying a type to it:
 
 ```pikelet-repl

@@ -21,7 +21,7 @@ can be time-consuming to track down. Hopefully this project makes it easier to
 see how this can be done in Rust!
 
 We take a [bidirectional approach][bidirectional-typing-paper] to building the
-type system, similar to the one descibed in the excellent
+type system, similar to the one described in the excellent
 [LambdaPi paper][lambdapi-site]. This allows us to provide a good amount of
 local type inference while still maintaining a simple, easy to understand type
 checking algorithm.

@@ -77,7 +77,7 @@ etc. If you would like to discuss this with us, please check out
 \\DeclareMathOperator{\fieldsubst}{fieldsubst}
 \\newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
 \\
-% Judgements
+% Judgments
 \\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
 \\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
 \\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
@@ -197,7 +197,7 @@ and neutral terms (\\(\nexpr\\)):
 
 ### Contexts
 
-As we typecheck terms, we'll be passing over bindings like lambdas and pi types.
+As we type check terms, we'll be passing over bindings like lambdas and pi types.
 Contexts allow us to keep track of the bound parameters,
 even though we don't know the exact values these will eventually take during normalization.
 
@@ -215,9 +215,9 @@ We take a _bidirectional_ approach to type checking, splitting it into two
 phases: type checking and type inference. This makes the flow of information
 through the type checker clear and relatively easy to reason about.
 Normalization happens after inference, and before types are fed back in to be
-used during type checkiong.
+used during type checking.
 
-With that in mind, the next sections will describe the following judgements:
+With that in mind, the next sections will describe the following judgments:
 
 | name                              | notation                                             | inputs                                   | outputs                    |
 |-----------------------------------|------------------------------------------------------|------------------------------------------|----------------------------|
@@ -460,7 +460,7 @@ useful for implementing a cumulative universe hierarchy.
 
 ### Type inference
 
-Here we define a jugement that synthesizes a type from the given term and
+Here we define a judgement that synthesizes a type from the given term and
 returns its elaborated form.
 
 \\[

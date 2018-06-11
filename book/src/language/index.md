@@ -78,7 +78,7 @@ Pikelet has a number of primitive types:
 | `F64`    | `1`, `2`, `3`, ..., `0.0`, `1.0`, ...  |
 
 > **Note:** You can't do much with these primitive types yet. In the future we
-> will add some primitive functions to allow you to maniplate them.
+> will add some primitive functions to allow you to manipulate them.
 
 ## Type annotations
 

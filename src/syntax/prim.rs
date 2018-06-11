@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use syntax::core::{Literal, Type, Value};
 
-// Some helper traits for marshalling beteen Rust and Pikelet values
+// Some helper traits for marshalling between Rust and Pikelet values
 //
 // I'm not super happy with the API at the moment, so these are currently private
 
@@ -133,14 +133,14 @@ macro_rules! count {
 /// In order to access these from within a gluon program you will need to add
 /// them to the context by using `Context::define_prim`.
 macro_rules! def_prim {
-    ($id:ident, $name:expr,fn($($pname:ident : $PType:ty),*) -> $RType:ty $body:block) => {
+    ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
             use nameless::{self, Embed, Name};
 
             fn fun(params: &Vec<Rc<Value>>) -> Result<Rc<Value>, ()> {
                 match params[..] {
-                    [$(ref $pname),*] => {
-                        $(let $pname = <$PType>::try_from_value_ref($pname)?;)*
+                    [$(ref $param_name),*] => {
+                        $(let $param_name = <$PType>::try_from_value_ref($param_name)?;)*
                         Ok(<$RType>::into_value($body))
                     },
                     _ => Err(()) // TODO: Better errors
@@ -148,10 +148,10 @@ macro_rules! def_prim {
             }
 
             let name = $name.to_string();
-            let arity = count!($($pname)*);
+            let arity = count!($($param_name)*);
             let mut ann = <$RType>::ty();
             $(ann = Rc::new(Value::Pi(nameless::bind(
-                (Name::user(stringify!($pname)), Embed(<$PType>::ty())),
+                (Name::user(stringify!($param_name)), Embed(<$PType>::ty())),
                 ann
             )));)+
 

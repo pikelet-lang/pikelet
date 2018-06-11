@@ -21,7 +21,7 @@ mod tests;
 
 pub use self::errors::{InternalError, TypeError};
 
-/// Typecheck and elaborate a module
+/// Type check and elaborate a module
 pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
     let mut context = Context::default();
     let mut definitions = Vec::with_capacity(raw_module.definitions.len());
@@ -32,7 +32,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
             // We don't have a type annotation available to us! Instead we will
             // attempt to infer it based on the body of the definition
             RawTerm::Hole(_) => infer(&context, &raw_definition.term)?,
-            // We have a type annotation! Elaborate it, then nomalize it, then
+            // We have a type annotation! Elaborate it, then normalize it, then
             // check that it matches the body of the definition
             _ => {
                 let (ann, _) = infer(&context, &raw_definition.ann)?;
@@ -53,7 +53,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
 
 /// Apply a substitution to a value
 ///
-/// Since this may 'unstick' some neutral terms, the returned term will need to
+/// Since this may 'un-stick' some neutral terms, the returned term will need to
 /// be re-evaluated afterwards to ensure that it remains in its normal form.
 pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
     match *value {
@@ -286,10 +286,12 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             }
         },
 
-        Term::Array(_, ref elems) => Ok(Rc::new(Value::Array(elems
-            .iter()
-            .map(|elem| normalize(context, elem))
-            .collect::<Result<_, _>>()?))),
+        Term::Array(_, ref elems) => Ok(Rc::new(Value::Array(
+            elems
+                .iter()
+                .map(|elem| normalize(context, elem))
+                .collect::<Result<_, _>>()?,
+        ))),
     }
 }
 
@@ -357,7 +359,7 @@ pub fn check(
             }
 
             // TODO: We might want to optimise for this case, rather than
-            // falling through to `infer` and reunbinding at I-LAM
+            // falling through to `infer` and unbinding again at I-LAM
         },
         (&RawTerm::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
@@ -660,9 +662,9 @@ fn field_substs(expr: &Rc<Term>, label: &Label, ty: &Rc<Type>) -> Vec<(Name, Rc<
     let mut current_scope = ty.record_ty();
 
     while let Some(scope) = current_scope {
-        let ((curr_label, Embed(_)), body) = nameless::unbind(scope);
+        let ((current_label, Embed(_)), body) = nameless::unbind(scope);
 
-        if Label::pattern_eq(&curr_label, &label) {
+        if Label::pattern_eq(&current_label, &label) {
             break;
         }
 
@@ -670,10 +672,10 @@ fn field_substs(expr: &Rc<Term>, label: &Label, ty: &Rc<Type>) -> Vec<(Name, Rc<
             Ignore::default(),
             expr.clone(),
             Ignore::default(),
-            curr_label.clone(),
+            current_label.clone(),
         ));
 
-        substs.push((curr_label.0, proj));
+        substs.push((current_label.0, proj));
         current_scope = body.record_ty();
     }
 

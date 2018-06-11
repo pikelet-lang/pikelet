@@ -173,7 +173,7 @@ fn id_ann() {
     );
 }
 
-// Passing `Type` to the polymorphic identity function should yeild the type
+// Passing `Type` to the polymorphic identity function should yield the type
 // identity function
 #[test]
 fn id_app_ty() {
@@ -189,7 +189,7 @@ fn id_app_ty() {
     );
 }
 
-// Passing `Type` to the `Type` identity function should yeild `Type`
+// Passing `Type` to the `Type` identity function should yield `Type`
 #[test]
 fn id_app_ty_ty() {
     let mut codemap = CodeMap::new();
