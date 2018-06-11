@@ -42,7 +42,7 @@ impl Context {
 
     pub fn claim(&self, name: Name, ann: Rc<Type>) -> Context {
         Context {
-            entries: self.entries.push_front(Entry::Claim(name.clone(), ann)),
+            entries: self.entries.push_front(Entry::Claim(name, ann)),
         }
     }
 

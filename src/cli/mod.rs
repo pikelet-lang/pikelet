@@ -40,6 +40,6 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     let color_choice = opts.color.into();
     match opts.command {
         Command::Check(check_opts) => check::run(color_choice, check_opts),
-        Command::Repl(repl_opts) => repl::run(color_choice, repl_opts),
+        Command::Repl(repl_opts) => repl::run(color_choice, &repl_opts),
     }
 }

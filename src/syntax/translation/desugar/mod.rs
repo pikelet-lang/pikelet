@@ -1,4 +1,4 @@
-use codespan::{ByteIndex, ByteOffset, ByteSpan};
+use codespan::{ByteOffset, ByteSpan};
 use nameless::{self, Embed, GenId, Ignore, Name, Var};
 use std::rc::Rc;
 
@@ -24,10 +24,7 @@ pub trait Desugar<T> {
 /// ```text
 /// (a : t1) -> (b : t1) -> t3
 /// ```
-fn desugar_pi(
-    params: &[(Vec<(ByteIndex, String)>, concrete::Term)],
-    body: &concrete::Term,
-) -> core::RawTerm {
+fn desugar_pi(params: &[concrete::PiParamGroup], body: &concrete::Term) -> core::RawTerm {
     let mut term = body.desugar();
 
     for &(ref names, ref ann) in params.iter().rev() {
@@ -59,7 +56,7 @@ fn desugar_pi(
 /// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
 /// ```
 fn desugar_lam(
-    params: &[(Vec<(ByteIndex, String)>, Option<Box<concrete::Term>>)],
+    params: &[concrete::LamParamGroup],
     ret_ann: Option<&concrete::Term>,
     body: &concrete::Term,
 ) -> core::RawTerm {
@@ -96,10 +93,7 @@ fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTe
     term
 }
 
-fn desugar_record_ty(
-    span: ByteSpan,
-    fields: &[(ByteIndex, String, concrete::Term)],
-) -> core::RawTerm {
+fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> core::RawTerm {
     let mut term = core::RawTerm::RecordTypeEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref ann) in fields.iter().rev() {
@@ -118,16 +112,7 @@ fn desugar_record_ty(
     term
 }
 
-fn desugar_record(
-    span: ByteSpan,
-    fields: &[(
-        ByteIndex,
-        String,
-        concrete::LamParams,
-        Option<Box<concrete::Term>>,
-        concrete::Term,
-    )],
-) -> core::RawTerm {
+fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> core::RawTerm {
     let mut term = core::RawTerm::RecordEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {

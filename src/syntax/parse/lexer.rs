@@ -302,7 +302,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a REPL command
-    fn repl_command(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
+    fn repl_command(&mut self, start: ByteIndex) -> SpannedToken<'input> {
         let (end, command) = self.take_while(start + ByteOffset::from_str(":"), |ch| {
             is_ident_continue(ch) || ch == '?'
         });
@@ -318,7 +318,7 @@ impl<'input> Lexer<'input> {
     fn block_comment(
         &mut self,
         start: ByteIndex,
-    ) -> Result<Option<(ByteIndex, Token<&'input str>, ByteIndex)>, LexerError> {
+    ) -> Result<Option<SpannedToken<'input>>, LexerError> {
         // TODO: Nested block comments?
         match self.lookahead() {
             Some((_, '-')) => {
@@ -344,7 +344,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a doc comment
-    fn doc_comment(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
+    fn doc_comment(&mut self, start: ByteIndex) -> SpannedToken<'input> {
         let (end, mut comment) =
             self.take_until(start + ByteOffset::from_str("|||"), |ch| ch == '\n');
 
@@ -357,7 +357,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume an identifier
-    fn ident(&mut self, start: ByteIndex) -> (ByteIndex, Token<&'input str>, ByteIndex) {
+    fn ident(&mut self, start: ByteIndex) -> SpannedToken<'input> {
         let (end, ident) = self.take_while(start, is_ident_continue);
 
         let token = match ident {
@@ -395,10 +395,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a string literal
-    fn string_literal(
-        &mut self,
-        start: ByteIndex,
-    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+    fn string_literal(&mut self, start: ByteIndex) -> Result<SpannedToken<'input>, LexerError> {
         let mut string = String::new();
         let mut end = start;
 
@@ -417,10 +414,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a character literal
-    fn char_literal(
-        &mut self,
-        start: ByteIndex,
-    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+    fn char_literal(&mut self, start: ByteIndex) -> Result<SpannedToken<'input>, LexerError> {
         let ch = match self.bump() {
             Some((next, '\\')) => self.escape_code(next)?,
             Some((next, '\'')) => {
@@ -446,10 +440,7 @@ impl<'input> Lexer<'input> {
     }
 
     /// Consume a decimal literal
-    fn dec_literal(
-        &mut self,
-        start: ByteIndex,
-    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+    fn dec_literal(&mut self, start: ByteIndex) -> Result<SpannedToken<'input>, LexerError> {
         let (end, src) = self.take_while(start, is_dec_digit);
 
         if let Some((_, '.')) = self.lookahead() {
@@ -472,10 +463,13 @@ impl<'input> Lexer<'input> {
     }
 }
 
+pub type SpannedToken<'input> = (ByteIndex, Token<&'input str>, ByteIndex);
+
 impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError>;
 
-    fn next(&mut self) -> Option<Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError>> {
+    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    fn next(&mut self) -> Option<Result<SpannedToken<'input>, LexerError>> {
         while let Some((start, ch)) = self.bump() {
             let end = start + ByteOffset::from_char_utf8(ch);
 

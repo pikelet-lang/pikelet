@@ -161,7 +161,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: term.span(),
                 name: name.clone(),
-                index: index,
+                index,
             }),
         },
 
@@ -196,7 +196,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((name, Embed(_)), body) = nameless::unbind(scope.clone());
-                    normalize(context, &subst(&*body, &vec![(name, arg.clone())]))
+                    normalize(context, &subst(&*body, &[(name, arg.clone())]))
                 },
                 Value::Neutral(ref mut neutral) => {
                     let arg = normalize(context, arg)?;
@@ -387,7 +387,7 @@ pub fn check(
                 let expr = check(context, &raw_expr, &ann)?;
                 let ty_body = normalize(
                     context,
-                    &subst(&ty_body, &vec![(label.0.clone(), expr.clone())]),
+                    &subst(&ty_body, &[(label.0.clone(), expr.clone())]),
                 )?;
                 let body = check(context, &raw_body, &ty_body)?;
 
@@ -439,13 +439,14 @@ pub fn check(
 
     // C-CONV
     let (term, inferred_ty) = infer(context, raw_term)?;
-    match Type::term_eq(&inferred_ty, expected_ty) {
-        true => Ok(term),
-        false => Err(TypeError::Mismatch {
+    if Type::term_eq(&inferred_ty, expected_ty) {
+        Ok(term)
+    } else {
+        Err(TypeError::Mismatch {
             span: term.span(),
             found: Box::new(inferred_ty.resugar()),
             expected: Box::new(expected_ty.resugar()),
-        }),
+        })
     }
 }
 
@@ -519,7 +520,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: raw_term.span(),
                 name: name.clone(),
-                index: index,
+                index,
             }.into()),
         },
 
@@ -585,7 +586,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
                     let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
 
                     let arg = check(context, raw_arg, &ann)?;
-                    let body = normalize(context, &subst(&*body, &vec![(name, arg.clone())]))?;
+                    let body = normalize(context, &subst(&*body, &[(name, arg.clone())]))?;
 
                     Ok((Rc::new(Term::App(expr, arg)), body))
                 },

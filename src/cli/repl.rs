@@ -48,6 +48,8 @@ fn print_welcome_banner() {
     ];
 
     for (i, line) in WELCOME_BANNER.iter().enumerate() {
+        // warning on `env!` is a known issue
+        #[cfg_attr(feature = "cargo-clippy", allow(print_literal))]
         match i {
             2 => println!("{}Version {}", line, env!("CARGO_PKG_VERSION")),
             3 => println!("{}{}", line, env!("CARGO_PKG_HOMEPAGE")),
@@ -77,7 +79,7 @@ fn print_help_text() {
 }
 
 /// Run the `repl` subcommand with the given options
-pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
+pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     // TODO: Load files
 
     let mut rl = Editor::<()>::new();
@@ -85,10 +87,8 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     let writer = StandardStream::stderr(color);
     let mut context = Context::default();
 
-    if !opts.no_history {
-        if let Err(_) = rl.load_history(&opts.history_file) {
-            // No previous REPL history!
-        }
+    if !opts.no_history && rl.load_history(&opts.history_file).is_err() {
+        // No previous REPL history!
     }
 
     if !opts.no_banner {

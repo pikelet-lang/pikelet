@@ -500,7 +500,7 @@ impl<'a> From<&'a Value> for Term {
                     nameless::bind(param, Rc::new(Term::from(&*body))),
                 )
             },
-            Value::RecordTypeEmpty => Term::RecordTypeEmpty(Ignore::default()).into(),
+            Value::RecordTypeEmpty => Term::RecordTypeEmpty(Ignore::default()),
             Value::Record(ref scope) => {
                 let ((name, Embed(param_value)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_value))));
@@ -510,14 +510,14 @@ impl<'a> From<&'a Value> for Term {
                     nameless::bind(param, Rc::new(Term::from(&*body))),
                 )
             },
-            Value::RecordEmpty => Term::RecordEmpty(Ignore::default()).into(),
+            Value::RecordEmpty => Term::RecordEmpty(Ignore::default()),
             Value::Array(ref elems) => Term::Array(
                 Ignore::default(),
                 elems
                     .iter()
                     .map(|elem| Rc::new(Term::from(&**elem)))
                     .collect(),
-            ).into(),
+            ),
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }

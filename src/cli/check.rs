@@ -38,7 +38,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
         }
 
         match semantics::check_module(&module.desugar()) {
-            Ok(_module) => {},
+            Ok(_) => {},
             Err(err) => {
                 codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;
                 is_error = true;

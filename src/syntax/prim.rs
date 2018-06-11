@@ -97,6 +97,9 @@ impl_has_ty!(i64, "I64");
 impl_has_ty!(f32, "F32");
 impl_has_ty!(f64, "F64");
 
+// TODO: Return a `Result` with better errors
+pub type NormFn = fn(&[Rc<Value>]) -> Result<Rc<Value>, ()>;
+
 /// Primitive functions
 #[derive(Clone)]
 pub struct PrimFn {
@@ -108,7 +111,7 @@ pub struct PrimFn {
     /// The type of the primitive
     pub ann: Rc<Type>,
     /// The primitive definition to be used during normalization
-    pub fun: fn(&Vec<Rc<Value>>) -> Result<Rc<Value>, ()>, // TODO: Better errors
+    pub fun: NormFn,
 }
 
 impl fmt::Debug for PrimFn {
@@ -124,8 +127,8 @@ impl fmt::Debug for PrimFn {
 
 /// Boilerplate macro for counting the number of supplied token trees
 macro_rules! count {
-    () => (0usize);
-    ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
+    () => (0_usize);
+    ( $x:tt $($xs:tt)* ) => (1_usize + count!($($xs)*));
 }
 
 /// Define a primitive function
@@ -137,7 +140,7 @@ macro_rules! def_prim {
         pub fn $id() -> PrimFn {
             use nameless::{self, Embed, Name};
 
-            fn fun(params: &Vec<Rc<Value>>) -> Result<Rc<Value>, ()> {
+            fn fun(params: &[Rc<Value>]) -> Result<Rc<Value>, ()> {
                 match params[..] {
                     [$(ref $param_name),*] => {
                         $(let $param_name = <$PType>::try_from_value_ref($param_name)?;)*
@@ -176,8 +179,8 @@ def_prim!(i8_eq, "prim-i8-eq", fn(x: i8, y: i8) -> bool { x == y });
 def_prim!(i16_eq, "prim-i16-eq", fn(x: i16, y: i16) -> bool { x == y });
 def_prim!(i32_eq, "prim-i32-eq", fn(x: i32, y: i32) -> bool { x == y });
 def_prim!(i64_eq, "prim-i64-eq", fn(x: i64, y: i64) -> bool { x == y });
-def_prim!(f32_eq, "prim-f32-eq", fn(x: f32, y: f32) -> bool { x == y });
-def_prim!(f64_eq, "prim-f64-eq", fn(x: f64, y: f64) -> bool { x == y });
+def_prim!(f32_eq, "prim-f32-eq", fn(x: f32, y: f32) -> bool { f32::eq(x, y) });
+def_prim!(f64_eq, "prim-f64-eq", fn(x: f64, y: f64) -> bool { f64::eq(x, y) });
 
 def_prim!(string_ne, "prim-string-ne", fn(x: String, y: String) -> bool { x != y });
 def_prim!(bool_ne, "prim-bool-ne", fn(x: bool, y: bool) -> bool { x != y });
@@ -190,8 +193,8 @@ def_prim!(i8_ne, "prim-i8-ne", fn(x: i8, y: i8) -> bool { x != y });
 def_prim!(i16_ne, "prim-i16-ne", fn(x: i16, y: i16) -> bool { x != y });
 def_prim!(i32_ne, "prim-i32-ne", fn(x: i32, y: i32) -> bool { x != y });
 def_prim!(i64_ne, "prim-i64-ne", fn(x: i64, y: i64) -> bool { x != y });
-def_prim!(f32_ne, "prim-f32-ne", fn(x: f32, y: f32) -> bool { x != y });
-def_prim!(f64_ne, "prim-f64-ne", fn(x: f64, y: f64) -> bool { x != y });
+def_prim!(f32_ne, "prim-f32-ne", fn(x: f32, y: f32) -> bool { f32::ne(x, y) });
+def_prim!(f64_ne, "prim-f64-ne", fn(x: f64, y: f64) -> bool { f64::ne(x, y) });
 
 def_prim!(string_le, "prim-string-le", fn(x: String, y: String) -> bool { x <= y });
 def_prim!(bool_le, "prim-bool-le", fn(x: bool, y: bool) -> bool { x <= y });
