@@ -398,56 +398,53 @@ impl ToDoc for Head {
     }
 }
 
+fn pretty_definition(name: &str, ann: &impl ToDoc, term: &impl ToDoc) -> StaticDoc {
+    sexpr(
+        "define",
+        Doc::as_string(name)
+            .append(Doc::space())
+            .append(ann.to_doc())
+            .append(Doc::space())
+            .append(term.to_doc()),
+    )
+}
+
+fn pretty_module<'a, Ds, D>(definitions: Ds) -> StaticDoc
+where
+    Ds: 'a + IntoIterator<Item = &'a D>,
+    D: 'a + ToDoc,
+{
+    sexpr(
+        "module",
+        Doc::intersperse(
+            definitions
+                .into_iter()
+                .map(|definition| definition.to_doc()),
+            Doc::newline().append(Doc::newline()),
+        ),
+    )
+}
+
 impl ToDoc for raw::Definition {
     fn to_doc(&self) -> StaticDoc {
-        sexpr(
-            "define",
-            Doc::as_string(&self.name)
-                .append(Doc::space())
-                .append(self.ann.to_doc())
-                .append(Doc::space())
-                .append(self.term.to_doc()),
-        )
+        pretty_definition(&self.name, &self.ann, &self.term)
     }
 }
 
 impl ToDoc for raw::Module {
     fn to_doc(&self) -> StaticDoc {
-        sexpr(
-            "module",
-            Doc::intersperse(
-                self.definitions
-                    .iter()
-                    .map(|definition| definition.to_doc()),
-                Doc::newline().append(Doc::newline()),
-            ),
-        )
+        pretty_module(&self.definitions)
     }
 }
 
 impl ToDoc for Definition {
     fn to_doc(&self) -> StaticDoc {
-        sexpr(
-            "define",
-            Doc::as_string(&self.name)
-                .append(Doc::space())
-                .append(self.ann.to_doc())
-                .append(Doc::space())
-                .append(self.term.to_doc()),
-        )
+        pretty_definition(&self.name, &self.ann, &self.term)
     }
 }
 
 impl ToDoc for Module {
     fn to_doc(&self) -> StaticDoc {
-        sexpr(
-            "module",
-            Doc::intersperse(
-                self.definitions
-                    .iter()
-                    .map(|definition| definition.to_doc()),
-                Doc::newline().append(Doc::newline()),
-            ),
-        )
+        pretty_module(&self.definitions)
     }
 }
