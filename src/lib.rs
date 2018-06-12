@@ -30,39 +30,33 @@ pub mod cli;
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting::Diagnostic;
 
-use syntax::core::Module;
+use syntax::core;
 
-pub fn load_file(file: &FileMap) -> Result<Module, Vec<Diagnostic>> {
+pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
     use syntax::translation::Desugar;
 
-    let mut diagnostics = Vec::new();
-
     let (module, errors) = syntax::parse::module(&file);
-    diagnostics.extend(errors.iter().map(|err| err.to_diagnostic()));
+    let mut diagnostics = errors
+        .iter()
+        .map(|err| err.to_diagnostic())
+        .collect::<Vec<_>>();
 
-    let module = module.desugar();
-    match semantics::check_module(&module) {
-        Ok(module) => Ok(module),
-        Err(err) => {
-            diagnostics.push(err.to_diagnostic());
-            Err(diagnostics)
-        },
-    }
+    semantics::check_module(&module.desugar()).map_err(|err| {
+        diagnostics.push(err.to_diagnostic());
+        diagnostics
+    })
 }
 
-pub fn load_prelude(codemap: &mut CodeMap) -> Module {
+pub fn load_prelude(codemap: &mut CodeMap) -> core::Module {
     let file = codemap.add_filemap(
         FileName::real("library/prelude.pi"),
         String::from(library::PRELUDE),
     );
 
-    match load_file(&file) {
-        Ok(module) => module,
-        Err(_diagnostics) => {
-            // for diagnostic in diagnostics {
-            //     codespan_reporting::emit(codemap, &diagnostic);
-            // }
-            panic!("unexpected parse errors in prelude");
-        },
-    }
+    load_file(&file).unwrap_or_else(|_diagnostics| {
+        // for diagnostic in diagnostics {
+        //     codespan_reporting::emit(codemap, &diagnostic);
+        // }
+        panic!("unexpected errors in prelude");
+    })
 }
