@@ -132,9 +132,6 @@ macro_rules! count {
 }
 
 /// Define a primitive function
-///
-/// In order to access these from within a gluon program you will need to add
-/// them to the context by using `Context::define_prim`.
 macro_rules! def_prim {
     ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
