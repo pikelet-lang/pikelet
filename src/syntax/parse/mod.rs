@@ -16,38 +16,44 @@ pub use self::lexer::{LexerError, Token};
 
 pub fn repl_command(filemap: &FileMap) -> (concrete::ReplCommand, Vec<ParseError>) {
     let mut errors = Vec::new();
+
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    match grammar::ReplCommandParser::new().parse(&mut errors, filemap, lexer) {
-        Ok(value) => (value, errors),
-        Err(err) => {
+    let value = grammar::ReplCommandParser::new()
+        .parse(&mut errors, filemap, lexer)
+        .unwrap_or_else(|err| {
             errors.push(errors::from_lalrpop(filemap, err));
-            (concrete::ReplCommand::Error(filemap.span()), errors)
-        },
-    }
+            concrete::ReplCommand::Error(filemap.span())
+        });
+
+    (value, errors)
 }
 
 pub fn module(filemap: &FileMap) -> (concrete::Module, Vec<ParseError>) {
     let mut errors = Vec::new();
+
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    match grammar::ModuleParser::new().parse(&mut errors, filemap, lexer) {
-        Ok(value) => (value, errors),
-        Err(err) => {
+    let value = grammar::ModuleParser::new()
+        .parse(&mut errors, filemap, lexer)
+        .unwrap_or_else(|err| {
             errors.push(errors::from_lalrpop(filemap, err));
-            (concrete::Module::Error(filemap.span()), errors)
-        },
-    }
+            concrete::Module::Error(filemap.span())
+        });
+
+    (value, errors)
 }
 
 pub fn term(filemap: &FileMap) -> (concrete::Term, Vec<ParseError>) {
     let mut errors = Vec::new();
+
     let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    match grammar::TermParser::new().parse(&mut errors, filemap, lexer) {
-        Ok(value) => (value, errors),
-        Err(err) => {
+    let value = grammar::TermParser::new()
+        .parse(&mut errors, filemap, lexer)
+        .unwrap_or_else(|err| {
             errors.push(errors::from_lalrpop(filemap, err));
-            (concrete::Term::Error(filemap.span()), errors)
-        },
-    }
+            concrete::Term::Error(filemap.span())
+        });
+
+    (value, errors)
 }
 
 mod grammar {
