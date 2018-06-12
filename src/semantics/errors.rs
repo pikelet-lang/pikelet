@@ -4,8 +4,9 @@ use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use nameless::{BoundName, Name};
 
+use syntax;
 use syntax::concrete;
-use syntax::core::{self, RawLiteral};
+use syntax::raw;
 
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
@@ -23,7 +24,7 @@ pub enum InternalError {
     #[fail(display = "Projected on non-existent field `{}`.", label)]
     ProjectedOnNonExistentField {
         label_span: ByteSpan,
-        label: core::Label,
+        label: syntax::Label,
     },
 }
 
@@ -81,7 +82,7 @@ pub enum TypeError {
     #[fail(display = "found a `{}`, but expected a type `{}`", found, expected)]
     LiteralMismatch {
         literal_span: ByteSpan,
-        found: RawLiteral,
+        found: raw::Literal,
         expected: Box<concrete::Term>,
     },
     #[fail(display = "Ambiguous integer literal")]
@@ -114,8 +115,8 @@ pub enum TypeError {
     #[fail(display = "Label mismatch: found label `{}` but `{}` was expected", found, expected)]
     LabelMismatch {
         span: ByteSpan,
-        found: core::Label,
-        expected: core::Label,
+        found: syntax::Label,
+        expected: syntax::Label,
     },
     #[fail(display = "Ambiguous record")]
     AmbiguousRecord { span: ByteSpan },
@@ -134,7 +135,7 @@ pub enum TypeError {
     #[fail(display = "The type `{}` does not contain a field named `{}`.", found, expected_label)]
     NoFieldInType {
         label_span: ByteSpan,
-        expected_label: core::Label,
+        expected_label: syntax::Label,
         found: Box<concrete::Term>,
     },
     #[fail(display = "Internal error - this is a bug! {}", _0)]
@@ -172,10 +173,10 @@ impl TypeError {
                 ref expected,
             } => {
                 let found_text = match *found {
-                    RawLiteral::String(_) => "string",
-                    RawLiteral::Char(_) => "character",
-                    RawLiteral::Int(_) => "numeric",
-                    RawLiteral::Float(_) => "floating point",
+                    raw::Literal::String(_) => "string",
+                    raw::Literal::Char(_) => "character",
+                    raw::Literal::Int(_) => "numeric",
+                    raw::Literal::Float(_) => "floating point",
                 };
 
                 Diagnostic::new_error(format!(

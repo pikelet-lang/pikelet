@@ -89,7 +89,8 @@ impl Default for Context {
     fn default() -> Context {
         use nameless::{self, Embed, GenId, Ignore, Var};
 
-        use syntax::core::{Level, Literal, Value};
+        use syntax::core::{Literal, Value};
+        use syntax::Level;
 
         let name = Name::user;
         let fresh_name = || Name::from(GenId::fresh());

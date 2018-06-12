@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use syntax::concrete;
 use syntax::core;
+use syntax::Level;
 
 /// Translate something to the corresponding concrete representation
 pub trait Resugar<T> {
@@ -303,8 +304,8 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
         ),
         core::Term::Universe(_, level) => {
             let level = match level {
-                core::Level(0) => None,
-                core::Level(level) => Some(level),
+                Level(0) => None,
+                Level(level) => Some(level),
             };
 
             parens_if(

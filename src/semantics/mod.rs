@@ -9,11 +9,10 @@ use nameless::{self, BoundPattern, BoundTerm, Embed, Ignore, Name, Var};
 use std::rc::Rc;
 
 use syntax::context::Context;
-use syntax::core::{
-    Definition, Head, Label, Level, Literal, Module, Neutral, RawLiteral, RawModule, RawTerm, Term,
-    Type, Value,
-};
+use syntax::core::{Definition, Head, Literal, Module, Neutral, Term, Type, Value};
+use syntax::raw;
 use syntax::translation::Resugar;
+use syntax::{Label, Level};
 
 mod errors;
 #[cfg(test)]
@@ -22,7 +21,7 @@ mod tests;
 pub use self::errors::{InternalError, TypeError};
 
 /// Type check and elaborate a module
-pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
+pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
     let mut context = Context::default();
     let mut definitions = Vec::with_capacity(raw_module.definitions.len());
 
@@ -31,7 +30,7 @@ pub fn check_module(raw_module: &RawModule) -> Result<Module, TypeError> {
         let (term, ann) = match *raw_definition.ann {
             // We don't have a type annotation available to us! Instead we will
             // attempt to infer it based on the body of the definition
-            RawTerm::Hole(_) => infer(&context, &raw_definition.term)?,
+            raw::Term::Hole(_) => infer(&context, &raw_definition.term)?,
             // We have a type annotation! Elaborate it, then normalize it, then
             // check that it matches the body of the definition
             _ => {
@@ -298,11 +297,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 /// Type checking of terms
 pub fn check(
     context: &Context,
-    raw_term: &Rc<RawTerm>,
+    raw_term: &Rc<raw::Term>,
     expected_ty: &Rc<Type>,
 ) -> Result<Rc<Term>, TypeError> {
     match (&**raw_term, &**expected_ty) {
-        (&RawTerm::Literal(span, ref raw_literal), ty) => {
+        (&raw::Term::Literal(span, ref raw_literal), ty) => {
             fn is_name(ty: &Type, name: &str) -> bool {
                 if let Value::Neutral(ref neutral) = *ty {
                     if let Neutral::App(Head::Var(Var::Free(ref n)), ref spine) = **neutral {
@@ -313,24 +312,24 @@ pub fn check(
             }
 
             let literal = match *raw_literal {
-                RawLiteral::String(ref val) if is_name(ty, "String") => {
+                raw::Literal::String(ref val) if is_name(ty, "String") => {
                     Literal::String(val.clone())
                 },
-                RawLiteral::Char(val) if is_name(ty, "Char") => Literal::Char(val),
+                raw::Literal::Char(val) if is_name(ty, "Char") => Literal::Char(val),
 
                 // FIXME: overflow?
-                RawLiteral::Int(val) if is_name(ty, "U8") => Literal::U8(val as u8),
-                RawLiteral::Int(val) if is_name(ty, "U16") => Literal::U16(val as u16),
-                RawLiteral::Int(val) if is_name(ty, "U32") => Literal::U32(val as u32),
-                RawLiteral::Int(val) if is_name(ty, "U64") => Literal::U64(val),
-                RawLiteral::Int(val) if is_name(ty, "I8") => Literal::I8(val as i8),
-                RawLiteral::Int(val) if is_name(ty, "I16") => Literal::I16(val as i16),
-                RawLiteral::Int(val) if is_name(ty, "I32") => Literal::I32(val as i32),
-                RawLiteral::Int(val) if is_name(ty, "I64") => Literal::I64(val as i64),
-                RawLiteral::Int(val) if is_name(ty, "F32") => Literal::F32(val as f32),
-                RawLiteral::Int(val) if is_name(ty, "F64") => Literal::F64(val as f64),
-                RawLiteral::Float(val) if is_name(ty, "F32") => Literal::F32(val as f32),
-                RawLiteral::Float(val) if is_name(ty, "F64") => Literal::F64(val),
+                raw::Literal::Int(val) if is_name(ty, "U8") => Literal::U8(val as u8),
+                raw::Literal::Int(val) if is_name(ty, "U16") => Literal::U16(val as u16),
+                raw::Literal::Int(val) if is_name(ty, "U32") => Literal::U32(val as u32),
+                raw::Literal::Int(val) if is_name(ty, "U64") => Literal::U64(val),
+                raw::Literal::Int(val) if is_name(ty, "I8") => Literal::I8(val as i8),
+                raw::Literal::Int(val) if is_name(ty, "I16") => Literal::I16(val as i16),
+                raw::Literal::Int(val) if is_name(ty, "I32") => Literal::I32(val as i32),
+                raw::Literal::Int(val) if is_name(ty, "I64") => Literal::I64(val as i64),
+                raw::Literal::Int(val) if is_name(ty, "F32") => Literal::F32(val as f32),
+                raw::Literal::Int(val) if is_name(ty, "F64") => Literal::F64(val as f64),
+                raw::Literal::Float(val) if is_name(ty, "F32") => Literal::F32(val as f32),
+                raw::Literal::Float(val) if is_name(ty, "F64") => Literal::F64(val),
 
                 _ => {
                     return Err(TypeError::LiteralMismatch {
@@ -345,12 +344,12 @@ pub fn check(
         },
 
         // C-LAM
-        (&RawTerm::Lam(span, ref lam_scope), &Value::Pi(ref pi_scope)) => {
+        (&raw::Term::Lam(span, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (pi_name, Embed(pi_ann)), pi_body) =
                 nameless::unbind2(lam_scope.clone(), pi_scope.clone());
 
             // Elaborate the hole, if it exists
-            if let RawTerm::Hole(_) = *lam_ann {
+            if let raw::Term::Hole(_) = *lam_ann {
                 let lam_ann = Rc::new(Term::from(&*pi_ann));
                 let lam_body = check(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
                 let lam_scope = nameless::bind((lam_name, Embed(lam_ann)), lam_body);
@@ -361,7 +360,7 @@ pub fn check(
             // TODO: We might want to optimise for this case, rather than
             // falling through to `infer` and unbinding again at I-LAM
         },
-        (&RawTerm::Lam(_, _), _) => {
+        (&raw::Term::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
                 expected: Box::new(expected_ty.resugar()),
@@ -369,7 +368,7 @@ pub fn check(
         },
 
         // C-IF
-        (&RawTerm::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
+        (&raw::Term::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
             let bool_ty = Rc::new(Value::from(Var::Free(Name::user("Bool"))));
             let cond = check(context, raw_cond, &bool_ty)?;
             let if_true = check(context, raw_if_true, expected_ty)?;
@@ -379,7 +378,7 @@ pub fn check(
         },
 
         // C-RECORD
-        (&RawTerm::Record(span, ref scope), &Value::RecordType(ref ty_scope)) => {
+        (&raw::Term::Record(span, ref scope), &Value::RecordType(ref ty_scope)) => {
             let ((label, Embed(raw_expr)), raw_body, (ty_label, Embed(ann)), ty_body) =
                 nameless::unbind2(scope.clone(), ty_scope.clone());
 
@@ -404,7 +403,7 @@ pub fn check(
             }
         },
 
-        (&RawTerm::Array(span, ref elems), ty) => match ty.free_app() {
+        (&raw::Term::Array(span, ref elems), ty) => match ty.free_app() {
             Some((name, [ref len, ref elem_ty])) if *name == Name::user("Array") => {
                 if let Value::Literal(Literal::U64(len)) = **len {
                     if len != elems.len() as u64 {
@@ -427,7 +426,7 @@ pub fn check(
             Some(_) | None => unimplemented!(),
         },
 
-        (&RawTerm::Hole(span), _) => {
+        (&raw::Term::Hole(span), _) => {
             return Err(TypeError::UnableToElaborateHole {
                 span: span.0,
                 expected: Some(Box::new(expected_ty.resugar())),
@@ -451,14 +450,17 @@ pub fn check(
 }
 
 /// Type inference of terms
-pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
+pub fn infer(
+    context: &Context,
+    raw_term: &Rc<raw::Term>,
+) -> Result<(Rc<Term>, Rc<Type>), TypeError> {
     use std::cmp;
 
     /// Ensures that the given term is a universe, returning the level of that
     /// universe and its elaborated form.
     fn infer_universe(
         context: &Context,
-        raw_term: &Rc<RawTerm>,
+        raw_term: &Rc<raw::Term>,
     ) -> Result<(Rc<Term>, Level), TypeError> {
         let (term, ty) = infer(context, raw_term)?;
         match *ty {
@@ -472,7 +474,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
 
     match **raw_term {
         //  I-ANN
-        RawTerm::Ann(span, ref raw_expr, ref raw_ty) => {
+        raw::Term::Ann(span, ref raw_expr, ref raw_ty) => {
             let (ty, _) = infer_universe(context, raw_ty)?;
             let value_ty = normalize(context, &ty)?;
             let expr = check(context, raw_expr, &value_ty)?;
@@ -481,31 +483,31 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-TYPE
-        RawTerm::Universe(span, level) => Ok((
+        raw::Term::Universe(span, level) => Ok((
             Rc::new(Term::Universe(span, level)),
             Rc::new(Value::Universe(level.succ())),
         )),
 
-        RawTerm::Hole(span) => Err(TypeError::UnableToElaborateHole {
+        raw::Term::Hole(span) => Err(TypeError::UnableToElaborateHole {
             span: span.0,
             expected: None,
         }),
 
-        RawTerm::Literal(span, ref raw_literal) => match *raw_literal {
-            RawLiteral::String(ref value) => Ok((
+        raw::Term::Literal(span, ref raw_literal) => match *raw_literal {
+            raw::Literal::String(ref value) => Ok((
                 Rc::new(Term::Literal(span, Literal::String(value.clone()))),
                 Rc::new(Value::from(Var::Free(Name::user("String")))),
             )),
-            RawLiteral::Char(value) => Ok((
+            raw::Literal::Char(value) => Ok((
                 Rc::new(Term::Literal(span, Literal::Char(value))),
                 Rc::new(Value::from(Var::Free(Name::user("Char")))),
             )),
-            RawLiteral::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: span.0 }),
-            RawLiteral::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: span.0 }),
+            raw::Literal::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: span.0 }),
+            raw::Literal::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span: span.0 }),
         },
 
         // I-VAR
-        RawTerm::Var(span, ref var) => match *var {
+        raw::Term::Var(span, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_claim(name) {
                 Some(ty) => Ok((Rc::new(Term::Var(span, var.clone())), ty.clone())),
                 None => Err(TypeError::UndefinedName {
@@ -525,7 +527,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-PI
-        RawTerm::Pi(span, ref raw_scope) => {
+        raw::Term::Pi(span, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             let (ann, ann_level) = infer_universe(context, &raw_ann)?;
@@ -541,11 +543,11 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-LAM
-        RawTerm::Lam(span, ref raw_scope) => {
+        raw::Term::Lam(span, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             // Check for holes before entering to ensure we get a nice error
-            if let RawTerm::Hole(_) = *raw_ann {
+            if let raw::Term::Hole(_) = *raw_ann {
                 return Err(TypeError::FunctionParamNeedsAnnotation {
                     param_span: ByteSpan::default(), // TODO: param.span(),
                     var_span: None,
@@ -568,7 +570,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-IF
-        RawTerm::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
+        raw::Term::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
             let bool_ty = Rc::new(Value::from(Var::Free(Name::user("Bool"))));
             let cond = check(context, raw_cond, &bool_ty)?;
             let (if_true, ty) = infer(context, raw_if_true)?;
@@ -578,7 +580,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-APP
-        RawTerm::App(ref raw_expr, ref raw_arg) => {
+        raw::Term::App(ref raw_expr, ref raw_arg) => {
             let (expr, expr_ty) = infer(context, raw_expr)?;
 
             match *expr_ty {
@@ -599,7 +601,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
         },
 
         // I-RECORD-TYPE
-        RawTerm::RecordType(span, ref raw_scope) => {
+        raw::Term::RecordType(span, ref raw_scope) => {
             let ((label, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             // Check that rest of record is well-formed?
@@ -620,22 +622,22 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             ))
         },
 
-        RawTerm::Record(span, _) => Err(TypeError::AmbiguousRecord { span: span.0 }),
+        raw::Term::Record(span, _) => Err(TypeError::AmbiguousRecord { span: span.0 }),
 
         // I-EMPTY-RECORD-TYPE
-        RawTerm::RecordTypeEmpty(span) => Ok((
+        raw::Term::RecordTypeEmpty(span) => Ok((
             Rc::new(Term::RecordTypeEmpty(span)),
             Rc::new(Value::Universe(Level(0))),
         )),
 
         // I-EMPTY-RECORD
-        RawTerm::RecordEmpty(span) => Ok((
+        raw::Term::RecordEmpty(span) => Ok((
             Rc::new(Term::RecordEmpty(span)),
             Rc::new(Value::RecordTypeEmpty),
         )),
 
         // I-PROJ
-        RawTerm::Proj(span, ref expr, label_span, ref label) => {
+        raw::Term::Proj(span, ref expr, label_span, ref label) => {
             let (expr, ty) = infer(context, expr)?;
 
             match ty.lookup_record_ty(label) {
@@ -654,7 +656,7 @@ pub fn infer(context: &Context, raw_term: &Rc<RawTerm>) -> Result<(Rc<Term>, Rc<
             }
         },
 
-        RawTerm::Array(span, _) => Err(TypeError::AmbiguousArrayLiteral { span: span.0 }),
+        raw::Term::Array(span, _) => Err(TypeError::AmbiguousArrayLiteral { span: span.0 }),
     }
 }
 

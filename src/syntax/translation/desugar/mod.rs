@@ -3,7 +3,8 @@ use nameless::{self, Embed, GenId, Ignore, Name, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
-use syntax::core;
+use syntax::raw;
+use syntax::{Label, Level};
 
 #[cfg(test)]
 mod test;
@@ -24,14 +25,14 @@ pub trait Desugar<T> {
 /// ```text
 /// (a : t1) -> (b : t1) -> t3
 /// ```
-fn desugar_pi(params: &[concrete::PiParamGroup], body: &concrete::Term) -> core::RawTerm {
+fn desugar_pi(params: &[concrete::PiParamGroup], body: &concrete::Term) -> raw::Term {
     let mut term = body.desugar();
 
     for &(ref names, ref ann) in params.iter().rev() {
         let ann = Rc::new(ann.desugar());
         for &(start, ref name) in names.iter().rev() {
             // This could be wrong... :/
-            term = core::RawTerm::Pi(
+            term = raw::Term::Pi(
                 Ignore(ByteSpan::new(start, term.span().end())),
                 nameless::bind(
                     (Name::user(name.clone()), Embed(ann.clone())),
@@ -59,21 +60,21 @@ fn desugar_lam(
     params: &[concrete::LamParamGroup],
     ret_ann: Option<&concrete::Term>,
     body: &concrete::Term,
-) -> core::RawTerm {
+) -> raw::Term {
     let mut term = body.desugar();
     if let Some(ann) = ret_ann {
-        term = core::RawTerm::Ann(Ignore::default(), Rc::new(term), Rc::new(ann.desugar()));
+        term = raw::Term::Ann(Ignore::default(), Rc::new(term), Rc::new(ann.desugar()));
     }
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(start, ref name) in names.iter().rev() {
             let name = Name::user(name.clone());
             let ann = match *ann {
-                None => Rc::new(core::RawTerm::Hole(Ignore::default())),
+                None => Rc::new(raw::Term::Hole(Ignore::default())),
                 Some(ref ann) => Rc::new(ann.desugar()),
             };
 
-            term = core::RawTerm::Lam(
+            term = raw::Term::Lam(
                 Ignore(ByteSpan::new(start, term.span().end())),
                 nameless::bind((name, Embed(ann)), Rc::new(term)),
             );
@@ -83,25 +84,25 @@ fn desugar_lam(
     term
 }
 
-fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> core::RawTerm {
+fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> raw::Term {
     let mut term = fn_expr.desugar();
 
     for arg in args.iter() {
-        term = core::RawTerm::App(Rc::new(term), Rc::new(arg.desugar()))
+        term = raw::Term::App(Rc::new(term), Rc::new(arg.desugar()))
     }
 
     term
 }
 
-fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> core::RawTerm {
-    let mut term = core::RawTerm::RecordTypeEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
+fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> raw::Term {
+    let mut term = raw::Term::RecordTypeEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref ann) in fields.iter().rev() {
-        term = core::RawTerm::RecordType(
+        term = raw::Term::RecordType(
             Ignore(ByteSpan::new(start, term.span().end())),
             nameless::bind(
                 (
-                    core::Label(Name::user(label.clone())),
+                    Label(Name::user(label.clone())),
                     Embed(Rc::new(ann.desugar())),
                 ),
                 Rc::new(term),
@@ -112,15 +113,15 @@ fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> co
     term
 }
 
-fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> core::RawTerm {
-    let mut term = core::RawTerm::RecordEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
+fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> raw::Term {
+    let mut term = raw::Term::RecordEmpty(Ignore(ByteSpan::new(span.end(), span.end())));
 
     for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {
-        term = core::RawTerm::Record(
+        term = raw::Term::Record(
             Ignore(ByteSpan::new(start, term.span().end())),
             nameless::bind(
                 (
-                    core::Label(Name::user(label.clone())),
+                    Label(Name::user(label.clone())),
                     Embed(Rc::new(desugar_lam(
                         params,
                         ret_ann.as_ref().map(<_>::as_ref),
@@ -135,16 +136,16 @@ fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> core::Raw
     term
 }
 
-impl Desugar<core::RawModule> for concrete::Module {
+impl Desugar<raw::Module> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
-    fn desugar(&self) -> core::RawModule {
+    fn desugar(&self) -> raw::Module {
         match *self {
             concrete::Module::Valid { ref declarations } => {
                 // The type claims that we have encountered so far! We'll use these when
                 // we encounter their corresponding definitions later as type annotations
                 let mut prev_claim = None;
                 // The definitions, desugared from the concrete syntax
-                let mut definitions = Vec::<core::RawDefinition>::new();
+                let mut definitions = Vec::<raw::Definition>::new();
 
                 for declaration in declarations {
                     match *declaration {
@@ -154,8 +155,8 @@ impl Desugar<core::RawModule> for concrete::Module {
                             ..
                         } => match prev_claim.take() {
                             Some((name, ann)) => {
-                                let term = Rc::new(core::RawTerm::Hole(Ignore::default()));
-                                definitions.push(core::RawDefinition { name, term, ann });
+                                let term = Rc::new(raw::Term::Hole(Ignore::default()));
+                                definitions.push(raw::Definition { name, term, ann });
                             },
                             None => prev_claim = Some((name.clone(), Rc::new(ann.desugar()))),
                         },
@@ -174,9 +175,9 @@ impl Desugar<core::RawModule> for concrete::Module {
                             }
 
                             match prev_claim.take() {
-                                None => definitions.push(core::RawDefinition {
+                                None => definitions.push(raw::Definition {
                                     name: name.clone(),
-                                    ann: Rc::new(core::RawTerm::Hole(default_span)),
+                                    ann: Rc::new(raw::Term::Hole(default_span)),
                                     term: Rc::new(desugar_lam(
                                         params,
                                         ann.as_ref().map(<_>::as_ref),
@@ -185,20 +186,20 @@ impl Desugar<core::RawModule> for concrete::Module {
                                 }),
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {
-                                        definitions.push(core::RawDefinition {
+                                        definitions.push(raw::Definition {
                                             name: name.clone(),
                                             ann,
                                             term: Rc::new(desugar_lam(params, None, body)),
                                         });
                                     } else {
-                                        definitions.push(core::RawDefinition {
+                                        definitions.push(raw::Definition {
                                             name: claim_name.clone(),
                                             ann,
-                                            term: Rc::new(core::RawTerm::Hole(default_span)),
+                                            term: Rc::new(raw::Term::Hole(default_span)),
                                         });
-                                        definitions.push(core::RawDefinition {
+                                        definitions.push(raw::Definition {
                                             name: name.clone(),
-                                            ann: Rc::new(core::RawTerm::Hole(default_span)),
+                                            ann: Rc::new(raw::Term::Hole(default_span)),
                                             term: Rc::new(desugar_lam(params, None, body)),
                                         });
                                     }
@@ -209,16 +210,16 @@ impl Desugar<core::RawModule> for concrete::Module {
                     }
                 }
 
-                core::RawModule { definitions }
+                raw::Module { definitions }
             },
             concrete::Module::Error(_) => unimplemented!("error recovery"),
         }
     }
 }
 
-impl Desugar<core::RawTerm> for concrete::Term {
+impl Desugar<raw::Term> for concrete::Term {
     /// Convert a term in the concrete syntax into a core term
-    fn desugar(&self) -> core::RawTerm {
+    fn desugar(&self) -> raw::Term {
         let span = Ignore(self.span());
         match *self {
             concrete::Term::Parens(_, ref term) => term.desugar(),
@@ -226,31 +227,23 @@ impl Desugar<core::RawTerm> for concrete::Term {
                 let expr = Rc::new(expr.desugar());
                 let ty = Rc::new(ty.desugar());
 
-                core::RawTerm::Ann(span, expr, ty)
+                raw::Term::Ann(span, expr, ty)
             },
             concrete::Term::Universe(_, level) => {
-                core::RawTerm::Universe(span, core::Level(level.unwrap_or(0)))
+                raw::Term::Universe(span, Level(level.unwrap_or(0)))
             },
             concrete::Term::String(_, ref value) => {
-                core::RawTerm::Literal(span, core::RawLiteral::String(value.clone()))
+                raw::Term::Literal(span, raw::Literal::String(value.clone()))
             },
-            concrete::Term::Char(_, value) => {
-                core::RawTerm::Literal(span, core::RawLiteral::Char(value))
-            },
-            concrete::Term::Int(_, value) => {
-                core::RawTerm::Literal(span, core::RawLiteral::Int(value))
-            },
-            concrete::Term::Float(_, value) => {
-                core::RawTerm::Literal(span, core::RawLiteral::Float(value))
-            },
-            concrete::Term::Array(_, ref elems) => core::RawTerm::Array(
+            concrete::Term::Char(_, value) => raw::Term::Literal(span, raw::Literal::Char(value)),
+            concrete::Term::Int(_, value) => raw::Term::Literal(span, raw::Literal::Int(value)),
+            concrete::Term::Float(_, value) => raw::Term::Literal(span, raw::Literal::Float(value)),
+            concrete::Term::Array(_, ref elems) => raw::Term::Array(
                 span,
                 elems.iter().map(|elem| Rc::new(elem.desugar())).collect(),
             ),
-            concrete::Term::Hole(_) => core::RawTerm::Hole(span),
-            concrete::Term::Var(_, ref x) => {
-                core::RawTerm::Var(span, Var::Free(Name::user(x.clone())))
-            },
+            concrete::Term::Hole(_) => raw::Term::Hole(span),
+            concrete::Term::Var(_, ref x) => raw::Term::Var(span, Var::Free(Name::user(x.clone()))),
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
             concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, None, body),
             concrete::Term::Arrow(ref ann, ref body) => {
@@ -258,11 +251,11 @@ impl Desugar<core::RawTerm> for concrete::Term {
                 let ann = Rc::new(ann.desugar());
                 let body = Rc::new(body.desugar());
 
-                core::RawTerm::Pi(span, nameless::bind((name, Embed(ann)), body))
+                raw::Term::Pi(span, nameless::bind((name, Embed(ann)), body))
             },
             concrete::Term::App(ref fn_expr, ref args) => desugar_app(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
-            concrete::Term::If(start, ref cond, ref if_true, ref if_false) => core::RawTerm::If(
+            concrete::Term::If(start, ref cond, ref if_true, ref if_false) => raw::Term::If(
                 Ignore(start),
                 Rc::new(cond.desugar()),
                 Rc::new(if_true.desugar()),
@@ -276,11 +269,11 @@ impl Desugar<core::RawTerm> for concrete::Term {
                     ByteOffset::from_str(label),
                 ));
 
-                core::RawTerm::Proj(
+                raw::Term::Proj(
                     span,
                     Rc::new(tm.desugar()),
                     label_span,
-                    core::Label(Name::user(label.clone())),
+                    Label(Name::user(label.clone())),
                 )
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),

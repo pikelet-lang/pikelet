@@ -4,10 +4,9 @@ use nameless::{Name, Var};
 use pretty::Doc;
 use std::iter;
 
-use syntax::core::{
-    Definition, Head, Label, Level, Literal, Module, Neutral, RawDefinition, RawLiteral, RawModule,
-    RawTerm, Term, Value,
-};
+use syntax::core::{Definition, Head, Literal, Module, Neutral, Term, Value};
+use syntax::raw;
+use syntax::{Label, Level};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
@@ -100,13 +99,13 @@ fn pretty_proj<E: ToDoc>(expr: &E, label: &Label) -> StaticDoc {
     )
 }
 
-impl ToDoc for RawLiteral {
+impl ToDoc for raw::Literal {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            RawLiteral::String(ref value) => Doc::text(format!("{:?}", value)),
-            RawLiteral::Char(value) => Doc::text(format!("{:?}", value)),
-            RawLiteral::Int(value) => Doc::as_string(value),
-            RawLiteral::Float(value) => Doc::as_string(value),
+            raw::Literal::String(ref value) => Doc::text(format!("{:?}", value)),
+            raw::Literal::Char(value) => Doc::text(format!("{:?}", value)),
+            raw::Literal::Int(value) => Doc::as_string(value),
+            raw::Literal::Float(value) => Doc::as_string(value),
         }
     }
 }
@@ -132,29 +131,29 @@ impl ToDoc for Literal {
     }
 }
 
-impl ToDoc for RawTerm {
+impl ToDoc for raw::Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            RawTerm::Ann(_, ref expr, ref ty) => pretty_ann(expr, ty),
-            RawTerm::Universe(_, level) => pretty_universe(level),
-            RawTerm::Hole(_) => parens(Doc::text("hole")),
-            RawTerm::Literal(_, ref lit) => lit.to_doc(),
-            RawTerm::Var(_, ref var) => pretty_var(var),
-            RawTerm::Lam(_, ref scope) => pretty_lam(
+            raw::Term::Ann(_, ref expr, ref ty) => pretty_ann(expr, ty),
+            raw::Term::Universe(_, level) => pretty_universe(level),
+            raw::Term::Hole(_) => parens(Doc::text("hole")),
+            raw::Term::Literal(_, ref lit) => lit.to_doc(),
+            raw::Term::Var(_, ref var) => pretty_var(var),
+            raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            RawTerm::Pi(_, ref scope) => pretty_pi(
+            raw::Term::Pi(_, ref scope) => pretty_pi(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            RawTerm::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
-            RawTerm::If(_, ref cond, ref if_true, ref if_false) => {
+            raw::Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
+            raw::Term::If(_, ref cond, ref if_true, ref if_false) => {
                 pretty_if(cond, if_true, if_false)
             },
-            RawTerm::RecordType(_, ref scope) => {
+            raw::Term::RecordType(_, ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
 
@@ -171,16 +170,16 @@ impl ToDoc for RawTerm {
                         ));
 
                     match *scope.unsafe_body {
-                        RawTerm::RecordType(_, ref next_scope) => scope = next_scope,
-                        RawTerm::RecordTypeEmpty(_) => break,
+                        raw::Term::RecordType(_, ref next_scope) => scope = next_scope,
+                        raw::Term::RecordTypeEmpty(_) => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record_ty(inner)
             },
-            RawTerm::RecordTypeEmpty(_) => pretty_empty_record_ty(),
-            RawTerm::Record(_, ref scope) => {
+            raw::Term::RecordTypeEmpty(_) => pretty_empty_record_ty(),
+            raw::Term::Record(_, ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
 
@@ -197,22 +196,22 @@ impl ToDoc for RawTerm {
                         ));
 
                     match *scope.unsafe_body {
-                        RawTerm::Record(_, ref next_scope) => scope = next_scope,
-                        RawTerm::RecordEmpty(_) => break,
+                        raw::Term::Record(_, ref next_scope) => scope = next_scope,
+                        raw::Term::RecordEmpty(_) => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record(inner)
             },
-            RawTerm::RecordEmpty(_) => pretty_empty_record(),
-            RawTerm::Array(_, ref elems) => Doc::text("[")
+            raw::Term::RecordEmpty(_) => pretty_empty_record(),
+            raw::Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append(Doc::text("]")),
-            RawTerm::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
+            raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
         }
     }
 }
@@ -399,7 +398,7 @@ impl ToDoc for Head {
     }
 }
 
-impl ToDoc for RawDefinition {
+impl ToDoc for raw::Definition {
     fn to_doc(&self) -> StaticDoc {
         sexpr(
             "define",
@@ -412,7 +411,7 @@ impl ToDoc for RawDefinition {
     }
 }
 
-impl ToDoc for RawModule {
+impl ToDoc for raw::Module {
     fn to_doc(&self) -> StaticDoc {
         sexpr(
             "module",

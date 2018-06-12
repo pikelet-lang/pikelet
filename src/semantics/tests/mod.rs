@@ -8,7 +8,7 @@ use syntax::translation::Desugar;
 
 use super::*;
 
-fn parse(codemap: &mut CodeMap, src: &str) -> Rc<RawTerm> {
+fn parse(codemap: &mut CodeMap, src: &str) -> Rc<raw::Term> {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
     let (concrete_term, errors) = parse::term(&filemap);
 
