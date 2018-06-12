@@ -167,7 +167,7 @@ fn resugar_pi(
             // (a : Type) (b : Type -> Type) -> ...
             // ```
             let ((next_name, Embed(next_ann)), next_body) = match *body {
-                core::Term::Pi(_, ref scope) => nameless::unbind(scope.clone()),
+                core::Term::Pi(ref scope) => nameless::unbind(scope.clone()),
                 _ => break,
             };
 
@@ -258,7 +258,7 @@ fn resugar_lam(
         // \(a : Type) (b : Type -> Type) => ...
         // ```
         let ((next_name, Embed(next_ann)), next_body) = match *body {
-            core::Term::Lam(_, ref scope) => nameless::unbind(scope.clone()),
+            core::Term::Lam(ref scope) => nameless::unbind(scope.clone()),
             _ => break,
         };
 
@@ -295,14 +295,14 @@ fn resugar_lam(
 
 fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
     match *term {
-        core::Term::Ann(_, ref term, ref ty) => parens_if(
+        core::Term::Ann(ref term, ref ty) => parens_if(
             Prec::ANN < prec,
             concrete::Term::Ann(
                 Box::new(resugar_term(term, Prec::LAM)),
                 Box::new(resugar_term(ty, Prec::ANN)),
             ),
         ),
-        core::Term::Universe(_, level) => {
+        core::Term::Universe(level) => {
             let level = match level {
                 Level(0) => None,
                 Level(level) => Some(level),
@@ -313,22 +313,22 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 concrete::Term::Universe(ByteSpan::default(), level),
             )
         },
-        core::Term::Literal(_, ref lit) => resugar_literal(lit),
-        core::Term::Var(_, Var::Free(Name::User(ref name))) => {
+        core::Term::Literal(ref lit) => resugar_literal(lit),
+        core::Term::Var(Var::Free(Name::User(ref name))) => {
             concrete::Term::Var(ByteIndex::default(), name.to_string())
         },
-        // core::Term::Var(_, Var::Free(Name::Gen(ref _name, ref _gen))) => {}
-        core::Term::Var(_, Var::Free(ref name)) => {
+        // core::Term::Var(Var::Free(Name::Gen(ref _name, ref _gen))) => {}
+        core::Term::Var(Var::Free(ref name)) => {
             // TODO: use name if it is present, and not used in the current scope
             // TODO: otherwise create a pretty name
             concrete::Term::Var(ByteIndex::default(), name.to_string())
         },
-        core::Term::Var(_, Var::Bound(_, _)) => {
+        core::Term::Var(Var::Bound(_, _)) => {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },
-        core::Term::Pi(_, ref scope) => resugar_pi(scope, prec),
-        core::Term::Lam(_, ref scope) => resugar_lam(scope, prec),
+        core::Term::Pi(ref scope) => resugar_pi(scope, prec),
+        core::Term::Lam(ref scope) => resugar_lam(scope, prec),
         core::Term::App(ref fn_term, ref arg) => parens_if(
             Prec::APP < prec,
             concrete::Term::App(
@@ -336,7 +336,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 vec![resugar_term(arg, Prec::NO_WRAP)], // TODO
             ),
         ),
-        core::Term::If(_, ref cond, ref if_true, ref if_false) => parens_if(
+        core::Term::If(ref cond, ref if_true, ref if_false) => parens_if(
             Prec::LAM < prec,
             concrete::Term::If(
                 ByteIndex::default(),
@@ -345,7 +345,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 Box::new(resugar_term(if_false, Prec::APP)),
             ),
         ),
-        core::Term::RecordType(_, ref scope) => {
+        core::Term::RecordType(ref scope) => {
             let mut fields = vec![];
             let mut scope = scope.clone();
 
@@ -359,16 +359,16 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 ));
 
                 match *body {
-                    core::Term::RecordType(_, ref next_scope) => scope = next_scope.clone(),
-                    core::Term::RecordTypeEmpty(_) => break,
+                    core::Term::RecordType(ref next_scope) => scope = next_scope.clone(),
+                    core::Term::RecordTypeEmpty => break,
                     _ => panic!("ill-formed record type"), // FIXME: better error
                 }
             }
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
-        core::Term::RecordTypeEmpty(_) => concrete::Term::RecordType(ByteSpan::default(), vec![]),
-        core::Term::Record(_, ref scope) => {
+        core::Term::RecordTypeEmpty => concrete::Term::RecordType(ByteSpan::default(), vec![]),
+        core::Term::Record(ref scope) => {
             let mut fields = vec![];
             let mut scope = scope.clone();
 
@@ -388,23 +388,23 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 ));
 
                 match *body {
-                    core::Term::Record(_, ref next_scope) => scope = next_scope.clone(),
-                    core::Term::RecordEmpty(_) => break,
+                    core::Term::Record(ref next_scope) => scope = next_scope.clone(),
+                    core::Term::RecordEmpty => break,
                     _ => panic!("ill-formed record"), // FIXME: better error
                 }
             }
 
             concrete::Term::Record(ByteSpan::default(), fields)
         },
-        core::Term::RecordEmpty(_) => concrete::Term::Record(ByteSpan::default(), vec![]),
-        core::Term::Array(_, ref elems) => concrete::Term::Array(
+        core::Term::RecordEmpty => concrete::Term::Record(ByteSpan::default(), vec![]),
+        core::Term::Array(ref elems) => concrete::Term::Array(
             ByteSpan::default(),
             elems
                 .iter()
                 .map(|elem| resugar_term(elem, Prec::NO_WRAP))
                 .collect(),
         ),
-        core::Term::Proj(_, ref expr, _, ref label) => concrete::Term::Proj(
+        core::Term::Proj(ref expr, ref label) => concrete::Term::Proj(
             Box::new(resugar_term(expr, Prec::ATOMIC)),
             ByteIndex::default(),
             label.0.clone().to_string(),

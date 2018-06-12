@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use nameless::{self, BoundPattern, BoundTerm, Embed, Ignore, Name, Var};
+use nameless::{self, BoundPattern, BoundTerm, Embed, Name, Var};
 use std::rc::Rc;
 
 use syntax::context::Context;
@@ -56,40 +56,39 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
 /// be re-evaluated afterwards to ensure that it remains in its normal form.
 pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
     match *value {
-        Value::Universe(level) => Rc::new(Term::Universe(Ignore::default(), level)),
-        Value::Literal(ref lit) => Rc::new(Term::Literal(Ignore::default(), lit.clone())),
+        Value::Universe(level) => Rc::new(Term::Universe(level)),
+        Value::Literal(ref lit) => Rc::new(Term::Literal(lit.clone())),
         Value::Pi(ref scope) => {
             let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::Pi(
-                Ignore::default(),
-                nameless::bind((name, Embed(subst(&ann, substs))), subst(&body, substs)),
-            ))
+            Rc::new(Term::Pi(nameless::bind(
+                (name, Embed(subst(&ann, substs))),
+                subst(&body, substs),
+            )))
         },
         Value::Lam(ref scope) => {
             let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::Lam(
-                Ignore::default(),
-                nameless::bind((name, Embed(subst(&ann, substs))), subst(&body, substs)),
-            ))
+            Rc::new(Term::Lam(nameless::bind(
+                (name, Embed(subst(&ann, substs))),
+                subst(&body, substs),
+            )))
         },
         Value::RecordType(ref scope) => {
             let ((label, Embed(ann)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::RecordType(
-                Ignore::default(),
-                nameless::bind((label, Embed(subst(&ann, substs))), subst(&body, substs)),
-            ))
+            Rc::new(Term::RecordType(nameless::bind(
+                (label, Embed(subst(&ann, substs))),
+                subst(&body, substs),
+            )))
         },
         Value::Record(ref scope) => {
             let ((label, Embed(expr)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::Record(
-                Ignore::default(),
-                nameless::bind((label, Embed(subst(&expr, substs))), subst(&body, substs)),
-            ))
+            Rc::new(Term::Record(nameless::bind(
+                (label, Embed(subst(&expr, substs))),
+                subst(&body, substs),
+            )))
         },
-        Value::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty(Ignore::default())),
-        Value::RecordEmpty => Rc::new(Term::RecordEmpty(Ignore::default())),
+        Value::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty),
+        Value::RecordEmpty => Rc::new(Term::RecordEmpty),
         Value::Array(ref elems) => Rc::new(Term::Array(
-            Ignore::default(),
             elems.iter().map(|elem| subst(elem, substs)).collect(),
         )),
         Value::Neutral(ref neutral) => {
@@ -97,17 +96,16 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
                 Neutral::App(Head::Var(Var::Free(ref name)), ref spine) => {
                     let head = match substs.iter().find(|s| *name == s.0) {
                         Some(&(_, ref term)) => term.clone(),
-                        None => Rc::new(Term::Var(Ignore::default(), Var::Free(name.clone()))),
+                        None => Rc::new(Term::Var(Var::Free(name.clone()))),
                     };
 
                     (head, spine)
                 },
                 Neutral::App(Head::Var(ref var), ref spine) => {
-                    (Rc::new(Term::Var(Ignore::default(), var.clone())), spine)
+                    (Rc::new(Term::Var(var.clone())), spine)
                 },
                 Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
                     let head = Rc::new(Term::If(
-                        Ignore::default(),
                         subst(&Value::Neutral(cond.clone()), substs),
                         subst(if_true, substs),
                         subst(if_false, substs),
@@ -117,9 +115,7 @@ pub fn subst(value: &Value, substs: &[(Name, Rc<Term>)]) -> Rc<Term> {
                 },
                 Neutral::Proj(ref expr, ref label, ref spine) => {
                     let head = Rc::new(Term::Proj(
-                        Ignore::default(),
                         subst(&Value::Neutral(expr.clone()), substs),
-                        Ignore::default(),
                         label.clone(),
                     ));
 
@@ -140,15 +136,15 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
     match **term {
         // E-ANN
-        Term::Ann(_, ref expr, _) => normalize(context, expr),
+        Term::Ann(ref expr, _) => normalize(context, expr),
 
         // E-TYPE
-        Term::Universe(_, level) => Ok(Rc::new(Value::Universe(level))),
+        Term::Universe(level) => Ok(Rc::new(Value::Universe(level))),
 
-        Term::Literal(_, ref lit) => Ok(Rc::new(Value::Literal(lit.clone()))),
+        Term::Literal(ref lit) => Ok(Rc::new(Value::Literal(lit.clone()))),
 
         // E-VAR, E-VAR-DEF
-        Term::Var(_, ref var) => match *var {
+        Term::Var(ref var) => match *var {
             Var::Free(ref name) => match context.lookup_definition(name) {
                 Some(Definition::Term(term)) => normalize(context, &term),
                 Some(Definition::Prim(_)) | None => Ok(Rc::new(Value::from(var.clone()))),
@@ -158,14 +154,14 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
-                span: term.span(),
+                span: None,
                 name: name.clone(),
                 index,
             }),
         },
 
         // E-PI
-        Term::Pi(_, ref scope) => {
+        Term::Pi(ref scope) => {
             let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
 
             let ann = normalize(context, &ann)?;
@@ -175,7 +171,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         },
 
         // E-LAM
-        Term::Lam(_, ref scope) => {
+        Term::Lam(ref scope) => {
             let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
 
             let ann = normalize(context, &ann)?;
@@ -222,12 +218,12 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
                     Ok(Rc::new(Value::Neutral(neutral.clone())))
                 },
-                _ => Err(InternalError::ArgumentAppliedToNonFunction { span: expr.span() }),
+                _ => Err(InternalError::ArgumentAppliedToNonFunction),
             }
         },
 
         // E-IF, E-IF-TRUE, E-IF-FALSE
-        Term::If(_, ref cond, ref if_true, ref if_false) => {
+        Term::If(ref cond, ref if_true, ref if_false) => {
             let value_cond = normalize(context, cond)?;
 
             match *value_cond {
@@ -239,12 +235,12 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                     normalize(context, if_false)?,
                     vec![],
                 )))),
-                _ => Err(InternalError::ExpectedBoolExpr { span: cond.span() }),
+                _ => Err(InternalError::ExpectedBoolExpr),
             }
         },
 
         // E-RECORD-TYPE
-        Term::RecordType(_, ref scope) => {
+        Term::RecordType(ref scope) => {
             let ((label, Embed(ann)), body) = nameless::unbind(scope.clone());
             let ann = normalize(context, &ann)?;
             let body = normalize(context, &body)?;
@@ -253,10 +249,10 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         },
 
         // E-EMPTY-RECORD-TYPE
-        Term::RecordTypeEmpty(_) => Ok(Rc::new(Value::RecordTypeEmpty)),
+        Term::RecordTypeEmpty => Ok(Rc::new(Value::RecordTypeEmpty)),
 
         // E-RECORD
-        Term::Record(_, ref scope) => {
+        Term::Record(ref scope) => {
             let ((label, Embed(term)), body) = nameless::unbind(scope.clone());
             let value = normalize(context, &term)?;
             let body = normalize(context, &body)?;
@@ -265,27 +261,24 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
         },
 
         // E-EMPTY-RECORD
-        Term::RecordEmpty(_) => Ok(Rc::new(Value::RecordEmpty)),
+        Term::RecordEmpty => Ok(Rc::new(Value::RecordEmpty)),
 
         // E-PROJ
-        Term::Proj(_, ref expr, label_span, ref label) => {
-            match *normalize(context, expr)? {
-                Value::Neutral(ref neutral) => Ok(Rc::new(Value::from(Neutral::Proj(
-                    neutral.clone(),
-                    label.clone(),
-                    vec![],
-                )))),
-                ref expr => match expr.lookup_record(label) {
-                    Some(value) => Ok(value.clone()),
-                    None => Err(InternalError::ProjectedOnNonExistentField {
-                        label_span: label_span.0, // FIXME: better location info
-                        label: label.clone(),
-                    }),
-                },
-            }
+        Term::Proj(ref expr, ref label) => match *normalize(context, expr)? {
+            Value::Neutral(ref neutral) => Ok(Rc::new(Value::from(Neutral::Proj(
+                neutral.clone(),
+                label.clone(),
+                vec![],
+            )))),
+            ref expr => match expr.lookup_record(label) {
+                Some(value) => Ok(value.clone()),
+                None => Err(InternalError::ProjectedOnNonExistentField {
+                    label: label.clone(),
+                }),
+            },
         },
 
-        Term::Array(_, ref elems) => Ok(Rc::new(Value::Array(
+        Term::Array(ref elems) => Ok(Rc::new(Value::Array(
             elems
                 .iter()
                 .map(|elem| normalize(context, elem))
@@ -340,11 +333,11 @@ pub fn check(
                 },
             };
 
-            return Ok(Rc::new(Term::Literal(span, literal)));
+            return Ok(Rc::new(Term::Literal(literal)));
         },
 
         // C-LAM
-        (&raw::Term::Lam(span, ref lam_scope), &Value::Pi(ref pi_scope)) => {
+        (&raw::Term::Lam(_, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (pi_name, Embed(pi_ann)), pi_body) =
                 nameless::unbind2(lam_scope.clone(), pi_scope.clone());
 
@@ -354,7 +347,7 @@ pub fn check(
                 let lam_body = check(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
                 let lam_scope = nameless::bind((lam_name, Embed(lam_ann)), lam_body);
 
-                return Ok(Rc::new(Term::Lam(span, lam_scope)));
+                return Ok(Rc::new(Term::Lam(lam_scope)));
             }
 
             // TODO: We might want to optimise for this case, rather than
@@ -368,13 +361,13 @@ pub fn check(
         },
 
         // C-IF
-        (&raw::Term::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
+        (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
             let bool_ty = Rc::new(Value::from(Var::Free(Name::user("Bool"))));
             let cond = check(context, raw_cond, &bool_ty)?;
             let if_true = check(context, raw_if_true, expected_ty)?;
             let if_false = check(context, raw_if_false, expected_ty)?;
 
-            return Ok(Rc::new(Term::If(span, cond, if_true, if_false)));
+            return Ok(Rc::new(Term::If(cond, if_true, if_false)));
         },
 
         // C-RECORD
@@ -390,10 +383,10 @@ pub fn check(
                 )?;
                 let body = check(context, &raw_body, &ty_body)?;
 
-                return Ok(Rc::new(Term::Record(
-                    span,
-                    nameless::bind((label, Embed(expr)), body),
-                )));
+                return Ok(Rc::new(Term::Record(nameless::bind(
+                    (label, Embed(expr)),
+                    body,
+                ))));
             } else {
                 return Err(TypeError::LabelMismatch {
                     span: span.0,
@@ -416,7 +409,6 @@ pub fn check(
                 }
 
                 return Ok(Rc::new(Term::Array(
-                    span,
                     elems
                         .iter()
                         .map(|elem| check(context, elem, elem_ty))
@@ -442,7 +434,7 @@ pub fn check(
         Ok(term)
     } else {
         Err(TypeError::Mismatch {
-            span: term.span(),
+            span: raw_term.span(),
             found: Box::new(inferred_ty.resugar()),
             expected: Box::new(expected_ty.resugar()),
         })
@@ -474,17 +466,17 @@ pub fn infer(
 
     match **raw_term {
         //  I-ANN
-        raw::Term::Ann(span, ref raw_expr, ref raw_ty) => {
+        raw::Term::Ann(_, ref raw_expr, ref raw_ty) => {
             let (ty, _) = infer_universe(context, raw_ty)?;
             let value_ty = normalize(context, &ty)?;
             let expr = check(context, raw_expr, &value_ty)?;
 
-            Ok((Rc::new(Term::Ann(span, expr, ty)), value_ty))
+            Ok((Rc::new(Term::Ann(expr, ty)), value_ty))
         },
 
         // I-TYPE
-        raw::Term::Universe(span, level) => Ok((
-            Rc::new(Term::Universe(span, level)),
+        raw::Term::Universe(_, level) => Ok((
+            Rc::new(Term::Universe(level)),
             Rc::new(Value::Universe(level.succ())),
         )),
 
@@ -495,11 +487,11 @@ pub fn infer(
 
         raw::Term::Literal(span, ref raw_literal) => match *raw_literal {
             raw::Literal::String(ref value) => Ok((
-                Rc::new(Term::Literal(span, Literal::String(value.clone()))),
+                Rc::new(Term::Literal(Literal::String(value.clone()))),
                 Rc::new(Value::from(Var::Free(Name::user("String")))),
             )),
             raw::Literal::Char(value) => Ok((
-                Rc::new(Term::Literal(span, Literal::Char(value))),
+                Rc::new(Term::Literal(Literal::Char(value))),
                 Rc::new(Value::from(Var::Free(Name::user("Char")))),
             )),
             raw::Literal::Int(_) => Err(TypeError::AmbiguousIntLiteral { span: span.0 }),
@@ -509,7 +501,7 @@ pub fn infer(
         // I-VAR
         raw::Term::Var(span, ref var) => match *var {
             Var::Free(ref name) => match context.lookup_claim(name) {
-                Some(ty) => Ok((Rc::new(Term::Var(span, var.clone())), ty.clone())),
+                Some(ty) => Ok((Rc::new(Term::Var(var.clone())), ty.clone())),
                 None => Err(TypeError::UndefinedName {
                     var_span: span.0,
                     name: name.clone(),
@@ -520,14 +512,14 @@ pub fn infer(
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
-                span: raw_term.span(),
+                span: Some(raw_term.span()),
                 name: name.clone(),
                 index,
             }.into()),
         },
 
         // I-PI
-        raw::Term::Pi(span, ref raw_scope) => {
+        raw::Term::Pi(_, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             let (ann, ann_level) = infer_universe(context, &raw_ann)?;
@@ -537,13 +529,13 @@ pub fn infer(
             };
 
             Ok((
-                Rc::new(Term::Pi(span, nameless::bind((name, Embed(ann)), body))),
+                Rc::new(Term::Pi(nameless::bind((name, Embed(ann)), body))),
                 Rc::new(Value::Universe(cmp::max(ann_level, body_level))),
             ))
         },
 
         // I-LAM
-        raw::Term::Lam(span, ref raw_scope) => {
+        raw::Term::Lam(_, ref raw_scope) => {
             let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             // Check for holes before entering to ensure we get a nice error
@@ -564,19 +556,19 @@ pub fn infer(
             let pi_param = (name.clone(), Embed(pi_ann));
 
             Ok((
-                Rc::new(Term::Lam(span, nameless::bind(lam_param, lam_body))),
+                Rc::new(Term::Lam(nameless::bind(lam_param, lam_body))),
                 Rc::new(Value::Pi(nameless::bind(pi_param, pi_body))),
             ))
         },
 
         // I-IF
-        raw::Term::If(span, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
+        raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
             let bool_ty = Rc::new(Value::from(Var::Free(Name::user("Bool"))));
             let cond = check(context, raw_cond, &bool_ty)?;
             let (if_true, ty) = infer(context, raw_if_true)?;
             let if_false = check(context, raw_if_false, &ty)?;
 
-            Ok((Rc::new(Term::If(span, cond, if_true, if_false)), ty))
+            Ok((Rc::new(Term::If(cond, if_true, if_false)), ty))
         },
 
         // I-APP
@@ -601,7 +593,7 @@ pub fn infer(
         },
 
         // I-RECORD-TYPE
-        raw::Term::RecordType(span, ref raw_scope) => {
+        raw::Term::RecordType(_, ref raw_scope) => {
             let ((label, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
 
             // Check that rest of record is well-formed?
@@ -617,7 +609,7 @@ pub fn infer(
             let scope = nameless::bind((label, Embed(ann)), body);
 
             Ok((
-                Rc::new(Term::RecordType(span, scope)),
+                Rc::new(Term::RecordType(scope)),
                 Rc::new(Value::Universe(cmp::max(ann_level, body_level))),
             ))
         },
@@ -625,26 +617,25 @@ pub fn infer(
         raw::Term::Record(span, _) => Err(TypeError::AmbiguousRecord { span: span.0 }),
 
         // I-EMPTY-RECORD-TYPE
-        raw::Term::RecordTypeEmpty(span) => Ok((
-            Rc::new(Term::RecordTypeEmpty(span)),
+        raw::Term::RecordTypeEmpty(_) => Ok((
+            Rc::new(Term::RecordTypeEmpty),
             Rc::new(Value::Universe(Level(0))),
         )),
 
         // I-EMPTY-RECORD
-        raw::Term::RecordEmpty(span) => Ok((
-            Rc::new(Term::RecordEmpty(span)),
-            Rc::new(Value::RecordTypeEmpty),
-        )),
+        raw::Term::RecordEmpty(_) => {
+            Ok((Rc::new(Term::RecordEmpty), Rc::new(Value::RecordTypeEmpty)))
+        },
 
         // I-PROJ
-        raw::Term::Proj(span, ref expr, label_span, ref label) => {
+        raw::Term::Proj(_, ref expr, label_span, ref label) => {
             let (expr, ty) = infer(context, expr)?;
 
             match ty.lookup_record_ty(label) {
                 Some(field_ty) => {
                     let substs = field_substs(&expr, &label, &ty);
                     Ok((
-                        Rc::new(Term::Proj(span, expr, label_span, label.clone())),
+                        Rc::new(Term::Proj(expr, label.clone())),
                         normalize(context, &subst(&field_ty, &substs))?,
                     ))
                 },
@@ -671,12 +662,7 @@ fn field_substs(expr: &Rc<Term>, label: &Label, ty: &Rc<Type>) -> Vec<(Name, Rc<
             break;
         }
 
-        let proj = Rc::new(Term::Proj(
-            Ignore::default(),
-            expr.clone(),
-            Ignore::default(),
-            current_label.clone(),
-        ));
+        let proj = Rc::new(Term::Proj(expr.clone(), current_label.clone()));
 
         substs.push((current_label.0, proj));
         current_scope = body.record_ty();

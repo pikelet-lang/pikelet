@@ -1,5 +1,3 @@
-use nameless::Ignore;
-
 use super::*;
 
 #[test]
@@ -7,7 +5,7 @@ fn var() {
     let context = Context::new();
 
     let x = Name::user("x");
-    let var = Rc::new(Term::Var(Ignore::default(), Var::Free(x.clone())));
+    let var = Rc::new(Term::Var(Var::Free(x.clone())));
 
     assert_eq!(
         normalize(&context, &var).unwrap(),

@@ -147,7 +147,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
-    use nameless::{Ignore, Name};
+    use nameless::Name;
     use std::rc::Rc;
 
     use syntax::concrete::{ReplCommand, Term};
@@ -183,7 +183,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             let raw_term = Rc::new(parse_term.desugar());
             let (term, inferred) = semantics::infer(context, &raw_term)?;
 
-            let ann_term = Term::Ann(Ignore::default(), term, Rc::new(Term::from(&*inferred)));
+            let ann_term = Term::Ann(term, Rc::new(Term::from(&*inferred)));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },

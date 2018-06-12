@@ -219,23 +219,23 @@ impl ToDoc for raw::Term {
 impl ToDoc for Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Term::Ann(_, ref expr, ref ty) => pretty_ann(expr, ty),
-            Term::Universe(_, level) => pretty_universe(level),
-            Term::Literal(_, ref lit) => lit.to_doc(),
-            Term::Var(_, ref var) => pretty_var(var),
-            Term::Lam(_, ref scope) => pretty_lam(
+            Term::Ann(ref expr, ref ty) => pretty_ann(expr, ty),
+            Term::Universe(level) => pretty_universe(level),
+            Term::Literal(ref lit) => lit.to_doc(),
+            Term::Var(ref var) => pretty_var(var),
+            Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
-            Term::Pi(_, ref scope) => pretty_pi(
+            Term::Pi(ref scope) => pretty_pi(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0,
                 &scope.unsafe_body,
             ),
             Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
-            Term::If(_, ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
-            Term::RecordType(_, ref scope) => {
+            Term::If(ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
+            Term::RecordType(ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
 
@@ -252,16 +252,16 @@ impl ToDoc for Term {
                         ));
 
                     match *scope.unsafe_body {
-                        Term::RecordType(_, ref next_scope) => scope = next_scope,
-                        Term::RecordTypeEmpty(_) => break,
+                        Term::RecordType(ref next_scope) => scope = next_scope,
+                        Term::RecordTypeEmpty => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record_ty(inner)
             },
-            Term::RecordTypeEmpty(_) => pretty_empty_record_ty(),
-            Term::Record(_, ref scope) => {
+            Term::RecordTypeEmpty => pretty_empty_record_ty(),
+            Term::Record(ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
 
@@ -278,22 +278,22 @@ impl ToDoc for Term {
                         ));
 
                     match *scope.unsafe_body {
-                        Term::Record(_, ref next_scope) => scope = next_scope,
-                        Term::RecordEmpty(_) => break,
+                        Term::Record(ref next_scope) => scope = next_scope,
+                        Term::RecordEmpty => break,
                         _ => panic!("ill-formed record"),
                     }
                 }
 
                 pretty_record(inner)
             },
-            Term::RecordEmpty(_) => pretty_empty_record(),
-            Term::Array(_, ref elems) => Doc::text("[")
+            Term::RecordEmpty => pretty_empty_record(),
+            Term::Array(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append(Doc::text("]")),
-            Term::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
+            Term::Proj(ref expr, ref label) => pretty_proj(expr, label),
         }
     }
 }
