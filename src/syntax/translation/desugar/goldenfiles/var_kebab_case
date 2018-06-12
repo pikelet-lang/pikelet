@@ -1,0 +1,15 @@
+Var(
+    Ignore(
+        Span {
+            start: ByteIndex(1),
+            end: ByteIndex(8)
+        }
+    ),
+    Free(
+        User(
+            Ident(
+                "or-elim"
+            )
+        )
+    )
+)

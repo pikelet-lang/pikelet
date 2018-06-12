@@ -1,0 +1,49 @@
+Ann(
+    Ignore(
+        Span {
+            start: ByteIndex(1),
+            end: ByteIndex(19)
+        }
+    ),
+    Universe(
+        Ignore(
+            Span {
+                start: ByteIndex(1),
+                end: ByteIndex(5)
+            }
+        ),
+        Level(
+            0
+        )
+    ),
+    Ann(
+        Ignore(
+            Span {
+                start: ByteIndex(8),
+                end: ByteIndex(19)
+            }
+        ),
+        Universe(
+            Ignore(
+                Span {
+                    start: ByteIndex(8),
+                    end: ByteIndex(12)
+                }
+            ),
+            Level(
+                0
+            )
+        ),
+        Universe(
+            Ignore(
+                Span {
+                    start: ByteIndex(15),
+                    end: ByteIndex(19)
+                }
+            ),
+            Level(
+                0
+            )
+        )
+    )
+)

@@ -1,9 +1,22 @@
 use codespan::{CodeMap, FileName};
+use goldenfile::Mint;
 
 use library;
+use std::io::Write;
 use syntax::parse;
 
 use super::*;
+
+fn golden(filename: &str, literal: &str) {
+    let path = "src/syntax/translation/desugar/goldenfiles";
+
+    let mut mint = Mint::new(path);
+    let mut file = mint.new_goldenfile(filename).unwrap();
+
+    let term = parse(literal);
+
+    write!(file, "{:#?}", term).unwrap();
+}
 
 fn parse(src: &str) -> raw::Term {
     let mut codemap = CodeMap::new();
@@ -48,95 +61,42 @@ mod term {
 
     #[test]
     fn var() {
-        assert_term_eq!(
-            parse(r"x"),
-            Term::Var(Ignore::default(), Var::Free(Name::user("x"))),
-        );
+        golden("var", r"x");
     }
 
     #[test]
     fn var_kebab_case() {
-        assert_term_eq!(
-            parse(r"or-elim"),
-            Term::Var(Ignore::default(), Var::Free(Name::user("or-elim"))),
-        );
+        golden("var_kebab_case", r"or-elim");
     }
 
     #[test]
     fn ty() {
-        assert_term_eq!(parse(r"Type"), Term::Universe(Ignore::default(), Level(0)),);
+        golden("ty", r"Type");
     }
 
     #[test]
     fn ty_level() {
-        assert_term_eq!(
-            parse(r"Type 2"),
-            Term::Universe(Ignore::default(), Level(2)),
-        );
+        golden("ty_level", r"Type 2");
     }
 
     #[test]
     fn ann() {
-        assert_term_eq!(
-            parse(r"Type : Type"),
-            Term::Ann(
-                Ignore::default(),
-                Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                Rc::new(Term::Universe(Ignore::default(), Level(0))),
-            ),
-        );
+        golden("ann", r"Type : Type");
     }
 
     #[test]
     fn ann_ann_left() {
-        assert_term_eq!(
-            parse(r"Type : Type : Type"),
-            Term::Ann(
-                Ignore::default(),
-                Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                Rc::new(Term::Ann(
-                    Ignore::default(),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                )),
-            ),
-        );
+        golden("ann_ann_left", r"Type : Type : Type");
     }
 
     #[test]
     fn ann_ann_right() {
-        assert_term_eq!(
-            parse(r"Type : (Type : Type)"),
-            Term::Ann(
-                Ignore::default(),
-                Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                Rc::new(Term::Ann(
-                    Ignore::default(),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                )),
-            ),
-        );
+        golden("ann_ann_right", r"Type : (Type : Type)");
     }
 
     #[test]
     fn ann_ann_ann() {
-        assert_term_eq!(
-            parse(r"(Type : Type) : (Type : Type)"),
-            Rc::new(Term::Ann(
-                Ignore::default(),
-                Rc::new(Term::Ann(
-                    Ignore::default(),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                )),
-                Rc::new(Term::Ann(
-                    Ignore::default(),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
-                )),
-            )),
-        );
+        golden("ann_ann_ann", r"(Type : Type) : (Type : Type)");
     }
 
     #[test]
@@ -167,54 +127,12 @@ mod term {
 
     #[test]
     fn lam() {
-        assert_term_eq!(
-            parse(r"\x : (\y => y) => x"),
-            Rc::new(Term::Lam(
-                Ignore::default(),
-                nameless::bind(
-                    (
-                        Name::user("x"),
-                        Embed(Rc::new(Term::Lam(
-                            Ignore::default(),
-                            nameless::bind(
-                                (
-                                    Name::user("y"),
-                                    Embed(Rc::new(Term::Hole(Ignore::default()))),
-                                ),
-                                Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user("y")),)),
-                            ),
-                        )),),
-                    ),
-                    Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user("x")),)),
-                )
-            )),
-        );
+        golden("lam", r"\x : (\y => y) => x");
     }
 
     #[test]
     fn lam_lam_ann() {
-        assert_term_eq!(
-            parse(r"\(x y : Type) => x"),
-            Rc::new(Term::Lam(
-                Ignore::default(),
-                nameless::bind(
-                    (
-                        Name::user("x"),
-                        Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
-                    ),
-                    Rc::new(Term::Lam(
-                        Ignore::default(),
-                        nameless::bind(
-                            (
-                                Name::user("y"),
-                                Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
-                            ),
-                            Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user("x")),)),
-                        ),
-                    )),
-                )
-            )),
-        );
+        golden("lam_lam_ann", r"\(x y : Type) => x");
     }
 
     #[test]
@@ -262,28 +180,7 @@ mod term {
 
     #[test]
     fn pi_pi() {
-        assert_term_eq!(
-            parse(r"(x y : Type) -> x"),
-            Rc::new(Term::Pi(
-                Ignore::default(),
-                nameless::bind(
-                    (
-                        Name::user("x"),
-                        Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
-                    ),
-                    Rc::new(Term::Pi(
-                        Ignore::default(),
-                        nameless::bind(
-                            (
-                                Name::user("y"),
-                                Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
-                            ),
-                            Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user("x")),)),
-                        ),
-                    )),
-                ),
-            )),
-        );
+        golden("pi_pi", r"(x y : Type) -> x");
     }
 
     #[test]
@@ -355,30 +252,7 @@ mod term {
 
     #[test]
     fn id() {
-        let a = Name::user("a");
-
-        assert_term_eq!(
-            parse(r"\(a : Type) (x : a) => x"),
-            Rc::new(Term::Lam(
-                Ignore::default(),
-                nameless::bind(
-                    (
-                        a.clone(),
-                        Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
-                    ),
-                    Rc::new(Term::Lam(
-                        Ignore::default(),
-                        nameless::bind(
-                            (
-                                Name::user("x"),
-                                Embed(Rc::new(Term::Var(Ignore::default(), Var::Free(a),))),
-                            ),
-                            Rc::new(Term::Var(Ignore::default(), Var::Free(Name::user("x")),)),
-                        ),
-                    )),
-                ),
-            )),
-        );
+        golden("id", r"\(a : Type) (x : a) => x");
     }
 
     #[test]
