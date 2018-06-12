@@ -851,13 +851,13 @@ from them.</p>
 <pre><code>                (from parser)
                       |
                       v
-     +------------ RawTerm -----------+
+     +---------- raw::Term -----------+
      |                                |
      v                                v
 Type Inference &lt;- - - - - - -&gt; Type checking
      |                                ^
      |                                |
-   Term                             Value
+ core::Term                      core::Value
      |                                |
      +-------&gt; Normalization ---------+
      |
