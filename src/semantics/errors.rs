@@ -13,53 +13,45 @@ use syntax::raw;
 pub enum InternalError {
     #[fail(display = "Unsubstituted debruijn index: `{}{}`.", name, index)]
     UnsubstitutedDebruijnIndex {
-        span: ByteSpan,
+        span: Option<ByteSpan>,
         name: Name,
         index: BoundName,
     },
     #[fail(display = "Argument applied to non-function.")]
-    ArgumentAppliedToNonFunction { span: ByteSpan },
+    ArgumentAppliedToNonFunction,
     #[fail(display = "Expected a boolean expression.")]
-    ExpectedBoolExpr { span: ByteSpan },
+    ExpectedBoolExpr,
     #[fail(display = "Projected on non-existent field `{}`.", label)]
-    ProjectedOnNonExistentField {
-        label_span: ByteSpan,
-        label: syntax::Label,
-    },
+    ProjectedOnNonExistentField { label: syntax::Label },
 }
 
 impl InternalError {
-    pub fn span(&self) -> ByteSpan {
-        match *self {
-            InternalError::UnsubstitutedDebruijnIndex { span, .. }
-            | InternalError::ArgumentAppliedToNonFunction { span, .. }
-            | InternalError::ExpectedBoolExpr { span, .. } => span,
-            InternalError::ProjectedOnNonExistentField { label_span, .. } => label_span,
-        }
-    }
-
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             InternalError::UnsubstitutedDebruijnIndex {
                 span,
                 ref name,
                 index,
-            } => Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}{}`", name, index))
-                .with_label(Label::new_primary(span).with_message("index found here")),
-            InternalError::ArgumentAppliedToNonFunction { span } => {
+            } => {
+                let base = Diagnostic::new_bug(format!(
+                    "unsubstituted debruijn index: `{}{}`",
+                    name, index
+                ));
+
+                match span {
+                    None => base,
+                    Some(span) => {
+                        base.with_label(Label::new_primary(span).with_message("index found here"))
+                    },
+                }
+            },
+            InternalError::ArgumentAppliedToNonFunction => {
                 Diagnostic::new_bug("argument applied to non-function")
-                    .with_label(Label::new_primary(span).with_message("not a function"))
             },
-            InternalError::ExpectedBoolExpr { span } => {
-                Diagnostic::new_bug("expected a boolean expression").with_label(
-                    Label::new_primary(span).with_message("did not evaluate to a boolean"),
-                )
+            InternalError::ExpectedBoolExpr => Diagnostic::new_bug("expected a boolean expression"),
+            InternalError::ProjectedOnNonExistentField { ref label } => {
+                Diagnostic::new_bug(format!("projected on non-existent field `{}`.", label))
             },
-            InternalError::ProjectedOnNonExistentField {
-                label_span,
-                ref label,
-            } => Diagnostic::new_bug(format!("projected on non-existent field `{}`.", label))
-                .with_label(Label::new_primary(label_span).with_message("the projection")),
         }
     }
 }

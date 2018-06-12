@@ -1,7 +1,6 @@
 //! The core syntax of the language
 
-use codespan::{ByteIndex, ByteSpan};
-use nameless::{self, Bind, BoundPattern, Embed, Ignore, Name, Var};
+use nameless::{self, Bind, BoundPattern, Embed, Name, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -54,54 +53,33 @@ pub struct Definition {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
+    Ann(Rc<Term>, Rc<Term>),
     /// Universes
-    Universe(Ignore<ByteSpan>, Level),
+    Universe(Level),
     /// Literals
-    Literal(Ignore<ByteSpan>, Literal),
+    Literal(Literal),
     /// A variable
-    Var(Ignore<ByteSpan>, Var),
+    Var(Var),
     /// Dependent function types
-    Pi(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
-    Lam(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(Rc<Term>, Rc<Term>),
     /// If expression
-    If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
+    If(Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
-    RecordType(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    RecordType(Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The unit type
-    RecordTypeEmpty(Ignore<ByteSpan>),
+    RecordTypeEmpty,
     /// Dependent record
-    Record(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    Record(Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The element of the unit type
-    RecordEmpty(Ignore<ByteSpan>),
+    RecordEmpty,
     /// Field projection
-    Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label),
+    Proj(Rc<Term>, Label),
     /// Array literals
-    Array(Ignore<ByteSpan>, Vec<Rc<Term>>),
-}
-
-impl Term {
-    pub fn span(&self) -> ByteSpan {
-        match *self {
-            Term::Ann(span, _, _)
-            | Term::Universe(span, _)
-            | Term::Literal(span, _)
-            | Term::Var(span, _)
-            | Term::Lam(span, _)
-            | Term::Pi(span, _)
-            | Term::RecordType(span, _)
-            | Term::RecordTypeEmpty(span)
-            | Term::Record(span, _)
-            | Term::RecordEmpty(span)
-            | Term::Proj(span, _, _, _)
-            | Term::Array(span, _) => span.0,
-            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
-            Term::If(start, _, _, ref if_false) => ByteSpan::new(start.0, if_false.span().end()),
-        }
-    }
+    Array(Vec<Rc<Term>>),
 }
 
 impl fmt::Display for Term {
@@ -289,53 +267,42 @@ impl From<Neutral> for Value {
 impl<'a> From<&'a Value> for Term {
     fn from(src: &'a Value) -> Term {
         match *src {
-            Value::Universe(level) => Term::Universe(Ignore::default(), level),
-            Value::Literal(ref lit) => Term::Literal(Ignore::default(), lit.clone()),
+            Value::Universe(level) => Term::Universe(level),
+            Value::Literal(ref lit) => Term::Literal(lit.clone()),
             Value::Pi(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Pi(
-                    Ignore::default(),
-                    nameless::bind(param, Rc::new(Term::from(&*body))),
-                )
+                Term::Pi(nameless::bind(param, Rc::new(Term::from(&*body))))
             },
             Value::Lam(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::Lam(
-                    Ignore::default(),
-                    nameless::bind(param, Rc::new(Term::from(&*body))),
-                )
+                Term::Lam(nameless::bind(param, Rc::new(Term::from(&*body))))
             },
             Value::RecordType(ref scope) => {
                 let ((name, Embed(param_ann)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
 
-                Term::RecordType(
-                    Ignore::default(),
-                    nameless::bind(param, Rc::new(Term::from(&*body))),
-                )
+                Term::RecordType(nameless::bind(param, Rc::new(Term::from(&*body))))
             },
-            Value::RecordTypeEmpty => Term::RecordTypeEmpty(Ignore::default()),
+            Value::RecordTypeEmpty => Term::RecordTypeEmpty,
             Value::Record(ref scope) => {
                 let ((name, Embed(param_value)), body) = nameless::unbind(scope.clone());
                 let param = (name, Embed(Rc::new(Term::from(&*param_value))));
 
-                Term::Record(
-                    Ignore::default(),
-                    nameless::bind(param, Rc::new(Term::from(&*body))),
-                )
+                Term::Record(nameless::bind(param, Rc::new(Term::from(&*body))))
             },
-            Value::RecordEmpty => Term::RecordEmpty(Ignore::default()),
-            Value::Array(ref elems) => Term::Array(
-                Ignore::default(),
-                elems
+            Value::RecordEmpty => Term::RecordEmpty,
+            Value::Array(ref elems) => {
+                let elems = elems
                     .iter()
                     .map(|elem| Rc::new(Term::from(&**elem)))
-                    .collect(),
-            ),
+                    .collect();
+
+                Term::Array(elems)
+            },
             Value::Neutral(ref n) => Term::from(&**n),
         }
     }
@@ -347,7 +314,6 @@ impl<'a> From<&'a Neutral> for Term {
             Neutral::App(ref head, ref spine) => (Term::from(head), spine),
             Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
                 let head = Term::If(
-                    Ignore::default(),
                     Rc::new(Term::from(&**cond)),
                     Rc::new(Term::from(&**if_true)),
                     Rc::new(Term::from(&**if_false)),
@@ -355,12 +321,7 @@ impl<'a> From<&'a Neutral> for Term {
                 (head, spine)
             },
             Neutral::Proj(ref expr, ref name, ref spine) => {
-                let head = Term::Proj(
-                    Ignore::default(),
-                    Rc::new(Term::from(&**expr)),
-                    Ignore::default(),
-                    name.clone(),
-                );
+                let head = Term::Proj(Rc::new(Term::from(&**expr)), name.clone());
                 (head, spine)
             },
         };
@@ -374,7 +335,7 @@ impl<'a> From<&'a Neutral> for Term {
 impl<'a> From<&'a Head> for Term {
     fn from(src: &'a Head) -> Term {
         match *src {
-            Head::Var(ref var) => Term::Var(Ignore::default(), var.clone()),
+            Head::Var(ref var) => Term::Var(var.clone()),
         }
     }
 }
