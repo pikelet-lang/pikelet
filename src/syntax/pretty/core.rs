@@ -10,7 +10,7 @@ use syntax::{Label, Level};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
-fn pretty_ann<E: ToDoc, T: ToDoc>(expr: &E, ty: &T) -> StaticDoc {
+fn pretty_ann(expr: &impl ToDoc, ty: &impl ToDoc) -> StaticDoc {
     sexpr(
         "ann",
         expr.to_doc().append(Doc::space()).append(ty.to_doc()),
@@ -25,7 +25,7 @@ fn pretty_var(var: &Var) -> StaticDoc {
     sexpr("var", Doc::text(format!("{:#}", var)))
 }
 
-fn pretty_lam<A: ToDoc, B: ToDoc>(name: &Name, ann: &A, body: &B) -> StaticDoc {
+fn pretty_lam(name: &Name, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
         Doc::group(parens(
@@ -37,7 +37,7 @@ fn pretty_lam<A: ToDoc, B: ToDoc>(name: &Name, ann: &A, body: &B) -> StaticDoc {
     )
 }
 
-fn pretty_pi<A: ToDoc, B: ToDoc>(name: &Name, ann: &A, body: &B) -> StaticDoc {
+fn pretty_pi(name: &Name, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
         Doc::group(parens(
@@ -63,7 +63,7 @@ where
     )
 }
 
-fn pretty_if<C: ToDoc, T: ToDoc, F: ToDoc>(cond: &C, if_true: &T, if_false: &F) -> StaticDoc {
+fn pretty_if(cond: &impl ToDoc, if_true: &impl ToDoc, if_false: &impl ToDoc) -> StaticDoc {
     sexpr(
         "if",
         cond.to_doc()
@@ -90,7 +90,7 @@ fn pretty_empty_record() -> StaticDoc {
     pretty_record(Doc::text("()"))
 }
 
-fn pretty_proj<E: ToDoc>(expr: &E, label: &Label) -> StaticDoc {
+fn pretty_proj(expr: &impl ToDoc, label: &Label) -> StaticDoc {
     sexpr(
         "proj",
         expr.to_doc()
