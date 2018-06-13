@@ -314,35 +314,6 @@ impl<'input> Lexer<'input> {
         }
     }
 
-    /// Consume a block comment
-    fn block_comment(
-        &mut self,
-        start: ByteIndex,
-    ) -> Result<Option<SpannedToken<'input>>, LexerError> {
-        // TODO: Nested block comments?
-        match self.lookahead() {
-            Some((_, '-')) => {
-                self.bump(); // skip '-'
-
-                loop {
-                    self.take_until(start, |c| c == '-');
-                    self.bump(); // skip '-'
-
-                    match self.lookahead() {
-                        Some((_, '}')) => {
-                            self.bump();
-                            return Ok(None);
-                        },
-                        Some(_) => continue,
-                        None => return Err(LexerError::UnexpectedEof { end: self.eof() }),
-                    }
-                }
-            },
-            Some((end, _)) => Ok(Some((start, Token::LBrace, end))),
-            None => Ok(Some((start, Token::LBrace, self.eof()))),
-        }
-    }
-
     /// Consume a doc comment
     fn doc_comment(&mut self, start: ByteIndex) -> SpannedToken<'input> {
         let (end, mut comment) =
@@ -497,11 +468,7 @@ impl<'input> Iterator for Lexer<'input> {
                 '\\' => Ok((start, Token::BSlash, end)),
                 '(' => Ok((start, Token::LParen, end)),
                 ')' => Ok((start, Token::RParen, end)),
-                '{' => match self.block_comment(start) {
-                    Ok(None) => continue,
-                    Ok(Some((start, token, end))) => Ok((start, token, end)),
-                    Err(err) => Err(err),
-                },
+                '{' => Ok((start, Token::LBrace, end)),
                 '}' => Ok((start, Token::RBrace, end)),
                 '[' => Ok((start, Token::LBracket, end)),
                 ']' => Ok((start, Token::RBracket, end)),
@@ -556,13 +523,6 @@ mod tests {
     fn comment() {
         test! {
             "       -- hello this is dog\n  ",
-        };
-    }
-
-    #[test]
-    fn block_comment() {
-        test! {
-            "       {- hello this is dog\n no really it is -}  ",
         };
     }
 
