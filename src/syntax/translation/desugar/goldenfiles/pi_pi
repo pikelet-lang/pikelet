@@ -1,0 +1,83 @@
+Pi(
+    Ignore(
+        Span {
+            start: ByteIndex(2),
+            end: ByteIndex(18)
+        }
+    ),
+    Bind {
+        unsafe_pattern: (
+            User(
+                Ident(
+                    "x"
+                )
+            ),
+            Embed(
+                Universe(
+                    Ignore(
+                        Span {
+                            start: ByteIndex(8),
+                            end: ByteIndex(12)
+                        }
+                    ),
+                    Level(
+                        0
+                    )
+                )
+            )
+        ),
+        unsafe_body: Pi(
+            Ignore(
+                Span {
+                    start: ByteIndex(4),
+                    end: ByteIndex(18)
+                }
+            ),
+            Bind {
+                unsafe_pattern: (
+                    User(
+                        Ident(
+                            "y"
+                        )
+                    ),
+                    Embed(
+                        Universe(
+                            Ignore(
+                                Span {
+                                    start: ByteIndex(8),
+                                    end: ByteIndex(12)
+                                }
+                            ),
+                            Level(
+                                0
+                            )
+                        )
+                    )
+                ),
+                unsafe_body: Var(
+                    Ignore(
+                        Span {
+                            start: ByteIndex(17),
+                            end: ByteIndex(18)
+                        }
+                    ),
+                    Bound(
+                        User(
+                            Ident(
+                                "x"
+                            )
+                        ),
+                        BoundName {
+                            scope: DebruijnIndex(
+                                1
+                            ),
+                            pattern: PatternIndex(
+                                0
+                            )
+                        }
+                    )
+                )
+            }
+        )
+    }
+)

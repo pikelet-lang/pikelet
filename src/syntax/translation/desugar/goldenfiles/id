@@ -1,0 +1,95 @@
+Lam(
+    Ignore(
+        Span {
+            start: ByteIndex(3),
+            end: ByteIndex(25)
+        }
+    ),
+    Bind {
+        unsafe_pattern: (
+            User(
+                Ident(
+                    "a"
+                )
+            ),
+            Embed(
+                Universe(
+                    Ignore(
+                        Span {
+                            start: ByteIndex(7),
+                            end: ByteIndex(11)
+                        }
+                    ),
+                    Level(
+                        0
+                    )
+                )
+            )
+        ),
+        unsafe_body: Lam(
+            Ignore(
+                Span {
+                    start: ByteIndex(14),
+                    end: ByteIndex(25)
+                }
+            ),
+            Bind {
+                unsafe_pattern: (
+                    User(
+                        Ident(
+                            "x"
+                        )
+                    ),
+                    Embed(
+                        Var(
+                            Ignore(
+                                Span {
+                                    start: ByteIndex(18),
+                                    end: ByteIndex(19)
+                                }
+                            ),
+                            Bound(
+                                User(
+                                    Ident(
+                                        "a"
+                                    )
+                                ),
+                                BoundName {
+                                    scope: DebruijnIndex(
+                                        0
+                                    ),
+                                    pattern: PatternIndex(
+                                        0
+                                    )
+                                }
+                            )
+                        )
+                    )
+                ),
+                unsafe_body: Var(
+                    Ignore(
+                        Span {
+                            start: ByteIndex(24),
+                            end: ByteIndex(25)
+                        }
+                    ),
+                    Bound(
+                        User(
+                            Ident(
+                                "x"
+                            )
+                        ),
+                        BoundName {
+                            scope: DebruijnIndex(
+                                0
+                            ),
+                            pattern: PatternIndex(
+                                0
+                            )
+                        }
+                    )
+                )
+            }
+        )
+    }
+)

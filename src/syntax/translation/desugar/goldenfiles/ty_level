@@ -1,0 +1,11 @@
+Universe(
+    Ignore(
+        Span {
+            start: ByteIndex(1),
+            end: ByteIndex(7)
+        }
+    ),
+    Level(
+        2
+    )
+)

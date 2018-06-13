@@ -1,4 +1,22 @@
+use goldenfile::Mint;
+
+use std::io::Write;
+
 use super::*;
+
+fn golden(filename: &str, literal: &str) {
+    let mut codemap = CodeMap::new();
+    let context = Context::new();
+
+    let path = "src/semantics/tests/goldenfiles";
+
+    let mut mint = Mint::new(path);
+    let mut file = mint.new_goldenfile(filename).unwrap();
+
+    let term = parse_normalize(&mut codemap, &context, literal);
+
+    write!(file, "{:#?}", term).unwrap();
+}
 
 #[test]
 fn var() {
@@ -15,13 +33,7 @@ fn var() {
 
 #[test]
 fn ty() {
-    let mut codemap = CodeMap::new();
-    let context = Context::new();
-
-    assert_term_eq!(
-        parse_normalize(&mut codemap, &context, r"Type"),
-        Rc::new(Value::Universe(Level(0)))
-    );
+    golden("ty", r"Type");
 }
 
 #[test]
