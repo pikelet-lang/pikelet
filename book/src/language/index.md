@@ -33,14 +33,6 @@ Line comments are preceded by a double dash:
 -- this is a comment!
 ```
 
-Block comments go between curly-dashes like so:
-
-```pikelet
-{-
-  this is a block comment!
--}
-```
-
 Doc comments are preceded by a triple pipe, and are used to document
 definitions:
 
