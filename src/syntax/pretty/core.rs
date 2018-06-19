@@ -1,6 +1,6 @@
 //! Pretty printing for the core syntax
 
-use nameless::{Name, Var};
+use nameless::{FreeVar, Var};
 use pretty::Doc;
 use std::iter;
 
@@ -25,7 +25,7 @@ fn pretty_var(var: &Var) -> StaticDoc {
     sexpr("var", Doc::text(format!("{:#}", var)))
 }
 
-fn pretty_lam(name: &Name, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_lam(name: &FreeVar, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
         Doc::group(parens(
@@ -37,7 +37,7 @@ fn pretty_lam(name: &Name, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     )
 }
 
-fn pretty_pi(name: &Name, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_pi(name: &FreeVar, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
         Doc::group(parens(

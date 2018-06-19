@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{self, Bind, BoundTerm, Embed, Name, Var};
+use nameless::{self, Bind, BoundTerm, Embed, FreeVar, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -136,7 +136,7 @@ fn resugar_literal(constant: &core::Literal) -> concrete::Term {
 }
 
 fn resugar_pi(
-    scope: &Bind<(Name, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    scope: &Bind<(FreeVar, Embed<Rc<core::Term>>), Rc<core::Term>>,
     prec: Prec,
 ) -> concrete::Term {
     let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
@@ -234,7 +234,7 @@ fn resugar_pi(
 }
 
 fn resugar_lam(
-    scope: &Bind<(Name, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    scope: &Bind<(FreeVar, Embed<Rc<core::Term>>), Rc<core::Term>>,
     prec: Prec,
 ) -> concrete::Term {
     let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
@@ -314,10 +314,10 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             )
         },
         core::Term::Literal(ref lit) => resugar_literal(lit),
-        core::Term::Var(Var::Free(Name::User(ref name))) => {
+        core::Term::Var(Var::Free(FreeVar::User(ref name))) => {
             concrete::Term::Var(ByteIndex::default(), name.to_string())
         },
-        // core::Term::Var(Var::Free(Name::Gen(ref _name, ref _gen))) => {}
+        // core::Term::Var(Var::Free(FreeVar::Gen(ref _name, ref _gen))) => {}
         core::Term::Var(Var::Free(ref name)) => {
             // TODO: use name if it is present, and not used in the current scope
             // TODO: otherwise create a pretty name

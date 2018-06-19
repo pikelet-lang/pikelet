@@ -62,7 +62,7 @@ Pi(
                         }
                     ),
                     Bound(
-                        BoundName {
+                        BoundVar {
                             scope: DebruijnIndex(
                                 1
                             ),

@@ -1,6 +1,6 @@
 //! The syntax of the language
 
-use nameless::{BoundName, BoundPattern, BoundTerm, Name, ScopeState, Var};
+use nameless::{BoundPattern, BoundTerm, BoundVar, FreeVar, ScopeState};
 use std::fmt;
 
 pub mod concrete;
@@ -33,13 +33,13 @@ impl fmt::Display for Level {
 /// Labels are significant when comparing for alpha-equality, both in terms and
 /// in patterns
 #[derive(Debug, Clone, PartialEq)]
-pub struct Label(pub Name);
+pub struct Label(pub FreeVar);
 
 impl BoundTerm for Label {
     fn term_eq(&self, other: &Label) -> bool {
         match (self.0.ident(), other.0.ident()) {
             (Some(lhs), Some(rhs)) => lhs == rhs,
-            (_, _) => Name::term_eq(&self.0, &other.0),
+            (_, _) => FreeVar::term_eq(&self.0, &other.0),
         }
     }
 }
@@ -49,19 +49,19 @@ impl BoundPattern for Label {
         Label::term_eq(self, other)
     }
 
-    fn freshen(&mut self) -> Vec<Name> {
+    fn freshen(&mut self) -> Vec<FreeVar> {
         self.0.freshen()
     }
 
-    fn rename(&mut self, perm: &[Name]) {
+    fn rename(&mut self, perm: &[FreeVar]) {
         self.0.rename(perm)
     }
 
-    fn on_free(&self, state: ScopeState, name: &Name) -> Option<BoundName> {
+    fn on_free(&self, state: ScopeState, name: &FreeVar) -> Option<BoundVar> {
         self.0.on_free(state, name)
     }
 
-    fn on_bound(&self, state: ScopeState, name: BoundName) -> Option<Name> {
+    fn on_bound(&self, state: ScopeState, name: BoundVar) -> Option<FreeVar> {
         self.0.on_bound(state, name)
     }
 }

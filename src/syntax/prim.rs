@@ -1,6 +1,6 @@
 //! Primitive operations
 
-use nameless::{Name, Var};
+use nameless::{FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -77,7 +77,7 @@ macro_rules! impl_has_ty {
     ($T:ty, $ty_name:expr) => {
         impl HasType for $T {
             fn ty() -> Rc<Type> {
-                Rc::new(Value::from(Var::Free(Name::user($ty_name))))
+                Rc::new(Value::from(Var::Free(FreeVar::user($ty_name))))
             }
         }
     };
@@ -135,7 +135,7 @@ macro_rules! count {
 macro_rules! def_prim {
     ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
-            use nameless::{self, Embed, Name};
+            use nameless::{self, Embed, FreeVar};
 
             fn fun(params: &[Rc<Value>]) -> Result<Rc<Value>, ()> {
                 match params[..] {
@@ -151,7 +151,7 @@ macro_rules! def_prim {
             let arity = count!($($param_name)*);
             let mut ann = <$RType>::ty();
             $(ann = Rc::new(Value::Pi(nameless::bind(
-                (Name::user(stringify!($param_name)), Embed(<$PType>::ty())),
+                (FreeVar::user(stringify!($param_name)), Embed(<$PType>::ty())),
                 ann
             )));)+
 

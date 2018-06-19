@@ -6,7 +6,7 @@ fn free() {
     let context = Context::new();
 
     let given_expr = r"x";
-    let x = Name::user("x");
+    let x = FreeVar::user("x");
 
     assert_eq!(
         infer(&context, &parse(&mut codemap, given_expr)),

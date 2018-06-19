@@ -147,7 +147,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
-    use nameless::Name;
+    use nameless::FreeVar;
     use std::rc::Rc;
 
     use syntax::concrete::{ReplCommand, Term};
@@ -198,7 +198,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            let context = context.define_term(Name::user(&*name), inferred, term);
+            let context = context.define_term(FreeVar::user(&*name), inferred, term);
 
             return Ok(ControlFlow::Continue(Some(context)));
         },

@@ -2,7 +2,7 @@
 //! be elaborated in a type-directed way during type checking and inference
 
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{Bind, Embed, Ignore, Name, Var};
+use nameless::{Bind, Embed, FreeVar, Ignore, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -69,9 +69,9 @@ pub enum Term {
     /// A variable
     Var(Ignore<ByteSpan>, Var),
     /// Dependent function types
-    Pi(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(Ignore<ByteSpan>, Bind<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
-    Lam(Ignore<ByteSpan>, Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(Ignore<ByteSpan>, Bind<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(Rc<Term>, Rc<Term>),
     /// If expression

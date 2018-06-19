@@ -1,5 +1,5 @@
 use codespan::{ByteOffset, ByteSpan};
-use nameless::{self, Embed, GenId, Ignore, Name, Var};
+use nameless::{self, Embed, FreeVar, GenId, Ignore, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -35,7 +35,7 @@ fn desugar_pi(params: &[concrete::PiParamGroup], body: &concrete::Term) -> raw::
             term = raw::Term::Pi(
                 Ignore(ByteSpan::new(start, term.span().end())),
                 nameless::bind(
-                    (Name::user(name.clone()), Embed(ann.clone())),
+                    (FreeVar::user(name.clone()), Embed(ann.clone())),
                     Rc::new(term),
                 ),
             );
@@ -68,7 +68,7 @@ fn desugar_lam(
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(start, ref name) in names.iter().rev() {
-            let name = Name::user(name.clone());
+            let name = FreeVar::user(name.clone());
             let ann = match *ann {
                 None => Rc::new(raw::Term::Hole(Ignore::default())),
                 Some(ref ann) => Rc::new(ann.desugar()),
@@ -102,7 +102,7 @@ fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> ra
             Ignore(ByteSpan::new(start, term.span().end())),
             nameless::bind(
                 (
-                    Label(Name::user(label.clone())),
+                    Label(FreeVar::user(label.clone())),
                     Embed(Rc::new(ann.desugar())),
                 ),
                 Rc::new(term),
@@ -121,7 +121,7 @@ fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> raw::Term
             Ignore(ByteSpan::new(start, term.span().end())),
             nameless::bind(
                 (
-                    Label(Name::user(label.clone())),
+                    Label(FreeVar::user(label.clone())),
                     Embed(Rc::new(desugar_lam(
                         params,
                         ret_ann.as_ref().map(<_>::as_ref),
@@ -243,11 +243,13 @@ impl Desugar<raw::Term> for concrete::Term {
                 elems.iter().map(|elem| Rc::new(elem.desugar())).collect(),
             ),
             concrete::Term::Hole(_) => raw::Term::Hole(span),
-            concrete::Term::Var(_, ref x) => raw::Term::Var(span, Var::Free(Name::user(x.clone()))),
+            concrete::Term::Var(_, ref x) => {
+                raw::Term::Var(span, Var::Free(FreeVar::user(x.clone())))
+            },
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
             concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, None, body),
             concrete::Term::Arrow(ref ann, ref body) => {
-                let name = Name::from(GenId::fresh());
+                let name = FreeVar::from(GenId::fresh());
                 let ann = Rc::new(ann.desugar());
                 let body = Rc::new(body.desugar());
 
@@ -273,7 +275,7 @@ impl Desugar<raw::Term> for concrete::Term {
                     span,
                     Rc::new(tm.desugar()),
                     label_span,
-                    Label(Name::user(label.clone())),
+                    Label(FreeVar::user(label.clone())),
                 )
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),

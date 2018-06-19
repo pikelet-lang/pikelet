@@ -1,6 +1,6 @@
 //! The core syntax of the language
 
-use nameless::{self, Bind, BoundPattern, Embed, Name, Var};
+use nameless::{self, Bind, BoundPattern, Embed, FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -61,9 +61,9 @@ pub enum Term {
     /// A variable
     Var(Var),
     /// Dependent function types
-    Pi(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(Bind<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
-    Lam(Bind<(Name, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(Bind<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(Rc<Term>, Rc<Term>),
     /// If expression
@@ -100,9 +100,9 @@ pub enum Value {
     /// Literals
     Literal(Literal),
     /// A pi type
-    Pi(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
+    Pi(Bind<(FreeVar, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
-    Lam(Bind<(Name, Embed<Rc<Value>>), Rc<Value>>),
+    Lam(Bind<(FreeVar, Embed<Rc<Value>>), Rc<Value>>),
     /// Dependent record types
     RecordType(Bind<(Label, Embed<Rc<Value>>), Rc<Value>>),
     /// The unit type
@@ -194,7 +194,7 @@ impl Value {
         }
     }
 
-    pub fn free_app(&self) -> Option<(&Name, &[Rc<Value>])> {
+    pub fn free_app(&self) -> Option<(&FreeVar, &[Rc<Value>])> {
         if let Value::Neutral(ref neutral) = *self {
             if let Neutral::App(Head::Var(Var::Free(ref name)), ref spine) = **neutral {
                 return Some((name, spine));

@@ -22,7 +22,7 @@ fn golden(filename: &str, literal: &str) {
 fn var() {
     let context = Context::new();
 
-    let x = Name::user("x");
+    let x = FreeVar::user("x");
     let var = Rc::new(Term::Var(Var::Free(x.clone())));
 
     assert_eq!(
@@ -41,7 +41,7 @@ fn lam() {
     let mut codemap = CodeMap::new();
     let context = Context::new();
 
-    let x = Name::user("x");
+    let x = FreeVar::user("x");
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"\x : Type => x"),
@@ -57,7 +57,7 @@ fn pi() {
     let mut codemap = CodeMap::new();
     let context = Context::new();
 
-    let x = Name::user("x");
+    let x = FreeVar::user("x");
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"(x : Type) -> x"),
@@ -73,10 +73,13 @@ fn lam_app() {
     let mut codemap = CodeMap::new();
     let context = Context::new();
 
-    let x = Name::user("x");
-    let y = Name::user("y");
+    let x = FreeVar::user("x");
+    let y = FreeVar::user("y");
     let ty_arr = Rc::new(Value::Pi(nameless::bind(
-        (Name::user("_"), Embed(Rc::new(Value::Universe(Level(0))))),
+        (
+            FreeVar::user("_"),
+            Embed(Rc::new(Value::Universe(Level(0)))),
+        ),
         Rc::new(Value::Universe(Level(0))),
     )));
 
@@ -104,10 +107,13 @@ fn pi_app() {
     let mut codemap = CodeMap::new();
     let context = Context::new();
 
-    let x = Name::user("x");
-    let y = Name::user("y");
+    let x = FreeVar::user("x");
+    let y = FreeVar::user("y");
     let ty_arr = Rc::new(Value::Pi(nameless::bind(
-        (Name::user("_"), Embed(Rc::new(Value::Universe(Level(0))))),
+        (
+            FreeVar::user("_"),
+            Embed(Rc::new(Value::Universe(Level(0)))),
+        ),
         Rc::new(Value::Universe(Level(0))),
     )));
 

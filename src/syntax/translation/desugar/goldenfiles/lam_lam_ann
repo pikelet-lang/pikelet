@@ -62,7 +62,7 @@ Lam(
                         }
                     ),
                     Bound(
-                        BoundName {
+                        BoundVar {
                             scope: DebruijnIndex(
                                 1
                             ),

@@ -1,5 +1,5 @@
 use im::Vector;
-use nameless::Name;
+use nameless::FreeVar;
 use std::fmt;
 use std::rc::Rc;
 
@@ -11,9 +11,9 @@ use syntax::prim::{self, PrimFn};
 #[derive(Debug, Clone)]
 pub enum Entry {
     /// A type claim
-    Claim(Name, Rc<Type>),
+    Claim(FreeVar, Rc<Type>),
     /// A value definition
-    Definition(Name, Definition),
+    Definition(FreeVar, Definition),
 }
 
 #[derive(Debug, Clone)]
@@ -40,13 +40,13 @@ impl Context {
         }
     }
 
-    pub fn claim(&self, name: Name, ann: Rc<Type>) -> Context {
+    pub fn claim(&self, name: FreeVar, ann: Rc<Type>) -> Context {
         Context {
             entries: self.entries.push_front(Entry::Claim(name, ann)),
         }
     }
 
-    pub fn define_term(&self, name: Name, ann: Rc<Type>, term: Rc<Term>) -> Context {
+    pub fn define_term(&self, name: FreeVar, ann: Rc<Type>, term: Rc<Term>) -> Context {
         Context {
             entries: self
                 .entries
@@ -55,7 +55,7 @@ impl Context {
         }
     }
 
-    fn define_prim(&self, name: Name, prim: Rc<PrimFn>) -> Context {
+    fn define_prim(&self, name: FreeVar, prim: Rc<PrimFn>) -> Context {
         Context {
             entries: self
                 .entries
@@ -64,7 +64,7 @@ impl Context {
         }
     }
 
-    pub fn lookup_claim(&self, name: &Name) -> Option<Rc<Type>> {
+    pub fn lookup_claim(&self, name: &FreeVar) -> Option<Rc<Type>> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {
@@ -74,7 +74,7 @@ impl Context {
             .next()
     }
 
-    pub fn lookup_definition(&self, name: &Name) -> Option<Definition> {
+    pub fn lookup_definition(&self, name: &FreeVar) -> Option<Definition> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {
@@ -92,8 +92,8 @@ impl Default for Context {
         use syntax::core::{Literal, Value};
         use syntax::Level;
 
-        let name = Name::user;
-        let fresh_name = || Name::from(GenId::fresh());
+        let name = FreeVar::user;
+        let fresh_name = || FreeVar::from(GenId::fresh());
         let free_var = |n| Rc::new(Value::from(Var::Free(name(n))));
         let universe0 = Rc::new(Value::Universe(Level(0)));
         let bool_lit = |val| Rc::new(Term::Literal(Literal::Bool(val)));
