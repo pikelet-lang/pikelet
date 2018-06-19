@@ -37,7 +37,7 @@ pub struct Label(pub Name);
 
 impl BoundTerm for Label {
     fn term_eq(&self, other: &Label) -> bool {
-        match (self.0.name(), other.0.name()) {
+        match (self.0.ident(), other.0.ident()) {
             (Some(lhs), Some(rhs)) => lhs == rhs,
             (_, _) => Name::term_eq(&self.0, &other.0),
         }

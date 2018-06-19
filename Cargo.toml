@@ -27,7 +27,7 @@ codespan-reporting = "0.1.3"
 failure = "0.1.1"
 im = "10.2"
 lalrpop-util = "0.15.1"
-nameless = { git = "https://github.com/brendanzab/nameless", rev = "e783226", version = "0.1.0" }
+nameless = { git = "https://github.com/brendanzab/nameless", rev = "4f9ed18", version = "0.1.0" }
 pretty = { version = "0.4.0", features = ["termcolor"] }
 unicode-xid = "0.1.0"
 

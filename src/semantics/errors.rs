@@ -2,7 +2,7 @@
 
 use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
-use nameless::{BoundName, Name};
+use nameless::{BoundName, Ident, Name};
 
 use syntax;
 use syntax::concrete;
@@ -11,11 +11,11 @@ use syntax::raw;
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
-    #[fail(display = "Unsubstituted debruijn index: `{}{}`.", name, index)]
+    #[fail(display = "Unsubstituted debruijn index: `{}`, `{:?}`.", index, hint)]
     UnsubstitutedDebruijnIndex {
         span: Option<ByteSpan>,
-        name: Name,
         index: BoundName,
+        hint: Option<Ident>,
     },
     #[fail(display = "Argument applied to non-function.")]
     ArgumentAppliedToNonFunction,
@@ -30,12 +30,12 @@ impl InternalError {
         match *self {
             InternalError::UnsubstitutedDebruijnIndex {
                 span,
-                ref name,
                 index,
+                ref hint,
             } => {
                 let base = Diagnostic::new_bug(format!(
-                    "unsubstituted debruijn index: `{}{}`",
-                    name, index
+                    "unsubstituted debruijn index: `{}`, `{:?}`",
+                    index, hint
                 ));
 
                 match span {

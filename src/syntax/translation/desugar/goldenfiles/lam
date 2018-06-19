@@ -46,11 +46,6 @@ Lam(
                                 }
                             ),
                             Bound(
-                                User(
-                                    Ident(
-                                        "y"
-                                    )
-                                ),
                                 BoundName {
                                     scope: DebruijnIndex(
                                         0
@@ -58,7 +53,12 @@ Lam(
                                     pattern: PatternIndex(
                                         0
                                     )
-                                }
+                                },
+                                Some(
+                                    Ident(
+                                        "y"
+                                    )
+                                )
                             )
                         )
                     }
@@ -73,11 +73,6 @@ Lam(
                 }
             ),
             Bound(
-                User(
-                    Ident(
-                        "x"
-                    )
-                ),
                 BoundName {
                     scope: DebruijnIndex(
                         0
@@ -85,7 +80,12 @@ Lam(
                     pattern: PatternIndex(
                         0
                     )
-                }
+                },
+                Some(
+                    Ident(
+                        "x"
+                    )
+                )
             )
         )
     }

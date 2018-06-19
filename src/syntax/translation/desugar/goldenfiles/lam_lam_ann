@@ -62,11 +62,6 @@ Lam(
                         }
                     ),
                     Bound(
-                        User(
-                            Ident(
-                                "x"
-                            )
-                        ),
                         BoundName {
                             scope: DebruijnIndex(
                                 1
@@ -74,7 +69,12 @@ Lam(
                             pattern: PatternIndex(
                                 0
                             )
-                        }
+                        },
+                        Some(
+                            Ident(
+                                "x"
+                            )
+                        )
                     )
                 )
             }

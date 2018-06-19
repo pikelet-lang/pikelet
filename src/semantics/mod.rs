@@ -153,10 +153,10 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
+            Var::Bound(index, ref hint) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: None,
-                name: name.clone(),
                 index,
+                hint: hint.clone(),
             }),
         },
 
@@ -511,10 +511,10 @@ pub fn infer(
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(ref name, index) => Err(InternalError::UnsubstitutedDebruijnIndex {
+            Var::Bound(index, ref hint) => Err(InternalError::UnsubstitutedDebruijnIndex {
                 span: Some(raw_term.span()),
-                name: name.clone(),
                 index,
+                hint: hint.clone(),
             }.into()),
         },
 

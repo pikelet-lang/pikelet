@@ -146,7 +146,7 @@ fn resugar_pi(
     //
     // We'll be checking for readable names as we go, because if they've
     // survived until now they're probably desirable to retain!
-    if body.free_vars().contains(&name) || name.name().is_some() {
+    if body.free_vars().contains(&name) || name.ident().is_some() {
         // TODO: use name if it is present, and not used in the current scope
         // TODO: otherwise create a pretty name
         // TODO: add the used name to the environment
@@ -171,7 +171,7 @@ fn resugar_pi(
                 _ => break,
             };
 
-            if core::Term::term_eq(&ann, &next_ann) && next_name.name().is_some() {
+            if core::Term::term_eq(&ann, &next_ann) && next_name.ident().is_some() {
                 // Combine the parameters if the type annotations are
                 // alpha-equivalent. For example:
                 //
@@ -181,7 +181,7 @@ fn resugar_pi(
                 // ```
                 let next_name = (ByteIndex::default(), next_name.to_string());
                 params.last_mut().unwrap().0.push(next_name);
-            } else if next_body.free_vars().contains(&next_name) || next_name.name().is_some() {
+            } else if next_body.free_vars().contains(&next_name) || next_name.ident().is_some() {
                 // Add a new parameter if the body is dependent on the parameter
                 // or there is a human-readable name given
                 params.push((
