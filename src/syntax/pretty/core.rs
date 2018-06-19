@@ -18,7 +18,7 @@ fn pretty_ann(expr: &impl ToDoc, ty: &impl ToDoc) -> StaticDoc {
 }
 
 fn pretty_universe(level: Level) -> StaticDoc {
-    sexpr("Type", Doc::as_string(level))
+    sexpr("Type", Doc::as_string(&level))
 }
 
 fn pretty_var(var: &Var) -> StaticDoc {
@@ -104,8 +104,8 @@ impl ToDoc for raw::Literal {
         match *self {
             raw::Literal::String(ref value) => Doc::text(format!("{:?}", value)),
             raw::Literal::Char(value) => Doc::text(format!("{:?}", value)),
-            raw::Literal::Int(value) => Doc::as_string(value),
-            raw::Literal::Float(value) => Doc::as_string(value),
+            raw::Literal::Int(value) => Doc::as_string(&value),
+            raw::Literal::Float(value) => Doc::as_string(&value),
         }
     }
 }
@@ -117,16 +117,16 @@ impl ToDoc for Literal {
             Literal::Bool(false) => Doc::text("false"),
             Literal::String(ref value) => Doc::text(format!("{:?}", value)),
             Literal::Char(value) => Doc::text(format!("{:?}", value)),
-            Literal::U8(value) => Doc::as_string(value),
-            Literal::U16(value) => Doc::as_string(value),
-            Literal::U32(value) => Doc::as_string(value),
-            Literal::U64(value) => Doc::as_string(value),
-            Literal::I8(value) => Doc::as_string(value),
-            Literal::I16(value) => Doc::as_string(value),
-            Literal::I32(value) => Doc::as_string(value),
-            Literal::I64(value) => Doc::as_string(value),
-            Literal::F32(value) => Doc::as_string(value),
-            Literal::F64(value) => Doc::as_string(value),
+            Literal::U8(value) => Doc::as_string(&value),
+            Literal::U16(value) => Doc::as_string(&value),
+            Literal::U32(value) => Doc::as_string(&value),
+            Literal::U64(value) => Doc::as_string(&value),
+            Literal::I8(value) => Doc::as_string(&value),
+            Literal::I16(value) => Doc::as_string(&value),
+            Literal::I32(value) => Doc::as_string(&value),
+            Literal::I64(value) => Doc::as_string(&value),
+            Literal::F32(value) => Doc::as_string(&value),
+            Literal::F64(value) => Doc::as_string(&value),
         }
     }
 }
@@ -401,7 +401,7 @@ impl ToDoc for Head {
 fn pretty_definition(name: &str, ann: &impl ToDoc, term: &impl ToDoc) -> StaticDoc {
     sexpr(
         "define",
-        Doc::as_string(name)
+        Doc::as_string(&name)
             .append(Doc::space())
             .append(ann.to_doc())
             .append(Doc::space())

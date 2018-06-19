@@ -90,13 +90,13 @@ impl ToDoc for Term {
                 .append(ty.to_doc()),
             Term::Universe(_, level) => {
                 Doc::text("Type").append(level.map_or(Doc::nil(), |level| {
-                    Doc::space().append(Doc::as_string(level))
+                    Doc::space().append(Doc::as_string(&level))
                 }))
             },
             Term::String(_, ref value) => Doc::text(format!("{:?}", value)),
             Term::Char(_, value) => Doc::text(format!("{:?}", value)),
-            Term::Int(_, value) => Doc::as_string(value),
-            Term::Float(_, value) => Doc::as_string(value),
+            Term::Int(_, value) => Doc::as_string(&value),
+            Term::Float(_, value) => Doc::as_string(&value),
             Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(Term::to_doc),

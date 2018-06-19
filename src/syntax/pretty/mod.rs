@@ -15,7 +15,7 @@ mod core;
 /// `usize::MAX`, so we'll just use a really big number instead...
 pub const FALLBACK_WIDTH: usize = 1_000_000;
 
-pub type StaticDoc = Doc<'static, ColorSpec, BoxDoc<'static, ColorSpec>>;
+pub type StaticDoc = Doc<'static, BoxDoc<'static, ColorSpec>, ColorSpec>;
 
 /// Convert a datatype to a pretty-printable document
 pub trait ToDoc {
