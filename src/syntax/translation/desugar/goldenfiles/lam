@@ -5,7 +5,7 @@ Lam(
             end: ByteIndex(20)
         }
     ),
-    Bind {
+    Scope {
         unsafe_pattern: (
             User(
                 Ident(
@@ -20,7 +20,7 @@ Lam(
                             end: ByteIndex(14)
                         }
                     ),
-                    Bind {
+                    Scope {
                         unsafe_pattern: (
                             User(
                                 Ident(

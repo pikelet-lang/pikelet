@@ -2,7 +2,7 @@
 //! be elaborated in a type-directed way during type checking and inference
 
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{Bind, Embed, FreeVar, Ignore, Var};
+use nameless::{Embed, FreeVar, Ignore, Scope, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -69,17 +69,23 @@ pub enum Term {
     /// A variable
     Var(Ignore<ByteSpan>, Var),
     /// Dependent function types
-    Pi(Ignore<ByteSpan>, Bind<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(
+        Ignore<ByteSpan>,
+        Scope<(FreeVar, Embed<Rc<Term>>), Rc<Term>>,
+    ),
     /// Lambda abstractions
-    Lam(Ignore<ByteSpan>, Bind<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(
+        Ignore<ByteSpan>,
+        Scope<(FreeVar, Embed<Rc<Term>>), Rc<Term>>,
+    ),
     /// Term application
     App(Rc<Term>, Rc<Term>),
     /// If expression
     If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
-    RecordType(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    RecordType(Ignore<ByteSpan>, Scope<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// Dependent record
-    Record(Ignore<ByteSpan>, Bind<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    Record(Ignore<ByteSpan>, Scope<(Label, Embed<Rc<Term>>), Rc<Term>>),
     /// The unit type
     RecordTypeEmpty(Ignore<ByteSpan>),
     /// The element of the unit type

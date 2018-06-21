@@ -1,5 +1,5 @@
 use codespan::{ByteOffset, ByteSpan};
-use nameless::{self, Embed, FreeVar, GenId, Ignore, Var};
+use nameless::{Embed, FreeVar, GenId, Ignore, Scope, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -34,7 +34,7 @@ fn desugar_pi(params: &[concrete::PiParamGroup], body: &concrete::Term) -> raw::
             // This could be wrong... :/
             term = raw::Term::Pi(
                 Ignore(ByteSpan::new(start, term.span().end())),
-                nameless::bind(
+                Scope::new(
                     (FreeVar::user(name.clone()), Embed(ann.clone())),
                     Rc::new(term),
                 ),
@@ -76,7 +76,7 @@ fn desugar_lam(
 
             term = raw::Term::Lam(
                 Ignore(ByteSpan::new(start, term.span().end())),
-                nameless::bind((name, Embed(ann)), Rc::new(term)),
+                Scope::new((name, Embed(ann)), Rc::new(term)),
             );
         }
     }
@@ -100,7 +100,7 @@ fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> ra
     for &(start, ref label, ref ann) in fields.iter().rev() {
         term = raw::Term::RecordType(
             Ignore(ByteSpan::new(start, term.span().end())),
-            nameless::bind(
+            Scope::new(
                 (
                     Label(FreeVar::user(label.clone())),
                     Embed(Rc::new(ann.desugar())),
@@ -119,7 +119,7 @@ fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> raw::Term
     for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {
         term = raw::Term::Record(
             Ignore(ByteSpan::new(start, term.span().end())),
-            nameless::bind(
+            Scope::new(
                 (
                     Label(FreeVar::user(label.clone())),
                     Embed(Rc::new(desugar_lam(
@@ -253,7 +253,7 @@ impl Desugar<raw::Term> for concrete::Term {
                 let ann = Rc::new(ann.desugar());
                 let body = Rc::new(body.desugar());
 
-                raw::Term::Pi(span, nameless::bind((name, Embed(ann)), body))
+                raw::Term::Pi(span, Scope::new((name, Embed(ann)), body))
             },
             concrete::Term::App(ref fn_expr, ref args) => desugar_app(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),

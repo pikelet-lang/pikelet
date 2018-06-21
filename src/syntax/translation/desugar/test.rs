@@ -105,12 +105,12 @@ mod term {
             parse(r"\x : Type -> Type => x"),
             Rc::new(Term::Lam(
                 Ignore::default(),
-                nameless::bind(
+                Scope::new(
                     (
                         FreeVar::user("x"),
                         Embed(Rc::new(Term::Pi(
                             Ignore::default(),
-                            nameless::bind(
+                            Scope::new(
                                 (
                                     FreeVar::user("_"),
                                     Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
@@ -141,7 +141,7 @@ mod term {
             parse(r"Type -> Type"),
             Rc::new(Term::Pi(
                 Ignore::default(),
-                nameless::bind(
+                Scope::new(
                     (
                         FreeVar::user("_"),
                         Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
@@ -158,12 +158,12 @@ mod term {
             parse(r"(x : Type -> Type) -> x"),
             Rc::new(Term::Pi(
                 Ignore::default(),
-                nameless::bind(
+                Scope::new(
                     (
                         FreeVar::user("x"),
                         Embed(Rc::new(Term::Pi(
                             Ignore::default(),
-                            nameless::bind(
+                            Scope::new(
                                 (
                                     FreeVar::user("_"),
                                     Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
@@ -189,14 +189,14 @@ mod term {
             parse(r"(x : Type) -> x -> x"),
             Rc::new(Term::Pi(
                 Ignore::default(),
-                nameless::bind(
+                Scope::new(
                     (
                         FreeVar::user("x"),
                         Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
                     ),
                     Rc::new(Term::Pi(
                         Ignore::default(),
-                        nameless::bind(
+                        Scope::new(
                             (
                                 FreeVar::user("_"),
                                 Embed(Rc::new(Term::Var(
@@ -218,12 +218,12 @@ mod term {
             parse(r"\(x : Type -> Type) (y : Type) => x y"),
             Rc::new(Term::Lam(
                 Ignore::default(),
-                nameless::bind(
+                Scope::new(
                     (
                         FreeVar::user("x"),
                         Embed(Rc::new(Term::Pi(
                             Ignore::default(),
-                            nameless::bind(
+                            Scope::new(
                                 (
                                     FreeVar::user("_"),
                                     Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
@@ -234,7 +234,7 @@ mod term {
                     ),
                     Rc::new(Term::Lam(
                         Ignore::default(),
-                        nameless::bind(
+                        Scope::new(
                             (
                                 FreeVar::user("y"),
                                 Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
@@ -267,14 +267,14 @@ mod term {
             parse(r"(a : Type) -> a -> a"),
             Rc::new(Term::Pi(
                 Ignore::default(),
-                nameless::bind(
+                Scope::new(
                     (
                         FreeVar::user("a"),
                         Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
                     ),
                     Rc::new(Term::Pi(
                         Ignore::default(),
-                        nameless::bind(
+                        Scope::new(
                             (
                                 FreeVar::user("_"),
                                 Embed(Rc::new(Term::Var(

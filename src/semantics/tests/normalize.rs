@@ -45,7 +45,7 @@ fn lam() {
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"\x : Type => x"),
-        Rc::new(Value::Lam(nameless::bind(
+        Rc::new(Value::Lam(Scope::new(
             (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
             Rc::new(Value::from(Var::Free(x))),
         ))),
@@ -61,7 +61,7 @@ fn pi() {
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"(x : Type) -> x"),
-        Rc::new(Value::Pi(nameless::bind(
+        Rc::new(Value::Pi(Scope::new(
             (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
             Rc::new(Value::from(Var::Free(x))),
         ))),
@@ -75,7 +75,7 @@ fn lam_app() {
 
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
-    let ty_arr = Rc::new(Value::Pi(nameless::bind(
+    let ty_arr = Rc::new(Value::Pi(Scope::new(
         (
             FreeVar::user("_"),
             Embed(Rc::new(Value::Universe(Level(0)))),
@@ -89,9 +89,9 @@ fn lam_app() {
             &context,
             r"\(x : Type -> Type) (y : Type) => x y"
         ),
-        Rc::new(Value::Lam(nameless::bind(
+        Rc::new(Value::Lam(Scope::new(
             (x.clone(), Embed(ty_arr)),
-            Rc::new(Value::Lam(nameless::bind(
+            Rc::new(Value::Lam(Scope::new(
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
                     Head::Var(Var::Free(x)),
@@ -109,7 +109,7 @@ fn pi_app() {
 
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
-    let ty_arr = Rc::new(Value::Pi(nameless::bind(
+    let ty_arr = Rc::new(Value::Pi(Scope::new(
         (
             FreeVar::user("_"),
             Embed(Rc::new(Value::Universe(Level(0)))),
@@ -123,9 +123,9 @@ fn pi_app() {
             &context,
             r"(x : Type -> Type) -> (y : Type) -> x y"
         ),
-        Rc::new(Value::Pi(nameless::bind(
+        Rc::new(Value::Pi(Scope::new(
             (x.clone(), Embed(ty_arr)),
-            Rc::new(Value::Pi(nameless::bind(
+            Rc::new(Value::Pi(Scope::new(
                 (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
                 Rc::new(Value::from(Neutral::App(
                     Head::Var(Var::Free(x)),

@@ -135,7 +135,7 @@ macro_rules! count {
 macro_rules! def_prim {
     ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
-            use nameless::{self, Embed, FreeVar};
+            use nameless::{Embed, FreeVar, Scope};
 
             fn fun(params: &[Rc<Value>]) -> Result<Rc<Value>, ()> {
                 match params[..] {
@@ -150,7 +150,7 @@ macro_rules! def_prim {
             let name = $name.to_string();
             let arity = count!($($param_name)*);
             let mut ann = <$RType>::ty();
-            $(ann = Rc::new(Value::Pi(nameless::bind(
+            $(ann = Rc::new(Value::Pi(Scope::new(
                 (FreeVar::user(stringify!($param_name)), Embed(<$PType>::ty())),
                 ann
             )));)+

@@ -87,7 +87,7 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Context {
-        use nameless::{self, Embed, GenId, Var};
+        use nameless::{Embed, GenId, Scope, Var};
 
         use syntax::core::{Literal, Value};
         use syntax::Level;
@@ -116,9 +116,9 @@ impl Default for Context {
             .claim(name("F64"), universe0.clone())
             .claim(
                 name("Array"),
-                Rc::new(Value::Pi(nameless::bind(
+                Rc::new(Value::Pi(Scope::new(
                     (fresh_name(), Embed(free_var("U64"))),
-                    Rc::new(Value::Pi(nameless::bind(
+                    Rc::new(Value::Pi(Scope::new(
                         (fresh_name(), Embed(universe0.clone())),
                         universe0.clone(),
                     ))),

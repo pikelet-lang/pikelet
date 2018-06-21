@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use nameless::{self, BoundPattern, BoundTerm, Embed, FreeVar, Var};
+use nameless::{BoundPattern, BoundTerm, Embed, FreeVar, Scope, Var};
 use std::rc::Rc;
 
 use syntax::context::Context;
@@ -59,29 +59,29 @@ pub fn subst(value: &Value, substs: &[(FreeVar, Rc<Term>)]) -> Rc<Term> {
         Value::Universe(level) => Rc::new(Term::Universe(level)),
         Value::Literal(ref lit) => Rc::new(Term::Literal(lit.clone())),
         Value::Pi(ref scope) => {
-            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::Pi(nameless::bind(
+            let ((name, Embed(ann)), body) = scope.clone().unbind();
+            Rc::new(Term::Pi(Scope::new(
                 (name, Embed(subst(&ann, substs))),
                 subst(&body, substs),
             )))
         },
         Value::Lam(ref scope) => {
-            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::Lam(nameless::bind(
+            let ((name, Embed(ann)), body) = scope.clone().unbind();
+            Rc::new(Term::Lam(Scope::new(
                 (name, Embed(subst(&ann, substs))),
                 subst(&body, substs),
             )))
         },
         Value::RecordType(ref scope) => {
-            let ((label, Embed(ann)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::RecordType(nameless::bind(
+            let ((label, Embed(ann)), body) = scope.clone().unbind();
+            Rc::new(Term::RecordType(Scope::new(
                 (label, Embed(subst(&ann, substs))),
                 subst(&body, substs),
             )))
         },
         Value::Record(ref scope) => {
-            let ((label, Embed(expr)), body) = nameless::unbind(scope.clone());
-            Rc::new(Term::Record(nameless::bind(
+            let ((label, Embed(expr)), body) = scope.clone().unbind();
+            Rc::new(Term::Record(Scope::new(
                 (label, Embed(subst(&expr, substs))),
                 subst(&body, substs),
             )))
@@ -162,25 +162,22 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
         // E-PI
         Term::Pi(ref scope) => {
-            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
+            let ((name, Embed(ann)), body) = scope.clone().unbind();
 
             let ann = normalize(context, &ann)?;
             let body = normalize(context, &body)?;
 
-            Ok(Rc::new(Value::Pi(nameless::bind((name, Embed(ann)), body))))
+            Ok(Rc::new(Value::Pi(Scope::new((name, Embed(ann)), body))))
         },
 
         // E-LAM
         Term::Lam(ref scope) => {
-            let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
+            let ((name, Embed(ann)), body) = scope.clone().unbind();
 
             let ann = normalize(context, &ann)?;
             let body = normalize(context, &body)?;
 
-            Ok(Rc::new(Value::Lam(nameless::bind(
-                (name, Embed(ann)),
-                body,
-            ))))
+            Ok(Rc::new(Value::Lam(Scope::new((name, Embed(ann)), body))))
         },
 
         // E-APP
@@ -190,7 +187,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
             match Rc::make_mut(&mut value_expr) {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
-                    let ((name, Embed(_)), body) = nameless::unbind(scope.clone());
+                    let ((name, Embed(_)), body) = scope.clone().unbind();
                     normalize(context, &subst(&*body, &[(name, arg.clone())]))
                 },
                 Value::Neutral(ref mut neutral) => {
@@ -241,11 +238,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
         // E-RECORD-TYPE
         Term::RecordType(ref scope) => {
-            let ((label, Embed(ann)), body) = nameless::unbind(scope.clone());
+            let ((label, Embed(ann)), body) = scope.clone().unbind();
             let ann = normalize(context, &ann)?;
             let body = normalize(context, &body)?;
 
-            Ok(Value::RecordType(nameless::bind((label, Embed(ann)), body)).into())
+            Ok(Value::RecordType(Scope::new((label, Embed(ann)), body)).into())
         },
 
         // E-EMPTY-RECORD-TYPE
@@ -253,11 +250,11 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
 
         // E-RECORD
         Term::Record(ref scope) => {
-            let ((label, Embed(term)), body) = nameless::unbind(scope.clone());
+            let ((label, Embed(term)), body) = scope.clone().unbind();
             let value = normalize(context, &term)?;
             let body = normalize(context, &body)?;
 
-            Ok(Value::Record(nameless::bind((label, Embed(value)), body)).into())
+            Ok(Value::Record(Scope::new((label, Embed(value)), body)).into())
         },
 
         // E-EMPTY-RECORD
@@ -339,13 +336,13 @@ pub fn check(
         // C-LAM
         (&raw::Term::Lam(_, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (pi_name, Embed(pi_ann)), pi_body) =
-                nameless::unbind2(lam_scope.clone(), pi_scope.clone());
+                Scope::unbind2(lam_scope.clone(), pi_scope.clone());
 
             // Elaborate the hole, if it exists
             if let raw::Term::Hole(_) = *lam_ann {
                 let lam_ann = Rc::new(Term::from(&*pi_ann));
                 let lam_body = check(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
-                let lam_scope = nameless::bind((lam_name, Embed(lam_ann)), lam_body);
+                let lam_scope = Scope::new((lam_name, Embed(lam_ann)), lam_body);
 
                 return Ok(Rc::new(Term::Lam(lam_scope)));
             }
@@ -373,7 +370,7 @@ pub fn check(
         // C-RECORD
         (&raw::Term::Record(span, ref scope), &Value::RecordType(ref ty_scope)) => {
             let ((label, Embed(raw_expr)), raw_body, (ty_label, Embed(ann)), ty_body) =
-                nameless::unbind2(scope.clone(), ty_scope.clone());
+                Scope::unbind2(scope.clone(), ty_scope.clone());
 
             if Label::pattern_eq(&label, &ty_label) {
                 let expr = check(context, &raw_expr, &ann)?;
@@ -383,7 +380,7 @@ pub fn check(
                 )?;
                 let body = check(context, &raw_body, &ty_body)?;
 
-                return Ok(Rc::new(Term::Record(nameless::bind(
+                return Ok(Rc::new(Term::Record(Scope::new(
                     (label, Embed(expr)),
                     body,
                 ))));
@@ -520,7 +517,7 @@ pub fn infer(
 
         // I-PI
         raw::Term::Pi(_, ref raw_scope) => {
-            let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
+            let ((name, Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
             let (ann, ann_level) = infer_universe(context, &raw_ann)?;
             let (body, body_level) = {
@@ -529,14 +526,14 @@ pub fn infer(
             };
 
             Ok((
-                Rc::new(Term::Pi(nameless::bind((name, Embed(ann)), body))),
+                Rc::new(Term::Pi(Scope::new((name, Embed(ann)), body))),
                 Rc::new(Value::Universe(cmp::max(ann_level, body_level))),
             ))
         },
 
         // I-LAM
         raw::Term::Lam(_, ref raw_scope) => {
-            let ((name, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
+            let ((name, Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
             // Check for holes before entering to ensure we get a nice error
             if let raw::Term::Hole(_) = *raw_ann {
@@ -556,8 +553,8 @@ pub fn infer(
             let pi_param = (name.clone(), Embed(pi_ann));
 
             Ok((
-                Rc::new(Term::Lam(nameless::bind(lam_param, lam_body))),
-                Rc::new(Value::Pi(nameless::bind(pi_param, pi_body))),
+                Rc::new(Term::Lam(Scope::new(lam_param, lam_body))),
+                Rc::new(Value::Pi(Scope::new(pi_param, pi_body))),
             ))
         },
 
@@ -577,7 +574,7 @@ pub fn infer(
 
             match *expr_ty {
                 Value::Pi(ref scope) => {
-                    let ((name, Embed(ann)), body) = nameless::unbind(scope.clone());
+                    let ((name, Embed(ann)), body) = scope.clone().unbind();
 
                     let arg = check(context, raw_arg, &ann)?;
                     let body = normalize(context, &subst(&*body, &[(name, arg.clone())]))?;
@@ -594,7 +591,7 @@ pub fn infer(
 
         // I-RECORD-TYPE
         raw::Term::RecordType(_, ref raw_scope) => {
-            let ((label, Embed(raw_ann)), raw_body) = nameless::unbind(raw_scope.clone());
+            let ((label, Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
             // Check that rest of record is well-formed?
             // Might be able to skip that for now, because there's no way to
@@ -606,7 +603,7 @@ pub fn infer(
                 infer_universe(&context.claim(label.0.clone(), ann), &raw_body)?
             };
 
-            let scope = nameless::bind((label, Embed(ann)), body);
+            let scope = Scope::new((label, Embed(ann)), body);
 
             Ok((
                 Rc::new(Term::RecordType(scope)),
@@ -656,7 +653,7 @@ fn field_substs(expr: &Rc<Term>, label: &Label, ty: &Rc<Type>) -> Vec<(FreeVar, 
     let mut current_scope = ty.record_ty();
 
     while let Some(scope) = current_scope {
-        let ((current_label, Embed(_)), body) = nameless::unbind(scope);
+        let ((current_label, Embed(_)), body) = scope.unbind();
 
         if Label::pattern_eq(&current_label, &label) {
             break;

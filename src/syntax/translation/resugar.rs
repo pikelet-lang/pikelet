@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{self, Bind, BoundTerm, Embed, FreeVar, Var};
+use nameless::{BoundTerm, Embed, FreeVar, Scope, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -136,10 +136,10 @@ fn resugar_literal(constant: &core::Literal) -> concrete::Term {
 }
 
 fn resugar_pi(
-    scope: &Bind<(FreeVar, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    scope: &Scope<(FreeVar, Embed<Rc<core::Term>>), Rc<core::Term>>,
     prec: Prec,
 ) -> concrete::Term {
-    let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
+    let ((name, Embed(mut ann)), mut body) = scope.clone().unbind();
 
     // Only use explicit parameter names if the body is dependent on
     // the parameter or there is a human-readable name given.
@@ -167,7 +167,7 @@ fn resugar_pi(
             // (a : Type) (b : Type -> Type) -> ...
             // ```
             let ((next_name, Embed(next_ann)), next_body) = match *body {
-                core::Term::Pi(ref scope) => nameless::unbind(scope.clone()),
+                core::Term::Pi(ref scope) => scope.clone().unbind(),
                 _ => break,
             };
 
@@ -234,10 +234,10 @@ fn resugar_pi(
 }
 
 fn resugar_lam(
-    scope: &Bind<(FreeVar, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    scope: &Scope<(FreeVar, Embed<Rc<core::Term>>), Rc<core::Term>>,
     prec: Prec,
 ) -> concrete::Term {
-    let ((name, Embed(mut ann)), mut body) = nameless::unbind(scope.clone());
+    let ((name, Embed(mut ann)), mut body) = scope.clone().unbind();
 
     // TODO: use name if it is present, and not used in the current scope
     // TODO: otherwise create a pretty name
@@ -258,7 +258,7 @@ fn resugar_lam(
         // \(a : Type) (b : Type -> Type) => ...
         // ```
         let ((next_name, Embed(next_ann)), next_body) = match *body {
-            core::Term::Lam(ref scope) => nameless::unbind(scope.clone()),
+            core::Term::Lam(ref scope) => scope.clone().unbind(),
             _ => break,
         };
 
@@ -350,7 +350,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             let mut scope = scope.clone();
 
             loop {
-                let ((label, Embed(expr)), body) = nameless::unbind(scope);
+                let ((label, Embed(expr)), body) = scope.unbind();
 
                 fields.push((
                     ByteIndex::default(),
@@ -373,7 +373,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             let mut scope = scope.clone();
 
             loop {
-                let ((label, Embed(expr)), body) = nameless::unbind(scope);
+                let ((label, Embed(expr)), body) = scope.unbind();
                 let (expr_params, expr_body) = match resugar_term(&expr, Prec::NO_WRAP) {
                     concrete::Term::Lam(_, params, expr_body) => (params, *expr_body),
                     expr_body => (vec![], expr_body),

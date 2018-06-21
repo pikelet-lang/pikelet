@@ -5,7 +5,7 @@ Pi(
             end: ByteIndex(18)
         }
     ),
-    Bind {
+    Scope {
         unsafe_pattern: (
             User(
                 Ident(
@@ -33,7 +33,7 @@ Pi(
                     end: ByteIndex(18)
                 }
             ),
-            Bind {
+            Scope {
                 unsafe_pattern: (
                     User(
                         Ident(
