@@ -266,33 +266,40 @@ impl From<Neutral> for Value {
 
 impl<'a> From<&'a Value> for Term {
     fn from(src: &'a Value) -> Term {
+        // Bypassing `Scope::new` and `Scope::unbind` here should be fine
+        // because we aren't altering the structure of the scopes during this
+        // transformation. This should save on some traversals of the AST!
         match *src {
             Value::Universe(level) => Term::Universe(level),
             Value::Literal(ref lit) => Term::Literal(lit.clone()),
             Value::Pi(ref scope) => {
-                let ((name, Embed(param_ann)), body) = scope.clone().unbind();
-                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
-
-                Term::Pi(Scope::new(param, Rc::new(Term::from(&*body))))
+                let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
+                Term::Pi(Scope {
+                    unsafe_pattern: (name.clone(), Embed(Rc::new(Term::from(&**ann)))),
+                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                })
             },
             Value::Lam(ref scope) => {
-                let ((name, Embed(param_ann)), body) = scope.clone().unbind();
-                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
-
-                Term::Lam(Scope::new(param, Rc::new(Term::from(&*body))))
+                let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
+                Term::Lam(Scope {
+                    unsafe_pattern: (name.clone(), Embed(Rc::new(Term::from(&**ann)))),
+                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                })
             },
             Value::RecordType(ref scope) => {
-                let ((name, Embed(param_ann)), body) = scope.clone().unbind();
-                let param = (name, Embed(Rc::new(Term::from(&*param_ann))));
-
-                Term::RecordType(Scope::new(param, Rc::new(Term::from(&*body))))
+                let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
+                Term::RecordType(Scope {
+                    unsafe_pattern: (label.clone(), Embed(Rc::new(Term::from(&**ann)))),
+                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                })
             },
             Value::RecordTypeEmpty => Term::RecordTypeEmpty,
             Value::Record(ref scope) => {
-                let ((name, Embed(param_value)), body) = scope.clone().unbind();
-                let param = (name, Embed(Rc::new(Term::from(&*param_value))));
-
-                Term::Record(Scope::new(param, Rc::new(Term::from(&*body))))
+                let (ref label, Embed(ref term)) = scope.unsafe_pattern;
+                Term::Record(Scope {
+                    unsafe_pattern: (label.clone(), Embed(Rc::new(Term::from(&**term)))),
+                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                })
             },
             Value::RecordEmpty => Term::RecordEmpty,
             Value::Array(ref elems) => {
