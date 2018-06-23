@@ -14,7 +14,7 @@ matrix:
     - rust: nightly
 
 install:
-  - ci/install-mdbook
+  - ci/install-cargo-updates
   - ci/build-highlight-js
   - cargo build --verbose # https://docs.travis-ci.com/user/languages/rust/#Dependency-Management
 
