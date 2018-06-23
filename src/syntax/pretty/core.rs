@@ -210,7 +210,7 @@ impl ToDoc for raw::Term {
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
-                .append(Doc::text("]")),
+                .append("]"),
             raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
         }
     }
@@ -292,7 +292,7 @@ impl ToDoc for Term {
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
-                .append(Doc::text("]")),
+                .append("]"),
             Term::Proj(ref expr, ref label) => pretty_proj(expr, label),
         }
     }
@@ -370,7 +370,7 @@ impl ToDoc for Value {
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
-                .append(Doc::text("]")),
+                .append("]"),
             Value::Neutral(ref n) => n.to_doc(),
         }
     }

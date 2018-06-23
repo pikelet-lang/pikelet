@@ -35,7 +35,7 @@ impl<T: ToDoc> ToDoc for Rc<T> {
 }
 
 fn parens(doc: StaticDoc) -> StaticDoc {
-    Doc::text("(").append(doc.append(Doc::text(")").nest(1)))
+    Doc::text("(").append(doc.append(")").nest(1))
 }
 
 fn sexpr(name: &'static str, doc: StaticDoc) -> StaticDoc {
