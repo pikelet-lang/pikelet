@@ -12,5 +12,6 @@
 - [Appendix](./appendix/index.md)
   - [Design](./appendix/design.md)
   - [Theory](./appendix/theory.md)
+  - [Implementation](./appendix/implementation.md)
   - [Influences](./appendix/influences.md)
   - [References](./appendix/references.md)
