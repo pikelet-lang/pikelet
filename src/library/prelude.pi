@@ -127,18 +127,12 @@ Eq-F64 : Eq F64 = record { eq = prim-f64-eq };
 
 
 ||| An associative operation on `a`.
-|||
-||| This means the following laws must hold:
-|||
-||| ```
-||| (a : Type) (S : Semigroup a) (x y z: a) ->
-|||     S.append x (S.append y z) == S.append (S.append x y) z
-||| ```
 Semigroup (a : Type) = Record {
     ||| The associative operation
     append : a -> a -> a;
 
     -- TODO: Laws via property testing or proofs?
+    -- append-assoc : (x y z : a) -> append x (append y z) = append (append x y) z
 };
 
 append : (a : Type) (S : Semigroup a) -> a -> a -> a;
@@ -170,21 +164,16 @@ Semigroup-F32-Mul : Semigroup F32 = record { append = prim-f32-mul };
 Semigroup-F64-Mul : Semigroup F64 = record { append = prim-f64-mul };
 
 
-||| A semigroup that also has an identity.
-|||
-||| This means the following additional laws must hold:
-|||
-||| ```
-||| (a : Type) (M : Monoid a) (x : a) -> M.semigroup.append x M.empty == x
-||| (a : Type) (M : Monoid a) (x : a) -> M.semigroup.append M.empty x == x
-||| ```
+||| A semigroup that also has an identity element.
 Monoid (a : Type) = Record {
     ||| The semigroup
     semigroup : Semigroup a;
-    ||| The identity of `.semigroup.append`
+    ||| The identity element of `semigroup.append`
     empty : a;
 
     -- TODO: Laws via property testing or proofs?
+    -- append-empty : (x : a) -> semigroup.append x empty = x
+    -- empty-append : (x : a) -> semigroup.append empty x = x
 };
 
 empty : (a : Type) (M : Monoid a) -> a;
@@ -214,6 +203,18 @@ Monoid-I32-Mul : Monoid I32 = record { semigroup = Semigroup-I32-Mul; empty = 1 
 Monoid-I64-Mul : Monoid I64 = record { semigroup = Semigroup-I64-Mul; empty = 1 };
 Monoid-F32-Mul : Monoid F32 = record { semigroup = Semigroup-F32-Mul; empty = 1 };
 Monoid-F64-Mul : Monoid F64 = record { semigroup = Semigroup-F64-Mul; empty = 1 };
+
+
+||| A monoid that also has an inverse element.
+Group (a : Type) = Record {
+    ||| The monoid
+    monoid : Monoid a;
+    ||| The inverse of `monoid.semigroup.append`
+    inverse : a -> a;
+
+    -- TODO: Laws via property testing or proofs?
+    -- append-left-inverse : (a : Type) -> monoid.semigroup.append (inverse a) a = monoid.empty
+};
 
 
 ||| General trait for numeric types
@@ -275,6 +276,10 @@ Category = Record {
     -- TODO: Laws via property testing or proofs?
     -- TODO: E-Category - ie. equivalence relation on morphisms?
     -- https://gist.github.com/brendanzab/9285eb8dfef5b6d6ccd87d90d6579590#gistcomment-2401643
+    -- id-left : (a b : Object) (f : Arrow a b) -> seq id f = f;
+    -- id-right : (a b : Object) (f : Arrow a b) -> seq f id = f;
+    -- seq-assoc : (a b c d : Object) (f : Arrow a b) (g : Arrow b c) (h : Arrow c d) -> seq (seq f g) h = seq f (seq g h);
+    -- seq-cong : (a b c : Object) (f0 f1 : Arrow a b) (g0 g1 : Arrow b c) (p : rel f0 f1) (q : g0 = g1) -> seq f0 g0 = seq f1 g1;
 };
 
 ||| The identity arrow
