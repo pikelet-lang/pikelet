@@ -1,6 +1,6 @@
 //! The core syntax of the language
 
-use nameless::{BoundPattern, Embed, FreeVar, Scope, Var};
+use nameless::{BoundPattern, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -36,13 +36,12 @@ impl fmt::Display for Literal {
 /// A type checked and elaborated module
 pub struct Module {
     /// The definitions contained in the module
-    pub definitions: Vec<Definition>,
+    pub definitions: Nest<(FreeVar, Embed<Definition>)>,
 }
 
 /// A type checked and elaborated definition
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct Definition {
-    /// The name of the definition
-    pub name: String,
     /// The elaborated value
     pub term: Rc<Term>,
     /// The type of the definition

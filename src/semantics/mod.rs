@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use nameless::{BoundPattern, BoundTerm, Embed, FreeVar, Scope, Var};
+use nameless::{BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use std::rc::Rc;
 
 use syntax::context::Context;
@@ -23,31 +23,36 @@ pub use self::errors::{InternalError, TypeError};
 /// Type check and elaborate a module
 pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
     let mut context = Context::default();
-    let mut definitions = Vec::with_capacity(raw_module.definitions.len());
+    let definitions = raw_module
+        .definitions
+        .clone()
+        .unnest()
+        .into_iter()
+        .map(|(name, Embed(raw_definition))| {
+            let (term, ann) = match *raw_definition.ann {
+                // We don't have a type annotation available to us! Instead we will
+                // attempt to infer it based on the body of the definition
+                raw::Term::Hole(_) => infer(&context, &raw_definition.term)?,
+                // We have a type annotation! Elaborate it, then normalize it, then
+                // check that it matches the body of the definition
+                _ => {
+                    let (ann, _) = infer(&context, &raw_definition.ann)?;
+                    let ann = normalize(&context, &ann)?;
+                    let term = check(&context, &raw_definition.term, &ann)?;
+                    (term, ann)
+                },
+            };
 
-    for raw_definition in &raw_module.definitions {
-        let name = raw_definition.name.clone();
-        let (term, ann) = match *raw_definition.ann {
-            // We don't have a type annotation available to us! Instead we will
-            // attempt to infer it based on the body of the definition
-            raw::Term::Hole(_) => infer(&context, &raw_definition.term)?,
-            // We have a type annotation! Elaborate it, then normalize it, then
-            // check that it matches the body of the definition
-            _ => {
-                let (ann, _) = infer(&context, &raw_definition.ann)?;
-                let ann = normalize(&context, &ann)?;
-                let term = check(&context, &raw_definition.term, &ann)?;
-                (term, ann)
-            },
-        };
+            // Add the definition to the context
+            context = context.define_term(name.clone(), ann.clone(), term.clone());
 
-        // Add the definition to the context
-        context = context.define_term(FreeVar::user(name.clone()), ann.clone(), term.clone());
+            Ok((name, Embed(Definition { term, ann })))
+        })
+        .collect::<Result<_, TypeError>>()?;
 
-        definitions.push(Definition { name, term, ann })
-    }
-
-    Ok(Module { definitions })
+    Ok(Module {
+        definitions: Nest::new(definitions),
+    })
 }
 
 /// Apply a substitution to a value
