@@ -1,5 +1,5 @@
 use codespan::{ByteOffset, ByteSpan};
-use nameless::{Embed, FreeVar, GenId, Ignore, Scope, Var};
+use nameless::{Embed, FreeVar, GenId, Ignore, Nest, Scope, Var};
 use std::rc::Rc;
 
 use syntax::concrete;
@@ -145,7 +145,7 @@ impl Desugar<raw::Module> for concrete::Module {
                 // we encounter their corresponding definitions later as type annotations
                 let mut prev_claim = None;
                 // The definitions, desugared from the concrete syntax
-                let mut definitions = Vec::<raw::Definition>::new();
+                let mut definitions = Vec::<(FreeVar, Embed<raw::Definition>)>::new();
 
                 for declaration in declarations {
                     match *declaration {
@@ -156,7 +156,10 @@ impl Desugar<raw::Module> for concrete::Module {
                         } => match prev_claim.take() {
                             Some((name, ann)) => {
                                 let term = Rc::new(raw::Term::Hole(Ignore::default()));
-                                definitions.push(raw::Definition { name, term, ann });
+                                definitions.push((
+                                    FreeVar::user(name),
+                                    Embed(raw::Definition { term, ann }),
+                                ));
                             },
                             None => prev_claim = Some((name.clone(), Rc::new(ann.desugar()))),
                         },
@@ -175,33 +178,41 @@ impl Desugar<raw::Module> for concrete::Module {
                             }
 
                             match prev_claim.take() {
-                                None => definitions.push(raw::Definition {
-                                    name: name.clone(),
-                                    ann: Rc::new(raw::Term::Hole(default_span)),
-                                    term: Rc::new(desugar_lam(
-                                        params,
-                                        ann.as_ref().map(<_>::as_ref),
-                                        body,
-                                    )),
-                                }),
+                                None => definitions.push((
+                                    FreeVar::user(name.as_ref()),
+                                    Embed(raw::Definition {
+                                        ann: Rc::new(raw::Term::Hole(default_span)),
+                                        term: Rc::new(desugar_lam(
+                                            params,
+                                            ann.as_ref().map(<_>::as_ref),
+                                            body,
+                                        )),
+                                    }),
+                                )),
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {
-                                        definitions.push(raw::Definition {
-                                            name: name.clone(),
-                                            ann,
-                                            term: Rc::new(desugar_lam(params, None, body)),
-                                        });
+                                        definitions.push((
+                                            FreeVar::user(name.as_ref()),
+                                            Embed(raw::Definition {
+                                                ann,
+                                                term: Rc::new(desugar_lam(params, None, body)),
+                                            }),
+                                        ));
                                     } else {
-                                        definitions.push(raw::Definition {
-                                            name: claim_name.clone(),
-                                            ann,
-                                            term: Rc::new(raw::Term::Hole(default_span)),
-                                        });
-                                        definitions.push(raw::Definition {
-                                            name: name.clone(),
-                                            ann: Rc::new(raw::Term::Hole(default_span)),
-                                            term: Rc::new(desugar_lam(params, None, body)),
-                                        });
+                                        definitions.push((
+                                            FreeVar::user(name.as_ref()),
+                                            Embed(raw::Definition {
+                                                ann,
+                                                term: Rc::new(raw::Term::Hole(default_span)),
+                                            }),
+                                        ));
+                                        definitions.push((
+                                            FreeVar::user(name.as_ref()),
+                                            Embed(raw::Definition {
+                                                ann: Rc::new(raw::Term::Hole(default_span)),
+                                                term: Rc::new(desugar_lam(params, None, body)),
+                                            }),
+                                        ));
                                     }
                                 },
                             };
@@ -210,7 +221,9 @@ impl Desugar<raw::Module> for concrete::Module {
                     }
                 }
 
-                raw::Module { definitions }
+                raw::Module {
+                    definitions: Nest::new(definitions),
+                }
             },
             concrete::Module::Error(_) => unimplemented!("error recovery"),
         }
