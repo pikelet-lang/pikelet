@@ -1,5 +1,5 @@
 use im::Vector;
-use nameless::FreeVar;
+use moniker::FreeVar;
 use std::fmt;
 use std::rc::Rc;
 
@@ -87,7 +87,7 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Context {
-        use nameless::{Embed, GenId, Scope, Var};
+        use moniker::{Embed, GenId, Scope, Var};
 
         use syntax::core::{Literal, Value};
         use syntax::Level;

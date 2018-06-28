@@ -51,7 +51,7 @@ more stages will be added after type checking and elaboration.
 ## Name binding
 
 Name binding is a surprisingly challenging thing to implement in type checkers
-and compilers. We use the [`nameless` crate](https://github.com/brendanzab/nameless)
+and compilers. We use the [`moniker` crate](https://github.com/brendanzab/moniker)
 for this. Unfortunately this uses a quite slow method of name binding, and could
 result in performance blowouts in the future. This is something to keep an eye on!
 

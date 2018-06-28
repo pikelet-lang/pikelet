@@ -147,7 +147,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
 
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
-    use nameless::FreeVar;
+    use moniker::FreeVar;
     use std::rc::Rc;
 
     use syntax::concrete::{ReplCommand, Term};

@@ -7,7 +7,7 @@ extern crate goldenfile;
 extern crate im;
 extern crate lalrpop_util;
 #[macro_use]
-extern crate nameless;
+extern crate moniker;
 extern crate pretty;
 #[cfg(test)]
 #[macro_use]

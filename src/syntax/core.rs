@@ -1,6 +1,6 @@
 //! The core syntax of the language
 
-use nameless::{BoundPattern, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{BoundPattern, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::rc::Rc;
 

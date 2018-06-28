@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use nameless::{BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use std::rc::Rc;
 
 use syntax::context::Context;
