@@ -64,32 +64,32 @@ pub fn subst(value: &Value, substs: &[(FreeVar, Rc<Term>)]) -> Rc<Term> {
         Value::Universe(level) => Rc::new(Term::Universe(level)),
         Value::Literal(ref lit) => Rc::new(Term::Literal(lit.clone())),
         Value::Pi(ref scope) => {
-            let ((name, Embed(ann)), body) = scope.clone().unbind();
-            Rc::new(Term::Pi(Scope::new(
-                (name, Embed(subst(&ann, substs))),
-                subst(&body, substs),
-            )))
+            let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
+            Rc::new(Term::Pi(Scope {
+                unsafe_pattern: (name.clone(), Embed(subst(&ann, substs))),
+                unsafe_body: subst(&scope.unsafe_body, substs),
+            }))
         },
         Value::Lam(ref scope) => {
-            let ((name, Embed(ann)), body) = scope.clone().unbind();
-            Rc::new(Term::Lam(Scope::new(
-                (name, Embed(subst(&ann, substs))),
-                subst(&body, substs),
-            )))
+            let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
+            Rc::new(Term::Lam(Scope {
+                unsafe_pattern: (name.clone(), Embed(subst(&ann, substs))),
+                unsafe_body: subst(&scope.unsafe_body, substs),
+            }))
         },
         Value::RecordType(ref scope) => {
-            let ((label, Embed(ann)), body) = scope.clone().unbind();
-            Rc::new(Term::RecordType(Scope::new(
-                (label, Embed(subst(&ann, substs))),
-                subst(&body, substs),
-            )))
+            let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
+            Rc::new(Term::RecordType(Scope {
+                unsafe_pattern: (label.clone(), Embed(subst(&ann, substs))),
+                unsafe_body: subst(&scope.unsafe_body, substs),
+            }))
         },
         Value::Record(ref scope) => {
-            let ((label, Embed(expr)), body) = scope.clone().unbind();
-            Rc::new(Term::Record(Scope::new(
-                (label, Embed(subst(&expr, substs))),
-                subst(&body, substs),
-            )))
+            let (ref label, Embed(ref expr)) = scope.unsafe_pattern;
+            Rc::new(Term::Record(Scope {
+                unsafe_pattern: (label.clone(), Embed(subst(&expr, substs))),
+                unsafe_body: subst(&scope.unsafe_body, substs),
+            }))
         },
         Value::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty),
         Value::RecordEmpty => Rc::new(Term::RecordEmpty),
