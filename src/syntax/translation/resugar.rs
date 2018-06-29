@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
-use nameless::{BoundTerm, Embed, FreeVar, Scope, Var};
+use moniker::{BoundTerm, Embed, FreeVar, Scope, Var};
 use std::rc::Rc;
 
 use syntax::concrete;

@@ -1,6 +1,6 @@
 //! Pretty printing for the core syntax
 
-use nameless::{FreeVar, Var};
+use moniker::{FreeVar, Var};
 use pretty::Doc;
 use std::iter;
 

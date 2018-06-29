@@ -1,5 +1,5 @@
 use codespan::{ByteOffset, ByteSpan};
-use nameless::{Embed, FreeVar, GenId, Ignore, Nest, Scope, Var};
+use moniker::{Embed, FreeVar, GenId, Ignore, Nest, Scope, Var};
 use std::rc::Rc;
 
 use syntax::concrete;

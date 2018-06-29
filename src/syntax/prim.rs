@@ -1,6 +1,6 @@
 //! Primitive operations
 
-use nameless::{FreeVar, Var};
+use moniker::{FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -135,7 +135,7 @@ macro_rules! count {
 macro_rules! def_prim {
     ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
-            use nameless::{Embed, FreeVar, Scope};
+            use moniker::{Embed, FreeVar, Scope};
 
             fn fun(params: &[Rc<Value>]) -> Result<Rc<Value>, ()> {
                 match params[..] {

@@ -1,6 +1,6 @@
 //! The syntax of the language
 
-use nameless::{BoundPattern, BoundTerm, BoundVar, FreeVar, ScopeState};
+use moniker::{BoundPattern, BoundTerm, BoundVar, FreeVar, PatternSubsts, ScopeState};
 use std::fmt;
 
 pub mod concrete;
@@ -49,11 +49,11 @@ impl BoundPattern for Label {
         Label::term_eq(self, other)
     }
 
-    fn freshen(&mut self) -> Vec<FreeVar> {
+    fn freshen(&mut self) -> PatternSubsts<FreeVar> {
         self.0.freshen()
     }
 
-    fn rename(&mut self, perm: &[FreeVar]) {
+    fn rename(&mut self, perm: &PatternSubsts<FreeVar>) {
         self.0.rename(perm)
     }
 
