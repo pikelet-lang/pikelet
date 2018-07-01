@@ -55,86 +55,6 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
     })
 }
 
-/// Apply a substitution to a value
-///
-/// Since this may 'un-stick' some neutral terms, the returned term will need to
-/// be re-evaluated afterwards to ensure that it remains in its normal form.
-pub fn subst(value: &Value, substs: &[(FreeVar, Rc<Term>)]) -> Rc<Term> {
-    match *value {
-        Value::Universe(level) => Rc::new(Term::Universe(level)),
-        Value::Literal(ref lit) => Rc::new(Term::Literal(lit.clone())),
-        Value::Pi(ref scope) => {
-            let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-            Rc::new(Term::Pi(Scope {
-                unsafe_pattern: (name.clone(), Embed(subst(&ann, substs))),
-                unsafe_body: subst(&scope.unsafe_body, substs),
-            }))
-        },
-        Value::Lam(ref scope) => {
-            let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-            Rc::new(Term::Lam(Scope {
-                unsafe_pattern: (name.clone(), Embed(subst(&ann, substs))),
-                unsafe_body: subst(&scope.unsafe_body, substs),
-            }))
-        },
-        Value::RecordType(ref scope) => {
-            let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
-            Rc::new(Term::RecordType(Scope {
-                unsafe_pattern: (label.clone(), Embed(subst(&ann, substs))),
-                unsafe_body: subst(&scope.unsafe_body, substs),
-            }))
-        },
-        Value::Record(ref scope) => {
-            let (ref label, Embed(ref expr)) = scope.unsafe_pattern;
-            Rc::new(Term::Record(Scope {
-                unsafe_pattern: (label.clone(), Embed(subst(&expr, substs))),
-                unsafe_body: subst(&scope.unsafe_body, substs),
-            }))
-        },
-        Value::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty),
-        Value::RecordEmpty => Rc::new(Term::RecordEmpty),
-        Value::Array(ref elems) => Rc::new(Term::Array(
-            elems.iter().map(|elem| subst(elem, substs)).collect(),
-        )),
-        Value::Neutral(ref neutral) => {
-            let (head, spine) = match **neutral {
-                Neutral::App(Head::Var(Var::Free(ref name)), ref spine) => {
-                    let head = match substs.iter().find(|s| *name == s.0) {
-                        Some(&(_, ref term)) => term.clone(),
-                        None => Rc::new(Term::Var(Var::Free(name.clone()))),
-                    };
-
-                    (head, spine)
-                },
-                Neutral::App(Head::Var(ref var), ref spine) => {
-                    (Rc::new(Term::Var(var.clone())), spine)
-                },
-                Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
-                    let head = Rc::new(Term::If(
-                        subst(&Value::Neutral(cond.clone()), substs),
-                        subst(if_true, substs),
-                        subst(if_false, substs),
-                    ));
-
-                    (head, spine)
-                },
-                Neutral::Proj(ref expr, ref label, ref spine) => {
-                    let head = Rc::new(Term::Proj(
-                        subst(&Value::Neutral(expr.clone()), substs),
-                        label.clone(),
-                    ));
-
-                    (head, spine)
-                },
-            };
-
-            spine
-                .iter()
-                .fold(head, |acc, arg| Rc::new(Term::App(acc, subst(arg, substs))))
-        },
-    }
-}
-
 /// Reduce a term to its normal form
 pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, InternalError> {
     use syntax::context::Definition;
@@ -193,7 +113,7 @@ pub fn normalize(context: &Context, term: &Rc<Term>) -> Result<Rc<Value>, Intern
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((name, Embed(_)), body) = scope.clone().unbind();
-                    normalize(context, &subst(&*body, &[(name, arg.clone())]))
+                    normalize(context, &Term::from(&*body).substs(&[(name, arg.clone())]))
                 },
                 Value::Neutral(ref mut neutral) => {
                     let arg = normalize(context, arg)?;
@@ -381,7 +301,7 @@ pub fn check(
                 let expr = check(context, &raw_expr, &ann)?;
                 let ty_body = normalize(
                     context,
-                    &subst(&ty_body, &[(label.0.clone(), expr.clone())]),
+                    &Term::from(&*ty_body).substs(&[(label.0.clone(), expr.clone())]),
                 )?;
                 let body = check(context, &raw_body, &ty_body)?;
 
@@ -582,7 +502,8 @@ pub fn infer(
                     let ((name, Embed(ann)), body) = scope.clone().unbind();
 
                     let arg = check(context, raw_arg, &ann)?;
-                    let body = normalize(context, &subst(&*body, &[(name, arg.clone())]))?;
+                    let body =
+                        normalize(context, &Term::from(&*body).substs(&[(name, arg.clone())]))?;
 
                     Ok((Rc::new(Term::App(expr, arg)), body))
                 },
@@ -635,10 +556,10 @@ pub fn infer(
 
             match ty.lookup_record_ty(label) {
                 Some(field_ty) => {
-                    let substs = field_substs(&expr, &label, &ty);
+                    let mappings = field_substs(&expr, &label, &ty);
                     Ok((
                         Rc::new(Term::Proj(expr, label.clone())),
-                        normalize(context, &subst(&field_ty, &substs))?,
+                        normalize(context, &Term::from(&*field_ty).substs(&mappings))?,
                     ))
                 },
                 None => Err(TypeError::NoFieldInType {
