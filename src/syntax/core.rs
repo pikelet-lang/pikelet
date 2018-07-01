@@ -81,6 +81,67 @@ pub enum Term {
     Array(Vec<Rc<Term>>),
 }
 
+impl Term {
+    pub fn substs(&self, mappings: &[(FreeVar, Rc<Term>)]) -> Rc<Term> {
+        match *self {
+            Term::Ann(ref term, ref ty) => {
+                Rc::new(Term::Ann(term.substs(mappings), ty.substs(mappings)))
+            },
+            Term::Universe(level) => Rc::new(Term::Universe(level)),
+            Term::Literal(ref lit) => Rc::new(Term::Literal(lit.clone())),
+            Term::Var(Var::Free(ref name)) => match mappings.iter().find(|s| *name == s.0) {
+                Some(&(_, ref term)) => term.clone(),
+                None => Rc::new(Term::Var(Var::Free(name.clone()))),
+            },
+            Term::Var(ref var) => Rc::new(Term::Var(var.clone())),
+            Term::Pi(ref scope) => {
+                let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
+                Rc::new(Term::Pi(Scope {
+                    unsafe_pattern: (name.clone(), Embed(ann.substs(mappings))),
+                    unsafe_body: scope.unsafe_body.substs(mappings),
+                }))
+            },
+            Term::Lam(ref scope) => {
+                let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
+                Rc::new(Term::Lam(Scope {
+                    unsafe_pattern: (name.clone(), Embed(ann.substs(mappings))),
+                    unsafe_body: scope.unsafe_body.substs(mappings),
+                }))
+            },
+            Term::App(ref term, ref arg) => {
+                Rc::new(Term::App(term.substs(mappings), arg.substs(mappings)))
+            },
+            Term::If(ref cond, ref if_true, ref if_false) => Rc::new(Term::If(
+                cond.substs(mappings),
+                if_true.substs(mappings),
+                if_false.substs(mappings),
+            )),
+            Term::RecordType(ref scope) => {
+                let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
+                Rc::new(Term::RecordType(Scope {
+                    unsafe_pattern: (label.clone(), Embed(ann.substs(mappings))),
+                    unsafe_body: scope.unsafe_body.substs(mappings),
+                }))
+            },
+            Term::Record(ref scope) => {
+                let (ref label, Embed(ref expr)) = scope.unsafe_pattern;
+                Rc::new(Term::Record(Scope {
+                    unsafe_pattern: (label.clone(), Embed(expr.substs(mappings))),
+                    unsafe_body: scope.unsafe_body.substs(mappings),
+                }))
+            },
+            Term::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty),
+            Term::RecordEmpty => Rc::new(Term::RecordEmpty),
+            Term::Proj(ref expr, ref label) => {
+                Rc::new(Term::Proj(expr.substs(mappings), label.clone()))
+            },
+            Term::Array(ref elems) => Rc::new(Term::Array(
+                elems.iter().map(|elem| elem.substs(mappings)).collect(),
+            )),
+        }
+    }
+}
+
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
