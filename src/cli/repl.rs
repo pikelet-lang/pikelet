@@ -222,9 +222,12 @@ enum ControlFlow {
     Continue(Option<Context>),
 }
 
+#[derive(Debug, Fail)]
 enum EvalPrintError {
+    #[fail(display = "Parse error")]
     Parse(Vec<parse::ParseError>),
-    Type(semantics::TypeError),
+    #[fail(display = "Type error: {}", _0)]
+    Type(#[cause] semantics::TypeError),
 }
 
 impl From<parse::ParseError> for EvalPrintError {
