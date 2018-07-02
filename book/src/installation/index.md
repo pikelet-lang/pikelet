@@ -28,7 +28,7 @@ After cloning, you can now run the [REPL][repl-wikipedia] using Cargo:
 cargo run repl
 ```
 
-You will now need to wait for cargo to download and build the dependencies, but
+You will now need to wait for Cargo to download and build the dependencies, but
 sooner or later the REPL will be ready for you to interact with!
 
 [repl-wikipedia]: https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
