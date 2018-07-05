@@ -574,7 +574,11 @@ pub fn infer(
     }
 }
 
-fn field_substs(expr: &Rc<Term>, label: &Label, ty: &Rc<Type>) -> Vec<(FreeVar, Rc<Term>)> {
+fn field_substs(
+    expr: &Rc<Term>,
+    label: &Label<String>,
+    ty: &Rc<Type>,
+) -> Vec<(FreeVar<String>, Rc<Term>)> {
     let mut substs = vec![];
     let mut current_scope = ty.record_ty();
 

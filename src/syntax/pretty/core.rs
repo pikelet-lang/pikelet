@@ -21,11 +21,11 @@ fn pretty_universe(level: Level) -> StaticDoc {
     sexpr("Type", Doc::as_string(&level))
 }
 
-fn pretty_var(var: &Var) -> StaticDoc {
+fn pretty_var(var: &Var<String>) -> StaticDoc {
     sexpr("var", Doc::text(format!("{:#}", var)))
 }
 
-fn pretty_lam(name: &FreeVar, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_lam(name: &FreeVar<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
         Doc::group(parens(
@@ -37,7 +37,7 @@ fn pretty_lam(name: &FreeVar, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc 
     )
 }
 
-fn pretty_pi(name: &FreeVar, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_pi(name: &FreeVar<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
         Doc::group(parens(
@@ -90,7 +90,7 @@ fn pretty_empty_record() -> StaticDoc {
     pretty_record(Doc::text("()"))
 }
 
-fn pretty_proj(expr: &impl ToDoc, label: &Label) -> StaticDoc {
+fn pretty_proj(expr: &impl ToDoc, label: &Label<String>) -> StaticDoc {
     sexpr(
         "proj",
         expr.to_doc()

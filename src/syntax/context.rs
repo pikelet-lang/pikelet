@@ -11,9 +11,9 @@ use syntax::prim::{self, PrimFn};
 #[derive(Debug, Clone)]
 pub enum Entry {
     /// A type claim
-    Claim(FreeVar, Rc<Type>),
+    Claim(FreeVar<String>, Rc<Type>),
     /// A value definition
-    Definition(FreeVar, Definition),
+    Definition(FreeVar<String>, Definition),
 }
 
 #[derive(Debug, Clone)]
@@ -40,13 +40,13 @@ impl Context {
         }
     }
 
-    pub fn claim(&self, name: FreeVar, ann: Rc<Type>) -> Context {
+    pub fn claim(&self, name: FreeVar<String>, ann: Rc<Type>) -> Context {
         Context {
             entries: self.entries.push_front(Entry::Claim(name, ann)),
         }
     }
 
-    pub fn define_term(&self, name: FreeVar, ann: Rc<Type>, term: Rc<Term>) -> Context {
+    pub fn define_term(&self, name: FreeVar<String>, ann: Rc<Type>, term: Rc<Term>) -> Context {
         Context {
             entries: self
                 .entries
@@ -55,7 +55,7 @@ impl Context {
         }
     }
 
-    fn define_prim(&self, name: FreeVar, prim: Rc<PrimFn>) -> Context {
+    fn define_prim(&self, name: FreeVar<String>, prim: Rc<PrimFn>) -> Context {
         Context {
             entries: self
                 .entries
@@ -64,7 +64,7 @@ impl Context {
         }
     }
 
-    pub fn lookup_claim(&self, name: &FreeVar) -> Option<Rc<Type>> {
+    pub fn lookup_claim(&self, name: &FreeVar<String>) -> Option<Rc<Type>> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {
@@ -74,7 +74,7 @@ impl Context {
             .next()
     }
 
-    pub fn lookup_definition(&self, name: &FreeVar) -> Option<Definition> {
+    pub fn lookup_definition(&self, name: &FreeVar<String>) -> Option<Definition> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {

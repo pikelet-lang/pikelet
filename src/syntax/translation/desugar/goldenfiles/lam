@@ -8,9 +8,7 @@ Lam(
     Scope {
         unsafe_pattern: (
             User(
-                Ident(
-                    "x"
-                )
+                "x"
             ),
             Embed(
                 Lam(
@@ -23,9 +21,7 @@ Lam(
                     Scope {
                         unsafe_pattern: (
                             User(
-                                Ident(
-                                    "y"
-                                )
+                                "y"
                             ),
                             Embed(
                                 Hole(
@@ -55,9 +51,7 @@ Lam(
                                     )
                                 },
                                 Some(
-                                    Ident(
-                                        "y"
-                                    )
+                                    "y"
                                 )
                             )
                         )
@@ -82,9 +76,7 @@ Lam(
                     )
                 },
                 Some(
-                    Ident(
-                        "x"
-                    )
+                    "x"
                 )
             )
         )
