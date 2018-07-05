@@ -8,9 +8,7 @@ Lam(
     Scope {
         unsafe_pattern: (
             User(
-                Ident(
-                    "x"
-                )
+                "x"
             ),
             Embed(
                 Universe(
@@ -36,9 +34,7 @@ Lam(
             Scope {
                 unsafe_pattern: (
                     User(
-                        Ident(
-                            "y"
-                        )
+                        "y"
                     ),
                     Embed(
                         Universe(
@@ -71,9 +67,7 @@ Lam(
                             )
                         },
                         Some(
-                            Ident(
-                                "x"
-                            )
+                            "x"
                         )
                     )
                 )

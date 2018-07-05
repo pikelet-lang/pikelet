@@ -145,7 +145,7 @@ impl Desugar<raw::Module> for concrete::Module {
                 // we encounter their corresponding definitions later as type annotations
                 let mut prev_claim = None;
                 // The definitions, desugared from the concrete syntax
-                let mut definitions = Vec::<(FreeVar, Embed<raw::Definition>)>::new();
+                let mut definitions = Vec::<(FreeVar<String>, Embed<raw::Definition>)>::new();
 
                 for declaration in declarations {
                     match *declaration {

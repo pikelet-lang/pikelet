@@ -12,7 +12,7 @@ use syntax::{Label, Level};
 /// A module definition
 pub struct Module {
     /// The definitions contained in the module
-    pub definitions: Nest<(FreeVar, Embed<Definition>)>,
+    pub definitions: Nest<(FreeVar<String>, Embed<Definition>)>,
 }
 
 /// Top level definitions
@@ -54,31 +54,37 @@ pub enum Term {
     /// A hole
     Hole(Ignore<ByteSpan>),
     /// A variable
-    Var(Ignore<ByteSpan>, Var),
+    Var(Ignore<ByteSpan>, Var<String>),
     /// Dependent function types
     Pi(
         Ignore<ByteSpan>,
-        Scope<(FreeVar, Embed<Rc<Term>>), Rc<Term>>,
+        Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>,
     ),
     /// Lambda abstractions
     Lam(
         Ignore<ByteSpan>,
-        Scope<(FreeVar, Embed<Rc<Term>>), Rc<Term>>,
+        Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>,
     ),
     /// Term application
     App(Rc<Term>, Rc<Term>),
     /// If expression
     If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
-    RecordType(Ignore<ByteSpan>, Scope<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    RecordType(
+        Ignore<ByteSpan>,
+        Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>,
+    ),
     /// Dependent record
-    Record(Ignore<ByteSpan>, Scope<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    Record(
+        Ignore<ByteSpan>,
+        Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>,
+    ),
     /// The unit type
     RecordTypeEmpty(Ignore<ByteSpan>),
     /// The element of the unit type
     RecordEmpty(Ignore<ByteSpan>),
     /// Field projection
-    Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label),
+    Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label<String>),
     /// Array literals
     Array(Ignore<ByteSpan>, Vec<Rc<Term>>),
 }

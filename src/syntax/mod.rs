@@ -33,10 +33,13 @@ impl fmt::Display for Level {
 /// Labels are significant when comparing for alpha-equality, both in terms and
 /// in patterns
 #[derive(Debug, Clone, PartialEq)]
-pub struct Label(pub FreeVar);
+pub struct Label<Ident>(pub FreeVar<Ident>);
 
-impl BoundTerm for Label {
-    fn term_eq(&self, other: &Label) -> bool {
+impl<Ident> BoundTerm<Ident> for Label<Ident>
+where
+    Ident: PartialEq,
+{
+    fn term_eq(&self, other: &Label<Ident>) -> bool {
         match (self.0.ident(), other.0.ident()) {
             (Some(lhs), Some(rhs)) => lhs == rhs,
             (_, _) => FreeVar::term_eq(&self.0, &other.0),
@@ -44,29 +47,32 @@ impl BoundTerm for Label {
     }
 }
 
-impl BoundPattern for Label {
-    fn pattern_eq(&self, other: &Label) -> bool {
+impl<Ident> BoundPattern<Ident> for Label<Ident>
+where
+    Ident: PartialEq + Clone,
+{
+    fn pattern_eq(&self, other: &Label<Ident>) -> bool {
         Label::term_eq(self, other)
     }
 
-    fn freshen(&mut self) -> PatternSubsts<FreeVar> {
+    fn freshen(&mut self) -> PatternSubsts<FreeVar<Ident>> {
         self.0.freshen()
     }
 
-    fn rename(&mut self, perm: &PatternSubsts<FreeVar>) {
+    fn rename(&mut self, perm: &PatternSubsts<FreeVar<Ident>>) {
         self.0.rename(perm)
     }
 
-    fn on_free(&self, state: ScopeState, name: &FreeVar) -> Option<BoundVar> {
+    fn on_free(&self, state: ScopeState, name: &FreeVar<Ident>) -> Option<BoundVar> {
         self.0.on_free(state, name)
     }
 
-    fn on_bound(&self, state: ScopeState, name: BoundVar) -> Option<FreeVar> {
+    fn on_bound(&self, state: ScopeState, name: BoundVar) -> Option<FreeVar<Ident>> {
         self.0.on_bound(state, name)
     }
 }
 
-impl fmt::Display for Label {
+impl<Ident: fmt::Display> fmt::Display for Label<Ident> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }

@@ -36,7 +36,7 @@ impl fmt::Display for Literal {
 /// A type checked and elaborated module
 pub struct Module {
     /// The definitions contained in the module
-    pub definitions: Nest<(FreeVar, Embed<Definition>)>,
+    pub definitions: Nest<(FreeVar<String>, Embed<Definition>)>,
 }
 
 /// A type checked and elaborated definition
@@ -58,31 +58,31 @@ pub enum Term {
     /// Literals
     Literal(Literal),
     /// A variable
-    Var(Var),
+    Var(Var<String>),
     /// Dependent function types
-    Pi(Scope<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>),
     /// Lambda abstractions
-    Lam(Scope<(FreeVar, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>),
     /// Term application
     App(Rc<Term>, Rc<Term>),
     /// If expression
     If(Rc<Term>, Rc<Term>, Rc<Term>),
     /// Dependent record types
-    RecordType(Scope<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    RecordType(Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(Label, Embed<Rc<Term>>), Rc<Term>>),
+    Record(Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>),
     /// The element of the unit type
     RecordEmpty,
     /// Field projection
-    Proj(Rc<Term>, Label),
+    Proj(Rc<Term>, Label<String>),
     /// Array literals
     Array(Vec<Rc<Term>>),
 }
 
 impl Term {
-    pub fn substs(&self, mappings: &[(FreeVar, Rc<Term>)]) -> Rc<Term> {
+    pub fn substs(&self, mappings: &[(FreeVar<String>, Rc<Term>)]) -> Rc<Term> {
         match *self {
             Term::Ann(ref term, ref ty) => {
                 Rc::new(Term::Ann(term.substs(mappings), ty.substs(mappings)))
@@ -160,15 +160,15 @@ pub enum Value {
     /// Literals
     Literal(Literal),
     /// A pi type
-    Pi(Scope<(FreeVar, Embed<Rc<Value>>), Rc<Value>>),
+    Pi(Scope<(FreeVar<String>, Embed<Rc<Value>>), Rc<Value>>),
     /// A lambda abstraction
-    Lam(Scope<(FreeVar, Embed<Rc<Value>>), Rc<Value>>),
+    Lam(Scope<(FreeVar<String>, Embed<Rc<Value>>), Rc<Value>>),
     /// Dependent record types
-    RecordType(Scope<(Label, Embed<Rc<Value>>), Rc<Value>>),
+    RecordType(Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(Label, Embed<Rc<Value>>), Rc<Value>>),
+    Record(Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>),
     /// The element of the unit type
     RecordEmpty,
     /// Array literals
@@ -178,14 +178,14 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn record_ty(&self) -> Option<Scope<(Label, Embed<Rc<Value>>), Rc<Value>>> {
+    pub fn record_ty(&self) -> Option<Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>> {
         match *self {
             Value::RecordType(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record_ty(&self, label: &Label) -> Option<Rc<Value>> {
+    pub fn lookup_record_ty(&self, label: &Label<String>) -> Option<Rc<Value>> {
         let mut current_scope = self.record_ty();
 
         while let Some(scope) = current_scope {
@@ -199,14 +199,14 @@ impl Value {
         None
     }
 
-    pub fn record(&self) -> Option<Scope<(Label, Embed<Rc<Value>>), Rc<Value>>> {
+    pub fn record(&self) -> Option<Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>> {
         match *self {
             Value::Record(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &Label) -> Option<Rc<Value>> {
+    pub fn lookup_record(&self, label: &Label<String>) -> Option<Rc<Value>> {
         let mut current_scope = self.record();
 
         while let Some(scope) = current_scope {
@@ -254,7 +254,7 @@ impl Value {
         }
     }
 
-    pub fn free_app(&self) -> Option<(&FreeVar, &[Rc<Value>])> {
+    pub fn free_app(&self) -> Option<(&FreeVar<String>, &[Rc<Value>])> {
         if let Value::Neutral(ref neutral) = *self {
             if let Neutral::App(Head::Var(Var::Free(ref name)), ref spine) = **neutral {
                 return Some((name, spine));
@@ -274,7 +274,7 @@ impl fmt::Display for Value {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Head {
     /// Variables that have not yet been replaced with a definition
-    Var(Var),
+    Var(Var<String>),
     // TODO: Metavariables
 }
 
@@ -294,7 +294,7 @@ pub enum Neutral {
     /// If expression
     If(Rc<Neutral>, Rc<Value>, Rc<Value>, Spine),
     /// Field projection
-    Proj(Rc<Neutral>, Label, Spine),
+    Proj(Rc<Neutral>, Label<String>, Spine),
 }
 
 impl fmt::Display for Neutral {
@@ -306,14 +306,14 @@ impl fmt::Display for Neutral {
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
 
-impl From<Var> for Neutral {
-    fn from(src: Var) -> Neutral {
+impl From<Var<String>> for Neutral {
+    fn from(src: Var<String>) -> Neutral {
         Neutral::App(Head::Var(src), vec![])
     }
 }
 
-impl From<Var> for Value {
-    fn from(src: Var) -> Value {
+impl From<Var<String>> for Value {
+    fn from(src: Var<String>) -> Value {
         Value::from(Neutral::from(src))
     }
 }
