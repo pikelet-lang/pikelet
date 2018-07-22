@@ -8,7 +8,7 @@ use syntax::translation::Desugar;
 
 use super::*;
 
-fn parse(codemap: &mut CodeMap, src: &str) -> Rc<raw::Term> {
+fn parse(codemap: &mut CodeMap, src: &str) -> raw::RcTerm {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
     let (concrete_term, errors) = parse::term(&filemap);
 
@@ -20,10 +20,10 @@ fn parse(codemap: &mut CodeMap, src: &str) -> Rc<raw::Term> {
         panic!("parse error!")
     }
 
-    Rc::new(concrete_term.desugar())
+    concrete_term.desugar()
 }
 
-fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (Rc<Term>, Rc<Type>) {
+fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (RcTerm, RcType) {
     match infer(context, &parse(codemap, src)) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
@@ -34,7 +34,7 @@ fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (Rc<Term>
     }
 }
 
-fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> Rc<Value> {
+fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> RcValue {
     match normalize(context, &parse_infer(codemap, context, src).0) {
         Ok(value) => value,
         Err(error) => {
@@ -45,7 +45,7 @@ fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> Rc<Va
     }
 }
 
-fn parse_check(codemap: &mut CodeMap, context: &Context, src: &str, expected: &Rc<Type>) {
+fn parse_check(codemap: &mut CodeMap, context: &Context, src: &str, expected: &RcType) {
     match check(context, &parse(codemap, src), expected) {
         Ok(_) => {},
         Err(error) => {

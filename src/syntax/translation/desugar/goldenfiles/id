@@ -1,87 +1,97 @@
-Lam(
-    Ignore(
-        Span {
-            start: ByteIndex(3),
-            end: ByteIndex(25)
-        }
-    ),
-    Scope {
-        unsafe_pattern: (
-            User(
-                "a"
-            ),
-            Embed(
-                Universe(
-                    Ignore(
-                        Span {
-                            start: ByteIndex(7),
-                            end: ByteIndex(11)
-                        }
-                    ),
-                    Level(
-                        0
-                    )
-                )
-            )
+RcTerm {
+    inner: Lam(
+        Ignore(
+            Span {
+                start: ByteIndex(3),
+                end: ByteIndex(25)
+            }
         ),
-        unsafe_body: Lam(
-            Ignore(
-                Span {
-                    start: ByteIndex(14),
-                    end: ByteIndex(25)
-                }
-            ),
-            Scope {
-                unsafe_pattern: (
-                    User(
-                        "x"
-                    ),
-                    Embed(
-                        Var(
+        Scope {
+            unsafe_pattern: (
+                User(
+                    "a"
+                ),
+                Embed(
+                    RcTerm {
+                        inner: Universe(
                             Ignore(
                                 Span {
-                                    start: ByteIndex(18),
-                                    end: ByteIndex(19)
+                                    start: ByteIndex(7),
+                                    end: ByteIndex(11)
                                 }
                             ),
-                            Bound(
-                                BoundVar {
-                                    scope: DebruijnIndex(
-                                        0
-                                    ),
-                                    pattern: PatternIndex(
-                                        0
-                                    )
-                                },
-                                Some(
-                                    "a"
-                                )
+                            Level(
+                                0
                             )
                         )
-                    )
-                ),
-                unsafe_body: Var(
+                    }
+                )
+            ),
+            unsafe_body: RcTerm {
+                inner: Lam(
                     Ignore(
                         Span {
-                            start: ByteIndex(24),
+                            start: ByteIndex(14),
                             end: ByteIndex(25)
                         }
                     ),
-                    Bound(
-                        BoundVar {
-                            scope: DebruijnIndex(
-                                0
+                    Scope {
+                        unsafe_pattern: (
+                            User(
+                                "x"
                             ),
-                            pattern: PatternIndex(
-                                0
+                            Embed(
+                                RcTerm {
+                                    inner: Var(
+                                        Ignore(
+                                            Span {
+                                                start: ByteIndex(18),
+                                                end: ByteIndex(19)
+                                            }
+                                        ),
+                                        Bound(
+                                            BoundVar {
+                                                scope: DebruijnIndex(
+                                                    0
+                                                ),
+                                                pattern: PatternIndex(
+                                                    0
+                                                )
+                                            },
+                                            Some(
+                                                "a"
+                                            )
+                                        )
+                                    )
+                                }
                             )
-                        },
-                        Some(
-                            "x"
-                        )
-                    )
+                        ),
+                        unsafe_body: RcTerm {
+                            inner: Var(
+                                Ignore(
+                                    Span {
+                                        start: ByteIndex(24),
+                                        end: ByteIndex(25)
+                                    }
+                                ),
+                                Bound(
+                                    BoundVar {
+                                        scope: DebruijnIndex(
+                                            0
+                                        ),
+                                        pattern: PatternIndex(
+                                            0
+                                        )
+                                    },
+                                    Some(
+                                        "x"
+                                    )
+                                )
+                            )
+                        }
+                    }
                 )
             }
-        )
-    }
-)
+        }
+    )
+}

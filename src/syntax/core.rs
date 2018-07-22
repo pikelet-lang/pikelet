@@ -2,6 +2,7 @@
 
 use moniker::{BoundPattern, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
+use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
@@ -43,16 +44,16 @@ pub struct Module {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct Definition {
     /// The elaborated value
-    pub term: Rc<Term>,
+    pub term: RcTerm,
     /// The type of the definition
-    pub ann: Rc<Type>,
+    pub ann: RcType,
 }
 
 /// The core term syntax
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(Rc<Term>, Rc<Term>),
+    Ann(RcTerm, RcTerm),
     /// Universes
     Universe(Level),
     /// Literals
@@ -60,91 +61,116 @@ pub enum Term {
     /// A variable
     Var(Var<String>),
     /// Dependent function types
-    Pi(Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>),
+    Pi(Scope<(FreeVar<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
-    Lam(Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>),
+    Lam(Scope<(FreeVar<String>, Embed<RcTerm>), RcTerm>),
     /// Term application
-    App(Rc<Term>, Rc<Term>),
+    App(RcTerm, RcTerm),
     /// If expression
-    If(Rc<Term>, Rc<Term>, Rc<Term>),
+    If(RcTerm, RcTerm, RcTerm),
     /// Dependent record types
-    RecordType(Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>),
+    RecordType(Scope<(Label<String>, Embed<RcTerm>), RcTerm>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>),
+    Record(Scope<(Label<String>, Embed<RcTerm>), RcTerm>),
     /// The element of the unit type
     RecordEmpty,
     /// Field projection
-    Proj(Rc<Term>, Label<String>),
+    Proj(RcTerm, Label<String>),
     /// Array literals
-    Array(Vec<Rc<Term>>),
+    Array(Vec<RcTerm>),
 }
 
-impl Term {
-    pub fn substs(&self, mappings: &[(FreeVar<String>, Rc<Term>)]) -> Rc<Term> {
-        match *self {
+impl fmt::Display for Term {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
+    }
+}
+
+/// Reference counted terms
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub struct RcTerm {
+    pub inner: Rc<Term>,
+}
+
+impl RcTerm {
+    pub fn substs(&self, mappings: &[(FreeVar<String>, RcTerm)]) -> RcTerm {
+        match *self.inner {
             Term::Ann(ref term, ref ty) => {
-                Rc::new(Term::Ann(term.substs(mappings), ty.substs(mappings)))
+                RcTerm::from(Term::Ann(term.substs(mappings), ty.substs(mappings)))
             },
-            Term::Universe(level) => Rc::new(Term::Universe(level)),
-            Term::Literal(ref lit) => Rc::new(Term::Literal(lit.clone())),
             Term::Var(Var::Free(ref name)) => match mappings.iter().find(|s| *name == s.0) {
                 Some(&(_, ref term)) => term.clone(),
-                None => Rc::new(Term::Var(Var::Free(name.clone()))),
+                None => self.clone(),
             },
-            Term::Var(ref var) => Rc::new(Term::Var(var.clone())),
+            Term::Var(_) | Term::Universe(_) | Term::Literal(_) => self.clone(),
             Term::Pi(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-                Rc::new(Term::Pi(Scope {
+                RcTerm::from(Term::Pi(Scope {
                     unsafe_pattern: (name.clone(), Embed(ann.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
             Term::Lam(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-                Rc::new(Term::Lam(Scope {
+                RcTerm::from(Term::Lam(Scope {
                     unsafe_pattern: (name.clone(), Embed(ann.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
             Term::App(ref term, ref arg) => {
-                Rc::new(Term::App(term.substs(mappings), arg.substs(mappings)))
+                RcTerm::from(Term::App(term.substs(mappings), arg.substs(mappings)))
             },
-            Term::If(ref cond, ref if_true, ref if_false) => Rc::new(Term::If(
+            Term::If(ref cond, ref if_true, ref if_false) => RcTerm::from(Term::If(
                 cond.substs(mappings),
                 if_true.substs(mappings),
                 if_false.substs(mappings),
             )),
             Term::RecordType(ref scope) => {
                 let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
-                Rc::new(Term::RecordType(Scope {
+                RcTerm::from(Term::RecordType(Scope {
                     unsafe_pattern: (label.clone(), Embed(ann.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
             Term::Record(ref scope) => {
                 let (ref label, Embed(ref expr)) = scope.unsafe_pattern;
-                Rc::new(Term::Record(Scope {
+                RcTerm::from(Term::Record(Scope {
                     unsafe_pattern: (label.clone(), Embed(expr.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
-            Term::RecordTypeEmpty => Rc::new(Term::RecordTypeEmpty),
-            Term::RecordEmpty => Rc::new(Term::RecordEmpty),
+            Term::RecordTypeEmpty | Term::RecordEmpty => self.clone(),
             Term::Proj(ref expr, ref label) => {
-                Rc::new(Term::Proj(expr.substs(mappings), label.clone()))
+                RcTerm::from(Term::Proj(expr.substs(mappings), label.clone()))
             },
-            Term::Array(ref elems) => Rc::new(Term::Array(
+            Term::Array(ref elems) => RcTerm::from(Term::Array(
                 elems.iter().map(|elem| elem.substs(mappings)).collect(),
             )),
         }
     }
 }
 
-impl fmt::Display for Term {
+impl From<Term> for RcTerm {
+    fn from(src: Term) -> RcTerm {
+        RcTerm {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl ops::Deref for RcTerm {
+    type Target = Term;
+
+    fn deref(&self) -> &Term {
+        &self.inner
+    }
+}
+
+impl fmt::Display for RcTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
+        fmt::Display::fmt(&self.inner, f)
     }
 }
 
@@ -160,32 +186,37 @@ pub enum Value {
     /// Literals
     Literal(Literal),
     /// A pi type
-    Pi(Scope<(FreeVar<String>, Embed<Rc<Value>>), Rc<Value>>),
+    Pi(Scope<(FreeVar<String>, Embed<RcValue>), RcValue>),
     /// A lambda abstraction
-    Lam(Scope<(FreeVar<String>, Embed<Rc<Value>>), Rc<Value>>),
+    Lam(Scope<(FreeVar<String>, Embed<RcValue>), RcValue>),
     /// Dependent record types
-    RecordType(Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>),
+    RecordType(Scope<(Label<String>, Embed<RcValue>), RcValue>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>),
+    Record(Scope<(Label<String>, Embed<RcValue>), RcValue>),
     /// The element of the unit type
     RecordEmpty,
     /// Array literals
-    Array(Vec<Rc<Value>>),
+    Array(Vec<RcValue>),
     /// Neutral terms
-    Neutral(Rc<Neutral>),
+    Neutral(RcNeutral),
 }
 
 impl Value {
-    pub fn record_ty(&self) -> Option<Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>> {
+    pub fn substs(&self, mappings: &[(FreeVar<String>, RcTerm)]) -> RcTerm {
+        // FIXME: This seems quite wasteful!
+        RcTerm::from(Term::from(self)).substs(mappings)
+    }
+
+    pub fn record_ty(&self) -> Option<Scope<(Label<String>, Embed<RcValue>), RcValue>> {
         match *self {
             Value::RecordType(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record_ty(&self, label: &Label<String>) -> Option<Rc<Value>> {
+    pub fn lookup_record_ty(&self, label: &Label<String>) -> Option<RcValue> {
         let mut current_scope = self.record_ty();
 
         while let Some(scope) = current_scope {
@@ -199,14 +230,14 @@ impl Value {
         None
     }
 
-    pub fn record(&self) -> Option<Scope<(Label<String>, Embed<Rc<Value>>), Rc<Value>>> {
+    pub fn record(&self) -> Option<Scope<(Label<String>, Embed<RcValue>), RcValue>> {
         match *self {
             Value::Record(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &Label<String>) -> Option<Rc<Value>> {
+    pub fn lookup_record(&self, label: &Label<String>) -> Option<RcValue> {
         let mut current_scope = self.record();
 
         while let Some(scope) = current_scope {
@@ -254,7 +285,7 @@ impl Value {
         }
     }
 
-    pub fn free_app(&self) -> Option<(&FreeVar<String>, &[Rc<Value>])> {
+    pub fn free_app(&self) -> Option<(&FreeVar<String>, &[RcValue])> {
         if let Value::Neutral(ref neutral) = *self {
             if let Neutral::App(Head::Var(Var::Free(ref name)), ref spine) = **neutral {
                 return Some((name, spine));
@@ -270,6 +301,34 @@ impl fmt::Display for Value {
     }
 }
 
+/// Reference counted values
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub struct RcValue {
+    pub inner: Rc<Value>,
+}
+
+impl From<Value> for RcValue {
+    fn from(src: Value) -> RcValue {
+        RcValue {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl ops::Deref for RcValue {
+    type Target = Value;
+
+    fn deref(&self) -> &Value {
+        &self.inner
+    }
+}
+
+impl fmt::Display for RcValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
+    }
+}
+
 /// The head of an application
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Head {
@@ -281,9 +340,9 @@ pub enum Head {
 /// The spine of a neutral term
 ///
 /// These are arguments that are awaiting application
-pub type Spine = Vec<Rc<Value>>;
+pub type Spine = Vec<RcValue>;
 
-/// Neutral terms
+/// Neutral values
 ///
 /// These might be able to be reduced further depending on the bindings in the
 /// context
@@ -292,9 +351,9 @@ pub enum Neutral {
     /// Term application
     App(Head, Spine),
     /// If expression
-    If(Rc<Neutral>, Rc<Value>, Rc<Value>, Spine),
+    If(RcNeutral, RcValue, RcValue, Spine),
     /// Field projection
-    Proj(Rc<Neutral>, Label<String>, Spine),
+    Proj(RcNeutral, Label<String>, Spine),
 }
 
 impl fmt::Display for Neutral {
@@ -303,8 +362,33 @@ impl fmt::Display for Neutral {
     }
 }
 
+/// Reference counted neutral values
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub struct RcNeutral {
+    pub inner: Rc<Neutral>,
+}
+
+impl From<Neutral> for RcNeutral {
+    fn from(src: Neutral) -> RcNeutral {
+        RcNeutral {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl ops::Deref for RcNeutral {
+    type Target = Neutral;
+
+    fn deref(&self) -> &Neutral {
+        &self.inner
+    }
+}
+
 /// Types are at the term level, so this is just an alias
 pub type Type = Value;
+
+/// Types are at the term level, so this is just an alias
+pub type RcType = RcValue;
 
 impl From<Var<String>> for Neutral {
     fn from(src: Var<String>) -> Neutral {
@@ -320,7 +404,7 @@ impl From<Var<String>> for Value {
 
 impl From<Neutral> for Value {
     fn from(src: Neutral) -> Value {
-        Value::Neutral(Rc::new(src))
+        Value::Neutral(RcNeutral::from(src))
     }
 }
 
@@ -335,43 +419,44 @@ impl<'a> From<&'a Value> for Term {
             Value::Pi(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
                 Term::Pi(Scope {
-                    unsafe_pattern: (name.clone(), Embed(Rc::new(Term::from(&**ann)))),
-                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                    unsafe_pattern: (name.clone(), Embed(RcTerm::from(&**ann))),
+                    unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },
             Value::Lam(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
                 Term::Lam(Scope {
-                    unsafe_pattern: (name.clone(), Embed(Rc::new(Term::from(&**ann)))),
-                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                    unsafe_pattern: (name.clone(), Embed(RcTerm::from(&**ann))),
+                    unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },
             Value::RecordType(ref scope) => {
                 let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
                 Term::RecordType(Scope {
-                    unsafe_pattern: (label.clone(), Embed(Rc::new(Term::from(&**ann)))),
-                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                    unsafe_pattern: (label.clone(), Embed(RcTerm::from(&**ann))),
+                    unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },
             Value::RecordTypeEmpty => Term::RecordTypeEmpty,
             Value::Record(ref scope) => {
                 let (ref label, Embed(ref term)) = scope.unsafe_pattern;
                 Term::Record(Scope {
-                    unsafe_pattern: (label.clone(), Embed(Rc::new(Term::from(&**term)))),
-                    unsafe_body: Rc::new(Term::from(&*scope.unsafe_body)),
+                    unsafe_pattern: (label.clone(), Embed(RcTerm::from(&**term))),
+                    unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },
             Value::RecordEmpty => Term::RecordEmpty,
             Value::Array(ref elems) => {
-                let elems = elems
-                    .iter()
-                    .map(|elem| Rc::new(Term::from(&**elem)))
-                    .collect();
-
-                Term::Array(elems)
+                Term::Array(elems.iter().map(|elem| RcTerm::from(&**elem)).collect())
             },
             Value::Neutral(ref n) => Term::from(&**n),
         }
+    }
+}
+
+impl<'a> From<&'a Value> for RcTerm {
+    fn from(src: &'a Value) -> RcTerm {
+        RcTerm::from(Term::from(src))
     }
 }
 
@@ -379,23 +464,28 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         let (head, spine) = match *src {
             Neutral::App(ref head, ref spine) => (Term::from(head), spine),
-            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
-                let head = Term::If(
-                    Rc::new(Term::from(&**cond)),
-                    Rc::new(Term::from(&**if_true)),
-                    Rc::new(Term::from(&**if_false)),
-                );
-                (head, spine)
-            },
+            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => (
+                Term::If(
+                    RcTerm::from(&**cond),
+                    RcTerm::from(&**if_true),
+                    RcTerm::from(&**if_false),
+                ),
+                spine,
+            ),
             Neutral::Proj(ref expr, ref name, ref spine) => {
-                let head = Term::Proj(Rc::new(Term::from(&**expr)), name.clone());
-                (head, spine)
+                (Term::Proj(RcTerm::from(&**expr), name.clone()), spine)
             },
         };
 
         spine.iter().fold(head, |acc, arg| {
-            Term::App(Rc::new(acc), Rc::new(Term::from(&**arg)))
+            Term::App(RcTerm::from(acc), RcTerm::from(&**arg))
         })
+    }
+}
+
+impl<'a> From<&'a Neutral> for RcTerm {
+    fn from(src: &'a Neutral) -> RcTerm {
+        RcTerm::from(Term::from(src))
     }
 }
 

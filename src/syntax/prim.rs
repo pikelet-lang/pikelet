@@ -2,16 +2,15 @@
 
 use moniker::{FreeVar, Var};
 use std::fmt;
-use std::rc::Rc;
 
-use syntax::core::{Literal, Type, Value};
+use syntax::core::{Literal, RcType, RcValue, Value};
 
 // Some helper traits for marshalling between Rust and Pikelet values
 //
 // I'm not super happy with the API at the moment, so these are currently private
 
 trait IntoValue {
-    fn into_value(self) -> Rc<Value>;
+    fn into_value(self) -> RcValue;
 }
 
 trait TryFromValueRef {
@@ -19,14 +18,14 @@ trait TryFromValueRef {
 }
 
 trait HasType {
-    fn ty() -> Rc<Type>;
+    fn ty() -> RcType;
 }
 
 macro_rules! impl_into_value {
     ($T:ty, $Variant:ident) => {
         impl IntoValue for $T {
-            fn into_value(self) -> Rc<Value> {
-                Rc::new(Value::Literal(Literal::$Variant(self)))
+            fn into_value(self) -> RcValue {
+                RcValue::from(Value::Literal(Literal::$Variant(self)))
             }
         }
     };
@@ -76,8 +75,8 @@ impl_try_from_value_ref!(f64, F64);
 macro_rules! impl_has_ty {
     ($T:ty, $ty_name:expr) => {
         impl HasType for $T {
-            fn ty() -> Rc<Type> {
-                Rc::new(Value::from(Var::Free(FreeVar::user($ty_name))))
+            fn ty() -> RcType {
+                RcValue::from(Value::from(Var::Free(FreeVar::user($ty_name))))
             }
         }
     };
@@ -98,7 +97,7 @@ impl_has_ty!(f32, "F32");
 impl_has_ty!(f64, "F64");
 
 // TODO: Return a `Result` with better errors
-pub type NormFn = fn(&[Rc<Value>]) -> Result<Rc<Value>, ()>;
+pub type NormFn = fn(&[RcValue]) -> Result<RcValue, ()>;
 
 /// Primitive functions
 #[derive(Clone)]
@@ -109,7 +108,7 @@ pub struct PrimFn {
     /// The number of arguments to pass to the primitive during normalization
     pub arity: usize,
     /// The type of the primitive
-    pub ann: Rc<Type>,
+    pub ann: RcType,
     /// The primitive definition to be used during normalization
     pub fun: NormFn,
 }
@@ -137,10 +136,10 @@ macro_rules! def_prim {
         pub fn $id() -> PrimFn {
             use moniker::{Embed, FreeVar, Scope};
 
-            fn fun(params: &[Rc<Value>]) -> Result<Rc<Value>, ()> {
+            fn fun(params: &[RcValue]) -> Result<RcValue, ()> {
                 match params[..] {
                     [$(ref $param_name),*] => {
-                        $(let $param_name = <$PType>::try_from_value_ref($param_name)?;)*
+                        $(let $param_name = <$PType>::try_from_value_ref(&$param_name.inner)?;)*
                         Ok(<$RType>::into_value($body))
                     },
                     _ => Err(()) // TODO: Better errors
@@ -150,7 +149,7 @@ macro_rules! def_prim {
             let name = $name.to_string();
             let arity = count!($($param_name)*);
             let mut ann = <$RType>::ty();
-            $(ann = Rc::new(Value::Pi(Scope::new(
+            $(ann = RcValue::from(Value::Pi(Scope::new(
                 (FreeVar::user(stringify!($param_name)), Embed(<$PType>::ty())),
                 ann
             )));)+

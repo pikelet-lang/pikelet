@@ -1,13 +1,15 @@
-Var(
-    Ignore(
-        Span {
-            start: ByteIndex(1),
-            end: ByteIndex(2)
-        }
-    ),
-    Free(
-        User(
-            "x"
+RcTerm {
+    inner: Var(
+        Ignore(
+            Span {
+                start: ByteIndex(1),
+                end: ByteIndex(2)
+            }
+        ),
+        Free(
+            User(
+                "x"
+            )
         )
     )
-)
+}

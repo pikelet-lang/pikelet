@@ -4,6 +4,7 @@
 use codespan::{ByteIndex, ByteSpan};
 use moniker::{Embed, FreeVar, Ignore, Nest, Scope, Var};
 use std::fmt;
+use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
@@ -19,9 +20,9 @@ pub struct Module {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct Definition {
     /// The body of the definition
-    pub term: Rc<Term>,
+    pub term: RcTerm,
     /// An optional type annotation to aid in type inference
-    pub ann: Rc<Term>,
+    pub ann: RcTerm,
 }
 
 /// Literals
@@ -46,7 +47,7 @@ impl fmt::Display for Literal {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
-    Ann(Ignore<ByteSpan>, Rc<Term>, Rc<Term>),
+    Ann(Ignore<ByteSpan>, RcTerm, RcTerm),
     /// Universes
     Universe(Ignore<ByteSpan>, Level),
     /// Literals
@@ -58,35 +59,63 @@ pub enum Term {
     /// Dependent function types
     Pi(
         Ignore<ByteSpan>,
-        Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>,
+        Scope<(FreeVar<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// Lambda abstractions
     Lam(
         Ignore<ByteSpan>,
-        Scope<(FreeVar<String>, Embed<Rc<Term>>), Rc<Term>>,
+        Scope<(FreeVar<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// Term application
-    App(Rc<Term>, Rc<Term>),
+    App(RcTerm, RcTerm),
     /// If expression
-    If(Ignore<ByteIndex>, Rc<Term>, Rc<Term>, Rc<Term>),
+    If(Ignore<ByteIndex>, RcTerm, RcTerm, RcTerm),
     /// Dependent record types
     RecordType(
         Ignore<ByteSpan>,
-        Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>,
+        Scope<(Label<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// Dependent record
     Record(
         Ignore<ByteSpan>,
-        Scope<(Label<String>, Embed<Rc<Term>>), Rc<Term>>,
+        Scope<(Label<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// The unit type
     RecordTypeEmpty(Ignore<ByteSpan>),
     /// The element of the unit type
     RecordEmpty(Ignore<ByteSpan>),
     /// Field projection
-    Proj(Ignore<ByteSpan>, Rc<Term>, Ignore<ByteSpan>, Label<String>),
+    Proj(Ignore<ByteSpan>, RcTerm, Ignore<ByteSpan>, Label<String>),
     /// Array literals
-    Array(Ignore<ByteSpan>, Vec<Rc<Term>>),
+    Array(Ignore<ByteSpan>, Vec<RcTerm>),
+}
+
+/// Reference counted terms
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub struct RcTerm {
+    pub inner: Rc<Term>,
+}
+
+impl From<Term> for RcTerm {
+    fn from(src: Term) -> RcTerm {
+        RcTerm {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl ops::Deref for RcTerm {
+    type Target = Term;
+
+    fn deref(&self) -> &Term {
+        &self.inner
+    }
+}
+
+impl fmt::Display for RcTerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
+    }
 }
 
 impl Term {

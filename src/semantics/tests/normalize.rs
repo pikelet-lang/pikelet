@@ -23,11 +23,11 @@ fn var() {
     let context = Context::new();
 
     let x = FreeVar::user("x");
-    let var = Rc::new(Term::Var(Var::Free(x.clone())));
+    let var = RcTerm::from(Term::Var(Var::Free(x.clone())));
 
     assert_eq!(
         normalize(&context, &var).unwrap(),
-        Rc::new(Value::from(Var::Free(x))),
+        RcValue::from(Value::from(Var::Free(x))),
     );
 }
 
@@ -45,9 +45,9 @@ fn lam() {
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"\x : Type => x"),
-        Rc::new(Value::Lam(Scope::new(
-            (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
-            Rc::new(Value::from(Var::Free(x))),
+        RcValue::from(Value::Lam(Scope::new(
+            (x.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+            RcValue::from(Value::from(Var::Free(x))),
         ))),
     );
 }
@@ -61,9 +61,9 @@ fn pi() {
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"(x : Type) -> x"),
-        Rc::new(Value::Pi(Scope::new(
-            (x.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
-            Rc::new(Value::from(Var::Free(x))),
+        RcValue::from(Value::Pi(Scope::new(
+            (x.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+            RcValue::from(Value::from(Var::Free(x))),
         ))),
     );
 }
@@ -75,12 +75,12 @@ fn lam_app() {
 
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
-    let ty_arr = Rc::new(Value::Pi(Scope::new(
+    let ty_arr = RcValue::from(Value::Pi(Scope::new(
         (
             FreeVar::user("_"),
-            Embed(Rc::new(Value::Universe(Level(0)))),
+            Embed(RcValue::from(Value::Universe(Level(0)))),
         ),
-        Rc::new(Value::Universe(Level(0))),
+        RcValue::from(Value::Universe(Level(0))),
     )));
 
     assert_term_eq!(
@@ -89,13 +89,13 @@ fn lam_app() {
             &context,
             r"\(x : Type -> Type) (y : Type) => x y"
         ),
-        Rc::new(Value::Lam(Scope::new(
+        RcValue::from(Value::Lam(Scope::new(
             (x.clone(), Embed(ty_arr)),
-            Rc::new(Value::Lam(Scope::new(
-                (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
-                Rc::new(Value::from(Neutral::App(
+            RcValue::from(Value::Lam(Scope::new(
+                (y.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+                RcValue::from(Value::from(Neutral::App(
                     Head::Var(Var::Free(x)),
-                    vec![Rc::new(Value::from(Var::Free(y)))],
+                    vec![RcValue::from(Value::from(Var::Free(y)))],
                 ))),
             ))),
         ))),
@@ -109,12 +109,12 @@ fn pi_app() {
 
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
-    let ty_arr = Rc::new(Value::Pi(Scope::new(
+    let ty_arr = RcValue::from(Value::Pi(Scope::new(
         (
             FreeVar::user("_"),
-            Embed(Rc::new(Value::Universe(Level(0)))),
+            Embed(RcValue::from(Value::Universe(Level(0)))),
         ),
-        Rc::new(Value::Universe(Level(0))),
+        RcValue::from(Value::Universe(Level(0))),
     )));
 
     assert_term_eq!(
@@ -123,13 +123,13 @@ fn pi_app() {
             &context,
             r"(x : Type -> Type) -> (y : Type) -> x y"
         ),
-        Rc::new(Value::Pi(Scope::new(
+        RcValue::from(Value::Pi(Scope::new(
             (x.clone(), Embed(ty_arr)),
-            Rc::new(Value::Pi(Scope::new(
-                (y.clone(), Embed(Rc::new(Value::Universe(Level(0))))),
-                Rc::new(Value::from(Neutral::App(
+            RcValue::from(Value::Pi(Scope::new(
+                (y.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+                RcValue::from(Value::from(Neutral::App(
                     Head::Var(Var::Free(x)),
-                    vec![Rc::new(Value::from(Var::Free(y)))],
+                    vec![RcValue::from(Value::from(Var::Free(y)))],
                 ))),
             ))),
         ))),
