@@ -104,25 +104,28 @@ mod term {
         assert_term_eq!(
             parse(r"\x : Type -> Type => x"),
             RcTerm::from(Term::Lam(
-                Ignore::default(),
+                ByteSpan::default(),
                 Scope::new(
                     (
-                        FreeVar::user("x"),
+                        Binder::user("x"),
                         Embed(RcTerm::from(Term::Pi(
-                            Ignore::default(),
+                            ByteSpan::default(),
                             Scope::new(
                                 (
-                                    FreeVar::user("_"),
+                                    Binder::user("_"),
                                     Embed(RcTerm::from(Term::Universe(
-                                        Ignore::default(),
+                                        ByteSpan::default(),
                                         Level(0)
                                     ))),
                                 ),
-                                RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
+                                RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
                             ),
                         ))),
                     ),
-                    RcTerm::from(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
+                    RcTerm::from(Term::Var(
+                        ByteSpan::default(),
+                        Var::Free(FreeVar::user("x")),
+                    )),
                 ),
             )),
         );
@@ -143,13 +146,13 @@ mod term {
         assert_term_eq!(
             parse(r"Type -> Type"),
             RcTerm::from(Term::Pi(
-                Ignore::default(),
+                ByteSpan::default(),
                 Scope::new(
                     (
-                        FreeVar::user("_"),
-                        Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0)))),
+                        Binder::user("_"),
+                        Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)))),
                     ),
-                    RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
+                    RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
                 ),
             )),
         );
@@ -160,25 +163,28 @@ mod term {
         assert_term_eq!(
             parse(r"(x : Type -> Type) -> x"),
             RcTerm::from(Term::Pi(
-                Ignore::default(),
+                ByteSpan::default(),
                 Scope::new(
                     (
-                        FreeVar::user("x"),
+                        Binder::user("x"),
                         Embed(RcTerm::from(Term::Pi(
-                            Ignore::default(),
+                            ByteSpan::default(),
                             Scope::new(
                                 (
-                                    FreeVar::user("_"),
+                                    Binder::user("_"),
                                     Embed(RcTerm::from(Term::Universe(
-                                        Ignore::default(),
+                                        ByteSpan::default(),
                                         Level(0),
                                     ))),
                                 ),
-                                RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
+                                RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
                             ),
                         ))),
                     ),
-                    RcTerm::from(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
+                    RcTerm::from(Term::Var(
+                        ByteSpan::default(),
+                        Var::Free(FreeVar::user("x")),
+                    )),
                 ),
             )),
         );
@@ -194,24 +200,24 @@ mod term {
         assert_term_eq!(
             parse(r"(x : Type) -> x -> x"),
             RcTerm::from(Term::Pi(
-                Ignore::default(),
+                ByteSpan::default(),
                 Scope::new(
                     (
-                        FreeVar::user("x"),
-                        Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0)))),
+                        Binder::user("x"),
+                        Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)))),
                     ),
                     RcTerm::from(Term::Pi(
-                        Ignore::default(),
+                        ByteSpan::default(),
                         Scope::new(
                             (
-                                FreeVar::user("_"),
+                                Binder::user("_"),
                                 Embed(RcTerm::from(Term::Var(
-                                    Ignore::default(),
+                                    ByteSpan::default(),
                                     Var::Free(FreeVar::user("x")),
                                 ))),
                             ),
                             RcTerm::from(Term::Var(
-                                Ignore::default(),
+                                ByteSpan::default(),
                                 Var::Free(FreeVar::user("x")),
                             )),
                         ),
@@ -226,38 +232,38 @@ mod term {
         assert_term_eq!(
             parse(r"\(x : Type -> Type) (y : Type) => x y"),
             RcTerm::from(Term::Lam(
-                Ignore::default(),
+                ByteSpan::default(),
                 Scope::new(
                     (
-                        FreeVar::user("x"),
+                        Binder::user("x"),
                         Embed(RcTerm::from(Term::Pi(
-                            Ignore::default(),
+                            ByteSpan::default(),
                             Scope::new(
                                 (
-                                    FreeVar::user("_"),
+                                    Binder::user("_"),
                                     Embed(RcTerm::from(Term::Universe(
-                                        Ignore::default(),
+                                        ByteSpan::default(),
                                         Level(0),
                                     ))),
                                 ),
-                                RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
+                                RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
                             ),
                         ))),
                     ),
                     RcTerm::from(Term::Lam(
-                        Ignore::default(),
+                        ByteSpan::default(),
                         Scope::new(
                             (
-                                FreeVar::user("y"),
-                                Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0),))),
+                                Binder::user("y"),
+                                Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0),))),
                             ),
                             RcTerm::from(Term::App(
                                 RcTerm::from(Term::Var(
-                                    Ignore::default(),
+                                    ByteSpan::default(),
                                     Var::Free(FreeVar::user("x")),
                                 )),
                                 RcTerm::from(Term::Var(
-                                    Ignore::default(),
+                                    ByteSpan::default(),
                                     Var::Free(FreeVar::user("y")),
                                 )),
                             )),
@@ -278,24 +284,24 @@ mod term {
         assert_term_eq!(
             parse(r"(a : Type) -> a -> a"),
             RcTerm::from(Term::Pi(
-                Ignore::default(),
+                ByteSpan::default(),
                 Scope::new(
                     (
-                        FreeVar::user("a"),
-                        Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0)))),
+                        Binder::user("a"),
+                        Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)))),
                     ),
                     RcTerm::from(Term::Pi(
-                        Ignore::default(),
+                        ByteSpan::default(),
                         Scope::new(
                             (
-                                FreeVar::user("_"),
+                                Binder::user("_"),
                                 Embed(RcTerm::from(Term::Var(
-                                    Ignore::default(),
+                                    ByteSpan::default(),
                                     Var::Free(FreeVar::user("a")),
                                 ))),
                             ),
                             RcTerm::from(Term::Var(
-                                Ignore::default(),
+                                ByteSpan::default(),
                                 Var::Free(FreeVar::user("a")),
                             )),
                         ),

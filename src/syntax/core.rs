@@ -1,6 +1,6 @@
 //! The core syntax of the language
 
-use moniker::{BoundPattern, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundPattern, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
 use std::rc::Rc;
@@ -11,7 +11,7 @@ use syntax::{Label, Level};
 /// Literals
 ///
 /// We could church encode all the things, but that would be prohibitively expensive!
-#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]
 pub enum Literal {
     Bool(bool),
     String(String),
@@ -37,7 +37,7 @@ impl fmt::Display for Literal {
 /// A type checked and elaborated module
 pub struct Module {
     /// The definitions contained in the module
-    pub definitions: Nest<(FreeVar<String>, Embed<Definition>)>,
+    pub definitions: Nest<(Binder<String>, Embed<Definition>)>,
 }
 
 /// A type checked and elaborated definition
@@ -61,9 +61,9 @@ pub enum Term {
     /// A variable
     Var(Var<String>),
     /// Dependent function types
-    Pi(Scope<(FreeVar<String>, Embed<RcTerm>), RcTerm>),
+    Pi(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
-    Lam(Scope<(FreeVar<String>, Embed<RcTerm>), RcTerm>),
+    Lam(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Term application
     App(RcTerm, RcTerm),
     /// If expression
@@ -100,11 +100,11 @@ impl RcTerm {
             Term::Ann(ref term, ref ty) => {
                 RcTerm::from(Term::Ann(term.substs(mappings), ty.substs(mappings)))
             },
-            Term::Var(Var::Free(ref name)) => match mappings.iter().find(|s| *name == s.0) {
+            Term::Universe(_) | Term::Literal(_) => self.clone(),
+            Term::Var(ref var) => match mappings.iter().find(|&(ref name, _)| var == name) {
                 Some(&(_, ref term)) => term.clone(),
                 None => self.clone(),
             },
-            Term::Var(_) | Term::Universe(_) | Term::Literal(_) => self.clone(),
             Term::Pi(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
                 RcTerm::from(Term::Pi(Scope {
@@ -186,9 +186,9 @@ pub enum Value {
     /// Literals
     Literal(Literal),
     /// A pi type
-    Pi(Scope<(FreeVar<String>, Embed<RcValue>), RcValue>),
+    Pi(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
     /// A lambda abstraction
-    Lam(Scope<(FreeVar<String>, Embed<RcValue>), RcValue>),
+    Lam(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
     /// Dependent record types
     RecordType(Scope<(Label<String>, Embed<RcValue>), RcValue>),
     /// The unit type
@@ -287,8 +287,8 @@ impl Value {
 
     pub fn free_app(&self) -> Option<(&FreeVar<String>, &[RcValue])> {
         if let Value::Neutral(ref neutral) = *self {
-            if let Neutral::App(Head::Var(Var::Free(ref name)), ref spine) = **neutral {
-                return Some((name, spine));
+            if let Neutral::App(Head::Var(Var::Free(ref free_var)), ref spine) = **neutral {
+                return Some((free_var, spine));
             }
         }
         None

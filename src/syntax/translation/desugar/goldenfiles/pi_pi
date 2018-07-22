@@ -1,25 +1,23 @@
 RcTerm {
     inner: Pi(
-        Ignore(
-            Span {
-                start: ByteIndex(2),
-                end: ByteIndex(18)
-            }
-        ),
+        Span {
+            start: ByteIndex(2),
+            end: ByteIndex(18)
+        },
         Scope {
             unsafe_pattern: (
-                User(
-                    "x"
+                Binder(
+                    User(
+                        "x"
+                    )
                 ),
                 Embed(
                     RcTerm {
                         inner: Universe(
-                            Ignore(
-                                Span {
-                                    start: ByteIndex(8),
-                                    end: ByteIndex(12)
-                                }
-                            ),
+                            Span {
+                                start: ByteIndex(8),
+                                end: ByteIndex(12)
+                            },
                             Level(
                                 0
                             )
@@ -29,26 +27,24 @@ RcTerm {
             ),
             unsafe_body: RcTerm {
                 inner: Pi(
-                    Ignore(
-                        Span {
-                            start: ByteIndex(4),
-                            end: ByteIndex(18)
-                        }
-                    ),
+                    Span {
+                        start: ByteIndex(4),
+                        end: ByteIndex(18)
+                    },
                     Scope {
                         unsafe_pattern: (
-                            User(
-                                "y"
+                            Binder(
+                                User(
+                                    "y"
+                                )
                             ),
                             Embed(
                                 RcTerm {
                                     inner: Universe(
-                                        Ignore(
-                                            Span {
-                                                start: ByteIndex(8),
-                                                end: ByteIndex(12)
-                                            }
-                                        ),
+                                        Span {
+                                            start: ByteIndex(8),
+                                            end: ByteIndex(12)
+                                        },
                                         Level(
                                             0
                                         )
@@ -58,21 +54,19 @@ RcTerm {
                         ),
                         unsafe_body: RcTerm {
                             inner: Var(
-                                Ignore(
-                                    Span {
-                                        start: ByteIndex(17),
-                                        end: ByteIndex(18)
-                                    }
-                                ),
+                                Span {
+                                    start: ByteIndex(17),
+                                    end: ByteIndex(18)
+                                },
                                 Bound(
-                                    BoundVar {
-                                        scope: DebruijnIndex(
-                                            1
-                                        ),
-                                        pattern: PatternIndex(
+                                    ScopeOffset(
+                                        1
+                                    ),
+                                    BinderIndex(
+                                        BinderOffset(
                                             0
                                         )
-                                    },
+                                    ),
                                     Some(
                                         "x"
                                     )

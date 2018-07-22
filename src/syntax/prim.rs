@@ -1,6 +1,6 @@
 //! Primitive operations
 
-use moniker::{FreeVar, Var};
+use moniker::Var;
 use std::fmt;
 
 use syntax::core::{Literal, RcType, RcValue, Value};
@@ -76,7 +76,7 @@ macro_rules! impl_has_ty {
     ($T:ty, $ty_name:expr) => {
         impl HasType for $T {
             fn ty() -> RcType {
-                RcValue::from(Value::from(Var::Free(FreeVar::user($ty_name))))
+                RcValue::from(Value::from(Var::user($ty_name)))
             }
         }
     };
@@ -134,7 +134,7 @@ macro_rules! count {
 macro_rules! def_prim {
     ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
         pub fn $id() -> PrimFn {
-            use moniker::{Embed, FreeVar, Scope};
+            use moniker::{Embed, Binder, Scope};
 
             fn fun(params: &[RcValue]) -> Result<RcValue, ()> {
                 match params[..] {
@@ -150,7 +150,7 @@ macro_rules! def_prim {
             let arity = count!($($param_name)*);
             let mut ann = <$RType>::ty();
             $(ann = RcValue::from(Value::Pi(Scope::new(
-                (FreeVar::user(stringify!($param_name)), Embed(<$PType>::ty())),
+                (Binder::user(stringify!($param_name)), Embed(<$PType>::ty())),
                 ann
             )));)+
 

@@ -1,6 +1,6 @@
 //! Pretty printing for the core syntax
 
-use moniker::{FreeVar, Var};
+use moniker::{Binder, Var};
 use pretty::Doc;
 use std::iter;
 
@@ -25,7 +25,7 @@ fn pretty_var(var: &Var<String>) -> StaticDoc {
     sexpr("var", Doc::text(format!("{:#}", var)))
 }
 
-fn pretty_lam(name: &FreeVar<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_lam(name: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
         Doc::group(parens(
@@ -37,7 +37,7 @@ fn pretty_lam(name: &FreeVar<String>, ann: &impl ToDoc, body: &impl ToDoc) -> St
     )
 }
 
-fn pretty_pi(name: &FreeVar<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_pi(name: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
         Doc::group(parens(

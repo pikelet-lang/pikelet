@@ -1,19 +1,15 @@
 RcTerm {
     inner: Ann(
-        Ignore(
-            Span {
-                start: ByteIndex(1),
-                end: ByteIndex(21)
-            }
-        ),
+        Span {
+            start: ByteIndex(1),
+            end: ByteIndex(21)
+        },
         RcTerm {
             inner: Universe(
-                Ignore(
-                    Span {
-                        start: ByteIndex(1),
-                        end: ByteIndex(5)
-                    }
-                ),
+                Span {
+                    start: ByteIndex(1),
+                    end: ByteIndex(5)
+                },
                 Level(
                     0
                 )
@@ -21,20 +17,16 @@ RcTerm {
         },
         RcTerm {
             inner: Ann(
-                Ignore(
-                    Span {
-                        start: ByteIndex(9),
-                        end: ByteIndex(20)
-                    }
-                ),
+                Span {
+                    start: ByteIndex(9),
+                    end: ByteIndex(20)
+                },
                 RcTerm {
                     inner: Universe(
-                        Ignore(
-                            Span {
-                                start: ByteIndex(9),
-                                end: ByteIndex(13)
-                            }
-                        ),
+                        Span {
+                            start: ByteIndex(9),
+                            end: ByteIndex(13)
+                        },
                         Level(
                             0
                         )
@@ -42,12 +34,10 @@ RcTerm {
                 },
                 RcTerm {
                     inner: Universe(
-                        Ignore(
-                            Span {
-                                start: ByteIndex(16),
-                                end: ByteIndex(20)
-                            }
-                        ),
+                        Span {
+                            start: ByteIndex(16),
+                            end: ByteIndex(20)
+                        },
                         Level(
                             0
                         )
