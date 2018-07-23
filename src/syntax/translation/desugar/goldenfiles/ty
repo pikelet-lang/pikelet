@@ -1,11 +1,13 @@
-Universe(
-    Ignore(
-        Span {
-            start: ByteIndex(1),
-            end: ByteIndex(5)
-        }
-    ),
-    Level(
-        0
+RcTerm {
+    inner: Universe(
+        Ignore(
+            Span {
+                start: ByteIndex(1),
+                end: ByteIndex(5)
+            }
+        ),
+        Level(
+            0
+        )
     )
-)
+}

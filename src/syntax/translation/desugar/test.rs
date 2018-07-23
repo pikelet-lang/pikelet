@@ -18,7 +18,7 @@ fn golden(filename: &str, literal: &str) {
     write!(file, "{:#?}", term).unwrap();
 }
 
-fn parse(src: &str) -> raw::Term {
+fn parse(src: &str) -> raw::RcTerm {
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
 
@@ -56,7 +56,7 @@ mod module {
 mod term {
     use super::*;
 
-    use syntax::raw::Term;
+    use syntax::raw::{RcTerm, Term};
     use syntax::Level;
 
     #[test]
@@ -103,23 +103,26 @@ mod term {
     fn lam_ann() {
         assert_term_eq!(
             parse(r"\x : Type -> Type => x"),
-            Rc::new(Term::Lam(
+            RcTerm::from(Term::Lam(
                 Ignore::default(),
                 Scope::new(
                     (
                         FreeVar::user("x"),
-                        Embed(Rc::new(Term::Pi(
+                        Embed(RcTerm::from(Term::Pi(
                             Ignore::default(),
                             Scope::new(
                                 (
                                     FreeVar::user("_"),
-                                    Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
+                                    Embed(RcTerm::from(Term::Universe(
+                                        Ignore::default(),
+                                        Level(0)
+                                    ))),
                                 ),
-                                Rc::new(Term::Universe(Ignore::default(), Level(0))),
+                                RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
                             ),
                         ))),
                     ),
-                    Rc::new(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
+                    RcTerm::from(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
                 ),
             )),
         );
@@ -139,14 +142,14 @@ mod term {
     fn arrow() {
         assert_term_eq!(
             parse(r"Type -> Type"),
-            Rc::new(Term::Pi(
+            RcTerm::from(Term::Pi(
                 Ignore::default(),
                 Scope::new(
                     (
                         FreeVar::user("_"),
-                        Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
+                        Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0)))),
                     ),
-                    Rc::new(Term::Universe(Ignore::default(), Level(0))),
+                    RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
                 ),
             )),
         );
@@ -156,23 +159,26 @@ mod term {
     fn pi() {
         assert_term_eq!(
             parse(r"(x : Type -> Type) -> x"),
-            Rc::new(Term::Pi(
+            RcTerm::from(Term::Pi(
                 Ignore::default(),
                 Scope::new(
                     (
                         FreeVar::user("x"),
-                        Embed(Rc::new(Term::Pi(
+                        Embed(RcTerm::from(Term::Pi(
                             Ignore::default(),
                             Scope::new(
                                 (
                                     FreeVar::user("_"),
-                                    Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
+                                    Embed(RcTerm::from(Term::Universe(
+                                        Ignore::default(),
+                                        Level(0),
+                                    ))),
                                 ),
-                                Rc::new(Term::Universe(Ignore::default(), Level(0))),
+                                RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
                             ),
                         ))),
                     ),
-                    Rc::new(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
+                    RcTerm::from(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
                 ),
             )),
         );
@@ -187,24 +193,27 @@ mod term {
     fn pi_arrow() {
         assert_term_eq!(
             parse(r"(x : Type) -> x -> x"),
-            Rc::new(Term::Pi(
+            RcTerm::from(Term::Pi(
                 Ignore::default(),
                 Scope::new(
                     (
                         FreeVar::user("x"),
-                        Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
+                        Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0)))),
                     ),
-                    Rc::new(Term::Pi(
+                    RcTerm::from(Term::Pi(
                         Ignore::default(),
                         Scope::new(
                             (
                                 FreeVar::user("_"),
-                                Embed(Rc::new(Term::Var(
+                                Embed(RcTerm::from(Term::Var(
                                     Ignore::default(),
                                     Var::Free(FreeVar::user("x")),
                                 ))),
                             ),
-                            Rc::new(Term::Var(Ignore::default(), Var::Free(FreeVar::user("x")),)),
+                            RcTerm::from(Term::Var(
+                                Ignore::default(),
+                                Var::Free(FreeVar::user("x")),
+                            )),
                         ),
                     )),
                 ),
@@ -216,35 +225,38 @@ mod term {
     fn lam_app() {
         assert_term_eq!(
             parse(r"\(x : Type -> Type) (y : Type) => x y"),
-            Rc::new(Term::Lam(
+            RcTerm::from(Term::Lam(
                 Ignore::default(),
                 Scope::new(
                     (
                         FreeVar::user("x"),
-                        Embed(Rc::new(Term::Pi(
+                        Embed(RcTerm::from(Term::Pi(
                             Ignore::default(),
                             Scope::new(
                                 (
                                     FreeVar::user("_"),
-                                    Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
+                                    Embed(RcTerm::from(Term::Universe(
+                                        Ignore::default(),
+                                        Level(0),
+                                    ))),
                                 ),
-                                Rc::new(Term::Universe(Ignore::default(), Level(0))),
+                                RcTerm::from(Term::Universe(Ignore::default(), Level(0))),
                             ),
                         ))),
                     ),
-                    Rc::new(Term::Lam(
+                    RcTerm::from(Term::Lam(
                         Ignore::default(),
                         Scope::new(
                             (
                                 FreeVar::user("y"),
-                                Embed(Rc::new(Term::Universe(Ignore::default(), Level(0),))),
+                                Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0),))),
                             ),
-                            Rc::new(Term::App(
-                                Rc::new(Term::Var(
+                            RcTerm::from(Term::App(
+                                RcTerm::from(Term::Var(
                                     Ignore::default(),
                                     Var::Free(FreeVar::user("x")),
                                 )),
-                                Rc::new(Term::Var(
+                                RcTerm::from(Term::Var(
                                     Ignore::default(),
                                     Var::Free(FreeVar::user("y")),
                                 )),
@@ -265,24 +277,27 @@ mod term {
     fn id_ty() {
         assert_term_eq!(
             parse(r"(a : Type) -> a -> a"),
-            Rc::new(Term::Pi(
+            RcTerm::from(Term::Pi(
                 Ignore::default(),
                 Scope::new(
                     (
                         FreeVar::user("a"),
-                        Embed(Rc::new(Term::Universe(Ignore::default(), Level(0)))),
+                        Embed(RcTerm::from(Term::Universe(Ignore::default(), Level(0)))),
                     ),
-                    Rc::new(Term::Pi(
+                    RcTerm::from(Term::Pi(
                         Ignore::default(),
                         Scope::new(
                             (
                                 FreeVar::user("_"),
-                                Embed(Rc::new(Term::Var(
+                                Embed(RcTerm::from(Term::Var(
                                     Ignore::default(),
                                     Var::Free(FreeVar::user("a")),
                                 ))),
                             ),
-                            Rc::new(Term::Var(Ignore::default(), Var::Free(FreeVar::user("a")),)),
+                            RcTerm::from(Term::Var(
+                                Ignore::default(),
+                                Var::Free(FreeVar::user("a")),
+                            )),
                         ),
                     )),
                 ),

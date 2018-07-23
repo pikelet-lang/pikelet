@@ -134,24 +134,24 @@ impl ToDoc for Literal {
 impl ToDoc for raw::Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            raw::Term::Ann(_, ref expr, ref ty) => pretty_ann(expr, ty),
+            raw::Term::Ann(_, ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
             raw::Term::Universe(_, level) => pretty_universe(level),
             raw::Term::Hole(_) => parens(Doc::text("hole")),
             raw::Term::Literal(_, ref lit) => lit.to_doc(),
             raw::Term::Var(_, ref var) => pretty_var(var),
             raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0,
-                &scope.unsafe_body,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
             ),
             raw::Term::Pi(_, ref scope) => pretty_pi(
                 &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0,
-                &scope.unsafe_body,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
             ),
-            raw::Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
+            raw::Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(&arg.inner)),
             raw::Term::If(_, ref cond, ref if_true, ref if_false) => {
-                pretty_if(cond, if_true, if_false)
+                pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
             raw::Term::RecordType(_, ref scope) => {
                 let mut inner = Doc::nil();
@@ -211,7 +211,7 @@ impl ToDoc for raw::Term {
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
-            raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(expr, label),
+            raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(&expr.inner, label),
         }
     }
 }
@@ -219,22 +219,24 @@ impl ToDoc for raw::Term {
 impl ToDoc for Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Term::Ann(ref expr, ref ty) => pretty_ann(expr, ty),
+            Term::Ann(ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
             Term::Universe(level) => pretty_universe(level),
             Term::Literal(ref lit) => lit.to_doc(),
             Term::Var(ref var) => pretty_var(var),
             Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0,
-                &scope.unsafe_body,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
             ),
             Term::Pi(ref scope) => pretty_pi(
                 &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0,
-                &scope.unsafe_body,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
             ),
-            Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(arg)),
-            Term::If(ref cond, ref if_true, ref if_false) => pretty_if(cond, if_true, if_false),
+            Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(&arg.inner)),
+            Term::If(ref cond, ref if_true, ref if_false) => {
+                pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
+            },
             Term::RecordType(ref scope) => {
                 let mut inner = Doc::nil();
                 let mut scope = scope;
@@ -293,7 +295,7 @@ impl ToDoc for Term {
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
-            Term::Proj(ref expr, ref label) => pretty_proj(expr, label),
+            Term::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
         }
     }
 }
@@ -305,13 +307,13 @@ impl ToDoc for Value {
             Value::Literal(ref lit) => lit.to_doc(),
             Value::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0,
-                &scope.unsafe_body,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
             ),
             Value::Pi(ref scope) => pretty_pi(
                 &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0,
-                &scope.unsafe_body,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
             ),
             Value::RecordType(ref scope) => {
                 let mut inner = Doc::nil();
@@ -378,15 +380,18 @@ impl ToDoc for Value {
 
 impl ToDoc for Neutral {
     fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Neutral::App(ref head, ref spine) => pretty_app(head.to_doc(), spine),
-            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => {
-                pretty_app(pretty_if(cond, if_true, if_false), spine)
-            },
+        let (head, spine) = match *self {
+            Neutral::App(ref head, ref spine) => (head.to_doc(), spine),
+            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => (
+                pretty_if(&cond.inner, &if_true.inner, &if_false.inner),
+                spine,
+            ),
             Neutral::Proj(ref expr, ref label, ref spine) => {
-                pretty_app(pretty_proj(expr, label), spine)
+                (pretty_proj(&expr.inner, label), spine)
             },
-        }
+        };
+
+        pretty_app(head, spine.iter().map(|arg| &arg.inner))
     }
 }
 

@@ -1,43 +1,19 @@
-Pi(
-    Ignore(
-        Span {
-            start: ByteIndex(2),
-            end: ByteIndex(18)
-        }
-    ),
-    Scope {
-        unsafe_pattern: (
-            User(
-                "x"
-            ),
-            Embed(
-                Universe(
-                    Ignore(
-                        Span {
-                            start: ByteIndex(8),
-                            end: ByteIndex(12)
-                        }
-                    ),
-                    Level(
-                        0
-                    )
-                )
-            )
+RcTerm {
+    inner: Pi(
+        Ignore(
+            Span {
+                start: ByteIndex(2),
+                end: ByteIndex(18)
+            }
         ),
-        unsafe_body: Pi(
-            Ignore(
-                Span {
-                    start: ByteIndex(4),
-                    end: ByteIndex(18)
-                }
-            ),
-            Scope {
-                unsafe_pattern: (
-                    User(
-                        "y"
-                    ),
-                    Embed(
-                        Universe(
+        Scope {
+            unsafe_pattern: (
+                User(
+                    "x"
+                ),
+                Embed(
+                    RcTerm {
+                        inner: Universe(
                             Ignore(
                                 Span {
                                     start: ByteIndex(8),
@@ -48,30 +24,64 @@ Pi(
                                 0
                             )
                         )
-                    )
-                ),
-                unsafe_body: Var(
+                    }
+                )
+            ),
+            unsafe_body: RcTerm {
+                inner: Pi(
                     Ignore(
                         Span {
-                            start: ByteIndex(17),
+                            start: ByteIndex(4),
                             end: ByteIndex(18)
                         }
                     ),
-                    Bound(
-                        BoundVar {
-                            scope: DebruijnIndex(
-                                1
+                    Scope {
+                        unsafe_pattern: (
+                            User(
+                                "y"
                             ),
-                            pattern: PatternIndex(
-                                0
+                            Embed(
+                                RcTerm {
+                                    inner: Universe(
+                                        Ignore(
+                                            Span {
+                                                start: ByteIndex(8),
+                                                end: ByteIndex(12)
+                                            }
+                                        ),
+                                        Level(
+                                            0
+                                        )
+                                    )
+                                }
                             )
-                        },
-                        Some(
-                            "x"
-                        )
-                    )
+                        ),
+                        unsafe_body: RcTerm {
+                            inner: Var(
+                                Ignore(
+                                    Span {
+                                        start: ByteIndex(17),
+                                        end: ByteIndex(18)
+                                    }
+                                ),
+                                Bound(
+                                    BoundVar {
+                                        scope: DebruijnIndex(
+                                            1
+                                        ),
+                                        pattern: PatternIndex(
+                                            0
+                                        )
+                                    },
+                                    Some(
+                                        "x"
+                                    )
+                                )
+                            )
+                        }
+                    }
                 )
             }
-        )
-    }
-)
+        }
+    )
+}

@@ -29,7 +29,11 @@ pub struct Opts {
     pub no_history: bool,
 
     /// The file to save the command history to
-    #[structopt(long = "history-file", parse(from_os_str), default_value = "repl-history")]
+    #[structopt(
+        long = "history-file",
+        parse(from_os_str),
+        default_value = "repl-history"
+    )]
     pub history_file: PathBuf,
 
     /// Files to preload into the REPL
@@ -148,7 +152,6 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
 fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
     use moniker::FreeVar;
-    use std::rc::Rc;
 
     use syntax::concrete::{ReplCommand, Term};
     use syntax::pretty::{self, ToDoc};
@@ -169,7 +172,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         ReplCommand::Help => print_help_text(),
 
         ReplCommand::Eval(parse_term) => {
-            let raw_term = Rc::new(parse_term.desugar());
+            let raw_term = parse_term.desugar();
             let (term, inferred) = semantics::infer(context, &raw_term)?;
             let evaluated = semantics::normalize(context, &term)?;
 
@@ -178,17 +181,17 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Core(parse_term) => {
-            use syntax::core::Term;
+            use syntax::core::{RcTerm, Term};
 
-            let raw_term = Rc::new(parse_term.desugar());
+            let raw_term = parse_term.desugar();
             let (term, inferred) = semantics::infer(context, &raw_term)?;
 
-            let ann_term = Term::Ann(term, Rc::new(Term::from(&*inferred)));
+            let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Let(name, parse_term) => {
-            let raw_term = Rc::new(parse_term.desugar());
+            let raw_term = parse_term.desugar();
             let (term, inferred) = semantics::infer(context, &raw_term)?;
 
             let ann_term = Term::Ann(
@@ -203,7 +206,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             return Ok(ControlFlow::Continue(Some(context)));
         },
         ReplCommand::TypeOf(parse_term) => {
-            let raw_term = Rc::new(parse_term.desugar());
+            let raw_term = parse_term.desugar();
             let (_, inferred) = semantics::infer(context, &raw_term)?;
 
             println!("{}", inferred.resugar().to_doc().pretty(term_width()));

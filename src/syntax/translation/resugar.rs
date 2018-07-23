@@ -1,6 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
 use moniker::{BoundTerm, Embed, FreeVar, Scope, Var};
-use std::rc::Rc;
 
 use syntax::concrete;
 use syntax::core;
@@ -127,7 +126,7 @@ fn resugar_literal(constant: &core::Literal) -> concrete::Term {
 }
 
 fn resugar_pi(
-    scope: &Scope<(FreeVar<String>, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    scope: &Scope<(FreeVar<String>, Embed<core::RcTerm>), core::RcTerm>,
     prec: Prec,
 ) -> concrete::Term {
     let ((name, Embed(mut ann)), mut body) = scope.clone().unbind();
@@ -225,7 +224,7 @@ fn resugar_pi(
 }
 
 fn resugar_lam(
-    scope: &Scope<(FreeVar<String>, Embed<Rc<core::Term>>), Rc<core::Term>>,
+    scope: &Scope<(FreeVar<String>, Embed<core::RcTerm>), core::RcTerm>,
     prec: Prec,
 ) -> concrete::Term {
     let ((name, Embed(mut ann)), mut body) = scope.clone().unbind();
@@ -378,7 +377,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                     expr_body,
                 ));
 
-                match *body {
+                match *body.inner {
                     core::Term::Record(ref next_scope) => scope = next_scope.clone(),
                     core::Term::RecordEmpty => break,
                     _ => panic!("ill-formed record"), // FIXME: better error

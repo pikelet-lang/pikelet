@@ -3,7 +3,7 @@ use moniker::FreeVar;
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::core::{Term, Type};
+use syntax::core::{RcTerm, RcType, Term};
 use syntax::pretty::{self, ToDoc};
 use syntax::prim::{self, PrimFn};
 
@@ -11,14 +11,14 @@ use syntax::prim::{self, PrimFn};
 #[derive(Debug, Clone)]
 pub enum Entry {
     /// A type claim
-    Claim(FreeVar<String>, Rc<Type>),
+    Claim(FreeVar<String>, RcType),
     /// A value definition
     Definition(FreeVar<String>, Definition),
 }
 
 #[derive(Debug, Clone)]
 pub enum Definition {
-    Term(Rc<Term>),
+    Term(RcTerm),
     Prim(Rc<PrimFn>),
 }
 
@@ -40,13 +40,13 @@ impl Context {
         }
     }
 
-    pub fn claim(&self, name: FreeVar<String>, ann: Rc<Type>) -> Context {
+    pub fn claim(&self, name: FreeVar<String>, ann: RcType) -> Context {
         Context {
             entries: self.entries.push_front(Entry::Claim(name, ann)),
         }
     }
 
-    pub fn define_term(&self, name: FreeVar<String>, ann: Rc<Type>, term: Rc<Term>) -> Context {
+    pub fn define_term(&self, name: FreeVar<String>, ann: RcType, term: RcTerm) -> Context {
         Context {
             entries: self
                 .entries
@@ -64,7 +64,7 @@ impl Context {
         }
     }
 
-    pub fn lookup_claim(&self, name: &FreeVar<String>) -> Option<Rc<Type>> {
+    pub fn lookup_claim(&self, name: &FreeVar<String>) -> Option<RcType> {
         self.entries
             .iter()
             .filter_map(|entry| match *entry {
@@ -89,14 +89,14 @@ impl Default for Context {
     fn default() -> Context {
         use moniker::{Embed, GenId, Scope, Var};
 
-        use syntax::core::{Literal, Value};
+        use syntax::core::{Literal, RcValue, Value};
         use syntax::Level;
 
         let name = FreeVar::user;
         let fresh_name = || FreeVar::from(GenId::fresh());
-        let free_var = |n| Rc::new(Value::from(Var::Free(name(n))));
-        let universe0 = Rc::new(Value::Universe(Level(0)));
-        let bool_lit = |val| Rc::new(Term::Literal(Literal::Bool(val)));
+        let free_var = |n| RcValue::from(Value::from(Var::Free(name(n))));
+        let universe0 = RcValue::from(Value::Universe(Level(0)));
+        let bool_lit = |val| RcTerm::from(Term::Literal(Literal::Bool(val)));
 
         Context::new()
             .claim(name("Bool"), universe0.clone())
@@ -116,9 +116,9 @@ impl Default for Context {
             .claim(name("F64"), universe0.clone())
             .claim(
                 name("Array"),
-                Rc::new(Value::Pi(Scope::new(
+                RcValue::from(Value::Pi(Scope::new(
                     (fresh_name(), Embed(free_var("U64"))),
-                    Rc::new(Value::Pi(Scope::new(
+                    RcValue::from(Value::Pi(Scope::new(
                         (fresh_name(), Embed(universe0.clone())),
                         universe0.clone(),
                     ))),
