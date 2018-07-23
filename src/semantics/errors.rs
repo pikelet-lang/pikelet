@@ -2,7 +2,7 @@
 
 use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
-use moniker::{BoundVar, FreeVar};
+use moniker::{FreeVar, Var};
 
 use syntax;
 use syntax::concrete;
@@ -11,11 +11,10 @@ use syntax::raw;
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
-    #[fail(display = "Unsubstituted debruijn index: `{}`, `{:?}`.", index, hint)]
+    #[fail(display = "Unsubstituted debruijn index: `{}`.", var)]
     UnsubstitutedDebruijnIndex {
         span: Option<ByteSpan>,
-        index: BoundVar,
-        hint: Option<String>,
+        var: Var<String>,
     },
     #[fail(display = "Argument applied to non-function.")]
     ArgumentAppliedToNonFunction,
@@ -28,16 +27,8 @@ pub enum InternalError {
 impl InternalError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
-            InternalError::UnsubstitutedDebruijnIndex {
-                span,
-                index,
-                ref hint,
-            } => {
-                let base = Diagnostic::new_bug(format!(
-                    "unsubstituted debruijn index: `{}`, `{:?}`",
-                    index, hint
-                ));
-
+            InternalError::UnsubstitutedDebruijnIndex { span, ref var } => {
+                let base = Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}`", var));
                 match span {
                     None => base,
                     Some(span) => {
@@ -59,19 +50,29 @@ impl InternalError {
 /// An error produced during type checking
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum TypeError {
-    #[fail(display = "Applied an argument to a non-function type `{}`", found)]
+    #[fail(
+        display = "Applied an argument to a non-function type `{}`",
+        found
+    )]
     ArgAppliedToNonFunction {
         fn_span: ByteSpan,
         arg_span: ByteSpan,
         found: Box<concrete::Term>,
     },
-    #[fail(display = "Type annotation needed for the function parameter `{}`", name)]
+    #[fail(
+        display = "Type annotation needed for the function parameter `{}`",
+        name
+    )]
     FunctionParamNeedsAnnotation {
         param_span: ByteSpan,
         var_span: Option<ByteSpan>,
         name: FreeVar<String>,
     },
-    #[fail(display = "found a `{}`, but expected a type `{}`", found, expected)]
+    #[fail(
+        display = "found a `{}`, but expected a type `{}`",
+        found,
+        expected
+    )]
     LiteralMismatch {
         literal_span: ByteSpan,
         found: raw::Literal,
@@ -81,12 +82,19 @@ pub enum TypeError {
     AmbiguousIntLiteral { span: ByteSpan },
     #[fail(display = "Ambiguous floating point literal")]
     AmbiguousFloatLiteral { span: ByteSpan },
-    #[fail(display = "Unable to elaborate hole, expected: `{:?}`", expected)]
+    #[fail(
+        display = "Unable to elaborate hole, expected: `{:?}`",
+        expected
+    )]
     UnableToElaborateHole {
         span: ByteSpan,
         expected: Option<Box<concrete::Term>>,
     },
-    #[fail(display = "Type mismatch: found `{}` but `{}` was expected", found, expected)]
+    #[fail(
+        display = "Type mismatch: found `{}` but `{}` was expected",
+        found,
+        expected
+    )]
     Mismatch {
         span: ByteSpan,
         found: Box<concrete::Term>,
@@ -107,7 +115,11 @@ pub enum TypeError {
         var_span: ByteSpan,
         name: FreeVar<String>,
     },
-    #[fail(display = "Label mismatch: found label `{}` but `{}` was expected", found, expected)]
+    #[fail(
+        display = "Label mismatch: found label `{}` but `{}` was expected",
+        found,
+        expected
+    )]
     LabelMismatch {
         span: ByteSpan,
         found: syntax::Label<String>,
@@ -127,7 +139,11 @@ pub enum TypeError {
     },
     #[fail(display = "Ambiguous record")]
     AmbiguousArrayLiteral { span: ByteSpan },
-    #[fail(display = "The type `{}` does not contain a field named `{}`.", found, expected_label)]
+    #[fail(
+        display = "The type `{}` does not contain a field named `{}`.",
+        found,
+        expected_label
+    )]
     NoFieldInType {
         label_span: ByteSpan,
         expected_label: syntax::Label<String>,

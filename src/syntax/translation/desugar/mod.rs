@@ -1,5 +1,5 @@
 use codespan::{ByteOffset, ByteSpan};
-use moniker::{Embed, FreeVar, GenId, Ignore, Nest, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, GenId, Nest, Scope, Var};
 
 use syntax::concrete;
 use syntax::raw;
@@ -32,8 +32,8 @@ fn desugar_pi(params: &[concrete::PiParamGroup], body: &concrete::Term) -> raw::
         for &(start, ref name) in names.iter().rev() {
             // This could be wrong... :/
             term = raw::RcTerm::from(raw::Term::Pi(
-                Ignore(ByteSpan::new(start, term.span().end())),
-                Scope::new((FreeVar::user(name.clone()), Embed(ann.clone())), term),
+                ByteSpan::new(start, term.span().end()),
+                Scope::new((Binder::user(name.clone()), Embed(ann.clone())), term),
             ));
         }
     }
@@ -59,19 +59,19 @@ fn desugar_lam(
 ) -> raw::RcTerm {
     let mut term = body.desugar();
     if let Some(ann) = ret_ann {
-        term = raw::RcTerm::from(raw::Term::Ann(Ignore::default(), term, ann.desugar()));
+        term = raw::RcTerm::from(raw::Term::Ann(ByteSpan::default(), term, ann.desugar()));
     }
 
     for &(ref names, ref ann) in params.iter().rev() {
         for &(start, ref name) in names.iter().rev() {
-            let name = FreeVar::user(name.clone());
+            let name = Binder::user(name.clone());
             let ann = match *ann {
-                None => raw::RcTerm::from(raw::Term::Hole(Ignore::default())),
+                None => raw::RcTerm::from(raw::Term::Hole(ByteSpan::default())),
                 Some(ref ann) => ann.desugar(),
             };
 
             term = raw::RcTerm::from(raw::Term::Lam(
-                Ignore(ByteSpan::new(start, term.span().end())),
+                ByteSpan::new(start, term.span().end()),
                 Scope::new((name, Embed(ann)), term),
             ));
         }
@@ -92,16 +92,13 @@ fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> raw::RcTerm
 
 fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> raw::RcTerm {
     let span = ByteSpan::new(span.end(), span.end());
-    let mut term = raw::RcTerm::from(raw::Term::RecordTypeEmpty(Ignore(span)));
+    let mut term = raw::RcTerm::from(raw::Term::RecordTypeEmpty(span));
 
     for &(start, ref label, ref ann) in fields.iter().rev() {
         term = raw::RcTerm::from(raw::Term::RecordType(
-            Ignore(ByteSpan::new(start, term.span().end())),
+            ByteSpan::new(start, term.span().end()),
             Scope::new(
-                (
-                    Label(FreeVar::user(label.clone())),
-                    Embed(raw::RcTerm::from(ann.desugar())),
-                ),
+                (Label(Binder::user(label.clone())), Embed(ann.desugar())),
                 raw::RcTerm::from(term),
             ),
         ));
@@ -112,14 +109,14 @@ fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> ra
 
 fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> raw::RcTerm {
     let span = ByteSpan::new(span.end(), span.end());
-    let mut term = raw::RcTerm::from(raw::Term::RecordEmpty(Ignore(span)));
+    let mut term = raw::RcTerm::from(raw::Term::RecordEmpty(span));
 
     for &(start, ref label, ref params, ref ret_ann, ref value) in fields.iter().rev() {
         term = raw::RcTerm::from(raw::Term::Record(
-            Ignore(ByteSpan::new(start, term.span().end())),
+            ByteSpan::new(start, term.span().end()),
             Scope::new(
                 (
-                    Label(FreeVar::user(label.clone())),
+                    Label(Binder::user(label.clone())),
                     Embed(desugar_lam(
                         params,
                         ret_ann.as_ref().map(<_>::as_ref),
@@ -143,7 +140,7 @@ impl Desugar<raw::Module> for concrete::Module {
                 // we encounter their corresponding definitions later as type annotations
                 let mut prev_claim = None;
                 // The definitions, desugared from the concrete syntax
-                let mut definitions = Vec::<(FreeVar<String>, Embed<raw::Definition>)>::new();
+                let mut definitions = Vec::<(Binder<String>, Embed<raw::Definition>)>::new();
 
                 for declaration in declarations {
                     match *declaration {
@@ -153,9 +150,9 @@ impl Desugar<raw::Module> for concrete::Module {
                             ..
                         } => match prev_claim.take() {
                             Some((name, ann)) => {
-                                let term = raw::RcTerm::from(raw::Term::Hole(Ignore::default()));
+                                let term = raw::RcTerm::from(raw::Term::Hole(ByteSpan::default()));
                                 definitions.push((
-                                    FreeVar::user(name),
+                                    Binder::user(name),
                                     Embed(raw::Definition { term, ann }),
                                 ));
                             },
@@ -169,7 +166,7 @@ impl Desugar<raw::Module> for concrete::Module {
                             ref wheres,
                             ..
                         } => {
-                            let default_span = Ignore::default();
+                            let default_span = ByteSpan::default();
 
                             if !wheres.is_empty() {
                                 unimplemented!("where clauses");
@@ -177,7 +174,7 @@ impl Desugar<raw::Module> for concrete::Module {
 
                             match prev_claim.take() {
                                 None => definitions.push((
-                                    FreeVar::user(name.as_ref()),
+                                    Binder::user(name.as_ref()),
                                     Embed(raw::Definition {
                                         ann: raw::RcTerm::from(raw::Term::Hole(default_span)),
                                         term: desugar_lam(
@@ -190,7 +187,7 @@ impl Desugar<raw::Module> for concrete::Module {
                                 Some((claim_name, ann)) => {
                                     if claim_name == *name {
                                         definitions.push((
-                                            FreeVar::user(name.as_ref()),
+                                            Binder::user(name.as_ref()),
                                             Embed(raw::Definition {
                                                 ann,
                                                 term: desugar_lam(params, None, body),
@@ -198,7 +195,7 @@ impl Desugar<raw::Module> for concrete::Module {
                                         ));
                                     } else {
                                         definitions.push((
-                                            FreeVar::user(name.as_ref()),
+                                            Binder::user(name.as_ref()),
                                             Embed(raw::Definition {
                                                 ann,
                                                 term: raw::RcTerm::from(raw::Term::Hole(
@@ -207,7 +204,7 @@ impl Desugar<raw::Module> for concrete::Module {
                                             }),
                                         ));
                                         definitions.push((
-                                            FreeVar::user(name.as_ref()),
+                                            Binder::user(name.as_ref()),
                                             Embed(raw::Definition {
                                                 ann: raw::RcTerm::from(raw::Term::Hole(
                                                     default_span,
@@ -235,14 +232,11 @@ impl Desugar<raw::Module> for concrete::Module {
 impl Desugar<raw::RcTerm> for concrete::Term {
     /// Convert a term in the concrete syntax into a core term
     fn desugar(&self) -> raw::RcTerm {
-        let span = Ignore(self.span());
+        let span = self.span();
         match *self {
             concrete::Term::Parens(_, ref term) => term.desugar(),
             concrete::Term::Ann(ref expr, ref ty) => {
-                let expr = expr.desugar();
-                let ty = ty.desugar();
-
-                raw::RcTerm::from(raw::Term::Ann(span, expr, ty))
+                raw::RcTerm::from(raw::Term::Ann(span, expr.desugar(), ty.desugar()))
             },
             concrete::Term::Universe(_, level) => {
                 raw::RcTerm::from(raw::Term::Universe(span, Level(level.unwrap_or(0))))
@@ -266,40 +260,30 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             )),
             concrete::Term::Hole(_) => raw::RcTerm::from(raw::Term::Hole(span)),
             concrete::Term::Var(_, ref x) => {
-                raw::RcTerm::from(raw::Term::Var(span, Var::Free(FreeVar::user(x.clone()))))
+                raw::RcTerm::from(raw::Term::Var(span, Var::user(x.clone())))
             },
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
             concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, None, body),
-            concrete::Term::Arrow(ref ann, ref body) => {
-                let name = FreeVar::from(GenId::fresh());
-                let ann = ann.desugar();
-                let body = body.desugar();
-
-                raw::RcTerm::from(raw::Term::Pi(span, Scope::new((name, Embed(ann)), body)))
-            },
+            concrete::Term::Arrow(ref ann, ref body) => raw::RcTerm::from(raw::Term::Pi(
+                span,
+                Scope::new(
+                    (Binder(FreeVar::from(GenId::fresh())), Embed(ann.desugar())),
+                    body.desugar(),
+                ),
+            )),
             concrete::Term::App(ref fn_expr, ref args) => desugar_app(fn_expr, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
-            concrete::Term::If(start, ref cond, ref if_true, ref if_false) => {
-                raw::RcTerm::from(raw::Term::If(
-                    Ignore(start),
-                    cond.desugar(),
-                    if_true.desugar(),
-                    if_false.desugar(),
-                ))
-            },
+            concrete::Term::If(start, ref cond, ref if_true, ref if_false) => raw::RcTerm::from(
+                raw::Term::If(start, cond.desugar(), if_true.desugar(), if_false.desugar()),
+            ),
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(span, fields),
             concrete::Term::Record(span, ref fields) => desugar_record(span, fields),
             concrete::Term::Proj(ref tm, label_start, ref label) => {
-                let label_span = Ignore(ByteSpan::from_offset(
-                    label_start,
-                    ByteOffset::from_str(label),
-                ));
-
                 raw::RcTerm::from(raw::Term::Proj(
                     span,
                     tm.desugar(),
-                    label_span,
-                    Label(FreeVar::user(label.clone())),
+                    ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
+                    Label(Binder::user(label.clone())),
                 ))
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),

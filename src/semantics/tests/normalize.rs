@@ -46,7 +46,10 @@ fn lam() {
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"\x : Type => x"),
         RcValue::from(Value::Lam(Scope::new(
-            (x.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+            (
+                Binder(x.clone()),
+                Embed(RcValue::from(Value::Universe(Level(0))))
+            ),
             RcValue::from(Value::from(Var::Free(x))),
         ))),
     );
@@ -62,7 +65,10 @@ fn pi() {
     assert_term_eq!(
         parse_normalize(&mut codemap, &context, r"(x : Type) -> x"),
         RcValue::from(Value::Pi(Scope::new(
-            (x.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+            (
+                Binder(x.clone()),
+                Embed(RcValue::from(Value::Universe(Level(0))))
+            ),
             RcValue::from(Value::from(Var::Free(x))),
         ))),
     );
@@ -77,7 +83,7 @@ fn lam_app() {
     let y = FreeVar::user("y");
     let ty_arr = RcValue::from(Value::Pi(Scope::new(
         (
-            FreeVar::user("_"),
+            Binder::user("_"),
             Embed(RcValue::from(Value::Universe(Level(0)))),
         ),
         RcValue::from(Value::Universe(Level(0))),
@@ -90,9 +96,12 @@ fn lam_app() {
             r"\(x : Type -> Type) (y : Type) => x y"
         ),
         RcValue::from(Value::Lam(Scope::new(
-            (x.clone(), Embed(ty_arr)),
+            (Binder(x.clone()), Embed(ty_arr)),
             RcValue::from(Value::Lam(Scope::new(
-                (y.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+                (
+                    Binder(y.clone()),
+                    Embed(RcValue::from(Value::Universe(Level(0))))
+                ),
                 RcValue::from(Value::from(Neutral::App(
                     Head::Var(Var::Free(x)),
                     vec![RcValue::from(Value::from(Var::Free(y)))],
@@ -111,7 +120,7 @@ fn pi_app() {
     let y = FreeVar::user("y");
     let ty_arr = RcValue::from(Value::Pi(Scope::new(
         (
-            FreeVar::user("_"),
+            Binder::user("_"),
             Embed(RcValue::from(Value::Universe(Level(0)))),
         ),
         RcValue::from(Value::Universe(Level(0))),
@@ -124,9 +133,12 @@ fn pi_app() {
             r"(x : Type -> Type) -> (y : Type) -> x y"
         ),
         RcValue::from(Value::Pi(Scope::new(
-            (x.clone(), Embed(ty_arr)),
+            (Binder(x.clone()), Embed(ty_arr)),
             RcValue::from(Value::Pi(Scope::new(
-                (y.clone(), Embed(RcValue::from(Value::Universe(Level(0))))),
+                (
+                    Binder(y.clone()),
+                    Embed(RcValue::from(Value::Universe(Level(0))))
+                ),
                 RcValue::from(Value::from(Neutral::App(
                     Head::Var(Var::Free(x)),
                     vec![RcValue::from(Value::from(Var::Free(y)))],

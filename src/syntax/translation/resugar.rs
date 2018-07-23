@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
-use moniker::{BoundTerm, Embed, FreeVar, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, FreeVar, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
@@ -126,23 +126,23 @@ fn resugar_literal(constant: &core::Literal) -> concrete::Term {
 }
 
 fn resugar_pi(
-    scope: &Scope<(FreeVar<String>, Embed<core::RcTerm>), core::RcTerm>,
+    scope: &Scope<(Binder<String>, Embed<core::RcTerm>), core::RcTerm>,
     prec: Prec,
 ) -> concrete::Term {
-    let ((name, Embed(mut ann)), mut body) = scope.clone().unbind();
+    let ((Binder(fv), Embed(mut ann)), mut body) = scope.clone().unbind();
 
     // Only use explicit parameter names if the body is dependent on
     // the parameter or there is a human-readable name given.
     //
     // We'll be checking for readable names as we go, because if they've
     // survived until now they're probably desirable to retain!
-    if body.free_vars().contains(&name) || name.ident().is_some() {
+    if body.free_vars().contains(&fv) || fv.ident().is_some() {
         // TODO: use name if it is present, and not used in the current scope
         // TODO: otherwise create a pretty name
         // TODO: add the used name to the environment
 
         let mut params = vec![(
-            vec![(ByteIndex::default(), name.to_string())],
+            vec![(ByteIndex::default(), fv.to_string())],
             resugar_term(&ann, Prec::APP),
         )];
 
@@ -156,12 +156,12 @@ fn resugar_pi(
             // (a : Type) -> (b : Type -> Type) -> ...
             // (a : Type) (b : Type -> Type) -> ...
             // ```
-            let ((next_name, Embed(next_ann)), next_body) = match *body {
+            let ((Binder(next_fv), Embed(next_ann)), next_body) = match *body {
                 core::Term::Pi(ref scope) => scope.clone().unbind(),
                 _ => break,
             };
 
-            if core::Term::term_eq(&ann, &next_ann) && next_name.ident().is_some() {
+            if core::Term::term_eq(&ann, &next_ann) && next_fv.ident().is_some() {
                 // Combine the parameters if the type annotations are
                 // alpha-equivalent. For example:
                 //
@@ -169,13 +169,13 @@ fn resugar_pi(
                 // (a : Type) (b : Type) -> ...
                 // (a b : Type) -> ...
                 // ```
-                let next_name = (ByteIndex::default(), next_name.to_string());
-                params.last_mut().unwrap().0.push(next_name);
-            } else if next_body.free_vars().contains(&next_name) || next_name.ident().is_some() {
+                let next_param = (ByteIndex::default(), next_fv.to_string());
+                params.last_mut().unwrap().0.push(next_param);
+            } else if next_body.free_vars().contains(&next_fv) || next_fv.ident().is_some() {
                 // Add a new parameter if the body is dependent on the parameter
                 // or there is a human-readable name given
                 params.push((
-                    vec![(ByteIndex::default(), next_name.to_string())],
+                    vec![(ByteIndex::default(), next_fv.to_string())],
                     resugar_term(&next_ann, Prec::APP),
                 ));
             } else {
@@ -224,7 +224,7 @@ fn resugar_pi(
 }
 
 fn resugar_lam(
-    scope: &Scope<(FreeVar<String>, Embed<core::RcTerm>), core::RcTerm>,
+    scope: &Scope<(Binder<String>, Embed<core::RcTerm>), core::RcTerm>,
     prec: Prec,
 ) -> concrete::Term {
     let ((name, Embed(mut ann)), mut body) = scope.clone().unbind();
@@ -247,7 +247,7 @@ fn resugar_lam(
         // \(a : Type) => \(b : Type -> Type) => ...
         // \(a : Type) (b : Type -> Type) => ...
         // ```
-        let ((next_name, Embed(next_ann)), next_body) = match *body {
+        let ((Binder(next_fv), Embed(next_ann)), next_body) = match *body {
             core::Term::Lam(ref scope) => scope.clone().unbind(),
             _ => break,
         };
@@ -260,11 +260,11 @@ fn resugar_lam(
         // \(a b : Type) => ...
         // ```
         if core::Term::term_eq(&ann, &next_ann) {
-            let next_name = (ByteIndex::default(), next_name.to_string());
-            params.last_mut().unwrap().0.push(next_name);
+            let next_param = (ByteIndex::default(), next_fv.to_string());
+            params.last_mut().unwrap().0.push(next_param);
         } else {
             params.push((
-                vec![(ByteIndex::default(), next_name.to_string())],
+                vec![(ByteIndex::default(), next_fv.to_string())],
                 Some(Box::new(resugar_term(&next_ann, Prec::LAM))),
             ));
         }
@@ -313,7 +313,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             // TODO: otherwise create a pretty name
             concrete::Term::Var(ByteIndex::default(), name.to_string())
         },
-        core::Term::Var(Var::Bound(_, _)) => {
+        core::Term::Var(Var::Bound(_, _, _)) => {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },

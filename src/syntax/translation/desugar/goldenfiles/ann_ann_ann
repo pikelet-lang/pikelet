@@ -1,27 +1,21 @@
 RcTerm {
     inner: Ann(
-        Ignore(
-            Span {
-                start: ByteIndex(1),
-                end: ByteIndex(30)
-            }
-        ),
+        Span {
+            start: ByteIndex(1),
+            end: ByteIndex(30)
+        },
         RcTerm {
             inner: Ann(
-                Ignore(
-                    Span {
-                        start: ByteIndex(2),
-                        end: ByteIndex(13)
-                    }
-                ),
+                Span {
+                    start: ByteIndex(2),
+                    end: ByteIndex(13)
+                },
                 RcTerm {
                     inner: Universe(
-                        Ignore(
-                            Span {
-                                start: ByteIndex(2),
-                                end: ByteIndex(6)
-                            }
-                        ),
+                        Span {
+                            start: ByteIndex(2),
+                            end: ByteIndex(6)
+                        },
                         Level(
                             0
                         )
@@ -29,12 +23,10 @@ RcTerm {
                 },
                 RcTerm {
                     inner: Universe(
-                        Ignore(
-                            Span {
-                                start: ByteIndex(9),
-                                end: ByteIndex(13)
-                            }
-                        ),
+                        Span {
+                            start: ByteIndex(9),
+                            end: ByteIndex(13)
+                        },
                         Level(
                             0
                         )
@@ -44,20 +36,16 @@ RcTerm {
         },
         RcTerm {
             inner: Ann(
-                Ignore(
-                    Span {
-                        start: ByteIndex(18),
-                        end: ByteIndex(29)
-                    }
-                ),
+                Span {
+                    start: ByteIndex(18),
+                    end: ByteIndex(29)
+                },
                 RcTerm {
                     inner: Universe(
-                        Ignore(
-                            Span {
-                                start: ByteIndex(18),
-                                end: ByteIndex(22)
-                            }
-                        ),
+                        Span {
+                            start: ByteIndex(18),
+                            end: ByteIndex(22)
+                        },
                         Level(
                             0
                         )
@@ -65,12 +53,10 @@ RcTerm {
                 },
                 RcTerm {
                     inner: Universe(
-                        Ignore(
-                            Span {
-                                start: ByteIndex(25),
-                                end: ByteIndex(29)
-                            }
-                        ),
+                        Span {
+                            start: ByteIndex(25),
+                            end: ByteIndex(29)
+                        },
                         Level(
                             0
                         )

@@ -1,25 +1,23 @@
 RcTerm {
     inner: Lam(
-        Ignore(
-            Span {
-                start: ByteIndex(3),
-                end: ByteIndex(25)
-            }
-        ),
+        Span {
+            start: ByteIndex(3),
+            end: ByteIndex(25)
+        },
         Scope {
             unsafe_pattern: (
-                User(
-                    "a"
+                Binder(
+                    User(
+                        "a"
+                    )
                 ),
                 Embed(
                     RcTerm {
                         inner: Universe(
-                            Ignore(
-                                Span {
-                                    start: ByteIndex(7),
-                                    end: ByteIndex(11)
-                                }
-                            ),
+                            Span {
+                                start: ByteIndex(7),
+                                end: ByteIndex(11)
+                            },
                             Level(
                                 0
                             )
@@ -29,35 +27,33 @@ RcTerm {
             ),
             unsafe_body: RcTerm {
                 inner: Lam(
-                    Ignore(
-                        Span {
-                            start: ByteIndex(14),
-                            end: ByteIndex(25)
-                        }
-                    ),
+                    Span {
+                        start: ByteIndex(14),
+                        end: ByteIndex(25)
+                    },
                     Scope {
                         unsafe_pattern: (
-                            User(
-                                "x"
+                            Binder(
+                                User(
+                                    "x"
+                                )
                             ),
                             Embed(
                                 RcTerm {
                                     inner: Var(
-                                        Ignore(
-                                            Span {
-                                                start: ByteIndex(18),
-                                                end: ByteIndex(19)
-                                            }
-                                        ),
+                                        Span {
+                                            start: ByteIndex(18),
+                                            end: ByteIndex(19)
+                                        },
                                         Bound(
-                                            BoundVar {
-                                                scope: DebruijnIndex(
-                                                    0
-                                                ),
-                                                pattern: PatternIndex(
+                                            ScopeOffset(
+                                                0
+                                            ),
+                                            BinderIndex(
+                                                BinderOffset(
                                                     0
                                                 )
-                                            },
+                                            ),
                                             Some(
                                                 "a"
                                             )
@@ -68,21 +64,19 @@ RcTerm {
                         ),
                         unsafe_body: RcTerm {
                             inner: Var(
-                                Ignore(
-                                    Span {
-                                        start: ByteIndex(24),
-                                        end: ByteIndex(25)
-                                    }
-                                ),
+                                Span {
+                                    start: ByteIndex(24),
+                                    end: ByteIndex(25)
+                                },
                                 Bound(
-                                    BoundVar {
-                                        scope: DebruijnIndex(
-                                            0
-                                        ),
-                                        pattern: PatternIndex(
+                                    ScopeOffset(
+                                        0
+                                    ),
+                                    BinderIndex(
+                                        BinderOffset(
                                             0
                                         )
-                                    },
+                                    ),
                                     Some(
                                         "x"
                                     )
