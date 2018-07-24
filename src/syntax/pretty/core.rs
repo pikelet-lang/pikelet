@@ -373,25 +373,22 @@ impl ToDoc for Value {
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
-            Value::Neutral(ref n) => n.to_doc(),
+            Value::Neutral(ref neutral, ref spine) => {
+                pretty_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))
+            },
         }
     }
 }
 
 impl ToDoc for Neutral {
     fn to_doc(&self) -> StaticDoc {
-        let (head, spine) = match *self {
-            Neutral::App(ref head, ref spine) => (head.to_doc(), spine),
-            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => (
-                pretty_if(&cond.inner, &if_true.inner, &if_false.inner),
-                spine,
-            ),
-            Neutral::Proj(ref expr, ref label, ref spine) => {
-                (pretty_proj(&expr.inner, label), spine)
+        match *self {
+            Neutral::Head(ref head) => head.to_doc(),
+            Neutral::If(ref cond, ref if_true, ref if_false) => {
+                pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
-        };
-
-        pretty_app(head, spine.iter().map(|arg| &arg.inner))
+            Neutral::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
+        }
     }
 }
 

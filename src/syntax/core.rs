@@ -1,5 +1,6 @@
 //! The core syntax of the language
 
+use im::Vector;
 use moniker::{Binder, BoundPattern, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
@@ -200,7 +201,7 @@ pub enum Value {
     /// Array literals
     Array(Vec<RcValue>),
     /// Neutral terms
-    Neutral(RcNeutral),
+    Neutral(RcNeutral, Spine),
 }
 
 impl Value {
@@ -263,7 +264,7 @@ impl Value {
             | Value::Record(_)
             | Value::RecordEmpty
             | Value::Array(_) => true,
-            Value::Neutral(_) => false,
+            Value::Neutral(_, _) => false,
         }
     }
 
@@ -281,13 +282,13 @@ impl Value {
                 (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
             },
             Value::Array(ref elems) => elems.iter().all(|elem| elem.is_nf()),
-            Value::Neutral(_) => false,
+            Value::Neutral(_, _) => false,
         }
     }
 
-    pub fn free_app(&self) -> Option<(&FreeVar<String>, &[RcValue])> {
-        if let Value::Neutral(ref neutral) = *self {
-            if let Neutral::App(Head::Var(Var::Free(ref free_var)), ref spine) = **neutral {
+    pub fn free_app(&self) -> Option<(&FreeVar<String>, &Spine)> {
+        if let Value::Neutral(ref neutral, ref spine) = *self {
+            if let Neutral::Head(Head::Var(Var::Free(ref free_var))) = **neutral {
                 return Some((free_var, spine));
             }
         }
@@ -340,7 +341,7 @@ pub enum Head {
 /// The spine of a neutral term
 ///
 /// These are arguments that are awaiting application
-pub type Spine = Vec<RcValue>;
+pub type Spine = Vector<RcValue>;
 
 /// Neutral values
 ///
@@ -348,12 +349,12 @@ pub type Spine = Vec<RcValue>;
 /// context
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
-    /// Term application
-    App(Head, Spine),
+    /// Head of an application
+    Head(Head),
     /// If expression
-    If(RcNeutral, RcValue, RcValue, Spine),
+    If(RcNeutral, RcValue, RcValue),
     /// Field projection
-    Proj(RcNeutral, Label<String>, Spine),
+    Proj(RcNeutral, Label<String>),
 }
 
 impl fmt::Display for Neutral {
@@ -392,7 +393,7 @@ pub type RcType = RcValue;
 
 impl From<Var<String>> for Neutral {
     fn from(src: Var<String>) -> Neutral {
-        Neutral::App(Head::Var(src), vec![])
+        Neutral::Head(Head::Var(src))
     }
 }
 
@@ -404,7 +405,7 @@ impl From<Var<String>> for Value {
 
 impl From<Neutral> for Value {
     fn from(src: Neutral) -> Value {
-        Value::Neutral(RcNeutral::from(src))
+        Value::Neutral(RcNeutral::from(src), Spine::new())
     }
 }
 
@@ -449,7 +450,11 @@ impl<'a> From<&'a Value> for Term {
             Value::Array(ref elems) => {
                 Term::Array(elems.iter().map(|elem| RcTerm::from(&**elem)).collect())
             },
-            Value::Neutral(ref n) => Term::from(&**n),
+            Value::Neutral(ref neutral, ref spine) => {
+                spine.iter().fold(Term::from(&*neutral.inner), |acc, arg| {
+                    Term::App(RcTerm::from(acc), RcTerm::from(&**arg))
+                })
+            },
         }
     }
 }
@@ -462,24 +467,15 @@ impl<'a> From<&'a Value> for RcTerm {
 
 impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
-        let (head, spine) = match *src {
-            Neutral::App(ref head, ref spine) => (Term::from(head), spine),
-            Neutral::If(ref cond, ref if_true, ref if_false, ref spine) => (
-                Term::If(
-                    RcTerm::from(&**cond),
-                    RcTerm::from(&**if_true),
-                    RcTerm::from(&**if_false),
-                ),
-                spine,
+        match *src {
+            Neutral::Head(ref head) => Term::from(head),
+            Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
+                RcTerm::from(&**cond),
+                RcTerm::from(&**if_true),
+                RcTerm::from(&**if_false),
             ),
-            Neutral::Proj(ref expr, ref name, ref spine) => {
-                (Term::Proj(RcTerm::from(&**expr), name.clone()), spine)
-            },
-        };
-
-        spine.iter().fold(head, |acc, arg| {
-            Term::App(RcTerm::from(acc), RcTerm::from(&**arg))
-        })
+            Neutral::Proj(ref expr, ref name) => Term::Proj(RcTerm::from(&**expr), name.clone()),
+        }
     }
 }
 

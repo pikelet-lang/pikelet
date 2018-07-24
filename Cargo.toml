@@ -27,7 +27,7 @@ codespan-reporting = "0.1.3"
 failure = "0.1.1"
 im = "11.0.0"
 lalrpop-util = "0.15.2"
-moniker = { version = "0.2.0", features = ["codespan"] }
+moniker = { version = "0.2.1", features = ["codespan", "im"] }
 pretty = { version = "0.5.2", features = ["termcolor"] }
 unicode-xid = "0.1.0"
 
