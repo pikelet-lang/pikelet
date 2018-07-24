@@ -78,34 +78,6 @@ pub enum Term {
     Array(ByteSpan, Vec<RcTerm>),
 }
 
-/// Reference counted terms
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
-pub struct RcTerm {
-    pub inner: Rc<Term>,
-}
-
-impl From<Term> for RcTerm {
-    fn from(src: Term) -> RcTerm {
-        RcTerm {
-            inner: Rc::new(src),
-        }
-    }
-}
-
-impl ops::Deref for RcTerm {
-    type Target = Term;
-
-    fn deref(&self) -> &Term {
-        &self.inner
-    }
-}
-
-impl fmt::Display for RcTerm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
-    }
-}
-
 impl Term {
     pub fn span(&self) -> ByteSpan {
         match *self {
@@ -131,5 +103,33 @@ impl Term {
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
+    }
+}
+
+/// Reference counted terms
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
+pub struct RcTerm {
+    pub inner: Rc<Term>,
+}
+
+impl From<Term> for RcTerm {
+    fn from(src: Term) -> RcTerm {
+        RcTerm {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl ops::Deref for RcTerm {
+    type Target = Term;
+
+    fn deref(&self) -> &Term {
+        &self.inner
+    }
+}
+
+impl fmt::Display for RcTerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
     }
 }
