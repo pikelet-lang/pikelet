@@ -229,8 +229,18 @@ impl Desugar<raw::Module> for concrete::Module {
     }
 }
 
+impl Desugar<raw::Literal> for concrete::Literal {
+    fn desugar(&self) -> raw::Literal {
+        match *self {
+            concrete::Literal::String(span, ref value) => raw::Literal::String(span, value.clone()),
+            concrete::Literal::Char(span, value) => raw::Literal::Char(span, value),
+            concrete::Literal::Int(span, value) => raw::Literal::Int(span, value),
+            concrete::Literal::Float(span, value) => raw::Literal::Float(span, value),
+        }
+    }
+}
+
 impl Desugar<raw::RcTerm> for concrete::Term {
-    /// Convert a term in the concrete syntax into a core term
     fn desugar(&self) -> raw::RcTerm {
         let span = self.span();
         match *self {
@@ -241,26 +251,16 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             concrete::Term::Universe(_, level) => {
                 raw::RcTerm::from(raw::Term::Universe(span, Level(level.unwrap_or(0))))
             },
-            concrete::Term::String(_, ref value) => raw::RcTerm::from(raw::Term::Literal(
-                span,
-                raw::Literal::String(value.clone()),
-            )),
-            concrete::Term::Char(_, value) => {
-                raw::RcTerm::from(raw::Term::Literal(span, raw::Literal::Char(value)))
-            },
-            concrete::Term::Int(_, value) => {
-                raw::RcTerm::from(raw::Term::Literal(span, raw::Literal::Int(value)))
-            },
-            concrete::Term::Float(_, value) => {
-                raw::RcTerm::from(raw::Term::Literal(span, raw::Literal::Float(value)))
+            concrete::Term::Literal(ref literal) => {
+                raw::RcTerm::from(raw::Term::Literal(literal.desugar()))
             },
             concrete::Term::Array(_, ref elems) => raw::RcTerm::from(raw::Term::Array(
                 span,
                 elems.iter().map(|elem| elem.desugar()).collect(),
             )),
             concrete::Term::Hole(_) => raw::RcTerm::from(raw::Term::Hole(span)),
-            concrete::Term::Var(_, ref x) => {
-                raw::RcTerm::from(raw::Term::Var(span, Var::user(x.clone())))
+            concrete::Term::Var(_, ref name) => {
+                raw::RcTerm::from(raw::Term::Var(span, Var::user(name.clone())))
             },
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
             concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, None, body),

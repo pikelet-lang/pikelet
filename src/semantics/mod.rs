@@ -6,11 +6,11 @@
 
 use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
-use std::rc::Rc;
 
 use syntax::context::Context;
 use syntax::core::{
-    Definition, Head, Literal, Module, Neutral, RcTerm, RcType, RcValue, Term, Type, Value,
+    Definition, Head, Literal, Module, Neutral, RcNeutral, RcTerm, RcType, RcValue, Term, Type,
+    Value,
 };
 use syntax::raw;
 use syntax::translation::Resugar;
@@ -34,13 +34,13 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
             let (term, ann) = match *raw_definition.ann.inner {
                 // We don't have a type annotation available to us! Instead we will
                 // attempt to infer it based on the body of the definition
-                raw::Term::Hole(_) => infer(&context, &raw_definition.term)?,
+                raw::Term::Hole(_) => infer_term(&context, &raw_definition.term)?,
                 // We have a type annotation! Elaborate it, then normalize it, then
                 // check that it matches the body of the definition
                 _ => {
-                    let (ann, _) = infer(&context, &raw_definition.ann)?;
+                    let (ann, _) = infer_term(&context, &raw_definition.ann)?;
                     let ann = normalize(&context, &ann)?;
-                    let term = check(&context, &raw_definition.term, &ann)?;
+                    let term = check_term(&context, &raw_definition.term, &ann)?;
                     (term, ann)
                 },
             };
@@ -90,12 +90,9 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::Pi(ref scope) => {
             let ((name, Embed(ann)), body) = scope.clone().unbind();
 
-            let ann = normalize(context, &ann)?;
-            let body = normalize(context, &body)?;
-
             Ok(RcValue::from(Value::Pi(Scope::new(
-                (name, Embed(ann)),
-                body,
+                (name, Embed(normalize(context, &ann)?)),
+                normalize(context, &body)?,
             ))))
         },
 
@@ -103,32 +100,27 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::Lam(ref scope) => {
             let ((name, Embed(ann)), body) = scope.clone().unbind();
 
-            let ann = normalize(context, &ann)?;
-            let body = normalize(context, &body)?;
-
             Ok(RcValue::from(Value::Lam(Scope::new(
-                (name, Embed(ann)),
-                body,
+                (name, Embed(normalize(context, &ann)?)),
+                normalize(context, &body)?,
             ))))
         },
 
         // E-APP
         Term::App(ref expr, ref arg) => {
-            let mut value_expr = normalize(context, expr)?;
-
-            match Rc::make_mut(&mut value_expr.inner) {
+            match *normalize(context, expr)?.inner {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((Binder(free_var), Embed(_)), body) = scope.clone().unbind();
                     normalize(context, &body.substs(&[(free_var, arg.clone())]))
                 },
-                Value::Neutral(ref mut neutral) => {
+                Value::Neutral(ref neutral, ref spine) => {
                     let arg = normalize(context, arg)?;
+                    let mut spine = spine.clone();
 
-                    // Update the spine in place, if possible
-                    match *Rc::make_mut(&mut neutral.inner) {
-                        Neutral::App(Head::Var(Var::Free(ref free_var)), ref mut spine) => {
-                            spine.push(arg);
+                    match *neutral.inner {
+                        Neutral::Head(Head::Var(Var::Free(ref free_var))) => {
+                            spine.push_back(arg);
 
                             // Apply the arguments to primitive definitions if the number of
                             // arguments matches the arity of the primitive, all aof the arguments
@@ -142,12 +134,12 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                                 }
                             }
                         },
-                        Neutral::App(_, ref mut spine)
-                        | Neutral::If(_, _, _, ref mut spine)
-                        | Neutral::Proj(_, _, ref mut spine) => spine.push(arg),
+                        Neutral::Head(_) | Neutral::If(_, _, _) | Neutral::Proj(_, _) => {
+                            spine.push_back(arg)
+                        },
                     }
 
-                    Ok(RcValue::from(Value::Neutral(neutral.clone())))
+                    Ok(RcValue::from(Value::Neutral(neutral.clone(), spine)))
                 },
                 _ => Err(InternalError::ArgumentAppliedToNonFunction),
             }
@@ -160,12 +152,14 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             match *value_cond {
                 Value::Literal(Literal::Bool(true)) => normalize(context, if_true),
                 Value::Literal(Literal::Bool(false)) => normalize(context, if_false),
-                Value::Neutral(ref cond) => Ok(RcValue::from(Value::from(Neutral::If(
-                    cond.clone(),
-                    normalize(context, if_true)?,
-                    normalize(context, if_false)?,
-                    vec![],
-                )))),
+                Value::Neutral(ref cond, ref spine) => Ok(RcValue::from(Value::Neutral(
+                    RcNeutral::from(Neutral::If(
+                        cond.clone(),
+                        normalize(context, if_true)?,
+                        normalize(context, if_false)?,
+                    )),
+                    spine.clone(),
+                ))),
                 _ => Err(InternalError::ExpectedBoolExpr),
             }
         },
@@ -196,11 +190,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // E-PROJ
         Term::Proj(ref expr, ref label) => match *normalize(context, expr)? {
-            Value::Neutral(ref neutral) => Ok(RcValue::from(Value::from(Neutral::Proj(
-                neutral.clone(),
-                label.clone(),
-                vec![],
-            )))),
+            Value::Neutral(ref neutral, ref spine) => Ok(RcValue::from(Value::Neutral(
+                RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone())),
+                spine.clone(),
+            ))),
             ref expr => match expr.lookup_record(label) {
                 Some(value) => Ok(value.clone()),
                 None => Err(InternalError::ProjectedOnNonExistentField {
@@ -218,52 +211,71 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
     }
 }
 
-/// Type checking of terms
-pub fn check(
+/// Checks that a literal is compatible with the given type, returning the
+/// elaborated literal if successful
+fn check_literal(raw_literal: &raw::Literal, expected_ty: &RcType) -> Result<Literal, TypeError> {
+    fn is_name(ty: &RcType, name: &str) -> bool {
+        match ty.free_app() {
+            Some((free_var, spine)) => *free_var == FreeVar::user(name) && spine.is_empty(),
+            _ => false,
+        }
+    }
+
+    match *raw_literal {
+        raw::Literal::String(_, ref val) if is_name(expected_ty, "String") => {
+            Ok(Literal::String(val.clone()))
+        },
+        raw::Literal::Char(_, val) if is_name(expected_ty, "Char") => Ok(Literal::Char(val)),
+
+        // FIXME: overflow?
+        raw::Literal::Int(_, val) if is_name(expected_ty, "U8") => Ok(Literal::U8(val as u8)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "U16") => Ok(Literal::U16(val as u16)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "U32") => Ok(Literal::U32(val as u32)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "U64") => Ok(Literal::U64(val)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "I8") => Ok(Literal::I8(val as i8)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "I16") => Ok(Literal::I16(val as i16)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "I32") => Ok(Literal::I32(val as i32)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "I64") => Ok(Literal::I64(val as i64)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "F32") => Ok(Literal::F32(val as f32)),
+        raw::Literal::Int(_, val) if is_name(expected_ty, "F64") => Ok(Literal::F64(val as f64)),
+        raw::Literal::Float(_, val) if is_name(expected_ty, "F32") => Ok(Literal::F32(val as f32)),
+        raw::Literal::Float(_, val) if is_name(expected_ty, "F64") => Ok(Literal::F64(val)),
+
+        _ => Err(TypeError::LiteralMismatch {
+            literal_span: raw_literal.span(),
+            found: raw_literal.clone(),
+            expected: Box::new(expected_ty.resugar()),
+        }),
+    }
+}
+
+/// Synthesize the type of a literal, returning the elaborated literal and the
+/// inferred type if successful
+fn infer_literal(raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeError> {
+    match *raw_literal {
+        raw::Literal::String(_, ref value) => Ok((
+            Literal::String(value.clone()),
+            RcValue::from(Value::from(Var::user("String"))),
+        )),
+        raw::Literal::Char(_, value) => Ok((
+            Literal::Char(value),
+            RcValue::from(Value::from(Var::user("Char"))),
+        )),
+        raw::Literal::Int(span, _) => Err(TypeError::AmbiguousIntLiteral { span }),
+        raw::Literal::Float(span, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
+    }
+}
+
+/// Checks that a term is compatible with the given type, returning the
+/// elaborated term if successful
+pub fn check_term(
     context: &Context,
     raw_term: &raw::RcTerm,
     expected_ty: &RcType,
 ) -> Result<RcTerm, TypeError> {
     match (&*raw_term.inner, &*expected_ty.inner) {
-        (&raw::Term::Literal(literal_span, ref raw_literal), ty) => {
-            fn is_name(ty: &Type, name: &str) -> bool {
-                if let Value::Neutral(ref neutral) = *ty {
-                    if let Neutral::App(Head::Var(Var::Free(ref n)), ref spine) = *neutral.inner {
-                        return Binder::user(name) == *n && spine.is_empty();
-                    }
-                }
-                false
-            }
-
-            let literal = match *raw_literal {
-                raw::Literal::String(ref val) if is_name(ty, "String") => {
-                    Literal::String(val.clone())
-                },
-                raw::Literal::Char(val) if is_name(ty, "Char") => Literal::Char(val),
-
-                // FIXME: overflow?
-                raw::Literal::Int(val) if is_name(ty, "U8") => Literal::U8(val as u8),
-                raw::Literal::Int(val) if is_name(ty, "U16") => Literal::U16(val as u16),
-                raw::Literal::Int(val) if is_name(ty, "U32") => Literal::U32(val as u32),
-                raw::Literal::Int(val) if is_name(ty, "U64") => Literal::U64(val),
-                raw::Literal::Int(val) if is_name(ty, "I8") => Literal::I8(val as i8),
-                raw::Literal::Int(val) if is_name(ty, "I16") => Literal::I16(val as i16),
-                raw::Literal::Int(val) if is_name(ty, "I32") => Literal::I32(val as i32),
-                raw::Literal::Int(val) if is_name(ty, "I64") => Literal::I64(val as i64),
-                raw::Literal::Int(val) if is_name(ty, "F32") => Literal::F32(val as f32),
-                raw::Literal::Int(val) if is_name(ty, "F64") => Literal::F64(val as f64),
-                raw::Literal::Float(val) if is_name(ty, "F32") => Literal::F32(val as f32),
-                raw::Literal::Float(val) if is_name(ty, "F64") => Literal::F64(val),
-
-                _ => {
-                    return Err(TypeError::LiteralMismatch {
-                        literal_span,
-                        found: raw_literal.clone(),
-                        expected: Box::new(expected_ty.resugar()),
-                    });
-                },
-            };
-
+        (&raw::Term::Literal(ref raw_literal), _) => {
+            let literal = check_literal(raw_literal, expected_ty)?;
             return Ok(RcTerm::from(Term::Literal(literal)));
         },
 
@@ -275,7 +287,7 @@ pub fn check(
             // Elaborate the hole, if it exists
             if let raw::Term::Hole(_) = *lam_ann.inner {
                 let lam_ann = RcTerm::from(Term::from(&*pi_ann));
-                let lam_body = check(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
+                let lam_body = check_term(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
                 let lam_scope = Scope::new((lam_name, Embed(lam_ann)), lam_body);
 
                 return Ok(RcTerm::from(Term::Lam(lam_scope)));
@@ -294,9 +306,9 @@ pub fn check(
         // C-IF
         (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
             let bool_ty = RcValue::from(Value::from(Var::user("Bool")));
-            let cond = check(context, raw_cond, &bool_ty)?;
-            let if_true = check(context, raw_if_true, expected_ty)?;
-            let if_false = check(context, raw_if_false, expected_ty)?;
+            let cond = check_term(context, raw_cond, &bool_ty)?;
+            let if_true = check_term(context, raw_if_true, expected_ty)?;
+            let if_false = check_term(context, raw_if_false, expected_ty)?;
 
             return Ok(RcTerm::from(Term::If(cond, if_true, if_false)));
         },
@@ -307,12 +319,12 @@ pub fn check(
                 Scope::unbind2(scope.clone(), ty_scope.clone());
 
             if Label::pattern_eq(&label, &ty_label) {
-                let expr = check(context, &raw_expr, &ann)?;
+                let expr = check_term(context, &raw_expr, &ann)?;
                 let ty_body = normalize(
                     context,
                     &ty_body.substs(&[((label.0).0.clone(), expr.clone())]),
                 )?;
-                let body = check(context, &raw_body, &ty_body)?;
+                let body = check_term(context, &raw_body, &ty_body)?;
 
                 return Ok(RcTerm::from(Term::Record(Scope::new(
                     (label, Embed(expr)),
@@ -328,7 +340,9 @@ pub fn check(
         },
 
         (&raw::Term::Array(span, ref elems), ty) => match ty.free_app() {
-            Some((name, [ref len, ref elem_ty])) if *name == FreeVar::user("Array") => {
+            Some((name, spine)) if *name == FreeVar::user("Array") && spine.len() == 2 => {
+                let len = &spine[0];
+                let elem_ty = &spine[1];
                 if let Value::Literal(Literal::U64(len)) = **len {
                     if len != elems.len() as u64 {
                         return Err(TypeError::ArrayLengthMismatch {
@@ -342,7 +356,7 @@ pub fn check(
                 return Ok(RcTerm::from(Term::Array(
                     elems
                         .iter()
-                        .map(|elem| check(context, elem, elem_ty))
+                        .map(|elem| check_term(context, elem, elem_ty))
                         .collect::<Result<_, _>>()?,
                 )));
             },
@@ -358,7 +372,7 @@ pub fn check(
     }
 
     // C-CONV
-    let (term, inferred_ty) = infer(context, raw_term)?;
+    let (term, inferred_ty) = infer_term(context, raw_term)?;
     if Type::term_eq(&inferred_ty, expected_ty) {
         Ok(term)
     } else {
@@ -370,8 +384,12 @@ pub fn check(
     }
 }
 
-/// Type inference of terms
-pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType), TypeError> {
+/// Synthesize the type of a term, returning the elaborated term and the
+/// inferred type if successful
+pub fn infer_term(
+    context: &Context,
+    raw_term: &raw::RcTerm,
+) -> Result<(RcTerm, RcType), TypeError> {
     use std::cmp;
 
     /// Ensures that the given term is a universe, returning the level of that
@@ -380,7 +398,7 @@ pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcTyp
         context: &Context,
         raw_term: &raw::RcTerm,
     ) -> Result<(RcTerm, Level), TypeError> {
-        let (term, ty) = infer(context, raw_term)?;
+        let (term, ty) = infer_term(context, raw_term)?;
         match *ty {
             Value::Universe(level) => Ok((term, level)),
             _ => Err(TypeError::ExpectedUniverse {
@@ -395,7 +413,7 @@ pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcTyp
         raw::Term::Ann(_, ref raw_expr, ref raw_ty) => {
             let (ty, _) = infer_universe(context, raw_ty)?;
             let value_ty = normalize(context, &ty)?;
-            let expr = check(context, raw_expr, &value_ty)?;
+            let expr = check_term(context, raw_expr, &value_ty)?;
 
             Ok((RcTerm::from(Term::Ann(expr, ty)), value_ty))
         },
@@ -411,17 +429,9 @@ pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcTyp
             Err(TypeError::UnableToElaborateHole { span, expected })
         },
 
-        raw::Term::Literal(span, ref raw_literal) => match *raw_literal {
-            raw::Literal::String(ref value) => Ok((
-                RcTerm::from(Term::Literal(Literal::String(value.clone()))),
-                RcValue::from(Value::from(Var::user("String"))),
-            )),
-            raw::Literal::Char(value) => Ok((
-                RcTerm::from(Term::Literal(Literal::Char(value))),
-                RcValue::from(Value::from(Var::user("Char"))),
-            )),
-            raw::Literal::Int(_) => Err(TypeError::AmbiguousIntLiteral { span }),
-            raw::Literal::Float(_) => Err(TypeError::AmbiguousFloatLiteral { span }),
+        raw::Term::Literal(ref raw_literal) => {
+            let (literal, ty) = infer_literal(raw_literal)?;
+            Ok((RcTerm::from(Term::Literal(literal)), ty))
         },
 
         // I-VAR
@@ -475,7 +485,7 @@ pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcTyp
             let (lam_ann, _) = infer_universe(context, &raw_ann)?;
             let pi_ann = normalize(context, &lam_ann)?;
             let (lam_body, pi_body) =
-                infer(&context.claim(name.clone(), pi_ann.clone()), &raw_body)?;
+                infer_term(&context.claim(name.clone(), pi_ann.clone()), &raw_body)?;
 
             let lam_param = (Binder(name.clone()), Embed(lam_ann));
             let pi_param = (Binder(name.clone()), Embed(pi_ann));
@@ -489,22 +499,22 @@ pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcTyp
         // I-IF
         raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
             let bool_ty = RcValue::from(Value::from(Var::user("Bool")));
-            let cond = check(context, raw_cond, &bool_ty)?;
-            let (if_true, ty) = infer(context, raw_if_true)?;
-            let if_false = check(context, raw_if_false, &ty)?;
+            let cond = check_term(context, raw_cond, &bool_ty)?;
+            let (if_true, ty) = infer_term(context, raw_if_true)?;
+            let if_false = check_term(context, raw_if_false, &ty)?;
 
             Ok((RcTerm::from(Term::If(cond, if_true, if_false)), ty))
         },
 
         // I-APP
         raw::Term::App(ref raw_expr, ref raw_arg) => {
-            let (expr, expr_ty) = infer(context, raw_expr)?;
+            let (expr, expr_ty) = infer_term(context, raw_expr)?;
 
             match *expr_ty {
                 Value::Pi(ref scope) => {
                     let ((Binder(free_var), Embed(ann)), body) = scope.clone().unbind();
 
-                    let arg = check(context, raw_arg, &ann)?;
+                    let arg = check_term(context, raw_arg, &ann)?;
                     let body = normalize(context, &body.substs(&[(free_var, arg.clone())]))?;
 
                     Ok((RcTerm::from(Term::App(expr, arg)), body))
@@ -555,7 +565,7 @@ pub fn infer(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcTyp
 
         // I-PROJ
         raw::Term::Proj(_, ref expr, label_span, ref label) => {
-            let (expr, ty) = infer(context, expr)?;
+            let (expr, ty) = infer_term(context, expr)?;
 
             match ty.lookup_record_ty(label) {
                 Some(field_ty) => {

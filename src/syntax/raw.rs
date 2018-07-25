@@ -28,10 +28,22 @@ pub struct Definition {
 /// Literals
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]
 pub enum Literal {
-    String(String),
-    Char(char),
-    Int(u64),
-    Float(f64),
+    String(ByteSpan, String),
+    Char(ByteSpan, char),
+    Int(ByteSpan, u64),
+    Float(ByteSpan, f64),
+}
+
+impl Literal {
+    /// Return the span of source code that the literal originated from
+    pub fn span(&self) -> ByteSpan {
+        match *self {
+            Literal::String(span, _)
+            | Literal::Char(span, _)
+            | Literal::Int(span, _)
+            | Literal::Float(span, _) => span,
+        }
+    }
 }
 
 impl fmt::Display for Literal {
@@ -51,7 +63,7 @@ pub enum Term {
     /// Universes
     Universe(ByteSpan, Level),
     /// Literals
-    Literal(ByteSpan, Literal),
+    Literal(Literal),
     /// A hole
     Hole(ByteSpan),
     /// A variable
@@ -76,6 +88,34 @@ pub enum Term {
     Proj(ByteSpan, RcTerm, ByteSpan, Label<String>),
     /// Array literals
     Array(ByteSpan, Vec<RcTerm>),
+}
+
+impl Term {
+    pub fn span(&self) -> ByteSpan {
+        match *self {
+            Term::Ann(span, _, _)
+            | Term::Universe(span, _)
+            | Term::Hole(span)
+            | Term::Var(span, _)
+            | Term::Pi(span, _)
+            | Term::Lam(span, _)
+            | Term::RecordType(span, _)
+            | Term::Record(span, _)
+            | Term::RecordTypeEmpty(span)
+            | Term::RecordEmpty(span)
+            | Term::Proj(span, _, _, _)
+            | Term::Array(span, _) => span,
+            Term::Literal(ref literal) => literal.span(),
+            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
+            Term::If(start, _, _, ref if_false) => ByteSpan::new(start, if_false.span().end()),
+        }
+    }
+}
+
+impl fmt::Display for Term {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
+    }
 }
 
 /// Reference counted terms
@@ -103,33 +143,5 @@ impl ops::Deref for RcTerm {
 impl fmt::Display for RcTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.inner, f)
-    }
-}
-
-impl Term {
-    pub fn span(&self) -> ByteSpan {
-        match *self {
-            Term::Ann(span, _, _)
-            | Term::Universe(span, _)
-            | Term::Hole(span)
-            | Term::Literal(span, _)
-            | Term::Var(span, _)
-            | Term::Pi(span, _)
-            | Term::Lam(span, _)
-            | Term::RecordType(span, _)
-            | Term::Record(span, _)
-            | Term::RecordTypeEmpty(span)
-            | Term::RecordEmpty(span)
-            | Term::Proj(span, _, _, _)
-            | Term::Array(span, _) => span,
-            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.span()),
-            Term::If(start, _, _, ref if_false) => ByteSpan::new(start, if_false.span().end()),
-        }
-    }
-}
-
-impl fmt::Display for Term {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
     }
 }

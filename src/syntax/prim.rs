@@ -3,7 +3,7 @@
 use moniker::Var;
 use std::fmt;
 
-use syntax::core::{Literal, RcType, RcValue, Value};
+use syntax::core::{Literal, RcType, RcValue, Spine, Value};
 
 // Some helper traits for marshalling between Rust and Pikelet values
 //
@@ -97,7 +97,7 @@ impl_has_ty!(f32, "F32");
 impl_has_ty!(f64, "F64");
 
 // TODO: Return a `Result` with better errors
-pub type NormFn = fn(&[RcValue]) -> Result<RcValue, ()>;
+pub type NormFn = fn(Spine) -> Result<RcValue, ()>;
 
 /// Primitive functions
 #[derive(Clone)]
@@ -136,13 +136,18 @@ macro_rules! def_prim {
         pub fn $id() -> PrimFn {
             use moniker::{Embed, Binder, Scope};
 
-            fn fun(params: &[RcValue]) -> Result<RcValue, ()> {
-                match params[..] {
-                    [$(ref $param_name),*] => {
-                        $(let $param_name = <$PType>::try_from_value_ref(&$param_name.inner)?;)*
-                        Ok(<$RType>::into_value($body))
-                    },
-                    _ => Err(()) // TODO: Better errors
+            fn fun(params: Spine) -> Result<RcValue, ()> {
+                if params.len() == count!($($param_name)*) {
+                    let mut arg_index = 0;
+                    $(
+                        if arg_index != 0 {
+                            arg_index += 1;
+                        }
+                        let $param_name = <$PType>::try_from_value_ref(&params[arg_index])?;
+                    )*
+                    Ok(<$RType>::into_value($body))
+                } else {
+                    Err(()) // TODO: Better errors
                 }
             }
 

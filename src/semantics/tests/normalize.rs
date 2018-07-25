@@ -102,10 +102,10 @@ fn lam_app() {
                     Binder(y.clone()),
                     Embed(RcValue::from(Value::Universe(Level(0))))
                 ),
-                RcValue::from(Value::from(Neutral::App(
-                    Head::Var(Var::Free(x)),
-                    vec![RcValue::from(Value::from(Var::Free(y)))],
-                ))),
+                RcValue::from(Value::Neutral(
+                    RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
+                    vector![RcValue::from(Value::from(Var::Free(y)))],
+                )),
             ))),
         ))),
     );
@@ -139,10 +139,10 @@ fn pi_app() {
                     Binder(y.clone()),
                     Embed(RcValue::from(Value::Universe(Level(0))))
                 ),
-                RcValue::from(Value::from(Neutral::App(
-                    Head::Var(Var::Free(x)),
-                    vec![RcValue::from(Value::from(Var::Free(y)))],
-                ))),
+                RcValue::from(Value::Neutral(
+                    RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
+                    vector![RcValue::from(Value::from(Var::Free(y)))],
+                )),
             ))),
         ))),
     );

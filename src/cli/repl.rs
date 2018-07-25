@@ -173,7 +173,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
 
         ReplCommand::Eval(parse_term) => {
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer(context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(context, &raw_term)?;
             let evaluated = semantics::normalize(context, &term)?;
 
             let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
@@ -184,7 +184,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             use syntax::core::{RcTerm, Term};
 
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer(context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(context, &raw_term)?;
 
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
@@ -192,7 +192,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         },
         ReplCommand::Let(name, parse_term) => {
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer(context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(context, &raw_term)?;
 
             let ann_term = Term::Ann(
                 Box::new(Term::Var(ByteIndex::default(), name.clone())),
@@ -207,7 +207,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         },
         ReplCommand::TypeOf(parse_term) => {
             let raw_term = parse_term.desugar();
-            let (_, inferred) = semantics::infer(context, &raw_term)?;
+            let (_, inferred) = semantics::infer_term(context, &raw_term)?;
 
             println!("{}", inferred.resugar().to_doc().pretty(term_width()));
         },

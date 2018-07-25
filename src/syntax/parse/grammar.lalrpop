@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use syntax::concrete::{Declaration, LamParams, Module, Term, ReplCommand};
+use syntax::concrete::{Declaration, LamParams, Literal, Module, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
 #[LALR]
@@ -113,6 +113,13 @@ Declaration: Declaration = {
     },
 };
 
+Literal: Literal = {
+    <start: @L> <value: "string literal"> <end: @R> => Literal::String(ByteSpan::new(start, end), value),
+    <start: @L> <value: "character literal"> <end: @R> => Literal::Char(ByteSpan::new(start, end), value),
+    <start: @L> <value: "decimal literal"> <end: @R> => Literal::Int(ByteSpan::new(start, end), value),
+    <start: @L> <value: "float literal"> <end: @R> => Literal::Float(ByteSpan::new(start, end), value),
+};
+
 pub Term: Term = {
     LamTerm,
     <x: LamTerm> ":" <t: Term> => {
@@ -159,7 +166,7 @@ PiTerm: Term = {
 AppTerm: Term = {
     AtomicTerm,
     <f: AtomicTerm> <args: AtomicTerm+> => {
-        if let (&Term::Universe(s1, None), &Term::Int(s2, value)) = (&f, &args[0]) {
+        if let (&Term::Universe(s1, None), &Term::Literal(Literal::Int(s2, value))) = (&f, &args[0]) {
             Term::Universe(s1.to(s2), Some(value as u32)) // FIXME - overflow
         } else {
             Term::App(Box::new(f), args)
@@ -170,10 +177,7 @@ AppTerm: Term = {
 AtomicTerm: Term = {
     <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
     <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
-    <start: @L> <value: "string literal"> <end: @R> => Term::String(ByteSpan::new(start, end), value),
-    <start: @L> <value: "character literal"> <end: @R> => Term::Char(ByteSpan::new(start, end), value),
-    <start: @L> <value: "decimal literal"> <end: @R> => Term::Int(ByteSpan::new(start, end), value),
-    <start: @L> <value: "float literal"> <end: @R> => Term::Float(ByteSpan::new(start, end), value),
+    <literal: Literal> => Term::Literal(literal),
     <start: @L> "[" <elems: (<Term> ";")*> <last: Term?> "]" <end: @R> => {
         let mut elems = elems;
         elems.extend(last);
