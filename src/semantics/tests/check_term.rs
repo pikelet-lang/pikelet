@@ -37,6 +37,68 @@ fn dependent_record_propagate_types() {
 }
 
 #[test]
+fn case_expr() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"case "helloo" of {
+        "hi" => "haha";
+        "hello" => "byee";
+        greeting => prim-string-append greeting "!!";
+    }"#;
+
+    let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
+}
+
+#[test]
+fn case_expr_bad_literal() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"case "helloo" of {
+        "hi" => "haha";
+        1 => "byee";
+        greeting => prim-string-append greeting "!!";
+    }"#;
+
+    let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
+    match check_term(&context, &parse(&mut codemap, given_expr), &expected_ty) {
+        Err(TypeError::LiteralMismatch { .. }) => {},
+        Err(err) => panic!("unexpected error: {:?}", err),
+        Ok(term) => panic!("expected error but found: {}", term),
+    }
+}
+
+#[test]
+fn case_expr_wildcard() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"I32";
+    let given_expr = r#"case "helloo" of {
+        _ => 123;
+    }"#;
+
+    let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
+}
+
+#[test]
+fn case_expr_empty() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"case "helloo" of {}"#;
+
+    let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
+}
+
+#[test]
 fn array_0_string() {
     let mut codemap = CodeMap::new();
     let context = Context::default();

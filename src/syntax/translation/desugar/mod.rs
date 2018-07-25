@@ -59,7 +59,7 @@ fn desugar_lam(
 ) -> raw::RcTerm {
     let mut term = body.desugar();
     if let Some(ann) = ret_ann {
-        term = raw::RcTerm::from(raw::Term::Ann(ByteSpan::default(), term, ann.desugar()));
+        term = raw::RcTerm::from(raw::Term::Ann(term, ann.desugar()));
     }
 
     for &(ref names, ref ann) in params.iter().rev() {
@@ -80,8 +80,8 @@ fn desugar_lam(
     term
 }
 
-fn desugar_app(fn_expr: &concrete::Term, args: &[concrete::Term]) -> raw::RcTerm {
-    let mut term = fn_expr.desugar();
+fn desugar_app(head: &concrete::Term, args: &[concrete::Term]) -> raw::RcTerm {
+    let mut term = head.desugar();
 
     for arg in args.iter() {
         term = raw::RcTerm::from(raw::Term::App(raw::RcTerm::from(term), arg.desugar()));
@@ -240,13 +240,32 @@ impl Desugar<raw::Literal> for concrete::Literal {
     }
 }
 
+impl Desugar<raw::RcPattern> for concrete::Pattern {
+    fn desugar(&self) -> raw::RcPattern {
+        let span = self.span();
+        match *self {
+            concrete::Pattern::Parens(_, ref pattern) => pattern.desugar(),
+            concrete::Pattern::Ann(ref pattern, ref ty) => {
+                raw::RcPattern::from(raw::Pattern::Ann(pattern.desugar(), Embed(ty.desugar())))
+            },
+            concrete::Pattern::Binder(_, ref name) => {
+                raw::RcPattern::from(raw::Pattern::Binder(span, Binder::user(name.clone())))
+            },
+            concrete::Pattern::Literal(ref literal) => {
+                raw::RcPattern::from(raw::Pattern::Literal(literal.desugar()))
+            },
+            concrete::Pattern::Error(_) => unimplemented!("error recovery"),
+        }
+    }
+}
+
 impl Desugar<raw::RcTerm> for concrete::Term {
     fn desugar(&self) -> raw::RcTerm {
         let span = self.span();
         match *self {
             concrete::Term::Parens(_, ref term) => term.desugar(),
             concrete::Term::Ann(ref expr, ref ty) => {
-                raw::RcTerm::from(raw::Term::Ann(span, expr.desugar(), ty.desugar()))
+                raw::RcTerm::from(raw::Term::Ann(expr.desugar(), ty.desugar()))
             },
             concrete::Term::Universe(_, level) => {
                 raw::RcTerm::from(raw::Term::Universe(span, Level(level.unwrap_or(0))))
@@ -271,11 +290,21 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                     body.desugar(),
                 ),
             )),
-            concrete::Term::App(ref fn_expr, ref args) => desugar_app(fn_expr, args),
+            concrete::Term::App(ref head, ref args) => desugar_app(head, args),
             concrete::Term::Let(_, ref _declarations, ref _body) => unimplemented!("let bindings"),
             concrete::Term::If(start, ref cond, ref if_true, ref if_false) => raw::RcTerm::from(
                 raw::Term::If(start, cond.desugar(), if_true.desugar(), if_false.desugar()),
             ),
+            concrete::Term::Case(span, ref head, ref clauses) => {
+                raw::RcTerm::from(raw::Term::Case(
+                    span,
+                    head.desugar(),
+                    clauses
+                        .iter()
+                        .map(|(pattern, term)| Scope::new(pattern.desugar(), term.desugar()))
+                        .collect(),
+                ))
+            },
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(span, fields),
             concrete::Term::Record(span, ref fields) => desugar_record(span, fields),
             concrete::Term::Proj(ref tm, label_start, ref label) => {

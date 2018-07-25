@@ -14,3 +14,26 @@ Pikelet> if true then "hello!" else "goodbye!"
 Pikelet> if false then "hello!" else "goodbye!"
 "goodbye!" : String
 ```
+
+## Case expressions
+
+Pikelet supports case expressions on strings, and numbers:
+
+```pikelet
+case value of {
+    "hello" => "goodbye";
+    "goodbye" => "hello";
+    value => value; -- matches all strings
+}
+```
+
+Note that we don't (yet) check that the series of patterns provided cover all
+possible cases, leading to the following embarrassing error:
+
+```pikelet-repl
+Pikelet> case "hello" of { "hi" => "oh dear" }
+error: internal compiler error: no patterns matched the given expression
+```
+
+In the future we' plan to fix this, add support for matching on booleans, and
+also support more complex patterns (eg. for records).

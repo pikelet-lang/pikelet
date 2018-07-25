@@ -1,9 +1,5 @@
 RcTerm {
     inner: Ann(
-        Span {
-            start: ByteIndex(1),
-            end: ByteIndex(19)
-        },
         RcTerm {
             inner: Universe(
                 Span {
@@ -17,10 +13,6 @@ RcTerm {
         },
         RcTerm {
             inner: Ann(
-                Span {
-                    start: ByteIndex(8),
-                    end: ByteIndex(19)
-                },
                 RcTerm {
                     inner: Universe(
                         Span {

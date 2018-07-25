@@ -2,7 +2,7 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Declaration, LamParamGroup, Literal, Module, PiParamGroup, Term};
+use syntax::concrete::{Declaration, LamParamGroup, Literal, Module, Pattern, PiParamGroup, Term};
 
 use super::{StaticDoc, ToDoc};
 
@@ -87,6 +87,23 @@ impl ToDoc for Literal {
     }
 }
 
+impl ToDoc for Pattern {
+    fn to_doc(&self) -> StaticDoc {
+        match *self {
+            Pattern::Parens(_, ref term) => Doc::text("(").append(term.to_doc()).append(")"),
+            Pattern::Ann(ref term, ref ty) => term
+                .to_doc()
+                .append(Doc::space())
+                .append(":")
+                .append(Doc::space())
+                .append(ty.to_doc()),
+            Pattern::Binder(_, ref name) => Doc::as_string(name),
+            Pattern::Literal(ref literal) => literal.to_doc(),
+            Pattern::Error(_) => Doc::text("<error>"),
+        }
+    }
+}
+
 impl ToDoc for Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
@@ -128,7 +145,7 @@ impl ToDoc for Term {
                 .append("->")
                 .append(Doc::space())
                 .append(body.to_doc()),
-            Term::App(ref fn_term, ref args) => fn_term.to_doc().append(Doc::space()).append(
+            Term::App(ref head, ref args) => head.to_doc().append(Doc::space()).append(
                 Doc::intersperse(args.iter().map(|arg| arg.to_doc()), Doc::space()),
             ),
             Term::Let(_, ref decls, ref body) => {
@@ -153,6 +170,27 @@ impl ToDoc for Term {
                 .append("else")
                 .append(Doc::space())
                 .append(if_false.to_doc()),
+            Term::Case(_, ref head, ref clauses) => Doc::text("case")
+                .append(Doc::space())
+                .append(head.to_doc())
+                .append(Doc::space())
+                .append("of")
+                .append(Doc::space())
+                .append("{")
+                .append(Doc::newline())
+                .append(
+                    Doc::concat(clauses.iter().map(|&(ref pattern, ref body)| {
+                        pattern
+                            .to_doc()
+                            .append(Doc::space())
+                            .append("=>")
+                            .append(Doc::space())
+                            .append(body.to_doc())
+                            .append(";")
+                            .append(Doc::newline())
+                    })).nest(INDENT_WIDTH),
+                )
+                .append("}"),
             Term::RecordType(_, ref fields) if fields.is_empty() => Doc::text("Record {}"),
             Term::Record(_, ref fields) if fields.is_empty() => Doc::text("record {}"),
             Term::RecordType(_, ref fields) => Doc::text("Record {")

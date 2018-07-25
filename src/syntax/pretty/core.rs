@@ -1,10 +1,10 @@
 //! Pretty printing for the core syntax
 
-use moniker::{Binder, Var};
+use moniker::{Binder, Embed, Var};
 use pretty::Doc;
 use std::iter;
 
-use syntax::core::{Head, Literal, Neutral, Term, Value};
+use syntax::core::{Head, Literal, Neutral, Pattern, Term, Value};
 use syntax::raw;
 use syntax::{Label, Level};
 
@@ -21,15 +21,19 @@ fn pretty_universe(level: Level) -> StaticDoc {
     sexpr("Type", Doc::as_string(&level))
 }
 
+fn pretty_binder(binder: &Binder<String>) -> StaticDoc {
+    sexpr("binder", Doc::text(format!("{:#}", binder)))
+}
+
 fn pretty_var(var: &Var<String>) -> StaticDoc {
     sexpr("var", Doc::text(format!("{:#}", var)))
 }
 
-fn pretty_lam(name: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
         Doc::group(parens(
-            Doc::as_string(name)
+            pretty_binder(binder)
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
         )).append(Doc::space())
@@ -37,11 +41,11 @@ fn pretty_lam(name: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> Sta
     )
 }
 
-fn pretty_pi(name: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
         Doc::group(parens(
-            Doc::as_string(name)
+            pretty_binder(binder)
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
         )).append(Doc::space())
@@ -90,6 +94,23 @@ fn pretty_empty_record() -> StaticDoc {
     pretty_record(Doc::text("()"))
 }
 
+fn pretty_case<'a, Cs, P, T>(head: &impl ToDoc, clauses: Cs) -> StaticDoc
+where
+    Cs: 'a + IntoIterator<Item = (&'a P, &'a T)>,
+    P: 'a + ToDoc,
+    T: 'a + ToDoc,
+{
+    sexpr(
+        "case",
+        head.to_doc().append(Doc::space()).append(Doc::intersperse(
+            clauses.into_iter().map(|(pattern, body)| {
+                parens(pattern.to_doc().append(Doc::space()).append(body.to_doc()))
+            }),
+            Doc::space(),
+        )),
+    )
+}
+
 fn pretty_proj(expr: &impl ToDoc, label: &Label<String>) -> StaticDoc {
     sexpr(
         "proj",
@@ -110,10 +131,20 @@ impl ToDoc for raw::Literal {
     }
 }
 
+impl ToDoc for raw::Pattern {
+    fn to_doc(&self) -> StaticDoc {
+        match *self {
+            raw::Pattern::Ann(ref pattern, Embed(ref ty)) => pretty_ann(&pattern.inner, &ty.inner),
+            raw::Pattern::Literal(ref literal) => literal.to_doc(),
+            raw::Pattern::Binder(_, ref binder) => pretty_binder(binder),
+        }
+    }
+}
+
 impl ToDoc for raw::Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            raw::Term::Ann(_, ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
+            raw::Term::Ann(ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
             raw::Term::Universe(_, level) => pretty_universe(level),
             raw::Term::Hole(_) => parens(Doc::text("hole")),
             raw::Term::Literal(ref literal) => literal.to_doc(),
@@ -128,7 +159,7 @@ impl ToDoc for raw::Term {
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            raw::Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(&arg.inner)),
+            raw::Term::App(ref head, ref arg) => pretty_app(head.to_doc(), iter::once(&arg.inner)),
             raw::Term::If(_, ref cond, ref if_true, ref if_false) => {
                 pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
@@ -185,6 +216,12 @@ impl ToDoc for raw::Term {
             },
             raw::Term::RecordEmpty(_) => pretty_empty_record(),
             raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(&expr.inner, label),
+            raw::Term::Case(_, ref head, ref clauses) => pretty_case(
+                &head.inner,
+                clauses
+                    .iter()
+                    .map(|clause| (&clause.unsafe_pattern.inner, &clause.unsafe_body.inner)),
+            ),
             raw::Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
@@ -216,6 +253,16 @@ impl ToDoc for Literal {
     }
 }
 
+impl ToDoc for Pattern {
+    fn to_doc(&self) -> StaticDoc {
+        match *self {
+            Pattern::Ann(ref pattern, Embed(ref ty)) => pretty_ann(&pattern.inner, &ty.inner),
+            Pattern::Literal(ref literal) => literal.to_doc(),
+            Pattern::Binder(ref binder) => pretty_binder(binder),
+        }
+    }
+}
+
 impl ToDoc for Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
@@ -233,7 +280,7 @@ impl ToDoc for Term {
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            Term::App(ref expr, ref arg) => pretty_app(expr.to_doc(), iter::once(&arg.inner)),
+            Term::App(ref head, ref arg) => pretty_app(head.to_doc(), iter::once(&arg.inner)),
             Term::If(ref cond, ref if_true, ref if_false) => {
                 pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
@@ -290,6 +337,12 @@ impl ToDoc for Term {
             },
             Term::RecordEmpty => pretty_empty_record(),
             Term::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
+            Term::Case(ref head, ref clauses) => pretty_case(
+                &head.inner,
+                clauses
+                    .iter()
+                    .map(|clause| (&clause.unsafe_pattern.inner, &clause.unsafe_body.inner)),
+            ),
             Term::Array(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
@@ -389,6 +442,12 @@ impl ToDoc for Neutral {
                 pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
             Neutral::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
+            Neutral::Case(ref head, ref clauses) => pretty_case(
+                &head.inner,
+                clauses
+                    .iter()
+                    .map(|clause| (&clause.unsafe_pattern.inner, &clause.unsafe_body.inner)),
+            ),
         }
     }
 }

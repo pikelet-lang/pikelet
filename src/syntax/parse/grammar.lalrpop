@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use syntax::concrete::{Declaration, LamParams, Literal, Module, Term, ReplCommand};
+use syntax::concrete::{Declaration, LamParams, Literal, Module, Pattern, Term, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
 #[LALR]
@@ -23,11 +23,12 @@ extern {
 
         // Keywords
         "as" => Token::As,
+        "case" => Token::Case,
         "else" => Token::Else,
         "if" => Token::If,
         "in" => Token::In,
         "let" => Token::Let,
-        "import" => Token::Import,
+        "of" => Token::Of,
         "record" => Token::Record,
         "Record" => Token::RecordType,
         "then" => Token::Then,
@@ -120,10 +121,29 @@ Literal: Literal = {
     <start: @L> <value: "float literal"> <end: @R> => Literal::Float(ByteSpan::new(start, end), value),
 };
 
+pub Pattern: Pattern = {
+    AtomicPattern,
+    <pattern: Pattern> ":" <ty: LamTerm> => {
+        Pattern::Ann(Box::new(pattern), Box::new(ty))
+    }
+};
+
+AtomicPattern : Pattern = {
+    <start: @L> "(" <pattern: Pattern> ")" <end: @R> => {
+        Pattern::Parens(ByteSpan::new(start, end), Box::new(pattern))
+    },
+    <literal: Literal> => Pattern::Literal(literal),
+    <start: @L> <ident: Ident> => Pattern::Binder(start, ident),
+    <start: @L> <recovered: !> <end: @R> => {
+        errors.push(super::errors::from_lalrpop(filemap, recovered.error));
+        Pattern::Error(ByteSpan::new(start, end))
+    },
+}
+
 pub Term: Term = {
     LamTerm,
-    <x: LamTerm> ":" <t: Term> => {
-        Term::Ann(Box::new(x), Box::new(t))
+    <expr: LamTerm> ":" <ty: Term> => {
+        Term::Ann(Box::new(expr), Box::new(ty))
     },
 };
 
@@ -137,6 +157,11 @@ LamTerm: Term = {
     },
     <start: @L> "if" <cond: AppTerm> "then" <if_true: AppTerm> "else" <if_false: AppTerm> => {
         Term::If(start, Box::new(cond), Box::new(if_true), Box::new(if_false))
+    },
+    <start: @L> "case" <head: AppTerm> "of" "{" <arms: (<PatternArm> ";")*> <last: PatternArm?> "}" <end: @R> => {
+        let mut arms = arms;
+        arms.extend(last);
+        Term::Case(ByteSpan::new(start, end), Box::new(head), arms)
     },
     <start: @L> "let" <declarations: Declaration+> "in" <body: LamTerm> => {
         Term::Let(start, declarations, Box::new(body))
@@ -165,11 +190,11 @@ PiTerm: Term = {
 
 AppTerm: Term = {
     AtomicTerm,
-    <f: AtomicTerm> <args: AtomicTerm+> => {
-        if let (&Term::Universe(s1, None), &Term::Literal(Literal::Int(s2, value))) = (&f, &args[0]) {
+    <head: AtomicTerm> <args: AtomicTerm+> => {
+        if let (&Term::Universe(s1, None), &Term::Literal(Literal::Int(s2, value))) = (&head, &args[0]) {
             Term::Universe(s1.to(s2), Some(value as u32)) // FIXME - overflow
         } else {
-            Term::App(Box::new(f), args)
+            Term::App(Box::new(head), args)
         }
     },
 };
@@ -218,6 +243,10 @@ RecordTypeField: (ByteIndex, String, Term) = {
     <_comment: "doc comment"*> <start: @L> <label: Ident> ":" <ty: Term> => {
         (start, label, ty)
     },
+};
+
+PatternArm: (Pattern, Term) = {
+    <Pattern> "=>" <Term>,
 };
 
 RecordField: (ByteIndex, String, LamParams, Option<Box<Term>>, Term) = {

@@ -302,6 +302,88 @@ fn compose() {
     );
 }
 
+#[test]
+fn case_expr() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"case "helloo" of {
+        "hi" => "haha";
+        "hello" => "byee";
+        greeting => prim-string-append greeting "!!";
+    }"#;
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &context, given_expr).1,
+        parse_normalize(&mut codemap, &context, expected_ty),
+    );
+}
+
+#[test]
+fn case_expr_bool() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"case true of {
+        true => "hello";
+        false => "hi";
+    }"#;
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &context, given_expr).1,
+        parse_normalize(&mut codemap, &context, expected_ty),
+    );
+}
+
+#[test]
+#[ignore]
+fn case_expr_bool_bad() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let given_expr = r#"case "hello" of {
+        true => "hello";
+        false => "hi";
+    }"#;
+
+    match infer_term(&context, &parse(&mut codemap, given_expr)) {
+        Err(TypeError::Mismatch { .. }) => {},
+        Err(err) => panic!("unexpected error: {:?}", err),
+        Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
+    }
+}
+
+#[test]
+fn case_expr_wildcard() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"case "helloo" of {
+        test => test;
+    }"#;
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &context, given_expr).1,
+        parse_normalize(&mut codemap, &context, expected_ty),
+    );
+}
+
+#[test]
+fn case_expr_empty() {
+    let mut codemap = CodeMap::new();
+    let context = Context::default();
+
+    let given_expr = r#"case "helloo" of {}"#;
+
+    match infer_term(&context, &parse(&mut codemap, given_expr)) {
+        Err(TypeError::AmbiguousEmptyCase { .. }) => {},
+        other => panic!("unexpected result: {:#?}", other),
+    }
+}
+
 mod church_encodings {
     use super::*;
 

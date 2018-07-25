@@ -173,6 +173,49 @@ impl Literal {
     }
 }
 
+/// Patterns
+#[derive(Debug, Clone, PartialEq)]
+pub enum Pattern {
+    /// A term that is surrounded with parentheses
+    ///
+    /// ```text
+    /// (p)
+    /// ```
+    Parens(ByteSpan, Box<Pattern>),
+    /// Patterns annotated with types
+    ///
+    /// ```text
+    /// p : t
+    /// ```
+    Ann(Box<Pattern>, Box<Term>),
+    /// Literal patterns
+    Literal(Literal),
+    /// Patterns that bind variables
+    ///
+    /// ```text
+    /// x
+    /// ```
+    Binder(ByteIndex, String),
+    /// Terms that could not be correctly parsed
+    ///
+    /// This is used for error recovery
+    Error(ByteSpan),
+}
+
+impl Pattern {
+    /// Return the span of source code that this pattern originated from
+    pub fn span(&self) -> ByteSpan {
+        match *self {
+            Pattern::Parens(span, _) | Pattern::Error(span) => span,
+            Pattern::Ann(ref pattern, ref ty) => pattern.span().to(ty.span()),
+            Pattern::Literal(ref literal) => literal.span(),
+            Pattern::Binder(start, ref name) => {
+                ByteSpan::from_offset(start, ByteOffset::from_str(name))
+            },
+        }
+    }
+}
+
 /// Terms
 #[derive(Debug, Clone, PartialEq)]
 pub enum Term {
@@ -254,6 +297,12 @@ pub enum Term {
     /// if t1 then t2 else t3
     /// ```
     If(ByteIndex, Box<Term>, Box<Term>, Box<Term>),
+    /// Case expression
+    ///
+    /// ```text
+    /// case t1 of { pat => t2; .. }
+    /// ```
+    Case(ByteSpan, Box<Term>, Vec<(Pattern, Term)>),
     /// Record type
     ///
     /// ```text
@@ -287,6 +336,7 @@ impl Term {
             | Term::Universe(span, _)
             | Term::Array(span, _)
             | Term::Hole(span)
+            | Term::Case(span, _, _)
             | Term::RecordType(span, _)
             | Term::Record(span, _)
             | Term::Error(span) => span,
@@ -298,7 +348,7 @@ impl Term {
             | Term::If(start, _, _, ref body) => ByteSpan::new(start, body.span().end()),
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
-            Term::App(ref fn_term, ref arg) => fn_term.span().to(arg.last().unwrap().span()),
+            Term::App(ref head, ref arg) => head.span().to(arg.last().unwrap().span()),
             Term::Proj(ref term, label_start, ref label) => term
                 .span()
                 .with_end(label_start + ByteOffset::from_str(label)),
