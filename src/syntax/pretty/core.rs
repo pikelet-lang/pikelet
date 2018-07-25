@@ -102,31 +102,10 @@ fn pretty_proj(expr: &impl ToDoc, label: &Label<String>) -> StaticDoc {
 impl ToDoc for raw::Literal {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            raw::Literal::String(ref value) => Doc::text(format!("{:?}", value)),
-            raw::Literal::Char(value) => Doc::text(format!("{:?}", value)),
-            raw::Literal::Int(value) => Doc::as_string(&value),
-            raw::Literal::Float(value) => Doc::as_string(&value),
-        }
-    }
-}
-
-impl ToDoc for Literal {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Literal::Bool(true) => Doc::text("true"),
-            Literal::Bool(false) => Doc::text("false"),
-            Literal::String(ref value) => Doc::text(format!("{:?}", value)),
-            Literal::Char(value) => Doc::text(format!("{:?}", value)),
-            Literal::U8(value) => Doc::as_string(&value),
-            Literal::U16(value) => Doc::as_string(&value),
-            Literal::U32(value) => Doc::as_string(&value),
-            Literal::U64(value) => Doc::as_string(&value),
-            Literal::I8(value) => Doc::as_string(&value),
-            Literal::I16(value) => Doc::as_string(&value),
-            Literal::I32(value) => Doc::as_string(&value),
-            Literal::I64(value) => Doc::as_string(&value),
-            Literal::F32(value) => Doc::as_string(&value),
-            Literal::F64(value) => Doc::as_string(&value),
+            raw::Literal::String(_, ref value) => Doc::text(format!("{:?}", value)),
+            raw::Literal::Char(_, value) => Doc::text(format!("{:?}", value)),
+            raw::Literal::Int(_, value) => Doc::as_string(&value),
+            raw::Literal::Float(_, value) => Doc::as_string(&value),
         }
     }
 }
@@ -137,7 +116,7 @@ impl ToDoc for raw::Term {
             raw::Term::Ann(_, ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
             raw::Term::Universe(_, level) => pretty_universe(level),
             raw::Term::Hole(_) => parens(Doc::text("hole")),
-            raw::Term::Literal(_, ref lit) => lit.to_doc(),
+            raw::Term::Literal(ref literal) => literal.to_doc(),
             raw::Term::Var(_, ref var) => pretty_var(var),
             raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
@@ -205,13 +184,34 @@ impl ToDoc for raw::Term {
                 pretty_record(inner)
             },
             raw::Term::RecordEmpty(_) => pretty_empty_record(),
+            raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(&expr.inner, label),
             raw::Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
-            raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(&expr.inner, label),
+        }
+    }
+}
+
+impl ToDoc for Literal {
+    fn to_doc(&self) -> StaticDoc {
+        match *self {
+            Literal::Bool(true) => Doc::text("true"),
+            Literal::Bool(false) => Doc::text("false"),
+            Literal::String(ref value) => Doc::text(format!("{:?}", value)),
+            Literal::Char(value) => Doc::text(format!("{:?}", value)),
+            Literal::U8(value) => Doc::as_string(&value),
+            Literal::U16(value) => Doc::as_string(&value),
+            Literal::U32(value) => Doc::as_string(&value),
+            Literal::U64(value) => Doc::as_string(&value),
+            Literal::I8(value) => Doc::as_string(&value),
+            Literal::I16(value) => Doc::as_string(&value),
+            Literal::I32(value) => Doc::as_string(&value),
+            Literal::I64(value) => Doc::as_string(&value),
+            Literal::F32(value) => Doc::as_string(&value),
+            Literal::F64(value) => Doc::as_string(&value),
         }
     }
 }
@@ -221,7 +221,7 @@ impl ToDoc for Term {
         match *self {
             Term::Ann(ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
             Term::Universe(level) => pretty_universe(level),
-            Term::Literal(ref lit) => lit.to_doc(),
+            Term::Literal(ref literal) => literal.to_doc(),
             Term::Var(ref var) => pretty_var(var),
             Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
@@ -289,13 +289,13 @@ impl ToDoc for Term {
                 pretty_record(inner)
             },
             Term::RecordEmpty => pretty_empty_record(),
+            Term::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
             Term::Array(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
-            Term::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
         }
     }
 }
@@ -304,7 +304,7 @@ impl ToDoc for Value {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Value::Universe(level) => pretty_universe(level),
-            Value::Literal(ref lit) => lit.to_doc(),
+            Value::Literal(ref literal) => literal.to_doc(),
             Value::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,

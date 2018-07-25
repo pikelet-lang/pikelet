@@ -2,7 +2,7 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Declaration, LamParamGroup, Module, PiParamGroup, Term};
+use syntax::concrete::{Declaration, LamParamGroup, Literal, Module, PiParamGroup, Term};
 
 use super::{StaticDoc, ToDoc};
 
@@ -76,6 +76,17 @@ impl ToDoc for Declaration {
     }
 }
 
+impl ToDoc for Literal {
+    fn to_doc(&self) -> StaticDoc {
+        match *self {
+            Literal::String(_, ref value) => Doc::text(format!("{:?}", value)),
+            Literal::Char(_, value) => Doc::text(format!("{:?}", value)),
+            Literal::Int(_, value) => Doc::as_string(&value),
+            Literal::Float(_, value) => Doc::as_string(&value),
+        }
+    }
+}
+
 impl ToDoc for Term {
     fn to_doc(&self) -> StaticDoc {
         match *self {
@@ -91,10 +102,7 @@ impl ToDoc for Term {
                     Doc::space().append(Doc::as_string(&level))
                 }))
             },
-            Term::String(_, ref value) => Doc::text(format!("{:?}", value)),
-            Term::Char(_, value) => Doc::text(format!("{:?}", value)),
-            Term::Int(_, value) => Doc::as_string(&value),
-            Term::Float(_, value) => Doc::as_string(&value),
+            Term::Literal(ref literal) => literal.to_doc(),
             Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(Term::to_doc),

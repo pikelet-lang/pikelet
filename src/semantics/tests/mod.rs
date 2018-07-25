@@ -23,8 +23,8 @@ fn parse(codemap: &mut CodeMap, src: &str) -> raw::RcTerm {
     concrete_term.desugar()
 }
 
-fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (RcTerm, RcType) {
-    match infer(context, &parse(codemap, src)) {
+fn parse_infer_term(codemap: &mut CodeMap, context: &Context, src: &str) -> (RcTerm, RcType) {
+    match infer_term(context, &parse(codemap, src)) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -35,7 +35,7 @@ fn parse_infer(codemap: &mut CodeMap, context: &Context, src: &str) -> (RcTerm, 
 }
 
 fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> RcValue {
-    match normalize(context, &parse_infer(codemap, context, src).0) {
+    match normalize(context, &parse_infer_term(codemap, context, src).0) {
         Ok(value) => value,
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -45,8 +45,8 @@ fn parse_normalize(codemap: &mut CodeMap, context: &Context, src: &str) -> RcVal
     }
 }
 
-fn parse_check(codemap: &mut CodeMap, context: &Context, src: &str, expected: &RcType) {
-    match check(context, &parse(codemap, src), expected) {
+fn parse_check_term(codemap: &mut CodeMap, context: &Context, src: &str, expected: &RcType) {
+    match check_term(context, &parse(codemap, src), expected) {
         Ok(_) => {},
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -56,7 +56,7 @@ fn parse_check(codemap: &mut CodeMap, context: &Context, src: &str, expected: &R
     }
 }
 
-mod check;
 mod check_module;
-mod infer;
+mod check_term;
+mod infer_term;
 mod normalize;

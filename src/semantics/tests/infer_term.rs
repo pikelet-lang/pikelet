@@ -9,7 +9,7 @@ fn free() {
     let x = FreeVar::user("x");
 
     assert_eq!(
-        infer(&context, &parse(&mut codemap, given_expr)),
+        infer_term(&context, &parse(&mut codemap, given_expr)),
         Err(TypeError::UndefinedName {
             var_span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
             name: x,
@@ -26,7 +26,7 @@ fn ty() {
     let given_expr = r"Type";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -40,7 +40,7 @@ fn ty_levels() {
     let given_expr = r"Type 0 : Type 1 : Type 2 : Type 3"; //... Type ∞       ...+:｡(ﾉ･ω･)ﾉﾞ
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -54,7 +54,7 @@ fn ann_ty_id() {
     let given_expr = r"(\a => a) : Type -> Type";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -68,7 +68,7 @@ fn ann_arrow_ty_id() {
     let given_expr = r"(\a => a) : (Type -> Type) -> (Type -> Type)";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -80,7 +80,7 @@ fn ann_id_as_ty() {
 
     let given_expr = r"(\a => a) : Type";
 
-    match infer(&context, &parse(&mut codemap, given_expr)) {
+    match infer_term(&context, &parse(&mut codemap, given_expr)) {
         Err(TypeError::UnexpectedFunction { .. }) => {},
         other => panic!("unexpected result: {:#?}", other),
     }
@@ -95,7 +95,7 @@ fn app() {
     let given_expr = r"(\a : Type 1 => a) Type";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -108,7 +108,7 @@ fn app_ty() {
     let given_expr = r"Type Type";
 
     assert_eq!(
-        infer(&context, &parse(&mut codemap, given_expr)),
+        infer_term(&context, &parse(&mut codemap, given_expr)),
         Err(TypeError::ArgAppliedToNonFunction {
             fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
             arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
@@ -126,7 +126,7 @@ fn lam() {
     let given_expr = r"\a : Type => a";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -140,7 +140,7 @@ fn pi() {
     let given_expr = r"(a : Type) -> a";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -154,7 +154,7 @@ fn id() {
     let given_expr = r"\(a : Type) (x : a) => x";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -168,7 +168,7 @@ fn id_ann() {
     let given_expr = r"(\a (x : a) => x) : (A : Type) -> A -> A";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -184,7 +184,7 @@ fn id_app_ty() {
     let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -199,7 +199,7 @@ fn id_app_ty_ty() {
     let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -213,7 +213,7 @@ fn id_app_ty_arr_ty() {
     let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -227,7 +227,7 @@ fn id_app_arr_pi_ty() {
     let given_expr = r"(\(a : Type 1) (x : a) => x) (Type -> Type) (\x => x)";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -241,7 +241,7 @@ fn apply() {
     let given_expr = r"\(a b : Type) (f : a -> b) (x : a) => f x";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -255,7 +255,7 @@ fn const_() {
     let given_expr = r"\(a b : Type) (x : a) (y : b) => x";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -269,7 +269,7 @@ fn const_flipped() {
     let given_expr = r"\(a b : Type) (x : a) (y : b) => y";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -283,7 +283,7 @@ fn flip() {
     let given_expr = r"\(a b c : Type) (f : a -> b -> c) (y : b) (x : a) => f x y";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -297,7 +297,7 @@ fn compose() {
     let given_expr = r"\(a b c : Type) (f : b -> c) (g : a -> b) (x : a) => f (g x)";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -314,7 +314,7 @@ mod church_encodings {
         let given_expr = r"\(p q : Type) => (c : Type) -> (p -> q -> c) -> c";
 
         assert_term_eq!(
-            parse_infer(&mut codemap, &context, given_expr).1,
+            parse_infer_term(&mut codemap, &context, given_expr).1,
             parse_normalize(&mut codemap, &context, expected_ty),
         );
     }
@@ -334,7 +334,7 @@ mod church_encodings {
         ";
 
         assert_term_eq!(
-            parse_infer(&mut codemap, &context, given_expr).1,
+            parse_infer_term(&mut codemap, &context, given_expr).1,
             parse_normalize(&mut codemap, &context, expected_ty),
         );
     }
@@ -354,7 +354,7 @@ mod church_encodings {
         ";
 
         assert_term_eq!(
-            parse_infer(&mut codemap, &context, given_expr).1,
+            parse_infer_term(&mut codemap, &context, given_expr).1,
             parse_normalize(&mut codemap, &context, expected_ty),
         );
     }
@@ -373,7 +373,7 @@ mod church_encodings {
         ";
 
         assert_term_eq!(
-            parse_infer(&mut codemap, &context, given_expr).1,
+            parse_infer_term(&mut codemap, &context, given_expr).1,
             parse_normalize(&mut codemap, &context, expected_ty),
         );
     }
@@ -388,7 +388,7 @@ fn empty_record_ty() {
     let given_expr = r"Record {}";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -402,7 +402,7 @@ fn empty_record() {
     let given_expr = r"record {}";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -416,7 +416,7 @@ fn dependent_record_ty() {
     let given_expr = r"Record { t : Type 1; x : t }";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -428,7 +428,7 @@ fn record() {
 
     let given_expr = r#"record { x = "Hello" }"#;
 
-    match infer(&context, &parse(&mut codemap, given_expr)) {
+    match infer_term(&context, &parse(&mut codemap, given_expr)) {
         Err(TypeError::AmbiguousRecord { .. }) => {},
         x => panic!("expected an ambiguous record error, found {:?}", x),
     }
@@ -443,7 +443,7 @@ fn proj() {
     let given_expr = r#"(record { t = String; x = "hello" } : Record { t : Type; x : String }).x"#;
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -455,7 +455,7 @@ fn proj_missing() {
 
     let given_expr = r#"(record { x = "hello" } : Record { x : String }).bloop"#;
 
-    match infer(&context, &parse(&mut codemap, given_expr)) {
+    match infer_term(&context, &parse(&mut codemap, given_expr)) {
         Err(TypeError::NoFieldInType { .. }) => {},
         x => panic!("expected a field lookup error, found {:?}", x),
     }
@@ -477,7 +477,7 @@ fn proj_weird() {
     }";
 
     assert_term_eq!(
-        parse_infer(&mut codemap, &context, given_expr).1,
+        parse_infer_term(&mut codemap, &context, given_expr).1,
         parse_normalize(&mut codemap, &context, expected_ty),
     );
 }
@@ -489,7 +489,7 @@ fn array_ambiguous() {
 
     let given_expr = r#"[1; 2 : I32]"#;
 
-    match infer(&context, &parse(&mut codemap, given_expr)) {
+    match infer_term(&context, &parse(&mut codemap, given_expr)) {
         Err(TypeError::AmbiguousArrayLiteral { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),

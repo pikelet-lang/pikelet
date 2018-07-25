@@ -9,7 +9,7 @@ fn record() {
     let given_expr = r#"record { t = String; x = "hello" }"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    parse_check(&mut codemap, &context, given_expr, &expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
 }
 
 #[test]
@@ -21,7 +21,7 @@ fn dependent_record() {
     let given_expr = r#"record { t = String; x = "hello" }"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    parse_check(&mut codemap, &context, given_expr, &expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn dependent_record_propagate_types() {
     let given_expr = r#"record { t = I32; x = 1 }"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    parse_check(&mut codemap, &context, given_expr, &expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
 }
 
 #[test]
@@ -45,7 +45,7 @@ fn array_0_string() {
     let given_expr = r#"[]"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    parse_check(&mut codemap, &context, given_expr, &expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn array_3_string() {
     let given_expr = r#"["hello"; "hi"; "byee"]"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    parse_check(&mut codemap, &context, given_expr, &expected_ty);
+    parse_check_term(&mut codemap, &context, given_expr, &expected_ty);
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn array_len_mismatch() {
     let given_expr = r#"["hello"; "hi"]"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    match check(&context, &parse(&mut codemap, given_expr), &expected_ty) {
+    match check_term(&context, &parse(&mut codemap, given_expr), &expected_ty) {
         Err(TypeError::ArrayLengthMismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok(term) => panic!("expected error but found: {}", term),
@@ -85,7 +85,7 @@ fn array_elem_ty_mismatch() {
     let given_expr = r#"["hello"; "hi"; 4]"#;
 
     let expected_ty = parse_normalize(&mut codemap, &context, expected_ty);
-    match check(&context, &parse(&mut codemap, given_expr), &expected_ty) {
+    match check_term(&context, &parse(&mut codemap, given_expr), &expected_ty) {
         Err(_) => {},
         Ok(term) => panic!("expected error but found: {}", term),
     }
