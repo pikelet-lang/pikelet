@@ -373,6 +373,7 @@ impl ToDoc for Value {
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
+            Value::Neutral(ref neutral, ref spine) if spine.is_empty() => neutral.to_doc(),
             Value::Neutral(ref neutral, ref spine) => {
                 pretty_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))
             },
