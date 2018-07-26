@@ -140,10 +140,8 @@ macro_rules! def_prim {
                 if params.len() == count!($($param_name)*) {
                     let mut arg_index = 0;
                     $(
-                        if arg_index != 0 {
-                            arg_index += 1;
-                        }
-                        let $param_name = <$PType>::try_from_value_ref(&params[arg_index])?;
+                        arg_index += 1;
+                        let $param_name = <$PType>::try_from_value_ref(&params[arg_index - 1])?;
                     )*
                     Ok(<$RType>::into_value($body))
                 } else {
