@@ -9,8 +9,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="">
-
         <link rel="stylesheet" href="book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
@@ -136,7 +134,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="print.html#pikelet-" id="pikelet-"><h1>Pikelet 🥞</h1></a>
+                        <a class="header" href="#pikelet-" id="pikelet-"><h1>Pikelet 🥞</h1></a>
 <p>Pikelet is a small <a href="https://en.wikipedia.org/wiki/Dependent_type">dependently typed</a> language. It
 doesn't do many interesting things yet, but hopefully that will change in the future!</p>
 <ul>
@@ -144,7 +142,7 @@ doesn't do many interesting things yet, but hopefully that will change in the fu
 <li><a href="https://github.com/pikelet-lang/pikelet/issues">Issues</a></li>
 <li><a href="https://gitter.im/pikelet-lang/Lobby">Gitter Chat</a></li>
 </ul>
-<a class="header" href="print.html#a-small-taste" id="a-small-taste"><h2>A small taste</h2></a>
+<a class="header" href="#a-small-taste" id="a-small-taste"><h2>A small taste</h2></a>
 <p>Definitions:</p>
 <pre><code class="language-pikelet">module prelude;
 
@@ -170,36 +168,36 @@ Pikelet&gt; 1 : I16
 1 : I16
 Pikelet&gt;
 </code></pre>
-<a class="header" href="print.html#what-is-a-pikelet" id="what-is-a-pikelet"><h2>What is a Pikelet?</h2></a>
+<a class="header" href="#what-is-a-pikelet" id="what-is-a-pikelet"><h2>What is a Pikelet?</h2></a>
 <p>A pikelet is an odd sort of small (often pre-made) pancake found in Australia
 and New Zealand. Commonly sent in school lunches spread with jam and butter.
 Handily it also has a name that includes 'pi' and 'let' as substrings! 😅</p>
-<a class="header" href="print.html#installation" id="installation"><h1>Installation</h1></a>
+<a class="header" href="#installation" id="installation"><h1>Installation</h1></a>
 <p>Pikelet is written in <a href="https://www.rust-lang.org/">Rust</a> and therefore needs to be compiled with
 Cargo, because we don't yet offer prebuilt binaries. If you haven't already
 installed Rust, please <a href="https://www.rust-lang.org/downloads.html">install it</a> now!</p>
-<a class="header" href="print.html#cloning-the-source-from-github" id="cloning-the-source-from-github"><h2>Cloning the source from Github</h2></a>
+<a class="header" href="#cloning-the-source-from-github" id="cloning-the-source-from-github"><h2>Cloning the source from Github</h2></a>
 <p>We've not yet published Pikelet on <a href="https://crates.io/">crates.io</a>, so you'll first need
 to clone <a href="https://github.com/pikelet-lang/pikelet">the repository</a> using git:</p>
 <pre><code class="language-sh">git clone https://github.com/pikelet-lang/pikelet.git
 cd pikelet
 </code></pre>
-<a class="header" href="print.html#running-the-repl" id="running-the-repl"><h2>Running the REPL</h2></a>
+<a class="header" href="#running-the-repl" id="running-the-repl"><h2>Running the REPL</h2></a>
 <p>After cloning, you can now run the <a href="https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop">REPL</a> using Cargo:</p>
 <pre><code class="language-sh">cargo run repl
 </code></pre>
 <p>You will now need to wait for Cargo to download and build the dependencies, but
 sooner or later the REPL will be ready for you to interact with!</p>
-<a class="header" href="print.html#language" id="language"><h1>Language</h1></a>
-<a class="header" href="print.html#contents" id="contents"><h2>Contents</h2></a>
+<a class="header" href="#language" id="language"><h1>Language</h1></a>
+<a class="header" href="#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="print.html#declarations">Declarations</a></li>
-<li><a href="print.html#comments">Comments</a></li>
-<li><a href="print.html#primitive-types-and-their-literals">Primitive types and their literals</a></li>
-<li><a href="print.html#type-annotations">Type annotations</a></li>
-<li><a href="print.html#identifiers">Identifiers</a></li>
+<li><a href="#declarations">Declarations</a></li>
+<li><a href="#comments">Comments</a></li>
+<li><a href="#primitive-types-and-their-literals">Primitive types and their literals</a></li>
+<li><a href="#type-annotations">Type annotations</a></li>
+<li><a href="#identifiers">Identifiers</a></li>
 </ul>
-<a class="header" href="print.html#declarations" id="declarations"><h2>Declarations</h2></a>
+<a class="header" href="#declarations" id="declarations"><h2>Declarations</h2></a>
 <p>Declarations are preceded by a type annotation, and followed by a definition:</p>
 <pre><code class="language-pikelet">greeting : String;
 greeting = &quot;hello there!&quot;;
@@ -208,7 +206,7 @@ greeting = &quot;hello there!&quot;;
 <pre><code class="language-pikelet">name : Type;
 name = String;
 </code></pre>
-<a class="header" href="print.html#comments" id="comments"><h2>Comments</h2></a>
+<a class="header" href="#comments" id="comments"><h2>Comments</h2></a>
 <p>Line comments are preceded by a double dash:</p>
 <pre><code class="language-pikelet">-- this is a comment!
 </code></pre>
@@ -225,7 +223,7 @@ definitions:</p>
 self-aware-string : String;
 self-aware-string = &quot;I am a string!&quot;;
 </code></pre>
-<a class="header" href="print.html#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
+<a class="header" href="#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
 <p>Pikelet has a number of primitive types:</p>
 <table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
 <tr><td> <code>Bool</code>   </td><td> <code>true</code>, <code>false</code>                        </td></tr>
@@ -246,8 +244,8 @@ self-aware-string = &quot;I am a string!&quot;;
 <p><strong>Note:</strong> You can't do much with these primitive types yet. In the future we
 will add some primitive functions to allow you to manipulate them.</p>
 </blockquote>
-<a class="header" href="print.html#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
-<p>If you note <a href="print.html#primitive-types-and-their-literals">above</a>, a number of the
+<a class="header" href="#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
+<p>If you note <a href="#primitive-types-and-their-literals">above</a>, a number of the
 primitive types share a literal representation. Pikelet will try to predictably
 infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
@@ -265,12 +263,12 @@ error: found a floating point literal, but expected a type `U64`
 1 | 1.1 : U64
   | ^^^ the literal
 </code></pre>
-<a class="header" href="print.html#identifiers" id="identifiers"><h2>Identifiers</h2></a>
+<a class="header" href="#identifiers" id="identifiers"><h2>Identifiers</h2></a>
 <blockquote>
 <p>TODO</p>
 </blockquote>
-<a class="header" href="print.html#conditionals" id="conditionals"><h1>Conditionals</h1></a>
-<a class="header" href="print.html#if-then-else-expressions" id="if-then-else-expressions"><h2>If-then-else expressions</h2></a>
+<a class="header" href="#conditionals" id="conditionals"><h1>Conditionals</h1></a>
+<a class="header" href="#if-then-else-expressions" id="if-then-else-expressions"><h2>If-then-else expressions</h2></a>
 <p><code>if</code> expressions take an expression that evaluates to a <code>Bool</code> (the <em>condition</em>),
 and two other expressions (the <em>consequent</em> and the <em>alternative</em>) that evaluate
 to the same type. If the condition evaluates to <code>true</code>, then the consequent will
@@ -281,14 +279,29 @@ returned.</p>
 Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 &quot;goodbye!&quot; : String
 </code></pre>
-<a class="header" href="print.html#records" id="records"><h1>Records</h1></a>
-<a class="header" href="print.html#contents-1" id="contents-1"><h2>Contents</h2></a>
+<a class="header" href="#case-expressions" id="case-expressions"><h2>Case expressions</h2></a>
+<p>Pikelet supports case expressions on strings, and numbers:</p>
+<pre><code class="language-pikelet">case value of {
+    &quot;hello&quot; =&gt; &quot;goodbye&quot;;
+    &quot;goodbye&quot; =&gt; &quot;hello&quot;;
+    value =&gt; value; -- matches all strings
+}
+</code></pre>
+<p>Note that we don't (yet) check that the series of patterns provided cover all
+possible cases, leading to the following embarrassing error:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; case &quot;hello&quot; of { &quot;hi&quot; =&gt; &quot;oh dear&quot; }
+error: internal compiler error: no patterns matched the given expression
+</code></pre>
+<p>In the future we' plan to fix this, add support for matching on booleans, and
+also support more complex patterns (eg. for records).</p>
+<a class="header" href="#records" id="records"><h1>Records</h1></a>
+<a class="header" href="#contents-1" id="contents-1"><h2>Contents</h2></a>
 <ul>
-<li><a href="print.html#record-values-and-record-types">Record values and record types</a></li>
-<li><a href="print.html#field-lookups">Field lookups</a></li>
-<li><a href="print.html#dependent-record-types">Dependent record types</a></li>
+<li><a href="#record-values-and-record-types">Record values and record types</a></li>
+<li><a href="#field-lookups">Field lookups</a></li>
+<li><a href="#dependent-record-types">Dependent record types</a></li>
 </ul>
-<a class="header" href="print.html#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
+<a class="header" href="#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { x = 3.0 : F32; y = 3.0 : F32 }
 record { x = 3; y = 3 } : Record { x : F32; y : F32 }
@@ -297,7 +310,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 <ul>
 <li>record values use the lower case <code>record</code> keyword</li>
 <li>record types use the upper case <code>Record</code> keyword</li>
-<li>we have to <a href="print.html#type-annotations">annotate</a> ambiguous field values</li>
+<li>we have to <a href="#type-annotations">annotate</a> ambiguous field values</li>
 </ul>
 <p>We can make a new definition for point types:</p>
 <pre><code class="language-pikelet">Point2d = Record {
@@ -312,12 +325,12 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 <p>Note that we no longer need to annotate each field! Pikelet was able to pick up
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
-<a class="header" href="print.html#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
+<a class="header" href="#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
 <p>You can access the value associated with a field by using the dot operator:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
 &quot;Jane&quot; : String
 </code></pre>
-<a class="header" href="print.html#dependent-record-types" id="dependent-record-types"><h2>Dependent record types</h2></a>
+<a class="header" href="#dependent-record-types" id="dependent-record-types"><h2>Dependent record types</h2></a>
 <p>Field types can depend on data from previous fields. Here we turn a
 fixed-length array into a dynamically sized array, by using the <code>len</code> field
 later on to define the <code>data</code> field's annotation:</p>
@@ -326,14 +339,14 @@ later on to define the <code>data</code> field's annotation:</p>
     data : Box (Array len a);
 };
 </code></pre>
-<a class="header" href="print.html#functions" id="functions"><h1>Functions</h1></a>
-<a class="header" href="print.html#contents-2" id="contents-2"><h2>Contents</h2></a>
+<a class="header" href="#functions" id="functions"><h1>Functions</h1></a>
+<a class="header" href="#contents-2" id="contents-2"><h2>Contents</h2></a>
 <ul>
-<li><a href="print.html#simply-typed-functions">Simply typed functions</a></li>
-<li><a href="print.html#polymorphic-functions">Polymorphic functions</a></li>
-<li><a href="print.html#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
+<li><a href="#simply-typed-functions">Simply typed functions</a></li>
+<li><a href="#polymorphic-functions">Polymorphic functions</a></li>
+<li><a href="#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
 </ul>
-<a class="header" href="print.html#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
+<a class="header" href="#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
 <p>Here are some simple functions and their types:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
 I32 -&gt; I32
@@ -352,7 +365,7 @@ Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
 Pikelet&gt; (\x : Char =&gt; x) 'b'
 'b' : Char
 </code></pre>
-<a class="header" href="print.html#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
+<a class="header" href="#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
 <p>Alas, we can't reuse one of these identity functions with other, incompatible
 types:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
@@ -373,7 +386,7 @@ applying a type to it:</p>
 Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
 1 : I32
 </code></pre>
-<a class="header" href="print.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
+<a class="header" href="#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
 <p>In Pikelet, all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:</p>
 <pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
@@ -385,7 +398,7 @@ example the following function types are equivalent:</p>
 (a : Type) -&gt; (x : a) -&gt; a
 (a : Type) -&gt; a -&gt; a
 </code></pre>
-<a class="header" href="print.html#type-inference" id="type-inference"><h1>Type inference</h1></a>
+<a class="header" href="#type-inference" id="type-inference"><h1>Type inference</h1></a>
 <p>Many statically typed languages perform type inference to varying degrees, and
 Pikelet is no different! The goal is to reduce the burden of writing type
 annotations everywhere. Some languages like <a href="https://ocaml.org/">OCaml</a> and
@@ -394,17 +407,17 @@ any annotations at all!</p>
 <p>Pikelet's type inference follows some very simple rules that you can probably
 pick up on your own, but we thought it might help to give a deeper explanation
 of how it works, without getting too bogged down in the theoretical details.</p>
-<a class="header" href="print.html#contents-3" id="contents-3"><h2>Contents</h2></a>
+<a class="header" href="#contents-3" id="contents-3"><h2>Contents</h2></a>
 <ul>
-<li><a href="print.html#bidirectional-typechecking">Bidirectional type checking</a>
+<li><a href="#bidirectional-typechecking">Bidirectional type checking</a>
 <ul>
-<li><a href="print.html#inferable-terms">Inferable terms</a></li>
-<li><a href="print.html#checkable-terms">Checkable terms</a></li>
+<li><a href="#inferable-terms">Inferable terms</a></li>
+<li><a href="#checkable-terms">Checkable terms</a></li>
 </ul>
 </li>
-<li><a href="print.html#further-reading">Further reading</a></li>
+<li><a href="#further-reading">Further reading</a></li>
 </ul>
-<a class="header" href="print.html#bidirectional-type-checking" id="bidirectional-type-checking"><h2>Bidirectional type checking</h2></a>
+<a class="header" href="#bidirectional-type-checking" id="bidirectional-type-checking"><h2>Bidirectional type checking</h2></a>
 <p>Pikelet has a rather flexible type system that can have expressions embedded in
 them, so we've opted to use an algorithm known as 'bidirectional type checking'
 as a way to get a decent amount of inference while still remaining relatively
@@ -412,8 +425,8 @@ predictable to you, the programmer. This means that you may sometimes have to
 write annotations on top-level definitions, but the types should propagate
 downwards and inner definitions should not require much annotation at all.</p>
 <p>To do this we break the terms of the language into two groups. We call these
-<a href="print.html#inferable-terms"><em>inferable terms</em></a> and <a href="print.html#checkable-terms"><em>checkable terms</em></a>.</p>
-<a class="header" href="print.html#inferable-terms" id="inferable-terms"><h3>Inferable terms</h3></a>
+<a href="#inferable-terms"><em>inferable terms</em></a> and <a href="#checkable-terms"><em>checkable terms</em></a>.</p>
+<a class="header" href="#inferable-terms" id="inferable-terms"><h3>Inferable terms</h3></a>
 <p>Inferable terms can be checked on their own or based on previous definitions.</p>
 <blockquote>
 <p>TODO: Explain examples</p>
@@ -430,7 +443,7 @@ Pikelet&gt; record { x = 3.0 : F32; y = 3.0 : F32 }
 Pikelet&gt; \x : Int =&gt; x
 Pikelet&gt; (a : Type) -&gt; a
 </code></pre>
-<a class="header" href="print.html#checkable-terms" id="checkable-terms"><h3>Checkable terms</h3></a>
+<a class="header" href="#checkable-terms" id="checkable-terms"><h3>Checkable terms</h3></a>
 <p>Checkable terms need extra annotations, or be used in a position where extra
 information can be supplied.</p>
 <blockquote>
@@ -446,13 +459,13 @@ Pikelet&gt; 2.0 : F32
 Pikelet&gt; record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
 Pikelet&gt; \x =&gt; x : I32 -&gt; I32
 </code></pre>
-<a class="header" href="print.html#further-reading" id="further-reading"><h2>Further reading</h2></a>
+<a class="header" href="#further-reading" id="further-reading"><h2>Further reading</h2></a>
 <p>We describe Pikelet's type checking algorithm more formally
 <a href="./appendix/theory">in the appendix</a>. If you have a background in programming
 languages and type theory this might be of interest to you. If not, that's
 ok - understanding the formal notation is not necessary for developing a high
 level intuition of type inference in Pikelet.</p>
-<a class="header" href="print.html#types-of-types" id="types-of-types"><h1>Types of types</h1></a>
+<a class="header" href="#types-of-types" id="types-of-types"><h1>Types of types</h1></a>
 <p>Types also have types!</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
 Type
@@ -486,11 +499,11 @@ universes being contained within the larger type universes:</p>
         (1, 4.0, &quot;hello&quot;)))))
 </code></pre>
 </blockquote>
-<a class="header" href="print.html#appendix" id="appendix"><h1>Appendix</h1></a>
+<a class="header" href="#appendix" id="appendix"><h1>Appendix</h1></a>
 <p>Here you will find additional reference information for understanding the
 theoretical foundations behind Pikelet.</p>
-<a class="header" href="print.html#design" id="design"><h1>Design</h1></a>
-<a class="header" href="print.html#design-goals" id="design-goals"><h2>Design goals</h2></a>
+<a class="header" href="#design" id="design"><h1>Design</h1></a>
+<a class="header" href="#design-goals" id="design-goals"><h2>Design goals</h2></a>
 <p>Pikelet should feel:</p>
 <ul>
 <li>Friendly</li>
@@ -537,7 +550,7 @@ theoretical foundations behind Pikelet.</p>
 <p>It's unclear how many of these will be able to be met, and what priorities these
 should have, so this list might change over time. Come and <a href="https://gitter.im/pikelet-lang/Lobby">chat with us</a>
 if you'd like to give your input and get involved!</p>
-<a class="header" href="print.html#some-key-features-of-interest" id="some-key-features-of-interest"><h2>Some key features of interest</h2></a>
+<a class="header" href="#some-key-features-of-interest" id="some-key-features-of-interest"><h2>Some key features of interest</h2></a>
 <ul>
 <li><a href="https://en.wikipedia.org/wiki/Dependent_type">Dependent types</a></li>
 <li><a href="https://en.wikipedia.org/wiki/Pure_function">Purely functional</a></li>
@@ -596,7 +609,7 @@ data structures, instead we want to build up stack allocated state machines
 </ul>
 </li>
 </ul>
-<a class="header" href="print.html#a-possible-implementation-plan" id="a-possible-implementation-plan"><h2>A possible implementation plan</h2></a>
+<a class="header" href="#a-possible-implementation-plan" id="a-possible-implementation-plan"><h2>A possible implementation plan</h2></a>
 <ol>
 <li>Start with a simple dependent type system, like <a href="https://www.andres-loeh.de/LambdaPi/">LambdaPi</a></li>
 <li>Implement additional language extensions needed for actual usefulness
@@ -635,34 +648,37 @@ implementation and it would be extremely challenging to then form a solid
 specification for what we are building. On the other hand, as always, the
 downside of a verified implementation is that it could take a prohibitive
 amount of time to complete.</p>
-<a class="header" href="print.html#theory" id="theory"><h1>Theory</h1></a>
+<a class="header" href="#theory" id="theory"><h1>Theory</h1></a>
 <p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
-<a class="header" href="print.html#contents-4" id="contents-4"><h2>Contents</h2></a>
+<a class="header" href="#contents-4" id="contents-4"><h2>Contents</h2></a>
 <ul>
-<li><a href="print.html#introduction">Introduction</a>
+<li><a href="#introduction">Introduction</a>
 <ul>
-<li><a href="print.html#notation">Notation</a></li>
-<li><a href="print.html#where-is-the-soundness-proof">Where is the soundness proof?</a></li>
+<li><a href="#notation">Notation</a></li>
+<li><a href="#where-is-the-soundness-proof">Where is the soundness proof?</a></li>
 </ul>
 </li>
-<li><a href="print.html#syntax">Syntax</a>
+<li><a href="#syntax">Syntax</a>
 <ul>
-<li><a href="print.html#raw-terms">Raw terms</a></li>
-<li><a href="print.html#terms">Terms</a></li>
-<li><a href="print.html#values">Values</a></li>
-<li><a href="print.html#contexts">Contexts</a></li>
+<li><a href="#raw-terms">Raw terms</a></li>
+<li><a href="#terms">Terms</a></li>
+<li><a href="#values">Values</a></li>
+<li><a href="#contexts">Contexts</a></li>
 </ul>
 </li>
-<li><a href="print.html#semantics">Semantics</a>
+<li><a href="#semantics">Semantics</a>
 <ul>
-<li><a href="print.html#elaboration">Elaboration</a></li>
-<li><a href="print.html#normalization">Normalization</a></li>
-<li><a href="print.html#type-checking">Type checking</a></li>
-<li><a href="print.html#type-inference">Type inference</a></li>
+<li><a href="#elaboration">Elaboration</a></li>
+<li><a href="#normalization">Normalization</a></li>
+<li><a href="#type-checking">Type checking</a></li>
+<li><a href="#type-inference">Type inference</a></li>
+<li><a href="#pattern-matching">Pattern matching</a></li>
+<li><a href="#type-checking-of-patterns">Type checking of patterns</a></li>
+<li><a href="#type-inference-of-patterns">Type inference of patterns</a></li>
 </ul>
 </li>
 </ul>
-<a class="header" href="print.html#introduction" id="introduction"><h2>Introduction</h2></a>
+<a class="header" href="#introduction" id="introduction"><h2>Introduction</h2></a>
 <p>At its core, Pikelet is a dependently typed lambda calculus with a stratified
 universe hierarchy.</p>
 <blockquote>
@@ -671,7 +687,7 @@ This document is intended for those who are interested in looking deeper into th
 You <em>don't</em> need to understand this for general use of Pikelet, so feel free to skip this document if that is easier.
 We will however make an effort to explain some of the notation we use here, and point to resources that might help if this piques your curiosity!</p>
 </blockquote>
-<a class="header" href="print.html#notation" id="notation"><h3>Notation</h3></a>
+<a class="header" href="#notation" id="notation"><h3>Notation</h3></a>
 <p>We use a combination of some <a href="https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form">BNF</a>-style syntax definitions with
 <a href="natural-deduction">natural deduction</a> rules to define our language. This
 combination of notation is sometimes referred to as <em>computer science
@@ -681,7 +697,8 @@ you learn to read them they are much more succinct than an actual implementation
 could be, and are an invaluable tool for quickly getting a high-level overview
 of a programming language's semantics.</p>
 <blockquote>
-<p>TODO: Describe BNF, natural deduction rules, overbars, variable binding, etc.</p>
+<p><strong>TODO:</strong>
+Describe BNF, natural deduction rules, overbars, variable binding, etc.</p>
 </blockquote>
 <p>Some handy links:</p>
 <ul>
@@ -689,42 +706,53 @@ of a programming language's semantics.</p>
 <li><a href="https://blog.acolyer.org/2018/01/26/a-practitioners-guide-to-reading-programming-languages-papers/">A practitioner’s guide to reading programming languages papers</a></li>
 <li><a href="http://steshaw.org/plt/">A path to enlightenment in Programming Language Theory</a></li>
 </ul>
-<a class="header" href="print.html#where-is-the-soundness-proof" id="where-is-the-soundness-proof"><h3>Where is the soundness proof?</h3></a>
+<a class="header" href="#where-is-the-soundness-proof" id="where-is-the-soundness-proof"><h3>Where is the soundness proof?</h3></a>
 <p>Here we are only defining the rules of our language's type checking and
 evaluation. Further work needs to be done to verify that our system actually
 satisfies certain interesting <a href="https://en.wikipedia.org/wiki/Type_safety">type soundness properties</a>,
 like progress, preservation, <a href="https://en.wikipedia.org/wiki/Normalization_property_(abstract_rewriting)">strong normalization</a>,
 etc. If you would like to discuss this with us, please check out
 <a href="https://github.com/pikelet-lang/pikelet/issues/39">the relevant github issue</a>!</p>
-<a class="header" href="print.html#syntax" id="syntax"><h2>Syntax</h2></a>
-<a class="header" href="print.html#raw-terms" id="raw-terms"><h3>Raw terms</h3></a>
+<a class="header" href="#syntax" id="syntax"><h2>Syntax</h2></a>
+<a class="header" href="#raw-terms" id="raw-terms"><h3>Raw terms</h3></a>
 <p>\[
+% Haskell-style append https://tex.stackexchange.com/questions/4194/how-to-typeset-haskell-operator-and-friends
+\newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
+% Small caps https://github.com/mathjax/MathJax-docs/wiki/Small-caps-%5Ctextsc-in-MathJaxx
+\def\sc#1{\dosc#1\csod}
+\def\dosc#1#2\csod{{\rm #1{\small #2}}}
+\
 \newcommand{\rule}[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } &amp; \Tiny{\text{(#1)}} }
 \
 \DeclareMathOperator{\max}{max}
 \DeclareMathOperator{\field}{field}
 \DeclareMathOperator{\fieldty}{fieldty}
 \DeclareMathOperator{\fieldsubst}{fieldsubst}
-\newcommand\doubleplus{+\kern-1.3ex+\kern0.8ex}
+\DeclareMathOperator{\Match}{\sc{MATCH}}
 \
 % Judgments
 \newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
-\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \rhd #4 }
-\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \rhd #4 }
+\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \leadsto #4 }
+\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \leadsto #4 }
+\newcommand{\match}[3]{ \Match(#1,#2) \Longrightarrow #3 }
+\newcommand{\checkpat}[5]{ #1 \vdash #2 \uparrow #3 \leadsto #4 \Longrightarrow #5 }
+\newcommand{\inferpat}[5]{ #1 \vdash #2 \downarrow #3 \leadsto #4 \Longrightarrow #5 }
 \
 % Metavariables
-\newcommand{\rexpr}{r}
-\newcommand{\rtype}{R}
+\newcommand{\rexpr}{r} % raw expressions
+\newcommand{\rtype}{R} % raw types
+\newcommand{\rpat}{s}  % raw patterns
 \
-\newcommand{\texpr}{t}
-\newcommand{\ttype}{T}
+\newcommand{\texpr}{t} % expressions
+\newcommand{\ttype}{T} % types
+\newcommand{\tpat}{p}  % patterns
 \
-\newcommand{\vexpr}{v}
-\newcommand{\vtype}{V}
-\newcommand{\wexpr}{w}
-\newcommand{\wtype}{W}
-\newcommand{\nexpr}{n}
-\newcommand{\ntype}{N}
+\newcommand{\vexpr}{v} % value expressions
+\newcommand{\vtype}{V} % value types
+\newcommand{\wexpr}{w} % whnf expressions
+\newcommand{\wtype}{W} % whnf types
+\newcommand{\nexpr}{n} % neutral expressions
+\newcommand{\ntype}{N} % neutral types
 \
 % Keywords
 \newcommand{\kw}[1]{ \mathsf{#1} }
@@ -739,6 +767,7 @@ etc. If you would like to discuss this with us, please check out
 \newcommand{\lam}[2]{ \lambda #1 . #2 }
 \newcommand{\app}[2]{ #1 ~ #2 }
 \newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
+\newcommand{\case}[2]{ \kw{case} ~ #1 \left\{ #2 \right\} }
 \newcommand{\Record}[1]{ ( #1 ) }
 \newcommand{\record}[1]{ \langle #1 \rangle }
 \newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
@@ -748,17 +777,25 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
 &amp;   | &amp; ?                                   &amp; \text{holes} \\
 &amp;   | &amp; \Bool                               &amp; \text{type of booleans} \\
-&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean values} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean literals} \\
 &amp;   | &amp; \rexpr : \rtype                     &amp; \text{term annotated with a type} \\
 &amp;   | &amp; \Pi{x:\rtype_1}{\rtype_2}           &amp; \text{dependent function type} \\
 &amp;   | &amp; \lam{x:\rtype}{\rexpr}              &amp; \text{functions} \\
 &amp;   | &amp; \app{\rexpr_1}{\rexpr_2}            &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} &amp; \text{if expressions} \\
+&amp;   | &amp; \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}}
+&amp; \text{case expressions} \\
 &amp;   | &amp; \Record{l:\rtype_1, \rtype_2}       &amp; \text{record type extension} \\
 &amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
 &amp;   | &amp; \record{l=\rexpr_1, \rexpr_2}       &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
 &amp;   | &amp; \rexpr.l                            &amp; \text{record projection} \\
+\\
+\rpat           &amp; ::= &amp; x                                   &amp; \text{binder pattern} \\
+&amp;   | &amp; \rpat : \rtype                      &amp; \text{pattern annotated with a type} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean literal patterns} \\
+%   &amp;   | &amp; \record{l=\rpat_1, \rpat_2}         &amp; \text{record extension pattern} \\
+%   &amp;   | &amp; \record{}                           &amp; \text{empty record pattern} \\
 \\
 \end{array}
 \]</p>
@@ -768,28 +805,36 @@ etc. If you would like to discuss this with us, please check out
 \lam{x}{\rexpr}            &amp; := &amp; \lam{x:?}{\rexpr}         &amp; \text{functions (without an annotation)} \\
 \end{array}
 \]</p>
-<a class="header" href="print.html#terms" id="terms"><h3>Terms</h3></a>
+<a class="header" href="#terms" id="terms"><h3>Terms</h3></a>
 <p>The core term syntax skips holes, ensuring that everything is fully elaborated:</p>
 <p>\[
 \begin{array}{rrll}
 \texpr,\ttype   &amp; ::= &amp; x                                   &amp; \text{variables} \\
 &amp;   | &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
 &amp;   | &amp; \Bool                               &amp; \text{type of booleans} \\
-&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean values} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean literals} \\
 &amp;   | &amp; \texpr : \ttype                     &amp; \text{term annotated with a type} \\
 &amp;   | &amp; \Pi{x:\ttype_1}{\ttype_2}           &amp; \text{dependent function type} \\
 &amp;   | &amp; \lam{x:\ttype}{\texpr}              &amp; \text{functions} \\
 &amp;   | &amp; \app{\texpr_1}{\texpr_2}            &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\texpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
+&amp;   | &amp; \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
+&amp; \text{case expressions} \\
 &amp;   | &amp; \Record{l:\ttype_1, \ttype_2}       &amp; \text{record type extension} \\
 &amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
 &amp;   | &amp; \record{l=\texpr_1, \texpr_2}       &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
 &amp;   | &amp; \texpr.l                            &amp; \text{record projection} \\
 \\
+\tpat           &amp; ::= &amp; x                                   &amp; \text{binder pattern} \\
+&amp;   | &amp; \tpat : \ttype                      &amp; \text{pattern annotated with a type} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean literal patterns} \\
+&amp;   | &amp; \record{l=\tpat_1, \tpat_2}         &amp; \text{record extension pattern} \\
+&amp;   | &amp; \record{}                           &amp; \text{empty record pattern} \\
+\\
 \end{array}
 \]</p>
-<a class="header" href="print.html#values" id="values"><h3>Values</h3></a>
+<a class="header" href="#values" id="values"><h3>Values</h3></a>
 <p>In order to make it clear what is 'stuck' and what still needs to be evaluated,
 we separate our syntax into <a href="https://en.wikipedia.org/wiki/Lambda_calculus_definition#Weak_head_normal_form">weak head normal forms</a> (\(\wexpr\)),
 and neutral terms (\(\nexpr\)):</p>
@@ -801,11 +846,13 @@ and neutral terms (\(\nexpr\)):</p>
 \nexpr,\ntype   &amp; ::= &amp; x                                   &amp; \text{variables} \\
 &amp;   | &amp; \app{\nexpr}{\texpr}                &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\nexpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
+&amp;   | &amp; \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
+&amp; \text{case expressions} \\
 &amp;   | &amp; \nexpr.l                            &amp; \text{record projection} \\
 \\
 \wexpr,\wtype   &amp; ::= &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
 &amp;   | &amp; \Bool                               &amp; \text{type of booleans} \\
-&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean values} \\
+&amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean literals} \\
 &amp;   | &amp; \Pi{x:\vtype_1}{\vtype_2}           &amp; \text{dependent function type} \\
 &amp;   | &amp; \lam{x:\vtype}{\vexpr}              &amp; \text{functions} \\
 &amp;   | &amp; \Record{l:\vtype_1, \vtype_2}       &amp; \text{record type extension} \\
@@ -815,28 +862,31 @@ and neutral terms (\(\nexpr\)):</p>
 \\
 \end{array}
 \]</p>
-<a class="header" href="print.html#contexts" id="contexts"><h3>Contexts</h3></a>
+<a class="header" href="#contexts" id="contexts"><h3>Contexts</h3></a>
 <p>As we type check terms, we'll be passing over bindings like lambdas and pi types.
 Contexts allow us to keep track of the bound parameters,
 even though we don't know the exact values these will eventually take during normalization.</p>
 <p>\[
 \begin{array}{rrll}
-\Gamma  &amp; ::= &amp; \epsilon              &amp; \text{the empty context} \\
-&amp;   | &amp; \Gamma,x:\vtype       &amp; \text{context extended with a type claim} \\
-&amp;   | &amp; \Gamma,x=\texpr       &amp; \text{context extended with a definition} \\
+\Gamma,\Delta  &amp; ::= &amp; \varnothing          &amp; \text{the empty context} \\
+&amp;   | &amp; \Gamma,x:\vtype      &amp; \text{context extended with a type claim} \\
+&amp;   | &amp; \Gamma,x=\texpr      &amp; \text{context extended with a definition} \\
 \end{array}
 \]</p>
-<a class="header" href="print.html#semantics" id="semantics"><h2>Semantics</h2></a>
+<a class="header" href="#semantics" id="semantics"><h2>Semantics</h2></a>
 <p>We take a <em>bidirectional</em> approach to type checking, splitting it into two
 phases: type checking and type inference. This makes the flow of information
 through the type checker clear and relatively easy to reason about.
 Normalization happens after inference, and before types are fed back in to be
 used during type checking.</p>
 <p>With that in mind, the next sections will describe the following judgments:</p>
-<table><thead><tr><th> name                              </th><th> notation                                             </th><th> inputs                                   </th><th> outputs                    </th></tr></thead><tbody>
-<tr><td> <a href="print.html#normalization">normalization</a>   </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)            </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)               </td></tr>
-<tr><td> <a href="print.html#type-checking">type checking</a>   </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)               </td></tr>
-<tr><td> <a href="print.html#type-inference">type inference</a> </td><td> \(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\) </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vtype\), \(\texpr\) </td></tr>
+<table><thead><tr><th> name                                                      </th><th> notation                                                         </th><th> inputs                                   </th><th> outputs                                 </th></tr></thead><tbody>
+<tr><td> <a href="#normalization">normalization</a>                           </td><td> \(\eval{ \Gamma }{ \texpr }{ \vexpr }\)                        </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vexpr\)                            </td></tr>
+<tr><td> <a href="#type-checking">type checking</a>                           </td><td> \(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\)             </td><td> \(\Gamma\), \(\rexpr\), \(\vtype\) </td><td> \(\texpr\)                            </td></tr>
+<tr><td> <a href="#type-inference">type inference</a>                         </td><td> \(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\)             </td><td> \(\Gamma\), \(\rexpr\)               </td><td> \(\vtype\), \(\texpr\)              </td></tr>
+<tr><td> <a href="#pattern-matching">pattern matching</a>                     </td><td> \(\match{ \wexpr }{ \tpat }{ \theta }\)                        </td><td> \(\wexpr\), \(\tpat\)                </td><td> \(\theta\)                            </td></tr>
+<tr><td> <a href="#type-checking-of-patterns">type checking of patterns</a>   </td><td> \(\checkpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }\)  </td><td> \(\Gamma\), \(\rpat\), \(\vtype\)  </td><td> \(\tpat\), \(\Delta\)               </td></tr>
+<tr><td> <a href="#type-inference-of-patterns">type inference of patterns</a> </td><td> \(\inferpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }\)  </td><td> \(\Gamma\), \(\rpat\),               </td><td> \(\vtype\), \(\tpat\), \(\Delta\) </td></tr>
 </tbody></table>
 <p>Normalization stands on its own, but both checking and inference are mutually
 dependent on each other. Care has been taken to design the judgments so that
@@ -860,8 +910,11 @@ Type Inference &lt;- - - - - - -&gt; Type checking
      v
  (to compiler)
 </code></pre>
-<!-- TODO: use SVG for this diagram -->
-<a class="header" href="print.html#elaboration" id="elaboration"><h3>Elaboration</h3></a>
+<blockquote>
+<p><strong>TODO:</strong>
+Use SVG for this diagram</p>
+</blockquote>
+<a class="header" href="#elaboration" id="elaboration"><h3>Elaboration</h3></a>
 <p>Elaboration is the process of filling in missing information that the
 programmer omitted in the original code, generally based on the results
 of type inference.</p>
@@ -869,7 +922,7 @@ of type inference.</p>
 diamond: \(\rhd\). At the moment not much is added - only the missing
 type annotations on function parameters. In the future this could be extended
 filling in type class instances and implicit arguments.</p>
-<a class="header" href="print.html#normalization" id="normalization"><h3>Normalization</h3></a>
+<a class="header" href="#normalization" id="normalization"><h3>Normalization</h3></a>
 <p>Here we describe how we normalize elaborated terms under the assumptions
 in the context.</p>
 <p>\[
@@ -960,6 +1013,23 @@ x=\texpr \in \Gamma
 \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_2 }
 }
 \\[2em]
+\rule{E-CASE}{
+\eval{ \Gamma }{ \nexpr }{ \nexpr' }
+}{
+\eval{ \Gamma }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
+{ \case{\nexpr'}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
+}
+\\[2em]
+\rule{E-CASE-MATCH}{
+\eval{ \Gamma }{ \nexpr }{ \wexpr }
+\qquad
+\match{ \wexpr }{ \tpat_i }{ \theta }
+\qquad
+\eval{ \Gamma }{ \texpr_i ~ \theta }{ \vexpr_i }
+}{
+\eval{ \Gamma }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }{ \vexpr_i }
+}
+\\[2em]
 \rule{E-RECORD-TYPE}{
 \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
 \qquad
@@ -1001,7 +1071,7 @@ x=\texpr \in \Gamma
 \field(l_1, \record{l_2 = \vexpr_1, \vexpr_2}) &amp; = &amp; \field(l_1, \vexpr_2) \\
 \end{array}
 \]</p>
-<a class="header" href="print.html#type-checking" id="type-checking"><h3>Type checking</h3></a>
+<a class="header" href="#type-checking" id="type-checking"><h3>Type checking</h3></a>
 <p>This judgement checks that the given term has the expected type and returns its
 elaborated form.</p>
 <p>\[
@@ -1024,6 +1094,22 @@ elaborated form.</p>
 \check{ \Gamma }{ \rexpr_3 }{ \vtype }{ \texpr_3 }
 }{
 \check{ \Gamma }{ \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} }{ \vtype }{ \ifte{\texpr_1}{\texpr_2}{\texpr_3} }
+}
+\\[2em]
+\rule{C-CASE}{
+\infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+\qquad
+\overline{
+% TODO: impl pattern checks
+~
+\check{ \Gamma }{ \rpat_i }{ \vtype_1 }{ \tpat_i } \Rightarrow \Delta
+\qquad
+\check{ \Gamma \sim \Delta }{ \rexpr_i }{ \vtype_2 }{ \texpr_i }
+~
+}
+}{
+\check{ \Gamma }{ \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}} }{ \vtype_2 }
+{ \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
 }
 \\[2em]
 \rule{C-RECORD}{
@@ -1052,7 +1138,7 @@ l_1 \equiv l_2
 expected term for <a href="https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence">alpha equivalence</a> with the inferred term. Note that we could
 alternatively check for subtyping instead of alpha equivalence. This could be
 useful for implementing a cumulative universe hierarchy.</p>
-<a class="header" href="print.html#type-inference-1" id="type-inference-1"><h3>Type inference</h3></a>
+<a class="header" href="#type-inference-1" id="type-inference-1"><h3>Type inference</h3></a>
 <p>Here we define a judgement that synthesizes a type from the given term and
 returns its elaborated form.</p>
 <p>\[
@@ -1172,7 +1258,100 @@ we project on them, we define \(\fieldsubst(-,-,-)\) as:</p>
 \\[2em]
 \end{array}
 \]</p>
-<a class="header" href="print.html#compiler-architecture" id="compiler-architecture"><h1>Compiler Architecture</h1></a>
+<a class="header" href="#pattern-matching" id="pattern-matching"><h3>Pattern matching</h3></a>
+<p>This judement takes an expression \(\wexpr\) in weak head normal form, and a
+pattern \(\tpat\) and returns a substitution \(\theta\) with the matched bindings.</p>
+<p>\[
+\boxed{
+\match{ \wexpr }{ \tpat }{ \theta }
+}
+\\[2em]
+\begin{array}{cl}
+\rule{M-VAR}{}{
+\match{ \wexpr }{ x }{ [x \rightarrow \wexpr] }
+}
+\\[2em]
+\rule{M-TRUE}{}{
+\match{ \true }{ \true }{ [] }
+}
+\\[2em]
+\rule{M-FALSE}{}{
+\match{ \false }{ \false }{ [] }
+}
+\\[2em]
+% TODO:
+%   \rule{M-RECORD}{
+%       \match{ \wexpr_1 }{ \tpat_1 }{ \theta_1 }
+%       \qquad
+%       \match{ \wexpr_2 }{ \tpat_2 }{ \theta_2 }
+%   }{
+%       \match{ \record{l=\wexpr_1, \wexpr_2} }{ \record{l=\tpat_1, \tpat_2} }{ \theta_1 \doubleplus \theta_2 }
+%   }
+%   \\[2em]
+%   \rule{M-EMPTY-RECORD}{}{
+%       \match{ \record{} }{ \record{} }{ [] }
+%   }
+%   \\[2em]
+\end{array}
+\]</p>
+<a class="header" href="#type-checking-of-patterns" id="type-checking-of-patterns"><h3>Type checking of patterns</h3></a>
+<p>\[
+\boxed{
+\checkpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }
+}
+\\[2em]
+\begin{array}{cl}
+\rule{CP-BINDER}{}{
+\checkpat{ \Gamma }{ x }{ \vtype }{ x }{ x : \vtype }
+}
+\\[2em]
+\rule{CP-CONV}{
+\inferpat{ \Gamma }{ \rpat }{ \vtype_2 }{ \tpat }{ \Delta }
+\qquad
+\vtype_1 \equiv_{\alpha} \vtype_2
+}{
+\checkpat{ \Gamma }{ \rpat }{ \vtype_1 }{ \tpat }{ \Delta }
+}
+\\[2em]
+\end{array}
+\]</p>
+<a class="header" href="#type-inference-of-patterns" id="type-inference-of-patterns"><h3>Type inference of patterns</h3></a>
+<p>\[
+\boxed{
+\inferpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }
+}
+\\[2em]
+\begin{array}{cl}
+\rule{IP-ANN}{
+\infer{ \Gamma }{ \rtype }{ \Type_i }{ \ttype }
+\qquad
+\eval{ \Gamma }{ \ttype }{ \vtype }
+\qquad
+\checkpat{ \Gamma }{ \rpat }{ \vtype }{ \rpat }{ \Delta }
+}{
+\inferpat{ \Gamma }{ \rpat : \rtype }{ \rtype }{ \rpat : \rtype }{ \Delta }
+}
+\\[2em]
+\rule{IP-TRUE}{}{
+\inferpat{ \Gamma }{ \true }{ \Bool }{ \true }{ \varnothing }
+}
+\\[2em]
+\rule{IP-FALSE}{}{
+\inferpat{ \Gamma }{ \false }{ \Bool }{ \false }{ \varnothing }
+}
+\\[2em]
+\end{array}
+\]</p>
+<blockquote>
+<p><strong>TODO:</strong></p>
+<ul>
+<li>Coverage (ie. that a series of patterns covers all possible values)</li>
+<li>Ensure that parametericity is maintained. Should we forbid <a href="https://stackoverflow.com/questions/45439486/pattern-matching-on-type-in-idris">pattern matching
+directly on types</a>? McBride seems to <a href="https://stackoverflow.com/questions/23220884/why-is-typecase-a-bad-thing/26012264#26012264">think we can have our
+cake and eat it</a>!</li>
+</ul>
+</blockquote>
+<a class="header" href="#compiler-architecture" id="compiler-architecture"><h1>Compiler Architecture</h1></a>
 <p>In order to create a separation of concerns, we break up our compiler into many
 small stages, beginning with a source string, and ultimately ending up with
 compiled machine code.</p>
@@ -1216,12 +1395,12 @@ parsed, desugared, and type checked/elaborated:</p>
 <p>As you can see we have only built the front-end as of the time of writing. When
 we begin to build out a <a href="https://github.com/pikelet-lang/pikelet/issues/9">compiler back end</a>,
 more stages will be added after type checking and elaboration.</p>
-<a class="header" href="print.html#name-binding" id="name-binding"><h2>Name binding</h2></a>
+<a class="header" href="#name-binding" id="name-binding"><h2>Name binding</h2></a>
 <p>Name binding is a surprisingly challenging thing to implement in type checkers
 and compilers. We use the <a href="https://github.com/brendanzab/moniker"><code>moniker</code> crate</a>
 for this. Unfortunately this uses a quite slow method of name binding, and could
 result in performance blowouts in the future. This is something to keep an eye on!</p>
-<a class="header" href="print.html#performance-considerations" id="performance-considerations"><h2>Performance considerations</h2></a>
+<a class="header" href="#performance-considerations" id="performance-considerations"><h2>Performance considerations</h2></a>
 <p>As you can see from the diagram above, this architecture leads to an
 easy-to-reason about pipeline. It does however result in the creation of lots of
 intermediate allocations of heap-allocated tree data structures that will
@@ -1244,7 +1423,7 @@ of chained iterator adaptors, that only perform the allocation on the call to
 reduce intermediate allocations.</p>
 <p>We could potentially get some fusion between the stages of our compiler by way
 of the <a href="https://github.com/pikelet-lang/pikelet/issues/75">visitor pattern</a>.</p>
-<a class="header" href="print.html#support-for-interactive-development" id="support-for-interactive-development"><h2>Support for interactive development</h2></a>
+<a class="header" href="#support-for-interactive-development" id="support-for-interactive-development"><h2>Support for interactive development</h2></a>
 <p>It would be interesting to see how Pikelet could be implemented using an
 asynchronous, query-based architecture. This will become more important as the
 demands of interactive development and incremental compilation become more
@@ -1252,37 +1431,37 @@ pressing. In this model we would have to think of compilation as less a pure
 function from source code to machine code, and more as interacting with a
 database. Perhaps a CQRS (Command-Query-Responsibility-Segregation) model would
 be useful for this?</p>
-<a class="header" href="print.html#resources" id="resources"><h3>Resources</h3></a>
+<a class="header" href="#resources" id="resources"><h3>Resources</h3></a>
 <ul>
 <li><a href="https://rust-lang-nursery.github.io/rustc-guide/query.html">Queries: demand-driven compilation (Rustc Book)</a></li>
 <li><a href="https://www.youtube.com/watch?v=wSdV1M7n4gQ">Anders Hejlsberg on Modern Compiler Construction (YouTube)</a></li>
 </ul>
-<a class="header" href="print.html#influences" id="influences"><h1>Influences</h1></a>
+<a class="header" href="#influences" id="influences"><h1>Influences</h1></a>
 <p>Some languages have been inspiring when building Pikelet. We list some of them
 here, and the contributions they have made in our thinking. These ideas may or
 may not be included in the final Pikelet language, but they are worth mentioning!</p>
-<a class="header" href="print.html#contents-5" id="contents-5"><h2>Contents</h2></a>
+<a class="header" href="#contents-5" id="contents-5"><h2>Contents</h2></a>
 <ul>
-<li><a href="print.html#1ml">1ML</a></li>
-<li><a href="print.html#agda">Agda</a></li>
-<li><a href="print.html#ats">ATS</a></li>
-<li><a href="print.html#d">D</a></li>
-<li><a href="print.html#dhall">Dhall</a></li>
-<li><a href="print.html#discus-formerly-ddc">Discus (formerly DDC)</a></li>
-<li><a href="print.html#elm">Elm</a></li>
-<li><a href="print.html#f">F*</a></li>
-<li><a href="print.html#gluon">Gluon</a></li>
-<li><a href="print.html#granule">Granule</a></li>
-<li><a href="print.html#idris">Idris</a></li>
-<li><a href="print.html#ivory">Ivory</a></li>
-<li><a href="print.html#koka">Koka</a></li>
-<li><a href="print.html#lean">Lean</a></li>
-<li><a href="print.html#ocaml">OCaml</a></li>
-<li><a href="print.html#rust">Rust</a></li>
-<li><a href="print.html#sixten">Sixten</a></li>
-<li><a href="print.html#ur">Ur</a></li>
+<li><a href="#1ml">1ML</a></li>
+<li><a href="#agda">Agda</a></li>
+<li><a href="#ats">ATS</a></li>
+<li><a href="#d">D</a></li>
+<li><a href="#dhall">Dhall</a></li>
+<li><a href="#discus-formerly-ddc">Discus (formerly DDC)</a></li>
+<li><a href="#elm">Elm</a></li>
+<li><a href="#f">F*</a></li>
+<li><a href="#gluon">Gluon</a></li>
+<li><a href="#granule">Granule</a></li>
+<li><a href="#idris">Idris</a></li>
+<li><a href="#ivory">Ivory</a></li>
+<li><a href="#koka">Koka</a></li>
+<li><a href="#lean">Lean</a></li>
+<li><a href="#ocaml">OCaml</a></li>
+<li><a href="#rust">Rust</a></li>
+<li><a href="#sixten">Sixten</a></li>
+<li><a href="#ur">Ur</a></li>
 </ul>
-<a class="header" href="print.html#a1ml" id="a1ml"><h2>1ML</h2></a>
+<a class="header" href="#a1ml" id="a1ml"><h2>1ML</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://people.mpi-sws.org/%7Erossberg/1ml/">Website</a></li>
@@ -1293,7 +1472,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>combines module language of ML with dependent records</li>
 <li>formalized foundation</li>
 </ul>
-<a class="header" href="print.html#agda" id="agda"><h2>Agda</h2></a>
+<a class="header" href="#agda" id="agda"><h2>Agda</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://wiki.portal.chalmers.se/agda/pmwiki.php">Wiki</a></li>
@@ -1309,7 +1488,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>totality checking</li>
 <li>inductive data types</li>
 </ul>
-<a class="header" href="print.html#ats" id="ats"><h2>ATS</h2></a>
+<a class="header" href="#ats" id="ats"><h2>ATS</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://www.ats-lang.org/">Website</a></li>
@@ -1321,7 +1500,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>high level of performance, low level interoperability</li>
 <li>unboxed data types</li>
 </ul>
-<a class="header" href="print.html#d" id="d"><h2>D</h2></a>
+<a class="header" href="#d" id="d"><h2>D</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://dlang.org">Website</a></li>
@@ -1334,7 +1513,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>low-level control and high-level abstraction</li>
 <li>fast compiler, short iteration times</li>
 </ul>
-<a class="header" href="print.html#dhall" id="dhall"><h2>Dhall</h2></a>
+<a class="header" href="#dhall" id="dhall"><h2>Dhall</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://github.com/dhall-lang/">Website</a></li>
@@ -1346,12 +1525,12 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>total language</li>
 <li>structural records</li>
 </ul>
-<a class="header" href="print.html#discus-formerly-ddc" id="discus-formerly-ddc"><h2>Discus (formerly DDC)</h2></a>
+<a class="header" href="#discus-formerly-ddc" id="discus-formerly-ddc"><h2>Discus (formerly DDC)</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://www.discus-lang.org/">Website</a></li>
 </ul>
-<a class="header" href="print.html#elm" id="elm"><h2>Elm</h2></a>
+<a class="header" href="#elm" id="elm"><h2>Elm</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://elm-lang.org/">Website</a></li>
@@ -1364,7 +1543,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>best-in-class error messages</li>
 <li>row polymorphism</li>
 </ul>
-<a class="header" href="print.html#f" id="f"><h2>F*</h2></a>
+<a class="header" href="#f" id="f"><h2>F*</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://www.fstar-lang.org/">Website</a></li>
@@ -1374,7 +1553,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>combining SMT solvers with explicit proofs</li>
 <li>combining effects with dependent types</li>
 </ul>
-<a class="header" href="print.html#gluon" id="gluon"><h2>Gluon</h2></a>
+<a class="header" href="#gluon" id="gluon"><h2>Gluon</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://github.com/gluon-lang/gluon">Repository</a></li>
@@ -1386,7 +1565,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>embeddable in Rust programs</li>
 <li>using records as a basis for the module system</li>
 </ul>
-<a class="header" href="print.html#granule" id="granule"><h2>Granule</h2></a>
+<a class="header" href="#granule" id="granule"><h2>Granule</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://github.com/dorchard/granule/">Repository</a></li>
@@ -1395,7 +1574,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <ul>
 <li>combining coeffects with effects in one language</li>
 </ul>
-<a class="header" href="print.html#idris" id="idris"><h2>Idris</h2></a>
+<a class="header" href="#idris" id="idris"><h2>Idris</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://www.idris-lang.org/">Website</a></li>
@@ -1417,12 +1596,12 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>effects system as a library</li>
 <li>state machine library</li>
 </ul>
-<a class="header" href="print.html#ivory" id="ivory"><h2>Ivory</h2></a>
+<a class="header" href="#ivory" id="ivory"><h2>Ivory</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://ivorylang.org/ivory-introduction.html">Website</a></li>
 </ul>
-<a class="header" href="print.html#koka" id="koka"><h2>Koka</h2></a>
+<a class="header" href="#koka" id="koka"><h2>Koka</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://www.microsoft.com/en-us/research/project/koka/">Website</a></li>
@@ -1432,7 +1611,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>algebraic effects and handlers</li>
 <li>nice library documentation, with clickable links, etc.</li>
 </ul>
-<a class="header" href="print.html#lean" id="lean"><h2>Lean</h2></a>
+<a class="header" href="#lean" id="lean"><h2>Lean</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://leanprover.github.io">Website</a></li>
@@ -1443,7 +1622,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>metaprogramming support using Lean</li>
 <li>simple kernel language</li>
 </ul>
-<a class="header" href="print.html#ocaml" id="ocaml"><h2>OCaml</h2></a>
+<a class="header" href="#ocaml" id="ocaml"><h2>OCaml</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://ocaml.org/">Website</a></li>
@@ -1459,7 +1638,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>structural records</li>
 <li>efficient (and <em>fast</em>) code generation</li>
 </ul>
-<a class="header" href="print.html#rust" id="rust"><h2>Rust</h2></a>
+<a class="header" href="#rust" id="rust"><h2>Rust</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://rust-lang.org/">Website</a></li>
@@ -1477,7 +1656,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>minimal runtime</li>
 <li>bootstrapped itself off a foundation of C libraries</li>
 </ul>
-<a class="header" href="print.html#sixten" id="sixten"><h2>Sixten</h2></a>
+<a class="header" href="#sixten" id="sixten"><h2>Sixten</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="https://github.com/ollef/sixten">Repository</a></li>
@@ -1487,7 +1666,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <li>non-uniform, unboxed data layout</li>
 <li>dependent types</li>
 </ul>
-<a class="header" href="print.html#ur" id="ur"><h2>Ur</h2></a>
+<a class="header" href="#ur" id="ur"><h2>Ur</h2></a>
 <p>Links:</p>
 <ul>
 <li><a href="http://www.impredicative.com/ur/">Website</a></li>
@@ -1496,7 +1675,7 @@ may not be included in the final Pikelet language, but they are worth mentioning
 <ul>
 <li>Statically typed metaprogramming with type-level records</li>
 </ul>
-<a class="header" href="print.html#references" id="references"><h1>References</h1></a>
+<a class="header" href="#references" id="references"><h1>References</h1></a>
 <p>What follows is a non-exhaustive list of some of the references that were useful
 when building Pikelet:</p>
 <ul>
@@ -1540,6 +1719,9 @@ dependent type theory”.
 
         
         <script src="searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script>
+            var path_to_root = "";
+        </script>
         
         
         <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>

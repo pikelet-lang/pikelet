@@ -9,20 +9,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="../">
-
-        <link rel="stylesheet" href="book.css">
+        <link rel="stylesheet" href="../book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
 
         <link rel="shortcut icon" href="favicon.png">
 
         <!-- Font Awesome -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
 
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         
@@ -72,7 +70,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/implementation.html" class="active"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="../language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/implementation.html" class="active"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -105,7 +103,7 @@
                         <h1 class="menu-title">Pikelet Language Book</h1> 
 
                         <div class="right-buttons">
-                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
                                 <i id="print-button" class="fa fa-print"></i>
                             </a>
                         </div>
@@ -136,7 +134,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="appendix/implementation.html#compiler-architecture" id="compiler-architecture"><h1>Compiler Architecture</h1></a>
+                        <a class="header" href="#compiler-architecture" id="compiler-architecture"><h1>Compiler Architecture</h1></a>
 <p>In order to create a separation of concerns, we break up our compiler into many
 small stages, beginning with a source string, and ultimately ending up with
 compiled machine code.</p>
@@ -180,12 +178,12 @@ parsed, desugared, and type checked/elaborated:</p>
 <p>As you can see we have only built the front-end as of the time of writing. When
 we begin to build out a <a href="https://github.com/pikelet-lang/pikelet/issues/9">compiler back end</a>,
 more stages will be added after type checking and elaboration.</p>
-<a class="header" href="appendix/implementation.html#name-binding" id="name-binding"><h2>Name binding</h2></a>
+<a class="header" href="#name-binding" id="name-binding"><h2>Name binding</h2></a>
 <p>Name binding is a surprisingly challenging thing to implement in type checkers
 and compilers. We use the <a href="https://github.com/brendanzab/moniker"><code>moniker</code> crate</a>
 for this. Unfortunately this uses a quite slow method of name binding, and could
 result in performance blowouts in the future. This is something to keep an eye on!</p>
-<a class="header" href="appendix/implementation.html#performance-considerations" id="performance-considerations"><h2>Performance considerations</h2></a>
+<a class="header" href="#performance-considerations" id="performance-considerations"><h2>Performance considerations</h2></a>
 <p>As you can see from the diagram above, this architecture leads to an
 easy-to-reason about pipeline. It does however result in the creation of lots of
 intermediate allocations of heap-allocated tree data structures that will
@@ -208,7 +206,7 @@ of chained iterator adaptors, that only perform the allocation on the call to
 reduce intermediate allocations.</p>
 <p>We could potentially get some fusion between the stages of our compiler by way
 of the <a href="https://github.com/pikelet-lang/pikelet/issues/75">visitor pattern</a>.</p>
-<a class="header" href="appendix/implementation.html#support-for-interactive-development" id="support-for-interactive-development"><h2>Support for interactive development</h2></a>
+<a class="header" href="#support-for-interactive-development" id="support-for-interactive-development"><h2>Support for interactive development</h2></a>
 <p>It would be interesting to see how Pikelet could be implemented using an
 asynchronous, query-based architecture. This will become more important as the
 demands of interactive development and incremental compilation become more
@@ -216,7 +214,7 @@ pressing. In this model we would have to think of compilation as less a pure
 function from source code to machine code, and more as interacting with a
 database. Perhaps a CQRS (Command-Query-Responsibility-Segregation) model would
 be useful for this?</p>
-<a class="header" href="appendix/implementation.html#resources" id="resources"><h3>Resources</h3></a>
+<a class="header" href="#resources" id="resources"><h3>Resources</h3></a>
 <ul>
 <li><a href="https://rust-lang-nursery.github.io/rustc-guide/query.html">Queries: demand-driven compilation (Rustc Book)</a></li>
 <li><a href="https://www.youtube.com/watch?v=wSdV1M7n4gQ">Anders Hejlsberg on Modern Compiler Construction (YouTube)</a></li>
@@ -227,13 +225,13 @@ be useful for this?</p>
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="appendix/theory.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../appendix/theory.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="appendix/influences.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../appendix/influences.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -245,13 +243,13 @@ be useful for this?</p>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="appendix/theory.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="../appendix/theory.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="appendix/influences.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="../appendix/influences.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
@@ -266,17 +264,20 @@ be useful for this?</p>
         
 
         
-        <script src="searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script>
+            var path_to_root = "../";
+        </script>
         
         
-        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
         
 
-        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
 
         <!-- Custom JS scripts -->
         

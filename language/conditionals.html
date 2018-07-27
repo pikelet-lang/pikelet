@@ -9,20 +9,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="../">
-
-        <link rel="stylesheet" href="book.css">
+        <link rel="stylesheet" href="../book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
 
         <link rel="shortcut icon" href="favicon.png">
 
         <!-- Font Awesome -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
 
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         
@@ -72,7 +70,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html" class="active"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html" class="active"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="../language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -105,7 +103,7 @@
                         <h1 class="menu-title">Pikelet Language Book</h1> 
 
                         <div class="right-buttons">
-                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
                                 <i id="print-button" class="fa fa-print"></i>
                             </a>
                         </div>
@@ -136,8 +134,8 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="language/conditionals.html#conditionals" id="conditionals"><h1>Conditionals</h1></a>
-<a class="header" href="language/conditionals.html#if-then-else-expressions" id="if-then-else-expressions"><h2>If-then-else expressions</h2></a>
+                        <a class="header" href="#conditionals" id="conditionals"><h1>Conditionals</h1></a>
+<a class="header" href="#if-then-else-expressions" id="if-then-else-expressions"><h2>If-then-else expressions</h2></a>
 <p><code>if</code> expressions take an expression that evaluates to a <code>Bool</code> (the <em>condition</em>),
 and two other expressions (the <em>consequent</em> and the <em>alternative</em>) that evaluate
 to the same type. If the condition evaluates to <code>true</code>, then the consequent will
@@ -148,19 +146,34 @@ returned.</p>
 Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 &quot;goodbye!&quot; : String
 </code></pre>
+<a class="header" href="#case-expressions" id="case-expressions"><h2>Case expressions</h2></a>
+<p>Pikelet supports case expressions on strings, and numbers:</p>
+<pre><code class="language-pikelet">case value of {
+    &quot;hello&quot; =&gt; &quot;goodbye&quot;;
+    &quot;goodbye&quot; =&gt; &quot;hello&quot;;
+    value =&gt; value; -- matches all strings
+}
+</code></pre>
+<p>Note that we don't (yet) check that the series of patterns provided cover all
+possible cases, leading to the following embarrassing error:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; case &quot;hello&quot; of { &quot;hi&quot; =&gt; &quot;oh dear&quot; }
+error: internal compiler error: no patterns matched the given expression
+</code></pre>
+<p>In the future we' plan to fix this, add support for matching on booleans, and
+also support more complex patterns (eg. for records).</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="language/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../language/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="language/records.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../language/records.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -172,13 +185,13 @@ Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="language/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="../language/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="language/records.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="../language/records.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
@@ -193,17 +206,20 @@ Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
         
 
         
-        <script src="searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script>
+            var path_to_root = "../";
+        </script>
         
         
-        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
         
 
-        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
 
         <!-- Custom JS scripts -->
         

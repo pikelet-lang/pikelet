@@ -9,20 +9,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
 
-        <base href="../">
-
-        <link rel="stylesheet" href="book.css">
+        <link rel="stylesheet" href="../book.css">
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
         <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro:500" rel="stylesheet" type="text/css">
 
         <link rel="shortcut icon" href="favicon.png">
 
         <!-- Font Awesome -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
 
-        <link rel="stylesheet" href="highlight.css">
-        <link rel="stylesheet" href="tomorrow-night.css">
-        <link rel="stylesheet" href="ayu-highlight.css">
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
         
@@ -72,7 +70,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html" class="active"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html" class="active"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="../language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -105,7 +103,7 @@
                         <h1 class="menu-title">Pikelet Language Book</h1> 
 
                         <div class="right-buttons">
-                            <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <a href="../print.html" title="Print this book" aria-label="Print this book">
                                 <i id="print-button" class="fa fa-print"></i>
                             </a>
                         </div>
@@ -136,14 +134,14 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="language/functions.html#functions" id="functions"><h1>Functions</h1></a>
-<a class="header" href="language/functions.html#contents" id="contents"><h2>Contents</h2></a>
+                        <a class="header" href="#functions" id="functions"><h1>Functions</h1></a>
+<a class="header" href="#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="language/functions.html#simply-typed-functions">Simply typed functions</a></li>
-<li><a href="language/functions.html#polymorphic-functions">Polymorphic functions</a></li>
-<li><a href="language/functions.html#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
+<li><a href="#simply-typed-functions">Simply typed functions</a></li>
+<li><a href="#polymorphic-functions">Polymorphic functions</a></li>
+<li><a href="#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
 </ul>
-<a class="header" href="language/functions.html#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
+<a class="header" href="#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
 <p>Here are some simple functions and their types:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
 I32 -&gt; I32
@@ -162,7 +160,7 @@ Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
 Pikelet&gt; (\x : Char =&gt; x) 'b'
 'b' : Char
 </code></pre>
-<a class="header" href="language/functions.html#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
+<a class="header" href="#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
 <p>Alas, we can't reuse one of these identity functions with other, incompatible
 types:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
@@ -183,7 +181,7 @@ applying a type to it:</p>
 Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
 1 : I32
 </code></pre>
-<a class="header" href="language/functions.html#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
+<a class="header" href="#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
 <p>In Pikelet, all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:</p>
 <pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
@@ -201,13 +199,13 @@ example the following function types are equivalent:</p>
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="language/records.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../language/records.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="language/type-inference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../language/type-inference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -219,13 +217,13 @@ example the following function types are equivalent:</p>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="language/records.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="../language/records.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="language/type-inference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="../language/type-inference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
@@ -240,17 +238,20 @@ example the following function types are equivalent:</p>
         
 
         
-        <script src="searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searchindex.js" type="text/javascript" charset="utf-8"></script>
+        <script>
+            var path_to_root = "../";
+        </script>
         
         
-        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
         
 
-        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
 
         <!-- Custom JS scripts -->
         
