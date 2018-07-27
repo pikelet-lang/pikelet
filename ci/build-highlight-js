@@ -4,7 +4,7 @@ set -euo pipefail
 main() {
     local book_dir=./book
     local highlightjs_dir=$book_dir/highlight.js
-    local theme_dir=$book_dir/src/theme
+    local theme_dir=$book_dir/theme
 
     echo "Preparing highlight.js submodule"
     git submodule update --init $highlightjs_dir
