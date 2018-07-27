@@ -12,49 +12,27 @@ mod lexer;
 pub use self::errors::{ExpectedTokens, ParseError};
 pub use self::lexer::{LexerError, Token};
 
-// TODO: DRY up these wrappers...
+macro_rules! parser {
+    ($name:ident, $output:ident, $parser_name:ident) => {
+        pub fn $name<'input>(filemap: &'input FileMap) -> (concrete::$output, Vec<ParseError>) {
+            let mut errors = Vec::new();
+            let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
+            let value = grammar::$parser_name::new()
+                .parse(&mut errors, filemap, lexer)
+                .unwrap_or_else(|err| {
+                    errors.push(errors::from_lalrpop(filemap, err));
+                    concrete::$output::Error(filemap.span())
+                });
 
-pub fn repl_command(filemap: &FileMap) -> (concrete::ReplCommand, Vec<ParseError>) {
-    let mut errors = Vec::new();
-
-    let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    let value = grammar::ReplCommandParser::new()
-        .parse(&mut errors, filemap, lexer)
-        .unwrap_or_else(|err| {
-            errors.push(errors::from_lalrpop(filemap, err));
-            concrete::ReplCommand::Error(filemap.span())
-        });
-
-    (value, errors)
+            (value, errors)
+        }
+    };
 }
 
-pub fn module(filemap: &FileMap) -> (concrete::Module, Vec<ParseError>) {
-    let mut errors = Vec::new();
-
-    let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    let value = grammar::ModuleParser::new()
-        .parse(&mut errors, filemap, lexer)
-        .unwrap_or_else(|err| {
-            errors.push(errors::from_lalrpop(filemap, err));
-            concrete::Module::Error(filemap.span())
-        });
-
-    (value, errors)
-}
-
-pub fn term(filemap: &FileMap) -> (concrete::Term, Vec<ParseError>) {
-    let mut errors = Vec::new();
-
-    let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
-    let value = grammar::TermParser::new()
-        .parse(&mut errors, filemap, lexer)
-        .unwrap_or_else(|err| {
-            errors.push(errors::from_lalrpop(filemap, err));
-            concrete::Term::Error(filemap.span())
-        });
-
-    (value, errors)
-}
+parser!(repl_command, ReplCommand, ReplCommandParser);
+parser!(module, Module, ModuleParser);
+parser!(pattern, Pattern, PatternParser);
+parser!(term, Term, TermParser);
 
 mod grammar {
     #![cfg_attr(feature = "cargo-clippy", allow(clippy))]
@@ -94,8 +72,8 @@ fn reparse_pi_type_hack<L, T>(
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match *term {
             Term::Var(start, ref name) => names.push((start, name.clone())),
-            Term::App(ref fn_expr, ref args) => {
-                param_names(fn_expr, names)?;
+            Term::App(ref head, ref args) => {
+                param_names(head, names)?;
                 for arg in args {
                     param_names(arg, names)?;
                 }
@@ -110,12 +88,12 @@ fn reparse_pi_type_hack<L, T>(
     }
 
     match binder {
-        Term::App(ref fn_expr, ref args) => {
+        Term::App(ref head, ref args) => {
             use std::iter;
 
             let mut binders = Vec::with_capacity(args.len() + 1);
 
-            for next in iter::once(&**fn_expr).chain(args).map(pi_binder) {
+            for next in iter::once(&**head).chain(args).map(pi_binder) {
                 match next? {
                     Some((names, ann)) => binders.push((names, ann)),
                     None => return Ok(Term::Arrow(Box::new(binder.clone()), Box::new(body))),

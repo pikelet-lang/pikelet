@@ -50,6 +50,50 @@ pub struct Definition {
     pub ann: RcType,
 }
 
+#[derive(Debug, Clone, PartialEq, BoundPattern)]
+pub enum Pattern {
+    /// Patterns annotated with types
+    Ann(RcPattern, Embed<RcTerm>),
+    /// Patterns that bind variables
+    Binder(Binder<String>),
+    /// Literal patterns
+    Literal(Literal),
+}
+
+impl fmt::Display for Pattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
+    }
+}
+
+/// Reference counted patterns
+#[derive(Debug, Clone, PartialEq, BoundPattern)]
+pub struct RcPattern {
+    pub inner: Rc<Pattern>,
+}
+
+impl From<Pattern> for RcPattern {
+    fn from(src: Pattern) -> RcPattern {
+        RcPattern {
+            inner: Rc::new(src),
+        }
+    }
+}
+
+impl ops::Deref for RcPattern {
+    type Target = Pattern;
+
+    fn deref(&self) -> &Pattern {
+        &self.inner
+    }
+}
+
+impl fmt::Display for RcPattern {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
+    }
+}
+
 /// The core term syntax
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
@@ -79,6 +123,8 @@ pub enum Term {
     RecordEmpty,
     /// Field projection
     Proj(RcTerm, Label<String>),
+    /// Case expressions
+    Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
     Array(Vec<RcTerm>),
 }
@@ -120,8 +166,8 @@ impl RcTerm {
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
-            Term::App(ref term, ref arg) => {
-                RcTerm::from(Term::App(term.substs(mappings), arg.substs(mappings)))
+            Term::App(ref head, ref arg) => {
+                RcTerm::from(Term::App(head.substs(mappings), arg.substs(mappings)))
             },
             Term::If(ref cond, ref if_true, ref if_false) => RcTerm::from(Term::If(
                 cond.substs(mappings),
@@ -146,6 +192,16 @@ impl RcTerm {
             Term::Proj(ref expr, ref label) => {
                 RcTerm::from(Term::Proj(expr.substs(mappings), label.clone()))
             },
+            Term::Case(ref head, ref clauses) => RcTerm::from(Term::Case(
+                head.substs(mappings),
+                clauses
+                    .iter()
+                    .map(|scope| Scope {
+                        unsafe_pattern: scope.unsafe_pattern.clone(), // subst?
+                        unsafe_body: scope.unsafe_body.substs(mappings),
+                    })
+                    .collect(),
+            )),
             Term::Array(ref elems) => RcTerm::from(Term::Array(
                 elems.iter().map(|elem| elem.substs(mappings)).collect(),
             )),
@@ -355,6 +411,8 @@ pub enum Neutral {
     If(RcNeutral, RcValue, RcValue),
     /// Field projection
     Proj(RcNeutral, Label<String>),
+    /// Case expressions
+    Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }
 
 impl fmt::Display for Neutral {
@@ -475,6 +533,16 @@ impl<'a> From<&'a Neutral> for Term {
                 RcTerm::from(&**if_false),
             ),
             Neutral::Proj(ref expr, ref name) => Term::Proj(RcTerm::from(&**expr), name.clone()),
+            Neutral::Case(ref head, ref clauses) => Term::Case(
+                RcTerm::from(&**head),
+                clauses
+                    .iter()
+                    .map(|clause| Scope {
+                        unsafe_pattern: clause.unsafe_pattern.clone(),
+                        unsafe_body: RcTerm::from(&*clause.unsafe_body),
+                    })
+                    .collect(),
+            ),
         }
     }
 }

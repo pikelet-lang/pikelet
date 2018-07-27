@@ -9,8 +9,8 @@ use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var}
 
 use syntax::context::Context;
 use syntax::core::{
-    Definition, Head, Literal, Module, Neutral, RcNeutral, RcTerm, RcType, RcValue, Term, Type,
-    Value,
+    Definition, Head, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType,
+    RcValue, Term, Type, Value,
 };
 use syntax::raw;
 use syntax::translation::Resugar;
@@ -107,8 +107,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         },
 
         // E-APP
-        Term::App(ref expr, ref arg) => {
-            match *normalize(context, expr)?.inner {
+        Term::App(ref head, ref arg) => {
+            match *normalize(context, head)?.inner {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((Binder(free_var), Embed(_)), body) = scope.clone().unbind();
@@ -134,9 +134,10 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                                 }
                             }
                         },
-                        Neutral::Head(_) | Neutral::If(_, _, _) | Neutral::Proj(_, _) => {
-                            spine.push_back(arg)
-                        },
+                        Neutral::Head(_)
+                        | Neutral::If(_, _, _)
+                        | Neutral::Proj(_, _)
+                        | Neutral::Case(_, _) => spine.push_back(arg),
                     }
 
                     Ok(RcValue::from(Value::Neutral(neutral.clone(), spine)))
@@ -202,12 +203,78 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             },
         },
 
+        // E-CASE
+        Term::Case(ref head, ref clauses) => {
+            let head = normalize(context, head)?;
+
+            if let Value::Neutral(ref neutral, ref spine) = *head {
+                Ok(RcValue::from(Value::Neutral(
+                    RcNeutral::from(Neutral::Case(
+                        neutral.clone(),
+                        clauses
+                            .iter()
+                            .map(|clause| {
+                                let (pattern, body) = clause.clone().unbind();
+                                Ok(Scope::new(pattern, normalize(context, &body)?))
+                            })
+                            .collect::<Result<_, _>>()?,
+                    )),
+                    spine.clone(),
+                )))
+            } else {
+                for clause in clauses {
+                    let (pattern, body) = clause.clone().unbind();
+                    if let Some(mappings) = match_value(&pattern, &head) {
+                        let mappings = mappings
+                            .into_iter()
+                            .map(|(free_var, value)| (free_var, RcTerm::from(&*value.inner)))
+                            .collect::<Vec<_>>();
+                        return normalize(context, &body.substs(&mappings));
+                    }
+                }
+                Err(InternalError::NoPatternsApplicable)
+            }
+        },
+
+        // E-ARRAY
         Term::Array(ref elems) => Ok(RcValue::from(Value::Array(
             elems
                 .iter()
                 .map(|elem| normalize(context, elem))
                 .collect::<Result<_, _>>()?,
         ))),
+    }
+}
+
+/// If the pattern matches the value, this function returns the substitutions
+/// needed to apply the pattern to some body expression
+pub fn match_value(
+    pattern: &RcPattern,
+    value: &RcValue,
+) -> Option<Vec<(FreeVar<String>, RcValue)>> {
+    match (&*pattern.inner, &*value.inner) {
+        (&Pattern::Literal(ref pattern_lit), &Value::Literal(ref value_lit))
+            if pattern_lit == value_lit =>
+        {
+            Some(vec![])
+        },
+        (&Pattern::Binder(Binder(ref free_var)), _) => {
+            Some(vec![(free_var.clone(), value.clone())])
+        },
+        (_, _) => None,
+    }
+}
+
+/// Ensures that the given term is a universe, returning the level of that
+/// universe and its elaborated form.
+fn infer_universe(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError> {
+    let (term, ty) = infer_term(context, raw_term)?;
+    match *ty {
+        Value::Universe(level) => Ok((term, level)),
+        _ => Err(TypeError::ExpectedUniverse {
+            span: raw_term.span(),
+            found: Box::new(ty.resugar()),
+        }),
     }
 }
 
@@ -263,6 +330,68 @@ fn infer_literal(raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeEr
         )),
         raw::Literal::Int(span, _) => Err(TypeError::AmbiguousIntLiteral { span }),
         raw::Literal::Float(span, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
+    }
+}
+
+/// Checks that a pattern is compatible with the given type, returning the
+/// elaborated pattern and a vector of the claims it introduced if successful
+pub fn check_pattern(
+    context: &Context,
+    raw_pattern: &raw::RcPattern,
+    expected_ty: &RcType,
+) -> Result<(RcPattern, Vec<(FreeVar<String>, RcType)>), TypeError> {
+    match (&*raw_pattern.inner, &*expected_ty.inner) {
+        (&raw::Pattern::Binder(_, Binder(ref free_var)), _) => {
+            return Ok((
+                RcPattern::from(Pattern::Binder(Binder(free_var.clone()))),
+                vec![(free_var.clone(), expected_ty.clone())],
+            ));
+        },
+        (&raw::Pattern::Literal(ref raw_literal), _) => {
+            let literal = check_literal(raw_literal, expected_ty)?;
+            return Ok((RcPattern::from(Pattern::Literal(literal)), vec![]));
+        },
+        _ => {},
+    }
+
+    let (pattern, inferred_ty, claims) = infer_pattern(context, raw_pattern)?;
+    if Type::term_eq(&inferred_ty, expected_ty) {
+        Ok((pattern, claims))
+    } else {
+        Err(TypeError::Mismatch {
+            span: raw_pattern.span(),
+            found: Box::new(inferred_ty.resugar()),
+            expected: Box::new(expected_ty.resugar()),
+        })
+    }
+}
+
+/// Synthesize the type of a pattern, returning the elaborated pattern, the
+/// inferred type, and a vector of the claims it introduced if successful
+pub fn infer_pattern(
+    context: &Context,
+    raw_pattern: &raw::RcPattern,
+) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError> {
+    match *raw_pattern.inner {
+        raw::Pattern::Ann(ref raw_pattern, Embed(ref raw_ty)) => {
+            let (ty, _) = infer_universe(context, raw_ty)?;
+            let value_ty = normalize(context, &ty)?;
+            let (pattern, claims) = check_pattern(context, raw_pattern, &value_ty)?;
+
+            Ok((
+                RcPattern::from(Pattern::Ann(pattern, Embed(ty))),
+                value_ty,
+                claims,
+            ))
+        },
+        raw::Pattern::Literal(ref literal) => {
+            let (literal, ty) = infer_literal(literal)?;
+            Ok((RcPattern::from(Pattern::Literal(literal)), ty, vec![]))
+        },
+        raw::Pattern::Binder(span, ref binder) => Err(TypeError::BinderNeedsAnnotation {
+            span,
+            binder: binder.clone(),
+        }),
     }
 }
 
@@ -339,6 +468,30 @@ pub fn check_term(
             }
         },
 
+        (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
+            let (head, head_ty) = infer_term(context, raw_head)?;
+
+            // TODO: ensure that patterns are exhaustive
+            let clauses = raw_clauses
+                .iter()
+                .map(|raw_clause| {
+                    let (raw_pattern, raw_body) = raw_clause.clone().unbind();
+                    let (pattern, claims) = check_pattern(context, &raw_pattern, &head_ty)?;
+
+                    // FIXME: clean this up?
+                    let mut context = context.clone();
+                    for (free_var, ty) in claims {
+                        context = context.claim(free_var, ty);
+                    }
+
+                    let body = check_term(&context, &raw_body, expected_ty)?;
+                    Ok(Scope::new(pattern, body))
+                })
+                .collect::<Result<_, TypeError>>()?;
+
+            return Ok(RcTerm::from(Term::Case(head, clauses)));
+        },
+
         (&raw::Term::Array(span, ref elems), ty) => match ty.free_app() {
             Some((name, spine)) if *name == FreeVar::user("Array") && spine.len() == 2 => {
                 let len = &spine[0];
@@ -392,25 +545,9 @@ pub fn infer_term(
 ) -> Result<(RcTerm, RcType), TypeError> {
     use std::cmp;
 
-    /// Ensures that the given term is a universe, returning the level of that
-    /// universe and its elaborated form.
-    fn infer_universe(
-        context: &Context,
-        raw_term: &raw::RcTerm,
-    ) -> Result<(RcTerm, Level), TypeError> {
-        let (term, ty) = infer_term(context, raw_term)?;
-        match *ty {
-            Value::Universe(level) => Ok((term, level)),
-            _ => Err(TypeError::ExpectedUniverse {
-                span: raw_term.span(),
-                found: Box::new(ty.resugar()),
-            }),
-        }
-    }
-
     match *raw_term.inner {
         //  I-ANN
-        raw::Term::Ann(_, ref raw_expr, ref raw_ty) => {
+        raw::Term::Ann(ref raw_expr, ref raw_ty) => {
             let (ty, _) = infer_universe(context, raw_ty)?;
             let value_ty = normalize(context, &ty)?;
             let expr = check_term(context, raw_expr, &value_ty)?;
@@ -507,22 +644,22 @@ pub fn infer_term(
         },
 
         // I-APP
-        raw::Term::App(ref raw_expr, ref raw_arg) => {
-            let (expr, expr_ty) = infer_term(context, raw_expr)?;
+        raw::Term::App(ref raw_head, ref raw_arg) => {
+            let (head, head_ty) = infer_term(context, raw_head)?;
 
-            match *expr_ty {
+            match *head_ty {
                 Value::Pi(ref scope) => {
                     let ((Binder(free_var), Embed(ann)), body) = scope.clone().unbind();
 
                     let arg = check_term(context, raw_arg, &ann)?;
                     let body = normalize(context, &body.substs(&[(free_var, arg.clone())]))?;
 
-                    Ok((RcTerm::from(Term::App(expr, arg)), body))
+                    Ok((RcTerm::from(Term::App(head, arg)), body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
-                    fn_span: raw_expr.span(),
+                    fn_span: raw_head.span(),
                     arg_span: raw_arg.span(),
-                    found: Box::new(expr_ty.resugar()),
+                    found: Box::new(head_ty.resugar()),
                 }),
             }
         },
@@ -580,6 +717,47 @@ pub fn infer_term(
                     expected_label: label.clone(),
                     found: Box::new(ty.resugar()),
                 }),
+            }
+        },
+
+        raw::Term::Case(span, ref raw_head, ref raw_clauses) => {
+            let (head, head_ty) = infer_term(context, raw_head)?;
+            let mut ty = None;
+
+            // TODO: ensure that patterns are exhaustive
+            let clauses = raw_clauses
+                .iter()
+                .map(|raw_clause| {
+                    let (raw_pattern, raw_body) = raw_clause.clone().unbind();
+                    let (pattern, claims) = check_pattern(context, &raw_pattern, &head_ty)?;
+
+                    // FIXME: clean this up?
+                    let mut context = context.clone();
+                    for (free_var, ty) in claims {
+                        context = context.claim(free_var, ty);
+                    }
+
+                    let (body, body_ty) = infer_term(&context, &raw_body)?;
+
+                    match ty {
+                        None => ty = Some(body_ty),
+                        Some(ref ty) if RcValue::term_eq(&body_ty, ty) => {},
+                        Some(ref ty) => {
+                            return Err(TypeError::Mismatch {
+                                span: raw_body.span(),
+                                found: Box::new(body_ty.resugar()),
+                                expected: Box::new(ty.resugar()),
+                            });
+                        },
+                    }
+
+                    Ok(Scope::new(pattern, body))
+                })
+                .collect::<Result<_, TypeError>>()?;
+
+            match ty {
+                Some(ty) => Ok((RcTerm::from(Term::Case(head, clauses)), ty)),
+                None => Err(TypeError::AmbiguousEmptyCase { span }),
             }
         },
 
