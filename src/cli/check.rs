@@ -17,7 +17,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
 
     use semantics;
     use syntax::parse;
-    use syntax::translation::Desugar;
+    use syntax::translation::{Desugar, DesugarEnv};
 
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
@@ -37,7 +37,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
             continue;
         }
 
-        match semantics::check_module(&module.desugar()) {
+        match semantics::check_module(&module.desugar(&DesugarEnv::new())) {
             Ok(_) => {},
             Err(err) => {
                 codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;

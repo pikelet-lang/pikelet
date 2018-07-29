@@ -127,7 +127,7 @@ impl ToDoc for Term {
                 ))
                 .append("]"),
             Term::Hole(_) => Doc::text("_"),
-            Term::Var(_, ref name) => Doc::as_string(name),
+            Term::Name(_, ref name) => Doc::as_string(name),
             Term::Extern(_, _, ref name, ref ty) => Doc::text("extern")
                 .append(Doc::space())
                 .append(format!("{:?}", name))

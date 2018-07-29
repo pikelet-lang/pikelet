@@ -10,6 +10,11 @@ use syntax::raw;
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
+    #[fail(display = "Undefined free variable `{}`", free_var)]
+    UndefinedFreeVar {
+        span: ByteSpan,
+        free_var: FreeVar<String>,
+    },
     #[fail(display = "Unsubstituted debruijn index: `{}`.", var)]
     UnsubstitutedDebruijnIndex {
         span: Option<ByteSpan>,
@@ -28,6 +33,10 @@ pub enum InternalError {
 impl InternalError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
+            InternalError::UndefinedFreeVar { ref free_var, span } => {
+                Diagnostic::new_bug(format!("cannot find `{}` in scope", free_var))
+                    .with_label(Label::new_primary(span).with_message("not found in this scope"))
+            },
             InternalError::UnsubstitutedDebruijnIndex { span, ref var } => {
                 let base = Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}`", var));
                 match span {
@@ -125,10 +134,7 @@ pub enum TypeError {
         found: Box<concrete::Term>,
     },
     #[fail(display = "Undefined name `{}`", name)]
-    UndefinedName {
-        var_span: ByteSpan,
-        name: FreeVar<String>,
-    },
+    UndefinedName { span: ByteSpan, name: String },
     #[fail(display = "Undefined extern name `{:?}`", name)]
     UndefinedExternName { span: ByteSpan, name: String },
     #[fail(
@@ -182,7 +188,7 @@ impl TypeError {
                 "applied an argument to a term that was not a function - found type `{}`",
                 found,
             )).with_label(Label::new_primary(fn_span).with_message("the term"))
-                .with_label(Label::new_secondary(arg_span).with_message("the applied argument")),
+            .with_label(Label::new_secondary(arg_span).with_message("the applied argument")),
             TypeError::FunctionParamNeedsAnnotation {
                 param_span,
                 var_span: _, // TODO
@@ -216,21 +222,15 @@ impl TypeError {
                     found_text, expected,
                 )).with_label(Label::new_primary(literal_span).with_message("the literal"))
             },
-            TypeError::AmbiguousIntLiteral { span } => {
-                Diagnostic::new_error("ambiguous integer literal").with_label(
-                    Label::new_primary(span).with_message("type annotation needed here"),
-                )
-            },
-            TypeError::AmbiguousFloatLiteral { span } => {
-                Diagnostic::new_error("ambiguous floating point literal").with_label(
-                    Label::new_primary(span).with_message("type annotation needed here"),
-                )
-            },
-            TypeError::AmbiguousEmptyCase { span } => {
-                Diagnostic::new_error("empty case expressions need type annotations").with_label(
-                    Label::new_primary(span).with_message("type annotation needed here"),
-                )
-            },
+            TypeError::AmbiguousIntLiteral { span } => Diagnostic::new_error(
+                "ambiguous integer literal",
+            ).with_label(Label::new_primary(span).with_message("type annotation needed here")),
+            TypeError::AmbiguousFloatLiteral { span } => Diagnostic::new_error(
+                "ambiguous floating point literal",
+            ).with_label(Label::new_primary(span).with_message("type annotation needed here")),
+            TypeError::AmbiguousEmptyCase { span } => Diagnostic::new_error(
+                "empty case expressions need type annotations",
+            ).with_label(Label::new_primary(span).with_message("type annotation needed here")),
             TypeError::UnableToElaborateHole {
                 span,
                 expected: None,
@@ -263,10 +263,9 @@ impl TypeError {
                 Diagnostic::new_error(format!("expected type, found a value of type `{}`", found))
                     .with_label(Label::new_primary(span).with_message("the value"))
             },
-            TypeError::UndefinedName { ref name, var_span } => {
-                Diagnostic::new_error(format!("cannot find `{}` in scope", name)).with_label(
-                    Label::new_primary(var_span).with_message("not found in this scope"),
-                )
+            TypeError::UndefinedName { ref name, span } => {
+                Diagnostic::new_error(format!("cannot find `{}` in scope", name))
+                    .with_label(Label::new_primary(span).with_message("not found in this scope"))
             },
             TypeError::UndefinedExternName { span, ref name } => {
                 Diagnostic::new_error(format!("cannot find external definition for `{:?}`", name))
@@ -294,11 +293,9 @@ impl TypeError {
             )).with_label(
                 Label::new_primary(span).with_message(format!("array with {} elements", found_len)),
             ),
-            TypeError::AmbiguousArrayLiteral { span } => {
-                Diagnostic::new_error("ambiguous array literal").with_label(
-                    Label::new_primary(span).with_message("type annotations needed here"),
-                )
-            },
+            TypeError::AmbiguousArrayLiteral { span } => Diagnostic::new_error(
+                "ambiguous array literal",
+            ).with_label(Label::new_primary(span).with_message("type annotations needed here")),
             TypeError::NoFieldInType {
                 label_span,
                 ref expected_label,

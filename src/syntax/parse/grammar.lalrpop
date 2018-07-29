@@ -216,7 +216,7 @@ AtomicTerm: Term = {
         if ident == "_" {
             Term::Hole(ByteSpan::new(start, end))
         } else {
-            Term::Var(start, ident)
+            Term::Name(start, ident)
         }
     },
     <start: @L> "Record" "{" <fields: (<RecordTypeField> ";")*> <last: RecordTypeField?> "}" <end: @R> => {

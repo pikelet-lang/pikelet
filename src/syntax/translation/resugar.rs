@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
-use moniker::{Binder, BoundTerm, Embed, FreeVar, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
@@ -137,13 +137,10 @@ fn resugar_pattern(pattern: &core::Pattern, _prec: Prec) -> concrete::Pattern {
                 core::Literal::F64(value) => Pattern::Literal(Literal::Float(span, value)),
             }
         },
-        core::Pattern::Binder(Binder(FreeVar::User(ref name))) => {
-            concrete::Pattern::Binder(ByteIndex::default(), name.to_string())
-        },
-        core::Pattern::Binder(Binder(ref name)) => {
-            // TODO: use name if it is present, and not used in the current scope
+        core::Pattern::Binder(Binder(ref free_var)) => {
+            // TODO: use pretty_name if it is present, and not used in the current scope
             // TODO: otherwise create a pretty name
-            concrete::Pattern::Binder(ByteIndex::default(), name.to_string())
+            concrete::Pattern::Binder(ByteIndex::default(), free_var.to_string())
         },
     }
 }
@@ -159,7 +156,7 @@ fn resugar_pi(
     //
     // We'll be checking for readable names as we go, because if they've
     // survived until now they're probably desirable to retain!
-    if body.free_vars().contains(&fv) || fv.ident().is_some() {
+    if body.free_vars().contains(&fv) || fv.pretty_name.is_some() {
         // TODO: use name if it is present, and not used in the current scope
         // TODO: otherwise create a pretty name
         // TODO: add the used name to the environment
@@ -184,7 +181,7 @@ fn resugar_pi(
                 _ => break,
             };
 
-            if core::Term::term_eq(&ann, &next_ann) && next_fv.ident().is_some() {
+            if core::Term::term_eq(&ann, &next_ann) && next_fv.pretty_name.is_some() {
                 // Combine the parameters if the type annotations are
                 // alpha-equivalent. For example:
                 //
@@ -194,7 +191,7 @@ fn resugar_pi(
                 // ```
                 let next_param = (ByteIndex::default(), next_fv.to_string());
                 params.last_mut().unwrap().0.push(next_param);
-            } else if next_body.free_vars().contains(&next_fv) || next_fv.ident().is_some() {
+            } else if next_body.free_vars().contains(&next_fv) || next_fv.pretty_name.is_some() {
                 // Add a new parameter if the body is dependent on the parameter
                 // or there is a human-readable name given
                 params.push((
@@ -333,8 +330,8 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Term::Var(span.start(), String::from("true")),
-                core::Literal::Bool(false) => Term::Var(span.start(), String::from("false")),
+                core::Literal::Bool(true) => Term::Name(span.start(), String::from("true")),
+                core::Literal::Bool(false) => Term::Name(span.start(), String::from("false")),
 
                 core::Literal::String(ref value) => {
                     Term::Literal(Literal::String(span, value.clone()))
@@ -356,16 +353,13 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 core::Literal::F64(value) => Term::Literal(Literal::Float(span, value)),
             }
         },
-        core::Term::Var(Var::Free(FreeVar::User(ref name))) => {
-            concrete::Term::Var(ByteIndex::default(), name.to_string())
-        },
-        // core::Term::Var(Var::Free(FreeVar::Gen(ref _name, ref _gen))) => {}
-        core::Term::Var(Var::Free(ref name)) => {
+        core::Term::Var(Var::Free(ref free_var)) => {
             // TODO: use name if it is present, and not used in the current scope
             // TODO: otherwise create a pretty name
-            concrete::Term::Var(ByteIndex::default(), name.to_string())
+            concrete::Term::Name(ByteIndex::default(), free_var.to_string())
         },
-        core::Term::Var(Var::Bound(_, _, _)) => {
+        core::Term::Global(ref name) => concrete::Term::Name(ByteIndex::default(), name.clone()),
+        core::Term::Var(Var::Bound(_)) => {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },

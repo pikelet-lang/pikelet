@@ -25,7 +25,7 @@ fn parse(src: &str) -> raw::RcTerm {
     let (concrete_term, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
-    concrete_term.desugar()
+    concrete_term.desugar(&Env::new())
 }
 
 mod module {
@@ -49,15 +49,15 @@ mod module {
             panic!("parse error!")
         }
 
-        concrete_module.desugar();
+        concrete_module.desugar(&Env::new());
     }
 }
 
 mod term {
-    use super::*;
-
     use syntax::raw::{RcTerm, Term};
     use syntax::Level;
+
+    use super::*;
 
     #[test]
     fn var() {
@@ -101,31 +101,22 @@ mod term {
 
     #[test]
     fn lam_ann() {
+        let x = FreeVar::fresh_named("x");
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
         assert_term_eq!(
             parse(r"\x : Type -> Type => x"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
                     (
-                        Binder::user("x"),
+                        Binder(x.clone()),
                         Embed(RcTerm::from(Term::Pi(
                             ByteSpan::default(),
-                            Scope::new(
-                                (
-                                    Binder::user("_"),
-                                    Embed(RcTerm::from(Term::Universe(
-                                        ByteSpan::default(),
-                                        Level(0)
-                                    ))),
-                                ),
-                                RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
-                            ),
+                            Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
                         ))),
                     ),
-                    RcTerm::from(Term::Var(
-                        ByteSpan::default(),
-                        Var::Free(FreeVar::user("x")),
-                    )),
+                    RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone()))),
                 ),
             )),
         );
@@ -133,57 +124,46 @@ mod term {
 
     #[test]
     fn lam() {
-        golden("lam", r"\x : (\y => y) => x");
-    }
+        let x = FreeVar::fresh_named("x");
+        let y = FreeVar::fresh_named("y");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let var_y = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(y.clone())));
+        let hole = || RcTerm::from(Term::Hole(ByteSpan::default()));
 
-    #[test]
-    fn lam_lam_ann() {
-        golden("lam_lam_ann", r"\(x y : Type) => x");
-    }
-
-    #[test]
-    fn arrow() {
         assert_term_eq!(
-            parse(r"Type -> Type"),
-            RcTerm::from(Term::Pi(
+            parse(r"\x : (\y => y) => x"),
+            RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
                     (
-                        Binder::user("_"),
-                        Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)))),
+                        Binder(x.clone()),
+                        Embed(RcTerm::from(Term::Lam(
+                            ByteSpan::default(),
+                            Scope::new((Binder(y.clone()), Embed(hole())), var_y()),
+                        )))
                     ),
-                    RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
+                    var_x(),
                 ),
             )),
         );
     }
 
     #[test]
-    fn pi() {
+    fn lam_lam_ann() {
+        let x = FreeVar::fresh_named("x");
+        let y = FreeVar::fresh_named("y");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
         assert_term_eq!(
-            parse(r"(x : Type -> Type) -> x"),
-            RcTerm::from(Term::Pi(
+            parse(r"\(x y : Type) => x"),
+            RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
-                    (
-                        Binder::user("x"),
-                        Embed(RcTerm::from(Term::Pi(
-                            ByteSpan::default(),
-                            Scope::new(
-                                (
-                                    Binder::user("_"),
-                                    Embed(RcTerm::from(Term::Universe(
-                                        ByteSpan::default(),
-                                        Level(0),
-                                    ))),
-                                ),
-                                RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
-                            ),
-                        ))),
-                    ),
-                    RcTerm::from(Term::Var(
+                    (Binder(x.clone()), Embed(u0())),
+                    RcTerm::from(Term::Lam(
                         ByteSpan::default(),
-                        Var::Free(FreeVar::user("x")),
+                        Scope::new((Binder(y.clone()), Embed(u0())), var_x()),
                     )),
                 ),
             )),
@@ -191,36 +171,79 @@ mod term {
     }
 
     #[test]
+    fn arrow() {
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
+        assert_term_eq!(
+            parse(r"Type -> Type"),
+            RcTerm::from(Term::Pi(
+                ByteSpan::default(),
+                Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
+            )),
+        );
+    }
+
+    #[test]
+    fn pi() {
+        let x = FreeVar::fresh_named("x");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
+        assert_term_eq!(
+            parse(r"(x : Type -> Type) -> x"),
+            RcTerm::from(Term::Pi(
+                ByteSpan::default(),
+                Scope::new(
+                    (
+                        Binder(x.clone()),
+                        Embed(RcTerm::from(Term::Pi(
+                            ByteSpan::default(),
+                            Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
+                        ))),
+                    ),
+                    var_x(),
+                ),
+            )),
+        );
+    }
+
+    #[test]
     fn pi_pi() {
-        golden("pi_pi", r"(x y : Type) -> x");
+        let x = FreeVar::fresh_named("x");
+        let y = FreeVar::fresh_named("y");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
+        assert_term_eq!(
+            parse(r"(x y : Type) -> x"),
+            RcTerm::from(Term::Pi(
+                ByteSpan::default(),
+                Scope::new(
+                    (Binder(x.clone()), Embed(u0())),
+                    RcTerm::from(Term::Pi(
+                        ByteSpan::default(),
+                        Scope::new((Binder(y.clone()), Embed(u0())), var_x()),
+                    )),
+                ),
+            )),
+        );
     }
 
     #[test]
     fn pi_arrow() {
+        let x = FreeVar::fresh_named("x");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
         assert_term_eq!(
             parse(r"(x : Type) -> x -> x"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new(
-                    (
-                        Binder::user("x"),
-                        Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)))),
-                    ),
+                    (Binder(x.clone()), Embed(u0())),
                     RcTerm::from(Term::Pi(
                         ByteSpan::default(),
-                        Scope::new(
-                            (
-                                Binder::user("_"),
-                                Embed(RcTerm::from(Term::Var(
-                                    ByteSpan::default(),
-                                    Var::Free(FreeVar::user("x")),
-                                ))),
-                            ),
-                            RcTerm::from(Term::Var(
-                                ByteSpan::default(),
-                                Var::Free(FreeVar::user("x")),
-                            )),
-                        ),
+                        Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(var_x())), var_x()),
                     )),
                 ),
             )),
@@ -229,44 +252,29 @@ mod term {
 
     #[test]
     fn lam_app() {
+        let x = FreeVar::fresh_named("x");
+        let y = FreeVar::fresh_named("y");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let var_y = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(y.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
         assert_term_eq!(
             parse(r"\(x : Type -> Type) (y : Type) => x y"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
                     (
-                        Binder::user("x"),
+                        Binder(x.clone()),
                         Embed(RcTerm::from(Term::Pi(
                             ByteSpan::default(),
-                            Scope::new(
-                                (
-                                    Binder::user("_"),
-                                    Embed(RcTerm::from(Term::Universe(
-                                        ByteSpan::default(),
-                                        Level(0),
-                                    ))),
-                                ),
-                                RcTerm::from(Term::Universe(ByteSpan::default(), Level(0))),
-                            ),
+                            Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
                         ))),
                     ),
                     RcTerm::from(Term::Lam(
                         ByteSpan::default(),
                         Scope::new(
-                            (
-                                Binder::user("y"),
-                                Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0),))),
-                            ),
-                            RcTerm::from(Term::App(
-                                RcTerm::from(Term::Var(
-                                    ByteSpan::default(),
-                                    Var::Free(FreeVar::user("x")),
-                                )),
-                                RcTerm::from(Term::Var(
-                                    ByteSpan::default(),
-                                    Var::Free(FreeVar::user("y")),
-                                )),
-                            )),
+                            (Binder(y.clone()), Embed(u0())),
+                            RcTerm::from(Term::App(var_x(), var_y())),
                         ),
                     )),
                 ),
@@ -276,35 +284,42 @@ mod term {
 
     #[test]
     fn id() {
-        golden("id", r"\(a : Type) (x : a) => x");
+        let x = FreeVar::fresh_named("x");
+        let a = FreeVar::fresh_named("a");
+        let var_x = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+        let var_a = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(a.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
+        assert_term_eq!(
+            parse(r"\(a : Type) (x : a) => x"),
+            RcTerm::from(Term::Lam(
+                ByteSpan::default(),
+                Scope::new(
+                    (Binder(a.clone()), Embed(u0())),
+                    RcTerm::from(Term::Lam(
+                        ByteSpan::default(),
+                        Scope::new((Binder(x.clone()), Embed(var_a())), var_x()),
+                    )),
+                ),
+            )),
+        );
     }
 
     #[test]
     fn id_ty() {
+        let a = FreeVar::fresh_named("a");
+        let var_a = || RcTerm::from(Term::Var(ByteSpan::default(), Var::Free(a.clone())));
+        let u0 = || RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)));
+
         assert_term_eq!(
             parse(r"(a : Type) -> a -> a"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new(
-                    (
-                        Binder::user("a"),
-                        Embed(RcTerm::from(Term::Universe(ByteSpan::default(), Level(0)))),
-                    ),
+                    (Binder(a.clone()), Embed(u0())),
                     RcTerm::from(Term::Pi(
                         ByteSpan::default(),
-                        Scope::new(
-                            (
-                                Binder::user("_"),
-                                Embed(RcTerm::from(Term::Var(
-                                    ByteSpan::default(),
-                                    Var::Free(FreeVar::user("a")),
-                                ))),
-                            ),
-                            RcTerm::from(Term::Var(
-                                ByteSpan::default(),
-                                Var::Free(FreeVar::user("a")),
-                            )),
-                        ),
+                        Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(var_a())), var_a()),
                     )),
                 ),
             )),

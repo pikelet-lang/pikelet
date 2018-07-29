@@ -11,6 +11,7 @@ use term_size;
 
 use semantics::{self, TcEnv};
 use syntax::parse;
+use syntax::translation::DesugarEnv;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -88,6 +89,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let mut rl = Editor::<()>::new();
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
+    let mut desugar_env = DesugarEnv::new();
     let mut tc_env = TcEnv::default();
 
     if !opts.no_history && rl.load_history(&opts.history_file).is_err() {
@@ -108,7 +110,11 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                 }
 
                 let filename = FileName::virtual_("repl");
-                match eval_print(&mut tc_env, &codemap.add_filemap(filename, line)) {
+                match eval_print(
+                    &mut desugar_env,
+                    &mut tc_env,
+                    &codemap.add_filemap(filename, line),
+                ) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
@@ -147,7 +153,11 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(tc_env: &mut TcEnv, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
+fn eval_print(
+    desugar_env: &mut DesugarEnv,
+    tc_env: &mut TcEnv,
+    filemap: &FileMap,
+) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
     use moniker::FreeVar;
 
@@ -170,7 +180,7 @@ fn eval_print(tc_env: &mut TcEnv, filemap: &FileMap) -> Result<ControlFlow, Eval
         ReplCommand::Help => print_help_text(),
 
         ReplCommand::Eval(parse_term) => {
-            let raw_term = parse_term.desugar();
+            let raw_term = parse_term.desugar(desugar_env);
             let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
             let evaluated = semantics::normalize(tc_env, &term)?;
 
@@ -181,7 +191,7 @@ fn eval_print(tc_env: &mut TcEnv, filemap: &FileMap) -> Result<ControlFlow, Eval
         ReplCommand::Core(parse_term) => {
             use syntax::core::{RcTerm, Term};
 
-            let raw_term = parse_term.desugar();
+            let raw_term = parse_term.desugar(desugar_env);
             let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
@@ -189,23 +199,26 @@ fn eval_print(tc_env: &mut TcEnv, filemap: &FileMap) -> Result<ControlFlow, Eval
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Let(name, parse_term) => {
-            let raw_term = parse_term.desugar();
+            let raw_term = parse_term.desugar(desugar_env);
             let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             let ann_term = Term::Ann(
-                Box::new(Term::Var(ByteIndex::default(), name.clone())),
+                Box::new(Term::Name(ByteIndex::default(), name.clone())),
                 Box::new(inferred.resugar()),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            tc_env.claims.insert(FreeVar::user(&*name), inferred);
-            tc_env.definitions.insert(FreeVar::user(&*name), term);
+            let free_var = FreeVar::fresh_named(name.clone());
+
+            tc_env.claims.insert(free_var.clone(), inferred);
+            tc_env.definitions.insert(free_var.clone(), term);
+            desugar_env.insert(name, free_var);
 
             return Ok(ControlFlow::Continue);
         },
         ReplCommand::TypeOf(parse_term) => {
-            let raw_term = parse_term.desugar();
+            let raw_term = parse_term.desugar(desugar_env);
             let (_, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             println!("{}", inferred.resugar().to_doc().pretty(term_width()));

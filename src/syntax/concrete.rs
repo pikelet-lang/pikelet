@@ -247,12 +247,12 @@ pub enum Term {
     /// _
     /// ```
     Hole(ByteSpan),
-    /// Variable
+    /// Names
     ///
     /// ```text
     /// x
     /// ```
-    Var(ByteIndex, String),
+    Name(ByteIndex, String),
     /// Extern definitions
     ///
     /// ```text
@@ -347,7 +347,7 @@ impl Term {
             | Term::RecordType(span, _)
             | Term::Record(span, _)
             | Term::Error(span) => span,
-            Term::Var(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),
+            Term::Name(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),
             Term::Literal(ref literal) => literal.span(),
             Term::Pi(start, _, ref body)
             | Term::Lam(start, _, ref body)

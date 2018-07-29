@@ -16,7 +16,7 @@ fn check_prelude() {
         panic!("parse error!")
     }
 
-    let module = concrete_module.desugar();
+    let module = concrete_module.desugar(&DesugarEnv::new());
     if let Err(err) = check_module(&module) {
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
         panic!("type error!")
