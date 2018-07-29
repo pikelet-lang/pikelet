@@ -1,7 +1,7 @@
 //! The core syntax of the language
 
 use im::Vector;
-use moniker::{Binder, BoundPattern, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
 use std::rc::Rc;
@@ -122,7 +122,7 @@ pub enum Term {
     /// The element of the unit type
     RecordEmpty,
     /// Field projection
-    Proj(RcTerm, Label<String>),
+    Proj(RcTerm, String),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -273,13 +273,15 @@ impl Value {
         }
     }
 
-    pub fn lookup_record_ty(&self, label: &Label<String>) -> Option<RcValue> {
+    pub fn lookup_record_ty(&self, label: &str) -> Option<RcValue> {
         let mut current_scope = self.record_ty();
 
         while let Some(scope) = current_scope {
-            let ((current_label, Embed(value)), body) = scope.unbind();
-            if Label::pattern_eq(&current_label, label) {
-                return Some(value);
+            let ((Label(Binder(current_label)), Embed(value)), body) = scope.unbind();
+            if let Some(current_ident) = current_label.ident() {
+                if current_ident == label {
+                    return Some(value);
+                }
             }
             current_scope = body.record_ty();
         }
@@ -294,13 +296,15 @@ impl Value {
         }
     }
 
-    pub fn lookup_record(&self, label: &Label<String>) -> Option<RcValue> {
+    pub fn lookup_record(&self, label: &str) -> Option<RcValue> {
         let mut current_scope = self.record();
 
         while let Some(scope) = current_scope {
-            let ((current_label, Embed(value)), body) = scope.unbind();
-            if Label::pattern_eq(&current_label, label) {
-                return Some(value);
+            let ((Label(Binder(current_label)), Embed(value)), body) = scope.unbind();
+            if let Some(current_ident) = current_label.ident() {
+                if current_ident == label {
+                    return Some(value);
+                }
             }
             current_scope = body.record();
         }
@@ -410,7 +414,7 @@ pub enum Neutral {
     /// If expression
     If(RcNeutral, RcValue, RcValue),
     /// Field projection
-    Proj(RcNeutral, Label<String>),
+    Proj(RcNeutral, String),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }

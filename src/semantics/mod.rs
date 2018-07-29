@@ -765,24 +765,22 @@ pub fn infer_term(
     }
 }
 
-fn field_substs(
-    expr: &RcTerm,
-    label: &Label<String>,
-    ty: &RcType,
-) -> Vec<(FreeVar<String>, RcTerm)> {
+fn field_substs(expr: &RcTerm, label: &str, ty: &RcType) -> Vec<(FreeVar<String>, RcTerm)> {
     let mut substs = vec![];
     let mut current_scope = ty.record_ty();
 
     while let Some(scope) = current_scope {
-        let ((current_label, Embed(_)), body) = scope.unbind();
+        let ((Label(Binder(current_label)), Embed(_)), body) = scope.unbind();
 
-        if Label::pattern_eq(&current_label, &label) {
-            break;
+        if let Some(current_ident) = current_label.ident() {
+            if current_ident == label {
+                break;
+            }
+
+            let proj = RcTerm::from(Term::Proj(expr.clone(), current_ident.clone()));
+            substs.push((current_label.clone(), proj));
         }
 
-        let proj = RcTerm::from(Term::Proj(expr.clone(), current_label.clone()));
-
-        substs.push(((current_label.0).0, proj));
         current_scope = body.record_ty();
     }
 

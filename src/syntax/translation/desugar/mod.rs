@@ -312,7 +312,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                     span,
                     tm.desugar(),
                     ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
-                    Label(Binder::user(label.clone())),
+                    label.clone(),
                 ))
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),

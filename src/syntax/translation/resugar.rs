@@ -442,7 +442,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
         core::Term::Proj(ref expr, ref label) => concrete::Term::Proj(
             Box::new(resugar_term(expr, Prec::ATOMIC)),
             ByteIndex::default(),
-            label.0.clone().to_string(),
+            label.clone(),
         ),
         core::Term::Case(ref head, ref clauses) => concrete::Term::Case(
             ByteSpan::default(),

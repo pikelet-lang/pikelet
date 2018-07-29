@@ -140,7 +140,7 @@ pub enum Term {
     /// The element of the unit type
     RecordEmpty(ByteSpan),
     /// Field projection
-    Proj(ByteSpan, RcTerm, ByteSpan, Label<String>),
+    Proj(ByteSpan, RcTerm, ByteSpan, String),
     /// Case expressions
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals

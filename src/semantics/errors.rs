@@ -21,7 +21,7 @@ pub enum InternalError {
     #[fail(display = "Expected a boolean expression.")]
     ExpectedBoolExpr,
     #[fail(display = "Projected on non-existent field `{}`.", label)]
-    ProjectedOnNonExistentField { label: syntax::Label<String> },
+    ProjectedOnNonExistentField { label: String },
     #[fail(display = "No patterns matched the given expression.")]
     NoPatternsApplicable,
 }
@@ -161,7 +161,7 @@ pub enum TypeError {
     )]
     NoFieldInType {
         label_span: ByteSpan,
-        expected_label: syntax::Label<String>,
+        expected_label: String,
         found: Box<concrete::Term>,
     },
     #[fail(display = "Internal error - this is a bug! {}", _0)]
