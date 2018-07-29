@@ -1,13 +1,13 @@
 //! The core syntax of the language
 
 use im::Vector;
-use moniker::{Binder, BoundPattern, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::{Label, Level};
+use syntax::Level;
 
 /// Literals
 ///
@@ -114,15 +114,15 @@ pub enum Term {
     /// If expression
     If(RcTerm, RcTerm, RcTerm),
     /// Dependent record types
-    RecordType(Scope<(Label<String>, Embed<RcTerm>), RcTerm>),
+    RecordType(Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(Label<String>, Embed<RcTerm>), RcTerm>),
+    Record(Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>),
     /// The element of the unit type
     RecordEmpty,
     /// Field projection
-    Proj(RcTerm, Label<String>),
+    Proj(RcTerm, String),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -175,16 +175,16 @@ impl RcTerm {
                 if_false.substs(mappings),
             )),
             Term::RecordType(ref scope) => {
-                let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
+                let (ref label, ref binder, Embed(ref ann)) = scope.unsafe_pattern;
                 RcTerm::from(Term::RecordType(Scope {
-                    unsafe_pattern: (label.clone(), Embed(ann.substs(mappings))),
+                    unsafe_pattern: (label.clone(), binder.clone(), Embed(ann.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
             Term::Record(ref scope) => {
-                let (ref label, Embed(ref expr)) = scope.unsafe_pattern;
+                let (ref label, ref binder, Embed(ref expr)) = scope.unsafe_pattern;
                 RcTerm::from(Term::Record(Scope {
-                    unsafe_pattern: (label.clone(), Embed(expr.substs(mappings))),
+                    unsafe_pattern: (label.clone(), binder.clone(), Embed(expr.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
@@ -247,11 +247,11 @@ pub enum Value {
     /// A lambda abstraction
     Lam(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
     /// Dependent record types
-    RecordType(Scope<(Label<String>, Embed<RcValue>), RcValue>),
+    RecordType(Scope<(String, Binder<String>, Embed<RcValue>), RcValue>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(Label<String>, Embed<RcValue>), RcValue>),
+    Record(Scope<(String, Binder<String>, Embed<RcValue>), RcValue>),
     /// The element of the unit type
     RecordEmpty,
     /// Array literals
@@ -266,19 +266,19 @@ impl Value {
         RcTerm::from(Term::from(self)).substs(mappings)
     }
 
-    pub fn record_ty(&self) -> Option<Scope<(Label<String>, Embed<RcValue>), RcValue>> {
+    pub fn record_ty(&self) -> Option<Scope<(String, Binder<String>, Embed<RcValue>), RcValue>> {
         match *self {
             Value::RecordType(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record_ty(&self, label: &Label<String>) -> Option<RcValue> {
+    pub fn lookup_record_ty(&self, label: &str) -> Option<RcValue> {
         let mut current_scope = self.record_ty();
 
         while let Some(scope) = current_scope {
-            let ((current_label, Embed(value)), body) = scope.unbind();
-            if Label::pattern_eq(&current_label, label) {
+            let ((current_label, _, Embed(value)), body) = scope.unbind();
+            if current_label == label {
                 return Some(value);
             }
             current_scope = body.record_ty();
@@ -287,19 +287,19 @@ impl Value {
         None
     }
 
-    pub fn record(&self) -> Option<Scope<(Label<String>, Embed<RcValue>), RcValue>> {
+    pub fn record(&self) -> Option<Scope<(String, Binder<String>, Embed<RcValue>), RcValue>> {
         match *self {
             Value::Record(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &Label<String>) -> Option<RcValue> {
+    pub fn lookup_record(&self, label: &str) -> Option<RcValue> {
         let mut current_scope = self.record();
 
         while let Some(scope) = current_scope {
-            let ((current_label, Embed(value)), body) = scope.unbind();
-            if Label::pattern_eq(&current_label, label) {
+            let ((current_label, _, Embed(value)), body) = scope.unbind();
+            if current_label == label {
                 return Some(value);
             }
             current_scope = body.record();
@@ -335,7 +335,7 @@ impl Value {
                 (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
             },
             Value::RecordType(ref scope) | Value::Record(ref scope) => {
-                (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
+                (scope.unsafe_pattern.2).0.is_nf() && scope.unsafe_body.is_nf()
             },
             Value::Array(ref elems) => elems.iter().all(|elem| elem.is_nf()),
             Value::Neutral(_, _) => false,
@@ -410,7 +410,7 @@ pub enum Neutral {
     /// If expression
     If(RcNeutral, RcValue, RcValue),
     /// Field projection
-    Proj(RcNeutral, Label<String>),
+    Proj(RcNeutral, String),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }
@@ -490,17 +490,17 @@ impl<'a> From<&'a Value> for Term {
                 })
             },
             Value::RecordType(ref scope) => {
-                let (ref label, Embed(ref ann)) = scope.unsafe_pattern;
+                let (ref label, ref binder, Embed(ref ann)) = scope.unsafe_pattern;
                 Term::RecordType(Scope {
-                    unsafe_pattern: (label.clone(), Embed(RcTerm::from(&**ann))),
+                    unsafe_pattern: (label.clone(), binder.clone(), Embed(RcTerm::from(&**ann))),
                     unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },
             Value::RecordTypeEmpty => Term::RecordTypeEmpty,
             Value::Record(ref scope) => {
-                let (ref label, Embed(ref term)) = scope.unsafe_pattern;
+                let (ref label, ref binder, Embed(ref term)) = scope.unsafe_pattern;
                 Term::Record(Scope {
-                    unsafe_pattern: (label.clone(), Embed(RcTerm::from(&**term))),
+                    unsafe_pattern: (label.clone(), binder.clone(), Embed(RcTerm::from(&**term))),
                     unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },

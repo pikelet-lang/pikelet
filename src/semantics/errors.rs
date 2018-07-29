@@ -4,7 +4,6 @@ use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use moniker::{Binder, FreeVar, Var};
 
-use syntax;
 use syntax::concrete;
 use syntax::raw;
 
@@ -21,7 +20,7 @@ pub enum InternalError {
     #[fail(display = "Expected a boolean expression.")]
     ExpectedBoolExpr,
     #[fail(display = "Projected on non-existent field `{}`.", label)]
-    ProjectedOnNonExistentField { label: syntax::Label<String> },
+    ProjectedOnNonExistentField { label: String },
     #[fail(display = "No patterns matched the given expression.")]
     NoPatternsApplicable,
 }
@@ -137,8 +136,8 @@ pub enum TypeError {
     )]
     LabelMismatch {
         span: ByteSpan,
-        found: syntax::Label<String>,
-        expected: syntax::Label<String>,
+        found: String,
+        expected: String,
     },
     #[fail(display = "Ambiguous record")]
     AmbiguousRecord { span: ByteSpan },
@@ -161,7 +160,7 @@ pub enum TypeError {
     )]
     NoFieldInType {
         label_span: ByteSpan,
-        expected_label: syntax::Label<String>,
+        expected_label: String,
         found: Box<concrete::Term>,
     },
     #[fail(display = "Internal error - this is a bug! {}", _0)]
