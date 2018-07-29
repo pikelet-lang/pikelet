@@ -174,9 +174,9 @@ impl ToDoc for raw::Term {
                             _ => Doc::space(),
                         })
                         .append(parens(
-                            Doc::as_string(&(scope.unsafe_pattern.0).0)
+                            Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.1).0.to_doc()),
+                                .append((scope.unsafe_pattern.2).0.to_doc()),
                         ));
 
                     match *scope.unsafe_body {
@@ -200,9 +200,9 @@ impl ToDoc for raw::Term {
                             _ => Doc::space(),
                         })
                         .append(parens(
-                            Doc::as_string(&(scope.unsafe_pattern.0).0)
+                            Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.1).0.to_doc()),
+                                .append((scope.unsafe_pattern.2).0.to_doc()),
                         ));
 
                     match *scope.unsafe_body {
@@ -295,9 +295,9 @@ impl ToDoc for Term {
                             _ => Doc::space(),
                         })
                         .append(parens(
-                            Doc::as_string(&(scope.unsafe_pattern.0).0)
+                            Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.1).0.to_doc()),
+                                .append((scope.unsafe_pattern.2).0.to_doc()),
                         ));
 
                     match *scope.unsafe_body {
@@ -321,9 +321,9 @@ impl ToDoc for Term {
                             _ => Doc::space(),
                         })
                         .append(parens(
-                            Doc::as_string(&(scope.unsafe_pattern.0).0)
+                            Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.1).0.to_doc()),
+                                .append((scope.unsafe_pattern.2).0.to_doc()),
                         ));
 
                     match *scope.unsafe_body {
@@ -379,9 +379,9 @@ impl ToDoc for Value {
                             _ => Doc::space(),
                         })
                         .append(parens(
-                            Doc::as_string(&(scope.unsafe_pattern.0).0)
+                            Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.1).0.to_doc()),
+                                .append((scope.unsafe_pattern.2).0.to_doc()),
                         ));
 
                     match *scope.unsafe_body {
@@ -405,9 +405,9 @@ impl ToDoc for Value {
                             _ => Doc::space(),
                         })
                         .append(parens(
-                            Doc::as_string(&(scope.unsafe_pattern.0).0)
+                            Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.1).0.to_doc()),
+                                .append((scope.unsafe_pattern.2).0.to_doc()),
                         ));
 
                     match *scope.unsafe_body {

@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::context::Context;
 use syntax::core::{
@@ -14,7 +14,7 @@ use syntax::core::{
 };
 use syntax::raw;
 use syntax::translation::Resugar;
-use syntax::{Label, Level};
+use syntax::Level;
 
 mod errors;
 #[cfg(test)]
@@ -167,11 +167,11 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // E-RECORD-TYPE
         Term::RecordType(ref scope) => {
-            let ((label, Embed(ann)), body) = scope.clone().unbind();
+            let ((label, binder, Embed(ann)), body) = scope.clone().unbind();
             let ann = normalize(context, &ann)?;
             let body = normalize(context, &body)?;
 
-            Ok(Value::RecordType(Scope::new((label, Embed(ann)), body)).into())
+            Ok(Value::RecordType(Scope::new((label, binder, Embed(ann)), body)).into())
         },
 
         // E-EMPTY-RECORD-TYPE
@@ -179,11 +179,11 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // E-RECORD
         Term::Record(ref scope) => {
-            let ((label, Embed(term)), body) = scope.clone().unbind();
+            let ((label, binder, Embed(term)), body) = scope.clone().unbind();
             let value = normalize(context, &term)?;
             let body = normalize(context, &body)?;
 
-            Ok(Value::Record(Scope::new((label, Embed(value)), body)).into())
+            Ok(Value::Record(Scope::new((label, binder, Embed(value)), body)).into())
         },
 
         // E-EMPTY-RECORD
@@ -444,19 +444,20 @@ pub fn check_term(
 
         // C-RECORD
         (&raw::Term::Record(span, ref scope), &Value::RecordType(ref ty_scope)) => {
-            let ((label, Embed(raw_expr)), raw_body, (ty_label, Embed(ann)), ty_body) =
-                Scope::unbind2(scope.clone(), ty_scope.clone());
+            let (
+                (label, binder, Embed(raw_expr)),
+                raw_body,
+                (ty_label, ty_binder, Embed(ann)),
+                ty_body,
+            ) = Scope::unbind2(scope.clone(), ty_scope.clone());
 
-            if Label::pattern_eq(&label, &ty_label) {
+            if label == ty_label {
                 let expr = check_term(context, &raw_expr, &ann)?;
-                let ty_body = normalize(
-                    context,
-                    &ty_body.substs(&[((label.0).0.clone(), expr.clone())]),
-                )?;
+                let ty_body = normalize(context, &ty_body.substs(&[(ty_binder.0, expr.clone())]))?;
                 let body = check_term(context, &raw_body, &ty_body)?;
 
                 return Ok(RcTerm::from(Term::Record(Scope::new(
-                    (label, Embed(expr)),
+                    (label, binder, Embed(expr)),
                     body,
                 ))));
             } else {
@@ -666,7 +667,7 @@ pub fn infer_term(
 
         // I-RECORD-TYPE
         raw::Term::RecordType(_, ref raw_scope) => {
-            let ((label, Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
+            let ((label, binder, Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
             // Check that rest of record is well-formed?
             // Might be able to skip that for now, because there's no way to
@@ -675,10 +676,10 @@ pub fn infer_term(
             let (ann, ann_level) = infer_universe(context, &raw_ann)?;
             let (body, body_level) = {
                 let ann = normalize(context, &ann)?;
-                infer_universe(&context.claim((label.0).0.clone(), ann), &raw_body)?
+                infer_universe(&context.claim(binder.0.clone(), ann), &raw_body)?
             };
 
-            let scope = Scope::new((label, Embed(ann)), body);
+            let scope = Scope::new((label, binder, Embed(ann)), body);
 
             Ok((
                 RcTerm::from(Term::RecordType(scope)),
@@ -770,16 +771,14 @@ fn field_substs(expr: &RcTerm, label: &str, ty: &RcType) -> Vec<(FreeVar<String>
     let mut current_scope = ty.record_ty();
 
     while let Some(scope) = current_scope {
-        let ((Label(Binder(current_label)), Embed(_)), body) = scope.unbind();
+        let ((current_label, current_binder, Embed(_)), body) = scope.unbind();
 
-        if let Some(current_ident) = current_label.ident() {
-            if current_ident == label {
-                break;
-            }
-
-            let proj = RcTerm::from(Term::Proj(expr.clone(), current_ident.clone()));
-            substs.push((current_label.clone(), proj));
+        if current_label == label {
+            break;
         }
+
+        let proj = RcTerm::from(Term::Proj(expr.clone(), current_label));
+        substs.push((current_binder.0, proj));
 
         current_scope = body.record_ty();
     }

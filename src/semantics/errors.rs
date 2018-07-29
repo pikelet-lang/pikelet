@@ -4,7 +4,6 @@ use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use moniker::{Binder, FreeVar, Var};
 
-use syntax;
 use syntax::concrete;
 use syntax::raw;
 
@@ -137,8 +136,8 @@ pub enum TypeError {
     )]
     LabelMismatch {
         span: ByteSpan,
-        found: syntax::Label<String>,
-        expected: syntax::Label<String>,
+        found: String,
+        expected: String,
     },
     #[fail(display = "Ambiguous record")]
     AmbiguousRecord { span: ByteSpan },

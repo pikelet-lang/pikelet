@@ -8,7 +8,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::{Label, Level};
+use syntax::Level;
 
 /// A module definition
 pub struct Module {
@@ -132,9 +132,15 @@ pub enum Term {
     /// If expression
     If(ByteIndex, RcTerm, RcTerm, RcTerm),
     /// Dependent record types
-    RecordType(ByteSpan, Scope<(Label<String>, Embed<RcTerm>), RcTerm>),
+    RecordType(
+        ByteSpan,
+        Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>,
+    ),
     /// Dependent record
-    Record(ByteSpan, Scope<(Label<String>, Embed<RcTerm>), RcTerm>),
+    Record(
+        ByteSpan,
+        Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>,
+    ),
     /// The unit type
     RecordTypeEmpty(ByteSpan),
     /// The element of the unit type

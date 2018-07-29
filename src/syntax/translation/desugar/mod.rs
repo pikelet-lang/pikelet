@@ -3,7 +3,7 @@ use moniker::{Binder, Embed, FreeVar, GenId, Nest, Scope, Var};
 
 use syntax::concrete;
 use syntax::raw;
-use syntax::{Label, Level};
+use syntax::Level;
 
 #[cfg(test)]
 mod test;
@@ -98,7 +98,11 @@ fn desugar_record_ty(span: ByteSpan, fields: &[concrete::RecordTypeField]) -> ra
         term = raw::RcTerm::from(raw::Term::RecordType(
             ByteSpan::new(start, term.span().end()),
             Scope::new(
-                (Label(Binder::user(label.clone())), Embed(ann.desugar())),
+                (
+                    label.clone(),
+                    Binder::user(label.clone()),
+                    Embed(ann.desugar()),
+                ),
                 raw::RcTerm::from(term),
             ),
         ));
@@ -116,7 +120,8 @@ fn desugar_record(span: ByteSpan, fields: &[concrete::RecordField]) -> raw::RcTe
             ByteSpan::new(start, term.span().end()),
             Scope::new(
                 (
-                    Label(Binder::user(label.clone())),
+                    label.clone(),
+                    Binder::user(label.clone()),
                     Embed(desugar_lam(
                         params,
                         ret_ann.as_ref().map(<_>::as_ref),
