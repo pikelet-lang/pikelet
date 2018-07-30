@@ -371,7 +371,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
         },
         core::Term::Extern(ref name, ref ty) => concrete::Term::Extern(
             ByteSpan::default(),
-            ByteIndex::default(),
+            ByteSpan::default(),
             name.clone(),
             Box::new(resugar_term(ty, Prec::NO_WRAP)),
         ),

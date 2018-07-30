@@ -124,7 +124,7 @@ pub enum Term {
     /// A variable
     Var(ByteSpan, Var<String>),
     /// An external definition
-    Extern(ByteSpan, ByteIndex, String, RcTerm),
+    Extern(ByteSpan, ByteSpan, String, RcTerm),
     /// Dependent function types
     Pi(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions

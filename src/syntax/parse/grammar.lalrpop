@@ -146,8 +146,8 @@ pub Term: Term = {
     <expr: LamTerm> ":" <ty: Term> => {
         Term::Ann(Box::new(expr), Box::new(ty))
     },
-    <start: @L> "extern" <name_start: @L> <name: "string literal"> ":" <ty: Term> <end: @R> => {
-        Term::Extern(ByteSpan::new(start, end), name_start, name, Box::new(ty))
+    <start: @L> "extern" <name_start: @L> <name: "string literal"> <name_end: @R> ":" <ty: Term> <end: @R> => {
+        Term::Extern(ByteSpan::new(start, end), ByteSpan::new(name_start, name_end), name, Box::new(ty))
     },
 };
 

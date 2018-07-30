@@ -4,7 +4,7 @@
 //!
 //! For more information, check out the theory appendix of the Pikelet book.
 
-use codespan::{ByteOffset, ByteSpan};
+use codespan::ByteSpan;
 use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::context::Context;
@@ -618,9 +618,9 @@ pub fn infer_term(
             }.into()),
         },
 
-        raw::Term::Extern(_, name_start, ref name, _) if prim_env.get(name).is_none() => {
+        raw::Term::Extern(_, name_span, ref name, _) if prim_env.get(name).is_none() => {
             Err(TypeError::UndefinedExternName {
-                span: ByteSpan::from_offset(name_start, ByteOffset::from_str(name)),
+                span: name_span,
                 name: name.clone(),
             })
         },

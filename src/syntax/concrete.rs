@@ -258,7 +258,7 @@ pub enum Term {
     /// ```text
     /// extern "extern-name" : t
     /// ```
-    Extern(ByteSpan, ByteIndex, String, Box<Term>),
+    Extern(ByteSpan, ByteSpan, String, Box<Term>),
     /// Lambda abstraction
     ///
     /// ```text
