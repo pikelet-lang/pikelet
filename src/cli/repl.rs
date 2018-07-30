@@ -9,10 +9,8 @@ use rustyline::Editor;
 use std::path::PathBuf;
 use term_size;
 
-use semantics;
-use syntax::context::Context;
+use semantics::{self, TcEnv};
 use syntax::parse;
-use syntax::prim::PrimEnv;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -90,8 +88,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let mut rl = Editor::<()>::new();
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
-    let mut context = Context::default();
-    let prim_env = PrimEnv::default();
+    let mut tc_env = TcEnv::default();
 
     if !opts.no_history && rl.load_history(&opts.history_file).is_err() {
         // No previous REPL history!
@@ -111,9 +108,8 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                 }
 
                 let filename = FileName::virtual_("repl");
-                match eval_print(&prim_env, &context, &codemap.add_filemap(filename, line)) {
-                    Ok(ControlFlow::Continue(None)) => {},
-                    Ok(ControlFlow::Continue(Some(new_context))) => context = new_context,
+                match eval_print(&mut tc_env, &codemap.add_filemap(filename, line)) {
+                    Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
                         codespan_reporting::emit(
@@ -151,11 +147,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(
-    prim_env: &PrimEnv,
-    context: &Context,
-    filemap: &FileMap,
-) -> Result<ControlFlow, EvalPrintError> {
+fn eval_print(tc_env: &mut TcEnv, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
     use moniker::FreeVar;
 
@@ -179,8 +171,8 @@ fn eval_print(
 
         ReplCommand::Eval(parse_term) => {
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
-            let evaluated = semantics::normalize(prim_env, context, &term)?;
+            let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
+            let evaluated = semantics::normalize(tc_env, &term)?;
 
             let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
 
@@ -190,7 +182,7 @@ fn eval_print(
             use syntax::core::{RcTerm, Term};
 
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
@@ -198,7 +190,7 @@ fn eval_print(
         },
         ReplCommand::Let(name, parse_term) => {
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             let ann_term = Term::Ann(
                 Box::new(Term::Var(ByteIndex::default(), name.clone())),
@@ -207,13 +199,14 @@ fn eval_print(
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            let context = context.define_term(FreeVar::user(&*name), inferred, term);
+            tc_env.claims.insert(FreeVar::user(&*name), inferred);
+            tc_env.definitions.insert(FreeVar::user(&*name), term);
 
-            return Ok(ControlFlow::Continue(Some(context)));
+            return Ok(ControlFlow::Continue);
         },
         ReplCommand::TypeOf(parse_term) => {
             let raw_term = parse_term.desugar();
-            let (_, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
+            let (_, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             println!("{}", inferred.resugar().to_doc().pretty(term_width()));
         },
@@ -222,13 +215,13 @@ fn eval_print(
         ReplCommand::Quit => return Ok(ControlFlow::Break),
     }
 
-    Ok(ControlFlow::Continue(None))
+    Ok(ControlFlow::Continue)
 }
 
 #[derive(Clone)]
 enum ControlFlow {
     Break,
-    Continue(Option<Context>),
+    Continue,
 }
 
 #[derive(Debug, Fail)]

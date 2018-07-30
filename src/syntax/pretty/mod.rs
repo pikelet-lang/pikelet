@@ -5,7 +5,6 @@ use pretty::{BoxDoc, Doc};
 use std::rc::Rc;
 
 mod concrete;
-mod context;
 mod core;
 
 /// An effectively 'infinite' line length for when we don't have an explicit
