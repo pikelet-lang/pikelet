@@ -1,6 +1,6 @@
 use pretty::Doc;
 
-use syntax::context::{Context, Definition, Entry};
+use syntax::context::{Context, Entry};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
@@ -13,17 +13,11 @@ impl ToDoc for Entry {
                     .append(Doc::space())
                     .append(ty.to_doc()),
             ),
-            Entry::Definition(ref name, Definition::Term(ref term)) => sexpr(
+            Entry::Definition(ref name, ref term) => sexpr(
                 "define",
                 Doc::text(format!("{:#}", name))
                     .append(Doc::space())
                     .append(term.to_doc()),
-            ),
-            Entry::Definition(ref name, Definition::Prim(ref prim)) => sexpr(
-                "prim",
-                Doc::text(format!("{:#}", name))
-                    .append(Doc::space())
-                    .append(Doc::as_string(&prim.name)),
             ),
         }
     }

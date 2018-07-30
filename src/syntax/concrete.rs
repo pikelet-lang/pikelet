@@ -253,6 +253,12 @@ pub enum Term {
     /// x
     /// ```
     Var(ByteIndex, String),
+    /// Extern definitions
+    ///
+    /// ```text
+    /// extern "extern-name" : t
+    /// ```
+    Extern(ByteSpan, ByteIndex, String, Box<Term>),
     /// Lambda abstraction
     ///
     /// ```text
@@ -334,6 +340,7 @@ impl Term {
         match *self {
             Term::Parens(span, _)
             | Term::Universe(span, _)
+            | Term::Extern(span, _, _, _)
             | Term::Array(span, _)
             | Term::Hole(span)
             | Term::Case(span, _, _)

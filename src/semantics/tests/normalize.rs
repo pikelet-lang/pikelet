@@ -6,6 +6,7 @@ use super::*;
 
 fn golden(filename: &str, literal: &str) {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let path = "src/semantics/tests/goldenfiles";
@@ -13,20 +14,21 @@ fn golden(filename: &str, literal: &str) {
     let mut mint = Mint::new(path);
     let mut file = mint.new_goldenfile(filename).unwrap();
 
-    let term = parse_normalize(&mut codemap, &context, literal);
+    let term = parse_normalize(&mut codemap, &prim_env, &context, literal);
 
     write!(file, "{:#?}", term).unwrap();
 }
 
 #[test]
 fn var() {
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let x = FreeVar::user("x");
     let var = RcTerm::from(Term::Var(Var::Free(x.clone())));
 
     assert_eq!(
-        normalize(&context, &var).unwrap(),
+        normalize(&prim_env, &context, &var).unwrap(),
         RcValue::from(Value::from(Var::Free(x))),
     );
 }
@@ -39,12 +41,13 @@ fn ty() {
 #[test]
 fn lam() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let x = FreeVar::user("x");
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, r"\x : Type => x"),
+        parse_normalize(&mut codemap, &prim_env, &context, r"\x : Type => x"),
         RcValue::from(Value::Lam(Scope::new(
             (
                 Binder(x.clone()),
@@ -58,12 +61,13 @@ fn lam() {
 #[test]
 fn pi() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let x = FreeVar::user("x");
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, r"(x : Type) -> x"),
+        parse_normalize(&mut codemap, &prim_env, &context, r"(x : Type) -> x"),
         RcValue::from(Value::Pi(Scope::new(
             (
                 Binder(x.clone()),
@@ -77,7 +81,10 @@ fn pi() {
 #[test]
 fn lam_app() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
+
+    let given_expr = r"\(x : Type -> Type) (y : Type) => x y";
 
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
@@ -90,11 +97,7 @@ fn lam_app() {
     )));
 
     assert_term_eq!(
-        parse_normalize(
-            &mut codemap,
-            &context,
-            r"\(x : Type -> Type) (y : Type) => x y"
-        ),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr,),
         RcValue::from(Value::Lam(Scope::new(
             (Binder(x.clone()), Embed(ty_arr)),
             RcValue::from(Value::Lam(Scope::new(
@@ -114,7 +117,10 @@ fn lam_app() {
 #[test]
 fn pi_app() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
+
+    let given_expr = r"(x : Type -> Type) -> (y : Type) -> x y";
 
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
@@ -127,11 +133,7 @@ fn pi_app() {
     )));
 
     assert_term_eq!(
-        parse_normalize(
-            &mut codemap,
-            &context,
-            r"(x : Type -> Type) -> (y : Type) -> x y"
-        ),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
         RcValue::from(Value::Pi(Scope::new(
             (Binder(x.clone()), Embed(ty_arr)),
             RcValue::from(Value::Pi(Scope::new(
@@ -153,14 +155,15 @@ fn pi_app() {
 #[test]
 fn id_app_ty() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
     let expected_expr = r"\x : Type => x";
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }
 
@@ -168,14 +171,15 @@ fn id_app_ty() {
 #[test]
 fn id_app_ty_ty() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
     let expected_expr = r"Type";
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }
 
@@ -184,14 +188,15 @@ fn id_app_ty_ty() {
 #[test]
 fn id_app_ty_arr_ty() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
     let expected_expr = r"Type -> Type";
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }
 
@@ -199,6 +204,7 @@ fn id_app_ty_arr_ty() {
 #[test]
 fn id_app_id() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let given_expr = r"
@@ -209,8 +215,8 @@ fn id_app_id() {
     let expected_expr = r"\(a : Type) (x : a) => x";
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }
 
@@ -219,6 +225,7 @@ fn id_app_id() {
 #[test]
 fn const_app_id_ty() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::new();
 
     let given_expr = r"
@@ -231,35 +238,37 @@ fn const_app_id_ty() {
     let expected_expr = r"\(a : Type) (x : a) => x";
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }
 
 #[test]
 fn horrifying_app_1() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::default();
 
     let given_expr = r"(\(t : Type) (f : (a : Type) -> Type) => f t) String (\(a : Type) => a)";
     let expected_expr = r"String";
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }
 
 #[test]
 fn horrifying_app_2() {
     let mut codemap = CodeMap::new();
+    let prim_env = PrimEnv::default();
     let context = Context::default();
 
     let given_expr = r#"(\(t: String) (f: String -> String) => f t) "hello""#;
     let expected_expr = r#"\(f : String -> String) => f "hello""#;
 
     assert_term_eq!(
-        parse_normalize(&mut codemap, &context, given_expr),
-        parse_normalize(&mut codemap, &context, expected_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, given_expr),
+        parse_normalize(&mut codemap, &prim_env, &context, expected_expr),
     );
 }

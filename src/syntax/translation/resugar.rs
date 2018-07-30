@@ -369,6 +369,12 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },
+        core::Term::Extern(ref name, ref ty) => concrete::Term::Extern(
+            ByteSpan::default(),
+            ByteIndex::default(),
+            name.clone(),
+            Box::new(resugar_term(ty, Prec::NO_WRAP)),
+        ),
         core::Term::Pi(ref scope) => resugar_pi(scope, prec),
         core::Term::Lam(ref scope) => resugar_lam(scope, prec),
         core::Term::App(ref head, ref arg) => parens_if(

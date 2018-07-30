@@ -105,6 +105,8 @@ pub enum Term {
     Literal(Literal),
     /// A variable
     Var(Var<String>),
+    /// An external definition
+    Extern(String, RcTerm),
     /// Dependent function types
     Pi(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
@@ -151,6 +153,9 @@ impl RcTerm {
             Term::Var(ref var) => match mappings.iter().find(|&(ref name, _)| var == name) {
                 Some(&(_, ref term)) => term.clone(),
                 None => self.clone(),
+            },
+            Term::Extern(ref name, ref ty) => {
+                RcTerm::from(Term::Extern(name.clone(), ty.substs(mappings)))
             },
             Term::Pi(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
@@ -391,6 +396,8 @@ impl fmt::Display for RcValue {
 pub enum Head {
     /// Variables that have not yet been replaced with a definition
     Var(Var<String>),
+    /// External definitions
+    Extern(String, RcType),
     // TODO: Metavariables
 }
 
@@ -557,6 +564,7 @@ impl<'a> From<&'a Head> for Term {
     fn from(src: &'a Head) -> Term {
         match *src {
             Head::Var(ref var) => Term::Var(var.clone()),
+            Head::Extern(ref name, ref ty) => Term::Extern(name.clone(), RcTerm::from(&**ty)),
         }
     }
 }
