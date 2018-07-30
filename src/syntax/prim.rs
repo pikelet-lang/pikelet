@@ -1,9 +1,9 @@
 //! Primitive operations
 
-use moniker::Var;
+use im::HashMap;
 use std::fmt;
 
-use syntax::core::{Literal, RcType, RcValue, Spine, Value};
+use syntax::core::{Literal, RcValue, Spine, Value};
 
 // Some helper traits for marshalling between Rust and Pikelet values
 //
@@ -15,10 +15,6 @@ trait IntoValue {
 
 trait TryFromValueRef {
     fn try_from_value_ref(src: &Value) -> Result<&Self, ()>;
-}
-
-trait HasType {
-    fn ty() -> RcType;
 }
 
 macro_rules! impl_into_value {
@@ -72,239 +68,212 @@ impl_try_from_value_ref!(i64, I64);
 impl_try_from_value_ref!(f32, F32);
 impl_try_from_value_ref!(f64, F64);
 
-macro_rules! impl_has_ty {
-    ($T:ty, $ty_name:expr) => {
-        impl HasType for $T {
-            fn ty() -> RcType {
-                RcValue::from(Value::from(Var::user($ty_name)))
-            }
-        }
-    };
-}
-
-impl_has_ty!(String, "String");
-impl_has_ty!(char, "Char");
-impl_has_ty!(bool, "Bool");
-impl_has_ty!(u8, "U8");
-impl_has_ty!(u16, "U16");
-impl_has_ty!(u32, "U32");
-impl_has_ty!(u64, "U64");
-impl_has_ty!(i8, "I8");
-impl_has_ty!(i16, "I16");
-impl_has_ty!(i32, "I32");
-impl_has_ty!(i64, "I64");
-impl_has_ty!(f32, "F32");
-impl_has_ty!(f64, "F64");
-
 // TODO: Return a `Result` with better errors
 pub type NormFn = fn(Spine) -> Result<RcValue, ()>;
 
 /// Primitive functions
 #[derive(Clone)]
 pub struct PrimFn {
-    /// A name to be used when translating the primitive to the target language
-    /// during compilation
-    pub name: String,
     /// The number of arguments to pass to the primitive during normalization
     pub arity: usize,
-    /// The type of the primitive
-    pub ann: RcType,
     /// The primitive definition to be used during normalization
-    pub fun: NormFn,
+    pub interpretation: NormFn,
 }
 
 impl fmt::Debug for PrimFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("PrimFn")
-            .field("name", &self.name)
             .field("arity", &self.arity)
-            .field("ann", &self.ann)
-            .field("fun", &"|params| { .. }")
+            .field("interpretation", &"|params| { .. }")
             .finish()
     }
 }
 
-/// Boilerplate macro for counting the number of supplied token trees
-macro_rules! count {
-    () => (0_usize);
-    ( $x:tt $($xs:tt)* ) => (1_usize + count!($($xs)*));
+pub struct PrimEnv {
+    definitions: HashMap<String, PrimFn>,
 }
 
-/// Define a primitive function
-macro_rules! def_prim {
-    ($id:ident, $name:expr,fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {
-        pub fn $id() -> PrimFn {
-            use moniker::{Embed, Binder, Scope};
+impl PrimEnv {
+    pub fn get(&self, name: &str) -> Option<&PrimFn> {
+        self.definitions.get(name)
+    }
+}
 
-            fn fun(params: Spine) -> Result<RcValue, ()> {
-                if params.len() == count!($($param_name)*) {
-                    let mut arg_index = 0;
-                    $(
-                        arg_index += 1;
-                        let $param_name = <$PType>::try_from_value_ref(&params[arg_index - 1])?;
-                    )*
-                    Ok(<$RType>::into_value($body))
-                } else {
-                    Err(()) // TODO: Better errors
-                }
-            }
-
-            let name = $name.to_string();
-            let arity = count!($($param_name)*);
-            let mut ann = <$RType>::ty();
-            $(ann = RcValue::from(Value::Pi(Scope::new(
-                (Binder::user(stringify!($param_name)), Embed(<$PType>::ty())),
-                ann
-            )));)+
-
-            PrimFn { name, arity, ann, fun }
+impl Default for PrimEnv {
+    fn default() -> PrimEnv {
+        /// Boilerplate macro for counting the number of supplied token trees
+        macro_rules! count {
+            () => (0_usize);
+            ( $x:tt $($xs:tt)* ) => (1_usize + count!($($xs)*));
         }
-    };
+
+        /// Define a primitive function
+        macro_rules! prim {
+            (fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {{
+                fn interpretation(params: Spine) -> Result<RcValue, ()> {
+                    if params.len() == count!($($param_name)*) {
+                        let mut arg_index = 0;
+                        $(
+                            arg_index += 1;
+                            let $param_name = <$PType>::try_from_value_ref(&params[arg_index - 1])?;
+                        )*
+                        Ok(<$RType>::into_value($body))
+                    } else {
+                        Err(()) // TODO: Better errors
+                    }
+                }
+
+                PrimFn {
+                    arity: count!($($param_name)*),
+                    interpretation,
+                }
+            }};
+        }
+
+        let definitions = hashmap!{
+            "string-eq".to_string() => prim!(fn(x: String, y: String) -> bool { x == y }),
+            "bool-eq".to_string() => prim!(fn(x: bool, y: bool) -> bool { x == y }),
+            "char-eq".to_string() => prim!(fn(x: char, y: char) -> bool { x == y }),
+            "u8-eq".to_string() => prim!(fn(x: u8, y: u8) -> bool { x == y }),
+            "u16-eq".to_string() => prim!(fn(x: u16, y: u16) -> bool { x == y }),
+            "u32-eq".to_string() => prim!(fn(x: u32, y: u32) -> bool { x == y }),
+            "u64-eq".to_string() => prim!(fn(x: u64, y: u64) -> bool { x == y }),
+            "i8-eq".to_string() => prim!(fn(x: i8, y: i8) -> bool { x == y }),
+            "i16-eq".to_string() => prim!(fn(x: i16, y: i16) -> bool { x == y }),
+            "i32-eq".to_string() => prim!(fn(x: i32, y: i32) -> bool { x == y }),
+            "i64-eq".to_string() => prim!(fn(x: i64, y: i64) -> bool { x == y }),
+            "f32-eq".to_string() => prim!(fn(x: f32, y: f32) -> bool { f32::eq(x, y) }),
+            "f64-eq".to_string() => prim!(fn(x: f64, y: f64) -> bool { f64::eq(x, y) }),
+
+            "string-ne".to_string() => prim!(fn(x: String, y: String) -> bool { x != y }),
+            "bool-ne".to_string() => prim!(fn(x: bool, y: bool) -> bool { x != y }),
+            "char-ne".to_string() => prim!(fn(x: char, y: char) -> bool { x != y }),
+            "u8-ne".to_string() => prim!(fn(x: u8, y: u8) -> bool { x != y }),
+            "u16-ne".to_string() => prim!(fn(x: u16, y: u16) -> bool { x != y }),
+            "u32-ne".to_string() => prim!(fn(x: u32, y: u32) -> bool { x != y }),
+            "u64-ne".to_string() => prim!(fn(x: u64, y: u64) -> bool { x != y }),
+            "i8-ne".to_string() => prim!(fn(x: i8, y: i8) -> bool { x != y }),
+            "i16-ne".to_string() => prim!(fn(x: i16, y: i16) -> bool { x != y }),
+            "i32-ne".to_string() => prim!(fn(x: i32, y: i32) -> bool { x != y }),
+            "i64-ne".to_string() => prim!(fn(x: i64, y: i64) -> bool { x != y }),
+            "f32-ne".to_string() => prim!(fn(x: f32, y: f32) -> bool { f32::ne(x, y) }),
+            "f64-ne".to_string() => prim!(fn(x: f64, y: f64) -> bool { f64::ne(x, y) }),
+
+            "string-le".to_string() => prim!(fn(x: String, y: String) -> bool { x <= y }),
+            "bool-le".to_string() => prim!(fn(x: bool, y: bool) -> bool { x <= y }),
+            "char-le".to_string() => prim!(fn(x: char, y: char) -> bool { x <= y }),
+            "u8-le".to_string() => prim!(fn(x: u8, y: u8) -> bool { x <= y }),
+            "u16-le".to_string() => prim!(fn(x: u16, y: u16) -> bool { x <= y }),
+            "u32-le".to_string() => prim!(fn(x: u32, y: u32) -> bool { x <= y }),
+            "u64-le".to_string() => prim!(fn(x: u64, y: u64) -> bool { x <= y }),
+            "i8-le".to_string() => prim!(fn(x: i8, y: i8) -> bool { x <= y }),
+            "i16-le".to_string() => prim!(fn(x: i16, y: i16) -> bool { x <= y }),
+            "i32-le".to_string() => prim!(fn(x: i32, y: i32) -> bool { x <= y }),
+            "i64-le".to_string() => prim!(fn(x: i64, y: i64) -> bool { x <= y }),
+            "f32-le".to_string() => prim!(fn(x: f32, y: f32) -> bool { x <= y }),
+            "f64-le".to_string() => prim!(fn(x: f64, y: f64) -> bool { x <= y }),
+
+            "string-lt".to_string() => prim!(fn(x: String, y: String) -> bool { x < y }),
+            "bool-lt".to_string() => prim!(fn(x: bool, y: bool) -> bool { x < y }),
+            "char-lt".to_string() => prim!(fn(x: char, y: char) -> bool { x < y }),
+            "u8-lt".to_string() => prim!(fn(x: u8, y: u8) -> bool { x < y }),
+            "u16-lt".to_string() => prim!(fn(x: u16, y: u16) -> bool { x < y }),
+            "u32-lt".to_string() => prim!(fn(x: u32, y: u32) -> bool { x < y }),
+            "u64-lt".to_string() => prim!(fn(x: u64, y: u64) -> bool { x < y }),
+            "i8-lt".to_string() => prim!(fn(x: i8, y: i8) -> bool { x < y }),
+            "i16-lt".to_string() => prim!(fn(x: i16, y: i16) -> bool { x < y }),
+            "i32-lt".to_string() => prim!(fn(x: i32, y: i32) -> bool { x < y }),
+            "i64-lt".to_string() => prim!(fn(x: i64, y: i64) -> bool { x < y }),
+            "f32-lt".to_string() => prim!(fn(x: f32, y: f32) -> bool { x < y }),
+            "f64-lt".to_string() => prim!(fn(x: f64, y: f64) -> bool { x < y }),
+
+            "string-gt".to_string() => prim!(fn(x: String, y: String) -> bool { x > y }),
+            "bool-gt".to_string() => prim!(fn(x: bool, y: bool) -> bool { x > y }),
+            "char-gt".to_string() => prim!(fn(x: char, y: char) -> bool { x > y }),
+            "u8-gt".to_string() => prim!(fn(x: u8, y: u8) -> bool { x > y }),
+            "u16-gt".to_string() => prim!(fn(x: u16, y: u16) -> bool { x > y }),
+            "u32-gt".to_string() => prim!(fn(x: u32, y: u32) -> bool { x > y }),
+            "u64-gt".to_string() => prim!(fn(x: u64, y: u64) -> bool { x > y }),
+            "i8-gt".to_string() => prim!(fn(x: i8, y: i8) -> bool { x > y }),
+            "i16-gt".to_string() => prim!(fn(x: i16, y: i16) -> bool { x > y }),
+            "i32-gt".to_string() => prim!(fn(x: i32, y: i32) -> bool { x > y }),
+            "i64-gt".to_string() => prim!(fn(x: i64, y: i64) -> bool { x > y }),
+            "f32-gt".to_string() => prim!(fn(x: f32, y: f32) -> bool { x > y }),
+            "f64-gt".to_string() => prim!(fn(x: f64, y: f64) -> bool { x > y }),
+
+            "string-ge".to_string() => prim!(fn(x: String, y: String) -> bool { x >= y }),
+            "bool-ge".to_string() => prim!(fn(x: bool, y: bool) -> bool { x >= y }),
+            "char-ge".to_string() => prim!(fn(x: char, y: char) -> bool { x >= y }),
+            "u8-ge".to_string() => prim!(fn(x: u8, y: u8) -> bool { x >= y }),
+            "u16-ge".to_string() => prim!(fn(x: u16, y: u16) -> bool { x >= y }),
+            "u32-ge".to_string() => prim!(fn(x: u32, y: u32) -> bool { x >= y }),
+            "u64-ge".to_string() => prim!(fn(x: u64, y: u64) -> bool { x >= y }),
+            "i8-ge".to_string() => prim!(fn(x: i8, y: i8) -> bool { x >= y }),
+            "i16-ge".to_string() => prim!(fn(x: i16, y: i16) -> bool { x >= y }),
+            "i32-ge".to_string() => prim!(fn(x: i32, y: i32) -> bool { x >= y }),
+            "i64-ge".to_string() => prim!(fn(x: i64, y: i64) -> bool { x >= y }),
+            "f32-ge".to_string() => prim!(fn(x: f32, y: f32) -> bool { x >= y }),
+            "f64-ge".to_string() => prim!(fn(x: f64, y: f64) -> bool { x >= y }),
+
+            "u8-add".to_string() => prim!(fn(x: u8, y: u8) -> u8 { x + y }),
+            "u16-add".to_string() => prim!(fn(x: u16, y: u16) -> u16 { x + y }),
+            "u32-add".to_string() => prim!(fn(x: u32, y: u32) -> u32 { x + y }),
+            "u64-add".to_string() => prim!(fn(x: u64, y: u64) -> u64 { x + y }),
+            "i8-add".to_string() => prim!(fn(x: i8, y: i8) -> i8 { x + y }),
+            "i16-add".to_string() => prim!(fn(x: i16, y: i16) -> i16 { x + y }),
+            "i32-add".to_string() => prim!(fn(x: i32, y: i32) -> i32 { x + y }),
+            "i64-add".to_string() => prim!(fn(x: i64, y: i64) -> i64 { x + y }),
+            "f32-add".to_string() => prim!(fn(x: f32, y: f32) -> f32 { x + y }),
+            "f64-add".to_string() => prim!(fn(x: f64, y: f64) -> f64 { x + y }),
+
+            "u8-sub".to_string() => prim!(fn(x: u8, y: u8) -> u8 { x - y }),
+            "u16-sub".to_string() => prim!(fn(x: u16, y: u16) -> u16 { x - y }),
+            "u32-sub".to_string() => prim!(fn(x: u32, y: u32) -> u32 { x - y }),
+            "u64-sub".to_string() => prim!(fn(x: u64, y: u64) -> u64 { x - y }),
+            "i8-sub".to_string() => prim!(fn(x: i8, y: i8) -> i8 { x - y }),
+            "i16-sub".to_string() => prim!(fn(x: i16, y: i16) -> i16 { x - y }),
+            "i32-sub".to_string() => prim!(fn(x: i32, y: i32) -> i32 { x - y }),
+            "i64-sub".to_string() => prim!(fn(x: i64, y: i64) -> i64 { x - y }),
+            "f32-sub".to_string() => prim!(fn(x: f32, y: f32) -> f32 { x - y }),
+            "f64-sub".to_string() => prim!(fn(x: f64, y: f64) -> f64 { x - y }),
+
+            "u8-mul".to_string() => prim!(fn(x: u8, y: u8) -> u8 { x * y }),
+            "u16-mul".to_string() => prim!(fn(x: u16, y: u16) -> u16 { x * y }),
+            "u32-mul".to_string() => prim!(fn(x: u32, y: u32) -> u32 { x * y }),
+            "u64-mul".to_string() => prim!(fn(x: u64, y: u64) -> u64 { x * y }),
+            "i8-mul".to_string() => prim!(fn(x: i8, y: i8) -> i8 { x * y }),
+            "i16-mul".to_string() => prim!(fn(x: i16, y: i16) -> i16 { x * y }),
+            "i32-mul".to_string() => prim!(fn(x: i32, y: i32) -> i32 { x * y }),
+            "i64-mul".to_string() => prim!(fn(x: i64, y: i64) -> i64 { x * y }),
+            "f32-mul".to_string() => prim!(fn(x: f32, y: f32) -> f32 { x * y }),
+            "f64-mul".to_string() => prim!(fn(x: f64, y: f64) -> f64 { x * y }),
+
+            "u8-div".to_string() => prim!(fn(x: u8, y: u8) -> u8 { x / y }),
+            "u16-div".to_string() => prim!(fn(x: u16, y: u16) -> u16 { x / y }),
+            "u32-div".to_string() => prim!(fn(x: u32, y: u32) -> u32 { x / y }),
+            "u64-div".to_string() => prim!(fn(x: u64, y: u64) -> u64 { x / y }),
+            "i8-div".to_string() => prim!(fn(x: i8, y: i8) -> i8 { x / y }),
+            "i16-div".to_string() => prim!(fn(x: i16, y: i16) -> i16 { x / y }),
+            "i32-div".to_string() => prim!(fn(x: i32, y: i32) -> i32 { x / y }),
+            "i64-div".to_string() => prim!(fn(x: i64, y: i64) -> i64 { x / y }),
+            "f32-div".to_string() => prim!(fn(x: f32, y: f32) -> f32 { x / y }),
+            "f64-div".to_string() => prim!(fn(x: f64, y: f64) -> f64 { x / y }),
+
+            "char-to-string".to_string() => prim!(fn(val: char) -> String { val.to_string() }),
+            "u8-to-string".to_string() => prim!(fn(val: u8) -> String { val.to_string() }),
+            "u16-to-string".to_string() => prim!(fn(val: u16) -> String { val.to_string() }),
+            "u32-to-string".to_string() => prim!(fn(val: u32) -> String { val.to_string() }),
+            "u64-to-string".to_string() => prim!(fn(val: u64) -> String { val.to_string() }),
+            "i8-to-string".to_string() => prim!(fn(val: i8) -> String { val.to_string() }),
+            "i16-to-string".to_string() => prim!(fn(val: i16) -> String { val.to_string() }),
+            "i32-to-string".to_string() => prim!(fn(val: i32) -> String { val.to_string() }),
+            "i64-to-string".to_string() => prim!(fn(val: i64) -> String { val.to_string() }),
+            "f32-to-string".to_string() => prim!(fn(val: f32) -> String { val.to_string() }),
+            "f64-to-string".to_string() => prim!(fn(val: f64) -> String { val.to_string() }),
+
+            "string-append".to_string() => prim!(fn(x: String, y: String) -> String { x.clone() + y }), // FIXME: Clone
+        };
+
+        PrimEnv { definitions }
+    }
 }
-
-// Primitive functions
-//
-// These are included in the default context, which can be created by via the
-// `Context::default` function.
-
-def_prim!(string_eq, "prim-string-eq", fn(x: String, y: String) -> bool { x == y });
-def_prim!(bool_eq, "prim-bool-eq", fn(x: bool, y: bool) -> bool { x == y });
-def_prim!(char_eq, "prim-char-eq", fn(x: char, y: char) -> bool { x == y });
-def_prim!(u8_eq, "prim-u8-eq", fn(x: u8, y: u8) -> bool { x == y });
-def_prim!(u16_eq, "prim-u16-eq", fn(x: u16, y: u16) -> bool { x == y });
-def_prim!(u32_eq, "prim-u32-eq", fn(x: u32, y: u32) -> bool { x == y });
-def_prim!(u64_eq, "prim-u64-eq", fn(x: u64, y: u64) -> bool { x == y });
-def_prim!(i8_eq, "prim-i8-eq", fn(x: i8, y: i8) -> bool { x == y });
-def_prim!(i16_eq, "prim-i16-eq", fn(x: i16, y: i16) -> bool { x == y });
-def_prim!(i32_eq, "prim-i32-eq", fn(x: i32, y: i32) -> bool { x == y });
-def_prim!(i64_eq, "prim-i64-eq", fn(x: i64, y: i64) -> bool { x == y });
-def_prim!(f32_eq, "prim-f32-eq", fn(x: f32, y: f32) -> bool { f32::eq(x, y) });
-def_prim!(f64_eq, "prim-f64-eq", fn(x: f64, y: f64) -> bool { f64::eq(x, y) });
-
-def_prim!(string_ne, "prim-string-ne", fn(x: String, y: String) -> bool { x != y });
-def_prim!(bool_ne, "prim-bool-ne", fn(x: bool, y: bool) -> bool { x != y });
-def_prim!(char_ne, "prim-char-ne", fn(x: char, y: char) -> bool { x != y });
-def_prim!(u8_ne, "prim-u8-ne", fn(x: u8, y: u8) -> bool { x != y });
-def_prim!(u16_ne, "prim-u16-ne", fn(x: u16, y: u16) -> bool { x != y });
-def_prim!(u32_ne, "prim-u32-ne", fn(x: u32, y: u32) -> bool { x != y });
-def_prim!(u64_ne, "prim-u64-ne", fn(x: u64, y: u64) -> bool { x != y });
-def_prim!(i8_ne, "prim-i8-ne", fn(x: i8, y: i8) -> bool { x != y });
-def_prim!(i16_ne, "prim-i16-ne", fn(x: i16, y: i16) -> bool { x != y });
-def_prim!(i32_ne, "prim-i32-ne", fn(x: i32, y: i32) -> bool { x != y });
-def_prim!(i64_ne, "prim-i64-ne", fn(x: i64, y: i64) -> bool { x != y });
-def_prim!(f32_ne, "prim-f32-ne", fn(x: f32, y: f32) -> bool { f32::ne(x, y) });
-def_prim!(f64_ne, "prim-f64-ne", fn(x: f64, y: f64) -> bool { f64::ne(x, y) });
-
-def_prim!(string_le, "prim-string-le", fn(x: String, y: String) -> bool { x <= y });
-def_prim!(bool_le, "prim-bool-le", fn(x: bool, y: bool) -> bool { x <= y });
-def_prim!(char_le, "prim-char-le", fn(x: char, y: char) -> bool { x <= y });
-def_prim!(u8_le, "prim-u8-le", fn(x: u8, y: u8) -> bool { x <= y });
-def_prim!(u16_le, "prim-u16-le", fn(x: u16, y: u16) -> bool { x <= y });
-def_prim!(u32_le, "prim-u32-le", fn(x: u32, y: u32) -> bool { x <= y });
-def_prim!(u64_le, "prim-u64-le", fn(x: u64, y: u64) -> bool { x <= y });
-def_prim!(i8_le, "prim-i8-le", fn(x: i8, y: i8) -> bool { x <= y });
-def_prim!(i16_le, "prim-i16-le", fn(x: i16, y: i16) -> bool { x <= y });
-def_prim!(i32_le, "prim-i32-le", fn(x: i32, y: i32) -> bool { x <= y });
-def_prim!(i64_le, "prim-i64-le", fn(x: i64, y: i64) -> bool { x <= y });
-def_prim!(f32_le, "prim-f32-le", fn(x: f32, y: f32) -> bool { x <= y });
-def_prim!(f64_le, "prim-f64-le", fn(x: f64, y: f64) -> bool { x <= y });
-
-def_prim!(string_lt, "prim-string-lt", fn(x: String, y: String) -> bool { x < y });
-def_prim!(bool_lt, "prim-bool-lt", fn(x: bool, y: bool) -> bool { x < y });
-def_prim!(char_lt, "prim-char-lt", fn(x: char, y: char) -> bool { x < y });
-def_prim!(u8_lt, "prim-u8-lt", fn(x: u8, y: u8) -> bool { x < y });
-def_prim!(u16_lt, "prim-u16-lt", fn(x: u16, y: u16) -> bool { x < y });
-def_prim!(u32_lt, "prim-u32-lt", fn(x: u32, y: u32) -> bool { x < y });
-def_prim!(u64_lt, "prim-u64-lt", fn(x: u64, y: u64) -> bool { x < y });
-def_prim!(i8_lt, "prim-i8-lt", fn(x: i8, y: i8) -> bool { x < y });
-def_prim!(i16_lt, "prim-i16-lt", fn(x: i16, y: i16) -> bool { x < y });
-def_prim!(i32_lt, "prim-i32-lt", fn(x: i32, y: i32) -> bool { x < y });
-def_prim!(i64_lt, "prim-i64-lt", fn(x: i64, y: i64) -> bool { x < y });
-def_prim!(f32_lt, "prim-f32-lt", fn(x: f32, y: f32) -> bool { x < y });
-def_prim!(f64_lt, "prim-f64-lt", fn(x: f64, y: f64) -> bool { x < y });
-
-def_prim!(string_gt, "prim-string-gt", fn(x: String, y: String) -> bool { x > y });
-def_prim!(bool_gt, "prim-bool-gt", fn(x: bool, y: bool) -> bool { x > y });
-def_prim!(char_gt, "prim-char-gt", fn(x: char, y: char) -> bool { x > y });
-def_prim!(u8_gt, "prim-u8-gt", fn(x: u8, y: u8) -> bool { x > y });
-def_prim!(u16_gt, "prim-u16-gt", fn(x: u16, y: u16) -> bool { x > y });
-def_prim!(u32_gt, "prim-u32-gt", fn(x: u32, y: u32) -> bool { x > y });
-def_prim!(u64_gt, "prim-u64-gt", fn(x: u64, y: u64) -> bool { x > y });
-def_prim!(i8_gt, "prim-i8-gt", fn(x: i8, y: i8) -> bool { x > y });
-def_prim!(i16_gt, "prim-i16-gt", fn(x: i16, y: i16) -> bool { x > y });
-def_prim!(i32_gt, "prim-i32-gt", fn(x: i32, y: i32) -> bool { x > y });
-def_prim!(i64_gt, "prim-i64-gt", fn(x: i64, y: i64) -> bool { x > y });
-def_prim!(f32_gt, "prim-f32-gt", fn(x: f32, y: f32) -> bool { x > y });
-def_prim!(f64_gt, "prim-f64-gt", fn(x: f64, y: f64) -> bool { x > y });
-
-def_prim!(string_ge, "prim-string-ge", fn(x: String, y: String) -> bool { x >= y });
-def_prim!(bool_ge, "prim-bool-ge", fn(x: bool, y: bool) -> bool { x >= y });
-def_prim!(char_ge, "prim-char-ge", fn(x: char, y: char) -> bool { x >= y });
-def_prim!(u8_ge, "prim-u8-ge", fn(x: u8, y: u8) -> bool { x >= y });
-def_prim!(u16_ge, "prim-u16-ge", fn(x: u16, y: u16) -> bool { x >= y });
-def_prim!(u32_ge, "prim-u32-ge", fn(x: u32, y: u32) -> bool { x >= y });
-def_prim!(u64_ge, "prim-u64-ge", fn(x: u64, y: u64) -> bool { x >= y });
-def_prim!(i8_ge, "prim-i8-ge", fn(x: i8, y: i8) -> bool { x >= y });
-def_prim!(i16_ge, "prim-i16-ge", fn(x: i16, y: i16) -> bool { x >= y });
-def_prim!(i32_ge, "prim-i32-ge", fn(x: i32, y: i32) -> bool { x >= y });
-def_prim!(i64_ge, "prim-i64-ge", fn(x: i64, y: i64) -> bool { x >= y });
-def_prim!(f32_ge, "prim-f32-ge", fn(x: f32, y: f32) -> bool { x >= y });
-def_prim!(f64_ge, "prim-f64-ge", fn(x: f64, y: f64) -> bool { x >= y });
-
-def_prim!(u8_add, "prim-u8-add", fn(x: u8, y: u8) -> u8 { x + y });
-def_prim!(u16_add, "prim-u16-add", fn(x: u16, y: u16) -> u16 { x + y });
-def_prim!(u32_add, "prim-u32-add", fn(x: u32, y: u32) -> u32 { x + y });
-def_prim!(u64_add, "prim-u64-add", fn(x: u64, y: u64) -> u64 { x + y });
-def_prim!(i8_add, "prim-i8-add", fn(x: i8, y: i8) -> i8 { x + y });
-def_prim!(i16_add, "prim-i16-add", fn(x: i16, y: i16) -> i16 { x + y });
-def_prim!(i32_add, "prim-i32-add", fn(x: i32, y: i32) -> i32 { x + y });
-def_prim!(i64_add, "prim-i64-add", fn(x: i64, y: i64) -> i64 { x + y });
-def_prim!(f32_add, "prim-f32-add", fn(x: f32, y: f32) -> f32 { x + y });
-def_prim!(f64_add, "prim-f64-add", fn(x: f64, y: f64) -> f64 { x + y });
-
-def_prim!(u8_sub, "prim-u8-sub", fn(x: u8, y: u8) -> u8 { x - y });
-def_prim!(u16_sub, "prim-u16-sub", fn(x: u16, y: u16) -> u16 { x - y });
-def_prim!(u32_sub, "prim-u32-sub", fn(x: u32, y: u32) -> u32 { x - y });
-def_prim!(u64_sub, "prim-u64-sub", fn(x: u64, y: u64) -> u64 { x - y });
-def_prim!(i8_sub, "prim-i8-sub", fn(x: i8, y: i8) -> i8 { x - y });
-def_prim!(i16_sub, "prim-i16-sub", fn(x: i16, y: i16) -> i16 { x - y });
-def_prim!(i32_sub, "prim-i32-sub", fn(x: i32, y: i32) -> i32 { x - y });
-def_prim!(i64_sub, "prim-i64-sub", fn(x: i64, y: i64) -> i64 { x - y });
-def_prim!(f32_sub, "prim-f32-sub", fn(x: f32, y: f32) -> f32 { x - y });
-def_prim!(f64_sub, "prim-f64-sub", fn(x: f64, y: f64) -> f64 { x - y });
-
-def_prim!(u8_mul, "prim-u8-mul", fn(x: u8, y: u8) -> u8 { x * y });
-def_prim!(u16_mul, "prim-u16-mul", fn(x: u16, y: u16) -> u16 { x * y });
-def_prim!(u32_mul, "prim-u32-mul", fn(x: u32, y: u32) -> u32 { x * y });
-def_prim!(u64_mul, "prim-u64-mul", fn(x: u64, y: u64) -> u64 { x * y });
-def_prim!(i8_mul, "prim-i8-mul", fn(x: i8, y: i8) -> i8 { x * y });
-def_prim!(i16_mul, "prim-i16-mul", fn(x: i16, y: i16) -> i16 { x * y });
-def_prim!(i32_mul, "prim-i32-mul", fn(x: i32, y: i32) -> i32 { x * y });
-def_prim!(i64_mul, "prim-i64-mul", fn(x: i64, y: i64) -> i64 { x * y });
-def_prim!(f32_mul, "prim-f32-mul", fn(x: f32, y: f32) -> f32 { x * y });
-def_prim!(f64_mul, "prim-f64-mul", fn(x: f64, y: f64) -> f64 { x * y });
-
-def_prim!(u8_div, "prim-u8-div", fn(x: u8, y: u8) -> u8 { x / y });
-def_prim!(u16_div, "prim-u16-div", fn(x: u16, y: u16) -> u16 { x / y });
-def_prim!(u32_div, "prim-u32-div", fn(x: u32, y: u32) -> u32 { x / y });
-def_prim!(u64_div, "prim-u64-div", fn(x: u64, y: u64) -> u64 { x / y });
-def_prim!(i8_div, "prim-i8-div", fn(x: i8, y: i8) -> i8 { x / y });
-def_prim!(i16_div, "prim-i16-div", fn(x: i16, y: i16) -> i16 { x / y });
-def_prim!(i32_div, "prim-i32-div", fn(x: i32, y: i32) -> i32 { x / y });
-def_prim!(i64_div, "prim-i64-div", fn(x: i64, y: i64) -> i64 { x / y });
-def_prim!(f32_div, "prim-f32-div", fn(x: f32, y: f32) -> f32 { x / y });
-def_prim!(f64_div, "prim-f64-div", fn(x: f64, y: f64) -> f64 { x / y });
-
-def_prim!(char_to_string, "prim-char-to-string", fn(val: char) -> String { val.to_string() });
-def_prim!(u8_to_string, "prim-u8-to-string", fn(val: u8) -> String { val.to_string() });
-def_prim!(u16_to_string, "prim-u16-to-string", fn(val: u16) -> String { val.to_string() });
-def_prim!(u32_to_string, "prim-u32-to-string", fn(val: u32) -> String { val.to_string() });
-def_prim!(u64_to_string, "prim-u64-to-string", fn(val: u64) -> String { val.to_string() });
-def_prim!(i8_to_string, "prim-i8-to-string", fn(val: i8) -> String { val.to_string() });
-def_prim!(i16_to_string, "prim-i16-to-string", fn(val: i16) -> String { val.to_string() });
-def_prim!(i32_to_string, "prim-i32-to-string", fn(val: i32) -> String { val.to_string() });
-def_prim!(i64_to_string, "prim-i64-to-string", fn(val: i64) -> String { val.to_string() });
-def_prim!(f32_to_string, "prim-f32-to-string", fn(val: f32) -> String { val.to_string() });
-def_prim!(f64_to_string, "prim-f64-to-string", fn(val: f64) -> String { val.to_string() });
-
-def_prim!(string_append, "prim-string-append", fn(x: String, y: String) -> String { x.clone() + y }); // FIXME: Clone

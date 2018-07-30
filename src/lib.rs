@@ -4,7 +4,7 @@ extern crate codespan_reporting;
 extern crate failure;
 #[cfg(test)]
 extern crate goldenfile;
-#[cfg_attr(test, macro_use)]
+#[macro_use]
 extern crate im;
 extern crate lalrpop_util;
 #[macro_use]

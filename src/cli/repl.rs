@@ -12,6 +12,7 @@ use term_size;
 use semantics;
 use syntax::context::Context;
 use syntax::parse;
+use syntax::prim::PrimEnv;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -90,6 +91,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
     let mut context = Context::default();
+    let prim_env = PrimEnv::default();
 
     if !opts.no_history && rl.load_history(&opts.history_file).is_err() {
         // No previous REPL history!
@@ -109,7 +111,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                 }
 
                 let filename = FileName::virtual_("repl");
-                match eval_print(&context, &codemap.add_filemap(filename, line)) {
+                match eval_print(&prim_env, &context, &codemap.add_filemap(filename, line)) {
                     Ok(ControlFlow::Continue(None)) => {},
                     Ok(ControlFlow::Continue(Some(new_context))) => context = new_context,
                     Ok(ControlFlow::Break) => break,
@@ -149,7 +151,11 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalPrintError> {
+fn eval_print(
+    prim_env: &PrimEnv,
+    context: &Context,
+    filemap: &FileMap,
+) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
     use moniker::FreeVar;
 
@@ -173,8 +179,8 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
 
         ReplCommand::Eval(parse_term) => {
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer_term(context, &raw_term)?;
-            let evaluated = semantics::normalize(context, &term)?;
+            let (term, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
+            let evaluated = semantics::normalize(prim_env, context, &term)?;
 
             let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
 
@@ -184,7 +190,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
             use syntax::core::{RcTerm, Term};
 
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer_term(context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
 
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
@@ -192,7 +198,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         },
         ReplCommand::Let(name, parse_term) => {
             let raw_term = parse_term.desugar();
-            let (term, inferred) = semantics::infer_term(context, &raw_term)?;
+            let (term, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
 
             let ann_term = Term::Ann(
                 Box::new(Term::Var(ByteIndex::default(), name.clone())),
@@ -207,7 +213,7 @@ fn eval_print(context: &Context, filemap: &FileMap) -> Result<ControlFlow, EvalP
         },
         ReplCommand::TypeOf(parse_term) => {
             let raw_term = parse_term.desugar();
-            let (_, inferred) = semantics::infer_term(context, &raw_term)?;
+            let (_, inferred) = semantics::infer_term(prim_env, context, &raw_term)?;
 
             println!("{}", inferred.resugar().to_doc().pretty(term_width()));
         },

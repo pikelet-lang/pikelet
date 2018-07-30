@@ -286,6 +286,9 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             concrete::Term::Var(_, ref name) => {
                 raw::RcTerm::from(raw::Term::Var(span, Var::user(name.clone())))
             },
+            concrete::Term::Extern(_, name_span, ref name, ref ty) => raw::RcTerm::from(
+                raw::Term::Extern(span, name_span, name.clone(), ty.desugar()),
+            ),
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(params, body),
             concrete::Term::Lam(_, ref params, ref body) => desugar_lam(params, None, body),
             concrete::Term::Arrow(ref ann, ref body) => raw::RcTerm::from(raw::Term::Pi(

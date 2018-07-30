@@ -12,6 +12,7 @@ use syntax::core::{
     Definition, Head, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType,
     RcValue, Term, Type, Value,
 };
+use syntax::prim::PrimEnv;
 use syntax::raw;
 use syntax::translation::Resugar;
 use syntax::Level;
@@ -25,6 +26,7 @@ pub use self::errors::{InternalError, TypeError};
 /// Type check and elaborate a module
 pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
     let mut context = Context::default();
+    let prim_env = PrimEnv::default();
     let definitions = raw_module
         .definitions
         .clone()
@@ -34,13 +36,13 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
             let (term, ann) = match *raw_definition.ann.inner {
                 // We don't have a type annotation available to us! Instead we will
                 // attempt to infer it based on the body of the definition
-                raw::Term::Hole(_) => infer_term(&context, &raw_definition.term)?,
+                raw::Term::Hole(_) => infer_term(&prim_env, &context, &raw_definition.term)?,
                 // We have a type annotation! Elaborate it, then normalize it, then
                 // check that it matches the body of the definition
                 _ => {
-                    let (ann, _) = infer_term(&context, &raw_definition.ann)?;
-                    let ann = normalize(&context, &ann)?;
-                    let term = check_term(&context, &raw_definition.term, &ann)?;
+                    let (ann, _) = infer_term(&prim_env, &context, &raw_definition.ann)?;
+                    let ann = normalize(&prim_env, &context, &ann)?;
+                    let term = check_term(&prim_env, &context, &raw_definition.term, &ann)?;
                     (term, ann)
                 },
             };
@@ -58,12 +60,14 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
 }
 
 /// Reduce a term to its normal form
-pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalError> {
-    use syntax::context::Definition;
-
+pub fn normalize(
+    prim_env: &PrimEnv,
+    context: &Context,
+    term: &RcTerm,
+) -> Result<RcValue, InternalError> {
     match *term.inner {
         // E-ANN
-        Term::Ann(ref expr, _) => normalize(context, expr),
+        Term::Ann(ref expr, _) => normalize(prim_env, context, expr),
 
         // E-TYPE
         Term::Universe(level) => Ok(RcValue::from(Value::Universe(level))),
@@ -73,8 +77,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // E-VAR, E-VAR-DEF
         Term::Var(ref var) => match *var {
             Var::Free(ref name) => match context.lookup_definition(name) {
-                Some(Definition::Term(term)) => normalize(context, &term),
-                Some(Definition::Prim(_)) | None => Ok(RcValue::from(Value::from(var.clone()))),
+                Some(term) => normalize(prim_env, context, &term),
+                None => Ok(RcValue::from(Value::from(var.clone()))),
             },
 
             // We should always be substituting bound variables with fresh
@@ -86,13 +90,17 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             }),
         },
 
+        Term::Extern(ref name, ref ty) => Ok(RcValue::from(Value::from(Neutral::Head(
+            Head::Extern(name.clone(), normalize(prim_env, context, ty)?),
+        )))),
+
         // E-PI
         Term::Pi(ref scope) => {
             let ((name, Embed(ann)), body) = scope.clone().unbind();
 
             Ok(RcValue::from(Value::Pi(Scope::new(
-                (name, Embed(normalize(context, &ann)?)),
-                normalize(context, &body)?,
+                (name, Embed(normalize(prim_env, context, &ann)?)),
+                normalize(prim_env, context, &body)?,
             ))))
         },
 
@@ -101,40 +109,41 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
             let ((name, Embed(ann)), body) = scope.clone().unbind();
 
             Ok(RcValue::from(Value::Lam(Scope::new(
-                (name, Embed(normalize(context, &ann)?)),
-                normalize(context, &body)?,
+                (name, Embed(normalize(prim_env, context, &ann)?)),
+                normalize(prim_env, context, &body)?,
             ))))
         },
 
         // E-APP
         Term::App(ref head, ref arg) => {
-            match *normalize(context, head)?.inner {
+            match *normalize(prim_env, context, head)?.inner {
                 Value::Lam(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((Binder(free_var), Embed(_)), body) = scope.clone().unbind();
-                    normalize(context, &body.substs(&[(free_var, arg.clone())]))
+                    normalize(prim_env, context, &body.substs(&[(free_var, arg.clone())]))
                 },
                 Value::Neutral(ref neutral, ref spine) => {
-                    let arg = normalize(context, arg)?;
+                    let arg = normalize(prim_env, context, arg)?;
                     let mut spine = spine.clone();
 
                     match *neutral.inner {
-                        Neutral::Head(Head::Var(Var::Free(ref free_var))) => {
+                        Neutral::Head(Head::Extern(ref name, _)) => {
                             spine.push_back(arg);
 
                             // Apply the arguments to primitive definitions if the number of
                             // arguments matches the arity of the primitive, all aof the arguments
                             // are fully normalized
-                            if let Some(Definition::Prim(prim)) =
-                                context.lookup_definition(free_var)
-                            {
+                            if let Some(prim) = prim_env.get(name) {
                                 if prim.arity == spine.len() && spine.iter().all(|arg| arg.is_nf())
                                 {
-                                    return Ok((prim.fun)(spine).unwrap());
+                                    match (prim.interpretation)(spine) {
+                                        Ok(value) => return Ok(value),
+                                        Err(()) => unimplemented!("proper error"),
+                                    }
                                 }
                             }
                         },
-                        Neutral::Head(_)
+                        Neutral::Head(Head::Var(_))
                         | Neutral::If(_, _, _)
                         | Neutral::Proj(_, _)
                         | Neutral::Case(_, _) => spine.push_back(arg),
@@ -148,16 +157,16 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // E-IF, E-IF-TRUE, E-IF-FALSE
         Term::If(ref cond, ref if_true, ref if_false) => {
-            let value_cond = normalize(context, cond)?;
+            let value_cond = normalize(prim_env, context, cond)?;
 
             match *value_cond {
-                Value::Literal(Literal::Bool(true)) => normalize(context, if_true),
-                Value::Literal(Literal::Bool(false)) => normalize(context, if_false),
+                Value::Literal(Literal::Bool(true)) => normalize(prim_env, context, if_true),
+                Value::Literal(Literal::Bool(false)) => normalize(prim_env, context, if_false),
                 Value::Neutral(ref cond, ref spine) => Ok(RcValue::from(Value::Neutral(
                     RcNeutral::from(Neutral::If(
                         cond.clone(),
-                        normalize(context, if_true)?,
-                        normalize(context, if_false)?,
+                        normalize(prim_env, context, if_true)?,
+                        normalize(prim_env, context, if_false)?,
                     )),
                     spine.clone(),
                 ))),
@@ -168,8 +177,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // E-RECORD-TYPE
         Term::RecordType(ref scope) => {
             let ((label, binder, Embed(ann)), body) = scope.clone().unbind();
-            let ann = normalize(context, &ann)?;
-            let body = normalize(context, &body)?;
+            let ann = normalize(prim_env, context, &ann)?;
+            let body = normalize(prim_env, context, &body)?;
 
             Ok(Value::RecordType(Scope::new((label, binder, Embed(ann)), body)).into())
         },
@@ -180,8 +189,8 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         // E-RECORD
         Term::Record(ref scope) => {
             let ((label, binder, Embed(term)), body) = scope.clone().unbind();
-            let value = normalize(context, &term)?;
-            let body = normalize(context, &body)?;
+            let value = normalize(prim_env, context, &term)?;
+            let body = normalize(prim_env, context, &body)?;
 
             Ok(Value::Record(Scope::new((label, binder, Embed(value)), body)).into())
         },
@@ -190,7 +199,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::RecordEmpty => Ok(RcValue::from(Value::RecordEmpty)),
 
         // E-PROJ
-        Term::Proj(ref expr, ref label) => match *normalize(context, expr)? {
+        Term::Proj(ref expr, ref label) => match *normalize(prim_env, context, expr)? {
             Value::Neutral(ref neutral, ref spine) => Ok(RcValue::from(Value::Neutral(
                 RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone())),
                 spine.clone(),
@@ -205,7 +214,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
 
         // E-CASE
         Term::Case(ref head, ref clauses) => {
-            let head = normalize(context, head)?;
+            let head = normalize(prim_env, context, head)?;
 
             if let Value::Neutral(ref neutral, ref spine) = *head {
                 Ok(RcValue::from(Value::Neutral(
@@ -215,7 +224,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                             .iter()
                             .map(|clause| {
                                 let (pattern, body) = clause.clone().unbind();
-                                Ok(Scope::new(pattern, normalize(context, &body)?))
+                                Ok(Scope::new(pattern, normalize(prim_env, context, &body)?))
                             })
                             .collect::<Result<_, _>>()?,
                     )),
@@ -229,7 +238,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
                             .into_iter()
                             .map(|(free_var, value)| (free_var, RcTerm::from(&*value.inner)))
                             .collect::<Vec<_>>();
-                        return normalize(context, &body.substs(&mappings));
+                        return normalize(prim_env, context, &body.substs(&mappings));
                     }
                 }
                 Err(InternalError::NoPatternsApplicable)
@@ -240,7 +249,7 @@ pub fn normalize(context: &Context, term: &RcTerm) -> Result<RcValue, InternalEr
         Term::Array(ref elems) => Ok(RcValue::from(Value::Array(
             elems
                 .iter()
-                .map(|elem| normalize(context, elem))
+                .map(|elem| normalize(prim_env, context, elem))
                 .collect::<Result<_, _>>()?,
         ))),
     }
@@ -267,8 +276,12 @@ pub fn match_value(
 
 /// Ensures that the given term is a universe, returning the level of that
 /// universe and its elaborated form.
-fn infer_universe(context: &Context, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError> {
-    let (term, ty) = infer_term(context, raw_term)?;
+fn infer_universe(
+    prim_env: &PrimEnv,
+    context: &Context,
+    raw_term: &raw::RcTerm,
+) -> Result<(RcTerm, Level), TypeError> {
+    let (term, ty) = infer_term(prim_env, context, raw_term)?;
     match *ty {
         Value::Universe(level) => Ok((term, level)),
         _ => Err(TypeError::ExpectedUniverse {
@@ -336,6 +349,7 @@ fn infer_literal(raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeEr
 /// Checks that a pattern is compatible with the given type, returning the
 /// elaborated pattern and a vector of the claims it introduced if successful
 pub fn check_pattern(
+    prim_env: &PrimEnv,
     context: &Context,
     raw_pattern: &raw::RcPattern,
     expected_ty: &RcType,
@@ -354,7 +368,7 @@ pub fn check_pattern(
         _ => {},
     }
 
-    let (pattern, inferred_ty, claims) = infer_pattern(context, raw_pattern)?;
+    let (pattern, inferred_ty, claims) = infer_pattern(prim_env, context, raw_pattern)?;
     if Type::term_eq(&inferred_ty, expected_ty) {
         Ok((pattern, claims))
     } else {
@@ -369,14 +383,15 @@ pub fn check_pattern(
 /// Synthesize the type of a pattern, returning the elaborated pattern, the
 /// inferred type, and a vector of the claims it introduced if successful
 pub fn infer_pattern(
+    prim_env: &PrimEnv,
     context: &Context,
     raw_pattern: &raw::RcPattern,
 ) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError> {
     match *raw_pattern.inner {
         raw::Pattern::Ann(ref raw_pattern, Embed(ref raw_ty)) => {
-            let (ty, _) = infer_universe(context, raw_ty)?;
-            let value_ty = normalize(context, &ty)?;
-            let (pattern, claims) = check_pattern(context, raw_pattern, &value_ty)?;
+            let (ty, _) = infer_universe(prim_env, context, raw_ty)?;
+            let value_ty = normalize(prim_env, context, &ty)?;
+            let (pattern, claims) = check_pattern(prim_env, context, raw_pattern, &value_ty)?;
 
             Ok((
                 RcPattern::from(Pattern::Ann(pattern, Embed(ty))),
@@ -398,6 +413,7 @@ pub fn infer_pattern(
 /// Checks that a term is compatible with the given type, returning the
 /// elaborated term if successful
 pub fn check_term(
+    prim_env: &PrimEnv,
     context: &Context,
     raw_term: &raw::RcTerm,
     expected_ty: &RcType,
@@ -416,7 +432,12 @@ pub fn check_term(
             // Elaborate the hole, if it exists
             if let raw::Term::Hole(_) = *lam_ann.inner {
                 let lam_ann = RcTerm::from(Term::from(&*pi_ann));
-                let lam_body = check_term(&context.claim(pi_name, pi_ann), &lam_body, &pi_body)?;
+                let lam_body = check_term(
+                    prim_env,
+                    &context.claim(pi_name, pi_ann),
+                    &lam_body,
+                    &pi_body,
+                )?;
                 let lam_scope = Scope::new((lam_name, Embed(lam_ann)), lam_body);
 
                 return Ok(RcTerm::from(Term::Lam(lam_scope)));
@@ -435,9 +456,9 @@ pub fn check_term(
         // C-IF
         (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
             let bool_ty = RcValue::from(Value::from(Var::user("Bool")));
-            let cond = check_term(context, raw_cond, &bool_ty)?;
-            let if_true = check_term(context, raw_if_true, expected_ty)?;
-            let if_false = check_term(context, raw_if_false, expected_ty)?;
+            let cond = check_term(prim_env, context, raw_cond, &bool_ty)?;
+            let if_true = check_term(prim_env, context, raw_if_true, expected_ty)?;
+            let if_false = check_term(prim_env, context, raw_if_false, expected_ty)?;
 
             return Ok(RcTerm::from(Term::If(cond, if_true, if_false)));
         },
@@ -452,9 +473,13 @@ pub fn check_term(
             ) = Scope::unbind2(scope.clone(), ty_scope.clone());
 
             if label == ty_label {
-                let expr = check_term(context, &raw_expr, &ann)?;
-                let ty_body = normalize(context, &ty_body.substs(&[(ty_binder.0, expr.clone())]))?;
-                let body = check_term(context, &raw_body, &ty_body)?;
+                let expr = check_term(prim_env, context, &raw_expr, &ann)?;
+                let ty_body = normalize(
+                    prim_env,
+                    context,
+                    &ty_body.substs(&[(ty_binder.0, expr.clone())]),
+                )?;
+                let body = check_term(prim_env, context, &raw_body, &ty_body)?;
 
                 return Ok(RcTerm::from(Term::Record(Scope::new(
                     (label, binder, Embed(expr)),
@@ -470,14 +495,15 @@ pub fn check_term(
         },
 
         (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
-            let (head, head_ty) = infer_term(context, raw_head)?;
+            let (head, head_ty) = infer_term(prim_env, context, raw_head)?;
 
             // TODO: ensure that patterns are exhaustive
             let clauses = raw_clauses
                 .iter()
                 .map(|raw_clause| {
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, claims) = check_pattern(context, &raw_pattern, &head_ty)?;
+                    let (pattern, claims) =
+                        check_pattern(prim_env, context, &raw_pattern, &head_ty)?;
 
                     // FIXME: clean this up?
                     let mut context = context.clone();
@@ -485,7 +511,7 @@ pub fn check_term(
                         context = context.claim(free_var, ty);
                     }
 
-                    let body = check_term(&context, &raw_body, expected_ty)?;
+                    let body = check_term(prim_env, &context, &raw_body, expected_ty)?;
                     Ok(Scope::new(pattern, body))
                 })
                 .collect::<Result<_, TypeError>>()?;
@@ -510,7 +536,7 @@ pub fn check_term(
                 return Ok(RcTerm::from(Term::Array(
                     elems
                         .iter()
-                        .map(|elem| check_term(context, elem, elem_ty))
+                        .map(|elem| check_term(prim_env, context, elem, elem_ty))
                         .collect::<Result<_, _>>()?,
                 )));
             },
@@ -526,7 +552,7 @@ pub fn check_term(
     }
 
     // C-CONV
-    let (term, inferred_ty) = infer_term(context, raw_term)?;
+    let (term, inferred_ty) = infer_term(prim_env, context, raw_term)?;
     if Type::term_eq(&inferred_ty, expected_ty) {
         Ok(term)
     } else {
@@ -541,6 +567,7 @@ pub fn check_term(
 /// Synthesize the type of a term, returning the elaborated term and the
 /// inferred type if successful
 pub fn infer_term(
+    prim_env: &PrimEnv,
     context: &Context,
     raw_term: &raw::RcTerm,
 ) -> Result<(RcTerm, RcType), TypeError> {
@@ -549,9 +576,9 @@ pub fn infer_term(
     match *raw_term.inner {
         //  I-ANN
         raw::Term::Ann(ref raw_expr, ref raw_ty) => {
-            let (ty, _) = infer_universe(context, raw_ty)?;
-            let value_ty = normalize(context, &ty)?;
-            let expr = check_term(context, raw_expr, &value_ty)?;
+            let (ty, _) = infer_universe(prim_env, context, raw_ty)?;
+            let value_ty = normalize(prim_env, context, &ty)?;
+            let expr = check_term(prim_env, context, raw_expr, &value_ty)?;
 
             Ok((RcTerm::from(Term::Ann(expr, ty)), value_ty))
         },
@@ -591,14 +618,27 @@ pub fn infer_term(
             }.into()),
         },
 
+        raw::Term::Extern(_, name_span, ref name, _) if prim_env.get(name).is_none() => {
+            Err(TypeError::UndefinedExternName {
+                span: name_span,
+                name: name.clone(),
+            })
+        },
+
+        raw::Term::Extern(_, _, ref name, ref raw_ty) => {
+            let (ty, _) = infer_universe(prim_env, context, raw_ty)?;
+            let value_ty = normalize(prim_env, context, &ty)?;
+            Ok((RcTerm::from(Term::Extern(name.clone(), ty)), value_ty))
+        },
+
         // I-PI
         raw::Term::Pi(_, ref raw_scope) => {
             let ((Binder(free_var), Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
-            let (ann, ann_level) = infer_universe(context, &raw_ann)?;
+            let (ann, ann_level) = infer_universe(prim_env, context, &raw_ann)?;
             let (body, body_level) = {
-                let ann = normalize(context, &ann)?;
-                infer_universe(&context.claim(free_var.clone(), ann), &raw_body)?
+                let ann = normalize(prim_env, context, &ann)?;
+                infer_universe(prim_env, &context.claim(free_var.clone(), ann), &raw_body)?
             };
 
             Ok((
@@ -620,10 +660,13 @@ pub fn infer_term(
                 });
             }
 
-            let (lam_ann, _) = infer_universe(context, &raw_ann)?;
-            let pi_ann = normalize(context, &lam_ann)?;
-            let (lam_body, pi_body) =
-                infer_term(&context.claim(name.clone(), pi_ann.clone()), &raw_body)?;
+            let (lam_ann, _) = infer_universe(prim_env, context, &raw_ann)?;
+            let pi_ann = normalize(prim_env, context, &lam_ann)?;
+            let (lam_body, pi_body) = infer_term(
+                prim_env,
+                &context.claim(name.clone(), pi_ann.clone()),
+                &raw_body,
+            )?;
 
             let lam_param = (Binder(name.clone()), Embed(lam_ann));
             let pi_param = (Binder(name.clone()), Embed(pi_ann));
@@ -637,23 +680,24 @@ pub fn infer_term(
         // I-IF
         raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
             let bool_ty = RcValue::from(Value::from(Var::user("Bool")));
-            let cond = check_term(context, raw_cond, &bool_ty)?;
-            let (if_true, ty) = infer_term(context, raw_if_true)?;
-            let if_false = check_term(context, raw_if_false, &ty)?;
+            let cond = check_term(prim_env, context, raw_cond, &bool_ty)?;
+            let (if_true, ty) = infer_term(prim_env, context, raw_if_true)?;
+            let if_false = check_term(prim_env, context, raw_if_false, &ty)?;
 
             Ok((RcTerm::from(Term::If(cond, if_true, if_false)), ty))
         },
 
         // I-APP
         raw::Term::App(ref raw_head, ref raw_arg) => {
-            let (head, head_ty) = infer_term(context, raw_head)?;
+            let (head, head_ty) = infer_term(prim_env, context, raw_head)?;
 
             match *head_ty {
                 Value::Pi(ref scope) => {
                     let ((Binder(free_var), Embed(ann)), body) = scope.clone().unbind();
 
-                    let arg = check_term(context, raw_arg, &ann)?;
-                    let body = normalize(context, &body.substs(&[(free_var, arg.clone())]))?;
+                    let arg = check_term(prim_env, context, raw_arg, &ann)?;
+                    let body =
+                        normalize(prim_env, context, &body.substs(&[(free_var, arg.clone())]))?;
 
                     Ok((RcTerm::from(Term::App(head, arg)), body))
                 },
@@ -673,10 +717,10 @@ pub fn infer_term(
             // Might be able to skip that for now, because there's no way to
             // express ill-formed records in the concrete syntax...
 
-            let (ann, ann_level) = infer_universe(context, &raw_ann)?;
+            let (ann, ann_level) = infer_universe(prim_env, context, &raw_ann)?;
             let (body, body_level) = {
-                let ann = normalize(context, &ann)?;
-                infer_universe(&context.claim(binder.0.clone(), ann), &raw_body)?
+                let ann = normalize(prim_env, context, &ann)?;
+                infer_universe(prim_env, &context.claim(binder.0.clone(), ann), &raw_body)?
             };
 
             let scope = Scope::new((label, binder, Embed(ann)), body);
@@ -703,14 +747,14 @@ pub fn infer_term(
 
         // I-PROJ
         raw::Term::Proj(_, ref expr, label_span, ref label) => {
-            let (expr, ty) = infer_term(context, expr)?;
+            let (expr, ty) = infer_term(prim_env, context, expr)?;
 
             match ty.lookup_record_ty(label) {
                 Some(field_ty) => {
                     let mappings = field_substs(&expr, &label, &ty);
                     Ok((
                         RcTerm::from(Term::Proj(expr, label.clone())),
-                        normalize(context, &field_ty.substs(&mappings))?,
+                        normalize(prim_env, context, &field_ty.substs(&mappings))?,
                     ))
                 },
                 None => Err(TypeError::NoFieldInType {
@@ -722,7 +766,7 @@ pub fn infer_term(
         },
 
         raw::Term::Case(span, ref raw_head, ref raw_clauses) => {
-            let (head, head_ty) = infer_term(context, raw_head)?;
+            let (head, head_ty) = infer_term(prim_env, context, raw_head)?;
             let mut ty = None;
 
             // TODO: ensure that patterns are exhaustive
@@ -730,7 +774,8 @@ pub fn infer_term(
                 .iter()
                 .map(|raw_clause| {
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, claims) = check_pattern(context, &raw_pattern, &head_ty)?;
+                    let (pattern, claims) =
+                        check_pattern(prim_env, context, &raw_pattern, &head_ty)?;
 
                     // FIXME: clean this up?
                     let mut context = context.clone();
@@ -738,7 +783,7 @@ pub fn infer_term(
                         context = context.claim(free_var, ty);
                     }
 
-                    let (body, body_ty) = infer_term(&context, &raw_body)?;
+                    let (body, body_ty) = infer_term(prim_env, &context, &raw_body)?;
 
                     match ty {
                         None => ty = Some(body_ty),
