@@ -69,8 +69,7 @@ impl Default for TcEnv {
                 FreeVar::user("I64") => universe0.clone(),
                 FreeVar::user("F32") => universe0.clone(),
                 FreeVar::user("F64") => universe0.clone(),
-                FreeVar::user("Array") =>
-                RcValue::from(Value::Pi(Scope::new(
+                FreeVar::user("Array") => RcValue::from(Value::Pi(Scope::new(
                     (fresh_binder(), Embed(free_val("U64"))),
                     RcValue::from(Value::Pi(Scope::new(
                         (fresh_binder(), Embed(universe0.clone())),
@@ -114,8 +113,7 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
             tc_env.definitions.insert(free_var.clone(), term.clone());
 
             Ok((Binder(free_var), Embed(Definition { term, ann })))
-        })
-        .collect::<Result<_, TypeError>>()?;
+        }).collect::<Result<_, TypeError>>()?;
 
     Ok(Module {
         definitions: Nest::new(definitions),
@@ -284,8 +282,7 @@ pub fn normalize(tc_env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError
                             .map(|clause| {
                                 let (pattern, body) = clause.clone().unbind();
                                 Ok(Scope::new(pattern, normalize(tc_env, &body)?))
-                            })
-                            .collect::<Result<_, _>>()?,
+                            }).collect::<Result<_, _>>()?,
                     )),
                     spine.clone(),
                 )))
@@ -556,8 +553,7 @@ pub fn check_term(
                     let body = check_term(&body_tc_env, &raw_body, expected_ty)?;
 
                     Ok(Scope::new(pattern, body))
-                })
-                .collect::<Result<_, TypeError>>()?;
+                }).collect::<Result<_, TypeError>>()?;
 
             return Ok(RcTerm::from(Term::Case(head, clauses)));
         },
@@ -838,8 +834,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
                     }
 
                     Ok(Scope::new(pattern, body))
-                })
-                .collect::<Result<_, TypeError>>()?;
+                }).collect::<Result<_, TypeError>>()?;
 
             match ty {
                 Some(ty) => Ok((RcTerm::from(Term::Case(head, clauses)), ty)),
