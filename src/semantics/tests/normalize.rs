@@ -46,10 +46,7 @@ fn lam() {
     assert_term_eq!(
         parse_normalize(&mut codemap, &tc_env, r"\x : Type => x"),
         RcValue::from(Value::Lam(Scope::new(
-            (
-                Binder(x.clone()),
-                Embed(RcValue::from(Value::Universe(Level(0))))
-            ),
+            (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
             RcValue::from(Value::from(Var::Free(x))),
         ))),
     );
@@ -65,10 +62,7 @@ fn pi() {
     assert_term_eq!(
         parse_normalize(&mut codemap, &tc_env, r"(x : Type) -> x"),
         RcValue::from(Value::Pi(Scope::new(
-            (
-                Binder(x.clone()),
-                Embed(RcValue::from(Value::Universe(Level(0))))
-            ),
+            (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
             RcValue::from(Value::from(Var::Free(x))),
         ))),
     );
@@ -84,11 +78,8 @@ fn lam_app() {
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
     let ty_arr = RcValue::from(Value::Pi(Scope::new(
-        (
-            Binder::user("_"),
-            Embed(RcValue::from(Value::Universe(Level(0)))),
-        ),
-        RcValue::from(Value::Universe(Level(0))),
+        (Binder::user("_"), Embed(RcValue::from(Value::universe(0)))),
+        RcValue::from(Value::universe(0)),
     )));
 
     assert_term_eq!(
@@ -96,10 +87,7 @@ fn lam_app() {
         RcValue::from(Value::Lam(Scope::new(
             (Binder(x.clone()), Embed(ty_arr)),
             RcValue::from(Value::Lam(Scope::new(
-                (
-                    Binder(y.clone()),
-                    Embed(RcValue::from(Value::Universe(Level(0))))
-                ),
+                (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                 RcValue::from(Value::Neutral(
                     RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
                     vector![RcValue::from(Value::from(Var::Free(y)))],
@@ -119,11 +107,8 @@ fn pi_app() {
     let x = FreeVar::user("x");
     let y = FreeVar::user("y");
     let ty_arr = RcValue::from(Value::Pi(Scope::new(
-        (
-            Binder::user("_"),
-            Embed(RcValue::from(Value::Universe(Level(0)))),
-        ),
-        RcValue::from(Value::Universe(Level(0))),
+        (Binder::user("_"), Embed(RcValue::from(Value::universe(0)))),
+        RcValue::from(Value::universe(0)),
     )));
 
     assert_term_eq!(
@@ -131,10 +116,7 @@ fn pi_app() {
         RcValue::from(Value::Pi(Scope::new(
             (Binder(x.clone()), Embed(ty_arr)),
             RcValue::from(Value::Pi(Scope::new(
-                (
-                    Binder(y.clone()),
-                    Embed(RcValue::from(Value::Universe(Level(0))))
-                ),
+                (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                 RcValue::from(Value::Neutral(
                     RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
                     vector![RcValue::from(Value::from(Var::Free(y)))],

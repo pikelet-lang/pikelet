@@ -46,17 +46,17 @@ impl Default for TcEnv {
     fn default() -> TcEnv {
         use moniker::GenId;
 
-        let universe0 = RcValue::from(Value::Universe(Level(0)));
+        let universe0 = RcValue::from(Value::universe(0));
+        let bool_ty = RcValue::from(Value::from(Var::Free(FreeVar::user("Bool"))));
+        let u64_ty = RcValue::from(Value::from(Var::Free(FreeVar::user("U64"))));
         let fresh_binder = || Binder(FreeVar::from(GenId::fresh()));
-        let free_val = |n| RcValue::from(Value::from(Var::Free(FreeVar::user(n))));
-        let bool_lit = |val| RcTerm::from(Term::Literal(Literal::Bool(val)));
 
         TcEnv {
             prim_env: PrimEnv::default(),
             claims: hashmap!{
                 FreeVar::user("Bool") => universe0.clone(),
-                FreeVar::user("true") => free_val("Bool"),
-                FreeVar::user("false") => free_val("Bool"),
+                FreeVar::user("true") => bool_ty.clone(),
+                FreeVar::user("false") => bool_ty.clone(),
                 FreeVar::user("String") => universe0.clone(),
                 FreeVar::user("Char") => universe0.clone(),
                 FreeVar::user("U8") => universe0.clone(),
@@ -70,7 +70,7 @@ impl Default for TcEnv {
                 FreeVar::user("F32") => universe0.clone(),
                 FreeVar::user("F64") => universe0.clone(),
                 FreeVar::user("Array") => RcValue::from(Value::Pi(Scope::new(
-                    (fresh_binder(), Embed(free_val("U64"))),
+                    (fresh_binder(), Embed(u64_ty.clone())),
                     RcValue::from(Value::Pi(Scope::new(
                         (fresh_binder(), Embed(universe0.clone())),
                         universe0.clone(),
@@ -78,8 +78,8 @@ impl Default for TcEnv {
                 ))),
             },
             definitions: hashmap!{
-                FreeVar::user("true") => bool_lit(true),
-                FreeVar::user("false") => bool_lit(false),
+                FreeVar::user("true") => RcTerm::from(Term::Literal(Literal::Bool(true))),
+                FreeVar::user("false") => RcTerm::from(Term::Literal(Literal::Bool(false))),
             },
         }
     }
@@ -774,7 +774,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
         // I-EMPTY-RECORD-TYPE
         raw::Term::RecordTypeEmpty(_) => Ok((
             RcTerm::from(Term::RecordTypeEmpty),
-            RcValue::from(Value::Universe(Level(0))),
+            RcValue::from(Value::universe(0)),
         )),
 
         // I-EMPTY-RECORD

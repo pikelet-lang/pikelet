@@ -19,6 +19,12 @@ impl Level {
     }
 }
 
+impl From<u32> for Level {
+    fn from(src: u32) -> Level {
+        Level(src)
+    }
+}
+
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
