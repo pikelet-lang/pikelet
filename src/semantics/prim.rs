@@ -68,16 +68,14 @@ impl_try_from_value_ref!(i64, I64);
 impl_try_from_value_ref!(f32, F32);
 impl_try_from_value_ref!(f64, F64);
 
-// TODO: Return a `Result` with better errors
-pub type NormFn = fn(Spine) -> Result<RcValue, ()>;
-
 /// Primitive functions
 #[derive(Clone)]
 pub struct PrimFn {
     /// The number of arguments to pass to the primitive during normalization
     pub arity: usize,
     /// The primitive definition to be used during normalization
-    pub interpretation: NormFn,
+    // TODO: Return a `Result` with better errors
+    pub interpretation: fn(Spine) -> Result<RcValue, ()>,
 }
 
 impl fmt::Debug for PrimFn {
@@ -89,6 +87,7 @@ impl fmt::Debug for PrimFn {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct PrimEnv {
     definitions: HashMap<String, PrimFn>,
 }
