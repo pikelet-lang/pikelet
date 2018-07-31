@@ -6,7 +6,6 @@ pub mod concrete;
 pub mod core;
 pub mod parse;
 pub mod pretty;
-pub mod prim;
 pub mod raw;
 pub mod translation;
 

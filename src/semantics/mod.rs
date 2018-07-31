@@ -12,16 +12,17 @@ use syntax::core::{
     Definition, Head, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType,
     RcValue, Term, Type, Value,
 };
-use syntax::prim::PrimEnv;
 use syntax::raw;
 use syntax::translation::Resugar;
 use syntax::Level;
 
 mod errors;
+mod prim;
 #[cfg(test)]
 mod tests;
 
 pub use self::errors::{InternalError, TypeError};
+pub use self::prim::{PrimEnv, PrimFn};
 
 /// The type checking environment
 ///
