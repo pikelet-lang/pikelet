@@ -101,7 +101,8 @@ function playpen_text(playpen) {
             crateType: "bin",
             tests: false,
             code: text,
-        }
+            backtrace: false,
+        };
 
         if (text.indexOf("#![feature") !== -1) {
             params.channel = "nightly";
@@ -380,7 +381,7 @@ function playpen_text(playpen) {
 
     themePopup.addEventListener('focusout', function(e) {
         // e.relatedTarget is null in Safari and Firefox on macOS (see workaround below)
-        if (!!e.relatedTarget && !themePopup.contains(e.relatedTarget)) {
+        if (!!e.relatedTarget && !themeToggleButton.contains(e.relatedTarget) && !themePopup.contains(e.relatedTarget)) {
             hideThemes();
         }
     });
