@@ -131,6 +131,12 @@ pub enum Term {
     Array(Vec<RcTerm>),
 }
 
+impl Term {
+    pub fn universe(level: impl Into<Level>) -> Term {
+        Term::Universe(level.into())
+    }
+}
+
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
@@ -204,8 +210,7 @@ impl RcTerm {
                     .map(|scope| Scope {
                         unsafe_pattern: scope.unsafe_pattern.clone(), // subst?
                         unsafe_body: scope.unsafe_body.substs(mappings),
-                    })
-                    .collect(),
+                    }).collect(),
             )),
             Term::Array(ref elems) => RcTerm::from(Term::Array(
                 elems.iter().map(|elem| elem.substs(mappings)).collect(),
@@ -266,6 +271,10 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn universe(level: impl Into<Level>) -> Value {
+        Value::Universe(level.into())
+    }
+
     pub fn substs(&self, mappings: &[(FreeVar<String>, RcTerm)]) -> RcTerm {
         // FIXME: This seems quite wasteful!
         RcTerm::from(Term::from(self)).substs(mappings)
@@ -547,8 +556,7 @@ impl<'a> From<&'a Neutral> for Term {
                     .map(|clause| Scope {
                         unsafe_pattern: clause.unsafe_pattern.clone(),
                         unsafe_body: RcTerm::from(&*clause.unsafe_body),
-                    })
-                    .collect(),
+                    }).collect(),
             ),
         }
     }

@@ -46,17 +46,17 @@ impl Default for TcEnv {
     fn default() -> TcEnv {
         use moniker::GenId;
 
-        let universe0 = RcValue::from(Value::Universe(Level(0)));
+        let universe0 = RcValue::from(Value::universe(0));
+        let bool_ty = RcValue::from(Value::from(Var::Free(FreeVar::user("Bool"))));
+        let u64_ty = RcValue::from(Value::from(Var::Free(FreeVar::user("U64"))));
         let fresh_binder = || Binder(FreeVar::from(GenId::fresh()));
-        let free_val = |n| RcValue::from(Value::from(Var::Free(FreeVar::user(n))));
-        let bool_lit = |val| RcTerm::from(Term::Literal(Literal::Bool(val)));
 
         TcEnv {
             prim_env: PrimEnv::default(),
             claims: hashmap!{
                 FreeVar::user("Bool") => universe0.clone(),
-                FreeVar::user("true") => free_val("Bool"),
-                FreeVar::user("false") => free_val("Bool"),
+                FreeVar::user("true") => bool_ty.clone(),
+                FreeVar::user("false") => bool_ty.clone(),
                 FreeVar::user("String") => universe0.clone(),
                 FreeVar::user("Char") => universe0.clone(),
                 FreeVar::user("U8") => universe0.clone(),
@@ -69,9 +69,8 @@ impl Default for TcEnv {
                 FreeVar::user("I64") => universe0.clone(),
                 FreeVar::user("F32") => universe0.clone(),
                 FreeVar::user("F64") => universe0.clone(),
-                FreeVar::user("Array") =>
-                RcValue::from(Value::Pi(Scope::new(
-                    (fresh_binder(), Embed(free_val("U64"))),
+                FreeVar::user("Array") => RcValue::from(Value::Pi(Scope::new(
+                    (fresh_binder(), Embed(u64_ty.clone())),
                     RcValue::from(Value::Pi(Scope::new(
                         (fresh_binder(), Embed(universe0.clone())),
                         universe0.clone(),
@@ -79,8 +78,8 @@ impl Default for TcEnv {
                 ))),
             },
             definitions: hashmap!{
-                FreeVar::user("true") => bool_lit(true),
-                FreeVar::user("false") => bool_lit(false),
+                FreeVar::user("true") => RcTerm::from(Term::Literal(Literal::Bool(true))),
+                FreeVar::user("false") => RcTerm::from(Term::Literal(Literal::Bool(false))),
             },
         }
     }
@@ -114,8 +113,7 @@ pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
             tc_env.definitions.insert(free_var.clone(), term.clone());
 
             Ok((Binder(free_var), Embed(Definition { term, ann })))
-        })
-        .collect::<Result<_, TypeError>>()?;
+        }).collect::<Result<_, TypeError>>()?;
 
     Ok(Module {
         definitions: Nest::new(definitions),
@@ -284,8 +282,7 @@ pub fn normalize(tc_env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError
                             .map(|clause| {
                                 let (pattern, body) = clause.clone().unbind();
                                 Ok(Scope::new(pattern, normalize(tc_env, &body)?))
-                            })
-                            .collect::<Result<_, _>>()?,
+                            }).collect::<Result<_, _>>()?,
                     )),
                     spine.clone(),
                 )))
@@ -556,8 +553,7 @@ pub fn check_term(
                     let body = check_term(&body_tc_env, &raw_body, expected_ty)?;
 
                     Ok(Scope::new(pattern, body))
-                })
-                .collect::<Result<_, TypeError>>()?;
+                }).collect::<Result<_, TypeError>>()?;
 
             return Ok(RcTerm::from(Term::Case(head, clauses)));
         },
@@ -778,7 +774,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
         // I-EMPTY-RECORD-TYPE
         raw::Term::RecordTypeEmpty(_) => Ok((
             RcTerm::from(Term::RecordTypeEmpty),
-            RcValue::from(Value::Universe(Level(0))),
+            RcValue::from(Value::universe(0)),
         )),
 
         // I-EMPTY-RECORD
@@ -838,8 +834,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
                     }
 
                     Ok(Scope::new(pattern, body))
-                })
-                .collect::<Result<_, TypeError>>()?;
+                }).collect::<Result<_, TypeError>>()?;
 
             match ty {
                 Some(ty) => Ok((RcTerm::from(Term::Case(head, clauses)), ty)),
