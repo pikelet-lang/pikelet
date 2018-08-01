@@ -564,6 +564,28 @@ fn proj_weird() {
 
     let expected_ty = r"Type 1";
     let given_expr = r"Record {
+        data : Record {
+            t : Type;
+            x : t;
+        };
+
+        f : data.t -> Type;
+        test : f data.x;
+    }";
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &tc_env, given_expr).1,
+        parse_normalize(&mut codemap, &tc_env, expected_ty),
+    );
+}
+
+#[test]
+fn proj_weirder() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"Type 1";
+    let given_expr = r"Record {
         Array : U16 -> Type -> Type;
         t : Record { n : U16; x : Array n I8; y : Array n I8 };
         inner-prod : (len : U16) -> Array len I8 -> Array len I8 -> I32;
