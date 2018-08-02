@@ -36,7 +36,7 @@ pub use self::prim::{PrimEnv, PrimFn};
 pub struct TcEnv {
     /// Primitive definitions
     pub primitives: PrimEnv,
-    ///
+    /// Global annotation/definition pairs
     pub globals: HashMap<&'static str, (Option<RcValue>, RcType)>,
     /// The type annotations of the binders we have passed over
     pub claims: HashMap<FreeVar<String>, RcType>,
