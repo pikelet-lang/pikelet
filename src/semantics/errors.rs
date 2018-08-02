@@ -15,8 +15,8 @@ pub enum InternalError {
         span: ByteSpan,
         free_var: FreeVar<String>,
     },
-    #[fail(display = "Unsubstituted debruijn index: `{}`.", var)]
-    UnsubstitutedDebruijnIndex {
+    #[fail(display = "Unexpected bound variable: `{}`.", var)]
+    UnexpectedBoundVar {
         span: Option<ByteSpan>,
         var: Var<String>,
     },
@@ -37,13 +37,13 @@ impl InternalError {
                 Diagnostic::new_bug(format!("cannot find `{}` in scope", free_var))
                     .with_label(Label::new_primary(span).with_message("not found in this scope"))
             },
-            InternalError::UnsubstitutedDebruijnIndex { span, ref var } => {
-                let base = Diagnostic::new_bug(format!("unsubstituted debruijn index: `{}`", var));
+            InternalError::UnexpectedBoundVar { span, ref var } => {
+                let base = Diagnostic::new_bug(format!("unexpected bound variable: `{}`", var));
                 match span {
                     None => base,
-                    Some(span) => {
-                        base.with_label(Label::new_primary(span).with_message("index found here"))
-                    },
+                    Some(span) => base.with_label(
+                        Label::new_primary(span).with_message("bound variable encountered here"),
+                    ),
                 }
             },
             InternalError::ArgumentAppliedToNonFunction => {

@@ -139,7 +139,7 @@ pub fn normalize(tc_env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(_) => Err(InternalError::UnsubstitutedDebruijnIndex {
+            Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
                 span: None,
                 var: var.clone(),
             }),
@@ -650,7 +650,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
             // We should always be substituting bound variables with fresh
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
-            Var::Bound(_) => Err(InternalError::UnsubstitutedDebruijnIndex {
+            Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
                 span: Some(raw_term.span()),
                 var: var.clone(),
             }.into()),
