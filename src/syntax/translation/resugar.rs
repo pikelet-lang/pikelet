@@ -455,8 +455,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                         resugar_pattern(&pattern, Prec::NO_WRAP),
                         resugar_term(&term, Prec::NO_WRAP),
                     )
-                })
-                .collect(),
+                }).collect(),
         ),
         core::Term::Array(ref elems) => concrete::Term::Array(
             ByteSpan::default(),

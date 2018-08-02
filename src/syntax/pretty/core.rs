@@ -50,7 +50,7 @@ fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> S
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
         )).append(Doc::space())
-            .append(body.to_doc()),
+        .append(body.to_doc()),
     )
 }
 
@@ -62,7 +62,7 @@ fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> St
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
         )).append(Doc::space())
-            .append(body.to_doc()),
+        .append(body.to_doc()),
     )
 }
 
@@ -187,8 +187,7 @@ impl ToDoc for raw::Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -213,8 +212,7 @@ impl ToDoc for raw::Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -241,8 +239,7 @@ impl ToDoc for raw::Term {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
+                )).append("]"),
         }
     }
 }
@@ -310,8 +307,7 @@ impl ToDoc for Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -336,8 +332,7 @@ impl ToDoc for Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -364,8 +359,7 @@ impl ToDoc for Term {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
+                )).append("]"),
         }
     }
 }
@@ -394,8 +388,7 @@ impl ToDoc for Value {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -420,8 +413,7 @@ impl ToDoc for Value {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -441,8 +433,7 @@ impl ToDoc for Value {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
+                )).append("]"),
             Value::Neutral(ref neutral, ref spine) if spine.is_empty() => neutral.to_doc(),
             Value::Neutral(ref neutral, ref spine) => {
                 pretty_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))

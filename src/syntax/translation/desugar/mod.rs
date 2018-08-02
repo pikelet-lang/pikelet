@@ -125,8 +125,7 @@ fn desugar_record_ty(
             let free_var = FreeVar::fresh_named(label.clone());
             env.insert(label.clone(), free_var.clone());
             (start, label.clone(), Binder(free_var), ann)
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     let end_span = ByteSpan::new(span.end(), span.end());
     fields.into_iter().rev().fold(
@@ -150,8 +149,7 @@ fn desugar_record(env: &Env, span: ByteSpan, fields: &[concrete::RecordField]) -
             let free_var = FreeVar::fresh_named(label.clone());
             env.insert(label.clone(), free_var.clone());
             (start, label.clone(), Binder(free_var), value)
-        })
-        .collect::<Vec<_>>();
+        }).collect::<Vec<_>>();
 
     let end_span = ByteSpan::new(span.end(), span.end());
     fields.into_iter().rev().fold(
@@ -362,8 +360,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                         .map(|(pattern, term)| {
                             let (pattern, env) = pattern.desugar(env);
                             Scope::new(pattern, term.desugar(&env))
-                        })
-                        .collect(),
+                        }).collect(),
                 ))
             },
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(env, span, fields),

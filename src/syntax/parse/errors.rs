@@ -19,7 +19,11 @@ pub enum ParseError {
         end: ByteIndex,
         expected: ExpectedTokens,
     },
-    #[fail(display = "Unexpected token {}, found, expected one of: {}.", token, expected)]
+    #[fail(
+        display = "Unexpected token {}, found, expected one of: {}.",
+        token,
+        expected
+    )]
     UnexpectedToken {
         span: ByteSpan,
         token: Token<String>,
@@ -81,11 +85,12 @@ impl ParseError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             ParseError::Lexer(ref err) => err.to_diagnostic(),
-            ParseError::IdentifierExpectedInPiType { span } => Diagnostic::new_error(
-                "identifier expected when parsing dependent function type",
-            ).with_label(
-                Label::new_primary(span).with_message("ill-formed dependent function type"),
-            ),
+            ParseError::IdentifierExpectedInPiType { span } => {
+                Diagnostic::new_error("identifier expected when parsing dependent function type")
+                    .with_label(
+                        Label::new_primary(span).with_message("ill-formed dependent function type"),
+                    )
+            },
             ParseError::UnknownReplCommand { span, ref command } => {
                 Diagnostic::new_error(format!("unknown repl command `:{}`", command))
                     .with_label(Label::new_primary(span).with_message("unexpected command"))
