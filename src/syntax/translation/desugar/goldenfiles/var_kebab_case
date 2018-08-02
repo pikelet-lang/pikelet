@@ -1,13 +1,9 @@
 RcTerm {
-    inner: Var(
+    inner: Global(
         Span {
             start: ByteIndex(1),
             end: ByteIndex(8)
         },
-        Free(
-            User(
-                "or-elim"
-            )
-        )
+        "or-elim"
     )
 }

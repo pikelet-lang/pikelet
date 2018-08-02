@@ -36,7 +36,7 @@ use codespan_reporting::Diagnostic;
 use syntax::core;
 
 pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
-    use syntax::translation::Desugar;
+    use syntax::translation::{Desugar, DesugarEnv};
 
     let (module, errors) = syntax::parse::module(&file);
     let mut diagnostics = errors
@@ -44,7 +44,7 @@ pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
         .map(|err| err.to_diagnostic())
         .collect::<Vec<_>>();
 
-    semantics::check_module(&module.desugar()).map_err(|err| {
+    semantics::check_module(&module.desugar(&DesugarEnv::new())).map_err(|err| {
         diagnostics.push(err.to_diagnostic());
         diagnostics
     })

@@ -71,7 +71,7 @@ fn reparse_pi_type_hack<L, T>(
         names: &mut Vec<(ByteIndex, String)>,
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match *term {
-            Term::Var(start, ref name) => names.push((start, name.clone())),
+            Term::Name(start, ref name) => names.push((start, name.clone())),
             Term::App(ref head, ref args) => {
                 param_names(head, names)?;
                 for arg in args {

@@ -2,17 +2,32 @@ use super::*;
 
 #[test]
 fn free() {
+    let tc_env = TcEnv::default();
+
+    let x = FreeVar::fresh_named("x");
+    let given_expr = raw::RcTerm::from(raw::Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+
+    assert_eq!(
+        infer_term(&tc_env, &given_expr),
+        Err(InternalError::UndefinedFreeVar {
+            span: ByteSpan::default(),
+            free_var: x.clone(),
+        }.into()),
+    );
+}
+
+#[test]
+fn undefined_name() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let given_expr = r"x";
-    let x = FreeVar::user("x");
+    let given_expr = "x";
 
     assert_eq!(
         infer_term(&tc_env, &parse(&mut codemap, given_expr)),
         Err(TypeError::UndefinedName {
-            var_span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
-            name: x,
+            span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
+            name: String::from("x"),
         }),
     );
 }
@@ -558,7 +573,29 @@ fn proj_missing() {
 }
 
 #[test]
-fn proj_weird() {
+fn proj_weird1() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"Type 1";
+    let given_expr = r"Record {
+        data : Record {
+            t : Type;
+            x : t;
+        };
+
+        f : data.t -> Type;
+        test : f data.x;
+    }";
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &tc_env, given_expr).1,
+        parse_normalize(&mut codemap, &tc_env, expected_ty),
+    );
+}
+
+#[test]
+fn proj_weird2() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 

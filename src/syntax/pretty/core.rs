@@ -38,6 +38,10 @@ fn pretty_extern(name: &str, ty: &impl ToDoc) -> StaticDoc {
     )
 }
 
+fn pretty_global(name: &str) -> StaticDoc {
+    sexpr("global", Doc::as_string(name))
+}
+
 fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
@@ -46,7 +50,7 @@ fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> S
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
         )).append(Doc::space())
-            .append(body.to_doc()),
+        .append(body.to_doc()),
     )
 }
 
@@ -58,7 +62,7 @@ fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> St
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
         )).append(Doc::space())
-            .append(body.to_doc()),
+        .append(body.to_doc()),
     )
 }
 
@@ -159,6 +163,7 @@ impl ToDoc for raw::Term {
             raw::Term::Literal(ref literal) => literal.to_doc(),
             raw::Term::Var(_, ref var) => pretty_var(var),
             raw::Term::Extern(_, _, ref name, ref ty) => pretty_extern(name, &ty.inner),
+            raw::Term::Global(_, ref name) => pretty_global(name),
             raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
@@ -182,8 +187,7 @@ impl ToDoc for raw::Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -208,8 +212,7 @@ impl ToDoc for raw::Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -236,8 +239,7 @@ impl ToDoc for raw::Term {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
+                )).append("]"),
         }
     }
 }
@@ -281,6 +283,7 @@ impl ToDoc for Term {
             Term::Literal(ref literal) => literal.to_doc(),
             Term::Var(ref var) => pretty_var(var),
             Term::Extern(ref name, ref ty) => pretty_extern(name, &ty.inner),
+            Term::Global(ref name) => pretty_global(name),
             Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
@@ -304,8 +307,7 @@ impl ToDoc for Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -330,8 +332,7 @@ impl ToDoc for Term {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -358,8 +359,7 @@ impl ToDoc for Term {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
+                )).append("]"),
         }
     }
 }
@@ -388,8 +388,7 @@ impl ToDoc for Value {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -414,8 +413,7 @@ impl ToDoc for Value {
                         .append(match i {
                             0 => Doc::nil(),
                             _ => Doc::space(),
-                        })
-                        .append(parens(
+                        }).append(parens(
                             Doc::as_string(&scope.unsafe_pattern.0)
                                 .append(Doc::space())
                                 .append((scope.unsafe_pattern.2).0.to_doc()),
@@ -435,8 +433,7 @@ impl ToDoc for Value {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
+                )).append("]"),
             Value::Neutral(ref neutral, ref spine) if spine.is_empty() => neutral.to_doc(),
             Value::Neutral(ref neutral, ref spine) => {
                 pretty_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))
@@ -468,6 +465,7 @@ impl ToDoc for Head {
         match *self {
             Head::Var(ref var) => pretty_var(var),
             Head::Extern(ref name, ref ty) => pretty_extern(name, &ty.inner),
+            Head::Global(ref name) => pretty_global(name),
         }
     }
 }

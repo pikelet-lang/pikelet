@@ -22,7 +22,7 @@ fn golden(filename: &str, literal: &str) {
 fn var() {
     let tc_env = TcEnv::default();
 
-    let x = FreeVar::user("x");
+    let x = FreeVar::fresh_named("x");
     let var = RcTerm::from(Term::Var(Var::Free(x.clone())));
 
     assert_eq!(
@@ -41,7 +41,7 @@ fn lam() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let x = FreeVar::user("x");
+    let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &tc_env, r"\x : Type => x"),
@@ -57,7 +57,7 @@ fn pi() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let x = FreeVar::user("x");
+    let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
         parse_normalize(&mut codemap, &tc_env, r"(x : Type) -> x"),
@@ -75,10 +75,13 @@ fn lam_app() {
 
     let given_expr = r"\(x : Type -> Type) (y : Type) => x y";
 
-    let x = FreeVar::user("x");
-    let y = FreeVar::user("y");
+    let x = FreeVar::fresh_named("x");
+    let y = FreeVar::fresh_named("y");
     let ty_arr = RcValue::from(Value::Pi(Scope::new(
-        (Binder::user("_"), Embed(RcValue::from(Value::universe(0)))),
+        (
+            Binder(FreeVar::fresh_unnamed()),
+            Embed(RcValue::from(Value::universe(0))),
+        ),
         RcValue::from(Value::universe(0)),
     )));
 
@@ -104,10 +107,13 @@ fn pi_app() {
 
     let given_expr = r"(x : Type -> Type) -> (y : Type) -> x y";
 
-    let x = FreeVar::user("x");
-    let y = FreeVar::user("y");
+    let x = FreeVar::fresh_named("x");
+    let y = FreeVar::fresh_named("y");
     let ty_arr = RcValue::from(Value::Pi(Scope::new(
-        (Binder::user("_"), Embed(RcValue::from(Value::universe(0)))),
+        (
+            Binder(FreeVar::fresh_unnamed()),
+            Embed(RcValue::from(Value::universe(0))),
+        ),
         RcValue::from(Value::universe(0)),
     )));
 
