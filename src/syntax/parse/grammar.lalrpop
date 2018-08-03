@@ -99,15 +99,15 @@ Item: Item = {
     <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {
         Item::Claim { name, ann }
     },
-    <_comment: "doc comment"*> <name: IndexedIdent> <params: AtomicLamParam*> <ann: (":" <Term>)?> "="
+    <_comment: "doc comment"*> <name: IndexedIdent> <params: AtomicLamParam*> <return_ann: (":" <Term>)?> "="
         <body: Term> <wheres: ("where" "{" <Item+> "}")?> <end: @R> ";" =>
     {
         let (start, name) = name;
         let span = ByteSpan::new(start, end);
-        let ann = ann.map(Box::new);
+        let return_ann = return_ann.map(Box::new);
         let wheres = wheres.unwrap_or(vec![]);
 
-        Item::Define { span, name, params, ann, body, wheres }
+        Item::Define { span, name, params, return_ann, body, wheres }
     },
     <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));

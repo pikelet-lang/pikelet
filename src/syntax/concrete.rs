@@ -121,7 +121,7 @@ pub enum Item {
         span: ByteSpan,
         name: String,
         params: LamParams,
-        ann: Option<Box<Term>>,
+        return_ann: Option<Box<Term>>,
         body: Term,
         wheres: Vec<Item>,
     },

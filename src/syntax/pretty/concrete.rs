@@ -36,7 +36,7 @@ impl ToDoc for Item {
             Item::Define {
                 ref name,
                 ref params,
-                ref ann,
+                ref return_ann,
                 ref body,
                 ref wheres,
                 ..
@@ -45,12 +45,11 @@ impl ToDoc for Item {
                 .append(match params[..] {
                     [] => Doc::nil(),
                     _ => pretty_lam_params(params).append(Doc::space()),
-                }).append(match *ann {
-                    Some(ref ret_ann) => {
-                        Doc::text(":").append(ret_ann.to_doc()).append(Doc::space())
-                    },
-                    None => Doc::nil(),
-                }).append("=")
+                }).append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
+                    Doc::text(":")
+                        .append(return_ann.to_doc())
+                        .append(Doc::space())
+                })).append("=")
                 .append(Doc::space())
                 .append(body.to_doc().nest(INDENT_WIDTH))
                 .append(if wheres.is_empty() {
@@ -213,23 +212,22 @@ impl ToDoc for Term {
                 .append(Doc::space())
                 .append(
                     Doc::intersperse(
-                        fields
-                            .iter()
-                            .map(|&(_, ref name, ref params, ref ret_ann, ref expr)| {
+                        fields.iter().map(
+                            |&(_, ref name, ref params, ref return_ann, ref expr)| {
                                 Doc::as_string(name)
                                     .append(Doc::space())
                                     .append(match params[..] {
                                         [] => Doc::nil(),
                                         _ => pretty_lam_params(params).append(Doc::space()),
-                                    }).append(match *ret_ann {
-                                        Some(ref ret_ann) => Doc::text(":")
-                                            .append(ret_ann.to_doc())
-                                            .append(Doc::space()),
-                                        None => Doc::nil(),
-                                    }).append("=")
+                                    }).append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
+                                        Doc::text(":")
+                                            .append(return_ann.to_doc())
+                                            .append(Doc::space())
+                                    })).append("=")
                                     .append(Doc::space())
                                     .append(expr.to_doc())
-                            }),
+                            },
+                        ),
                         Doc::text(";").append(Doc::space()),
                     ).nest(INDENT_WIDTH),
                 ).append(Doc::space())

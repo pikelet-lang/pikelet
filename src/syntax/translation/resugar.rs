@@ -29,7 +29,7 @@ impl Resugar<concrete::Module> for core::Module {
             items.push(concrete::Item::Define {
                 span: ByteSpan::default(),
                 name: name.to_string(),
-                ann: None,
+                return_ann: None,
                 params,
                 body,
                 wheres: vec![],
