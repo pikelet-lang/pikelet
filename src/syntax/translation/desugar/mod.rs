@@ -11,7 +11,7 @@ mod test;
 
 /// The environment used when desugaring from the concrete to raw syntax
 #[derive(Debug, Clone)]
-pub struct Env {
+pub struct DesugarEnv {
     /// An environment that maps strings to unique free variables
     ///
     /// This is a persistent map so that we can create new environments as we enter
@@ -22,9 +22,9 @@ pub struct Env {
     locals: HashMap<String, FreeVar<String>>,
 }
 
-impl Env {
-    pub fn new() -> Env {
-        Env::default()
+impl DesugarEnv {
+    pub fn new() -> DesugarEnv {
+        DesugarEnv::default()
     }
 
     pub fn on_binding(&mut self, name: impl Into<String>) -> FreeVar<String> {
@@ -42,9 +42,9 @@ impl Env {
     }
 }
 
-impl Default for Env {
-    fn default() -> Env {
-        Env {
+impl Default for DesugarEnv {
+    fn default() -> DesugarEnv {
+        DesugarEnv {
             locals: HashMap::new(),
         }
     }
@@ -52,7 +52,7 @@ impl Default for Env {
 
 /// Translate something to the corresponding core representation
 pub trait Desugar<T> {
-    fn desugar(&self, env: &Env) -> T;
+    fn desugar(&self, env: &DesugarEnv) -> T;
 }
 
 /// Convert a sugary pi type from something like:
@@ -67,7 +67,7 @@ pub trait Desugar<T> {
 /// (a : t1) -> (b : t1) -> t3
 /// ```
 fn desugar_pi(
-    env: &Env,
+    env: &DesugarEnv,
     param_groups: &[concrete::PiParamGroup],
     body: &concrete::Term,
 ) -> raw::RcTerm {
@@ -105,7 +105,7 @@ fn desugar_pi(
 /// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
 /// ```
 fn desugar_lam(
-    env: &Env,
+    env: &DesugarEnv,
     param_groups: &[concrete::LamParamGroup],
     ret_ann: Option<&concrete::Term>,
     body: &concrete::Term,
@@ -142,7 +142,7 @@ fn desugar_lam(
 }
 
 fn desugar_record_ty(
-    env: &Env,
+    env: &DesugarEnv,
     span: ByteSpan,
     fields: &[concrete::RecordTypeField],
 ) -> raw::RcTerm {
@@ -168,7 +168,11 @@ fn desugar_record_ty(
     )
 }
 
-fn desugar_record(env: &Env, span: ByteSpan, fields: &[concrete::RecordField]) -> raw::RcTerm {
+fn desugar_record(
+    env: &DesugarEnv,
+    span: ByteSpan,
+    fields: &[concrete::RecordField],
+) -> raw::RcTerm {
     let mut env = env.clone();
 
     let fields = fields
@@ -193,7 +197,7 @@ fn desugar_record(env: &Env, span: ByteSpan, fields: &[concrete::RecordField]) -
 
 impl Desugar<raw::Module> for concrete::Module {
     /// Convert the module in the concrete syntax to a module in the core syntax
-    fn desugar(&self, env: &Env) -> raw::Module {
+    fn desugar(&self, env: &DesugarEnv) -> raw::Module {
         let mut env = env.clone();
         match *self {
             concrete::Module::Valid { ref declarations } => {
@@ -282,7 +286,7 @@ impl Desugar<raw::Module> for concrete::Module {
 }
 
 impl Desugar<raw::Literal> for concrete::Literal {
-    fn desugar(&self, _: &Env) -> raw::Literal {
+    fn desugar(&self, _: &DesugarEnv) -> raw::Literal {
         match *self {
             concrete::Literal::String(span, ref value) => raw::Literal::String(span, value.clone()),
             concrete::Literal::Char(span, value) => raw::Literal::Char(span, value),
@@ -292,8 +296,8 @@ impl Desugar<raw::Literal> for concrete::Literal {
     }
 }
 
-impl Desugar<(raw::RcPattern, Env)> for concrete::Pattern {
-    fn desugar(&self, env: &Env) -> (raw::RcPattern, Env) {
+impl Desugar<(raw::RcPattern, DesugarEnv)> for concrete::Pattern {
+    fn desugar(&self, env: &DesugarEnv) -> (raw::RcPattern, DesugarEnv) {
         let span = self.span();
         match *self {
             concrete::Pattern::Parens(_, ref pattern) => pattern.desugar(env),
@@ -321,7 +325,7 @@ impl Desugar<(raw::RcPattern, Env)> for concrete::Pattern {
 }
 
 impl Desugar<raw::RcTerm> for concrete::Term {
-    fn desugar(&self, env: &Env) -> raw::RcTerm {
+    fn desugar(&self, env: &DesugarEnv) -> raw::RcTerm {
         let span = self.span();
         match *self {
             concrete::Term::Parens(_, ref term) => term.desugar(env),

@@ -25,7 +25,7 @@ fn parse(src: &str) -> raw::RcTerm {
     let (concrete_term, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
-    concrete_term.desugar(&Env::new())
+    concrete_term.desugar(&DesugarEnv::new())
 }
 
 mod module {
@@ -49,7 +49,7 @@ mod module {
             panic!("parse error!")
         }
 
-        concrete_module.desugar(&Env::new());
+        concrete_module.desugar(&DesugarEnv::new());
     }
 }
 
