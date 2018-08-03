@@ -217,14 +217,14 @@ impl Desugar<raw::Module> for concrete::Module {
                 concrete::Item::Claim {
                     name: (_, ref name),
                     ref ann,
-                    ..
                 } => match prev_claim.take() {
-                    Some((claim_name, ann)) => {
-                        let claim_free_var = env.on_binding(claim_name);
-                        let term = raw::RcTerm::from(raw::Term::Hole(ByteSpan::default()));
+                    Some((claim_name, claim_ann)) => {
                         definitions.push((
-                            Binder(claim_free_var.clone()),
-                            Embed(raw::Definition { term, ann }),
+                            Binder(env.on_binding(claim_name)),
+                            Embed(raw::Definition {
+                                ann: claim_ann,
+                                term: raw::RcTerm::from(raw::Term::Hole(ByteSpan::default())),
+                            }),
                         ));
                     },
                     None => prev_claim = Some((name, ann.desugar(&env))),
@@ -246,32 +246,38 @@ impl Desugar<raw::Module> for concrete::Module {
 
                     match prev_claim.take() {
                         None => {
-                            let ann = raw::RcTerm::from(raw::Term::Hole(default_span));
-                            let term = desugar_lam(&env, params, return_ann, body);
                             definitions.push((
                                 Binder(env.on_binding(name.clone())),
-                                Embed(raw::Definition { ann, term }),
+                                Embed(raw::Definition {
+                                    ann: raw::RcTerm::from(raw::Term::Hole(default_span)),
+                                    term: desugar_lam(&env, params, return_ann, body),
+                                }),
                             ));
                         },
-                        Some((claim_name, ann)) => {
+                        Some((claim_name, claim_ann)) => {
                             if claim_name == *name {
-                                let term = desugar_lam(&env, params, None, body);
                                 definitions.push((
                                     Binder(env.on_binding(name.clone())),
-                                    Embed(raw::Definition { ann, term }),
+                                    Embed(raw::Definition {
+                                        ann: claim_ann,
+                                        term: desugar_lam(&env, params, return_ann, body),
+                                    }),
                                 ));
                             } else {
-                                let term = raw::RcTerm::from(raw::Term::Hole(default_span));
                                 definitions.push((
                                     Binder(env.on_binding(claim_name.clone())),
-                                    Embed(raw::Definition { ann, term }),
+                                    Embed(raw::Definition {
+                                        ann: claim_ann,
+                                        term: raw::RcTerm::from(raw::Term::Hole(default_span)),
+                                    }),
                                 ));
 
-                                let ann = raw::RcTerm::from(raw::Term::Hole(default_span));
-                                let term = desugar_lam(&env, params, return_ann, body);
                                 definitions.push((
                                     Binder(env.on_binding(name.clone())),
-                                    Embed(raw::Definition { ann, term }),
+                                    Embed(raw::Definition {
+                                        ann: raw::RcTerm::from(raw::Term::Hole(default_span)),
+                                        term: desugar_lam(&env, params, return_ann, body),
+                                    }),
                                 ));
                             }
                         },
