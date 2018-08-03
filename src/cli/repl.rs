@@ -159,7 +159,6 @@ fn eval_print(
     filemap: &FileMap,
 ) -> Result<ControlFlow, EvalPrintError> {
     use codespan::ByteIndex;
-    use moniker::FreeVar;
 
     use syntax::concrete::{ReplCommand, Term};
     use syntax::pretty::{self, ToDoc};
@@ -209,11 +208,9 @@ fn eval_print(
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            let free_var = FreeVar::fresh_named(name.clone());
-
+            let free_var = desugar_env.on_binding(name);
             tc_env.claims.insert(free_var.clone(), inferred);
             tc_env.definitions.insert(free_var.clone(), term);
-            desugar_env.insert(name, free_var);
 
             return Ok(ControlFlow::Continue);
         },
