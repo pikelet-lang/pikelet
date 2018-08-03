@@ -2,7 +2,7 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Declaration, LamParamGroup, Literal, Module, Pattern, PiParamGroup, Term};
+use syntax::concrete::{Item, LamParamGroup, Literal, Module, Pattern, PiParamGroup, Term};
 
 use super::{StaticDoc, ToDoc};
 
@@ -11,8 +11,8 @@ const INDENT_WIDTH: usize = 4;
 impl ToDoc for Module {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Module::Valid { ref declarations } => Doc::intersperse(
-                declarations.iter().map(|declaration| declaration.to_doc()),
+            Module::Valid { ref items } => Doc::intersperse(
+                items.iter().map(|item| item.to_doc()),
                 Doc::newline().append(Doc::newline()),
             ),
             Module::Error(_) => Doc::text("<error>"),
@@ -20,20 +20,20 @@ impl ToDoc for Module {
     }
 }
 
-impl ToDoc for Declaration {
+impl ToDoc for Item {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Declaration::Claim {
+            Item::Claim {
                 ref name, ref ann, ..
             } => Doc::as_string(&name.1)
                 .append(Doc::space())
                 .append(":")
                 .append(Doc::space())
                 .append(ann.to_doc()),
-            Declaration::Definition { ref wheres, .. } if !wheres.is_empty() => {
+            Item::Define { ref wheres, .. } if !wheres.is_empty() => {
                 unimplemented!("where clauses")
             },
-            Declaration::Definition {
+            Item::Define {
                 ref name,
                 ref params,
                 ref ann,
@@ -68,7 +68,7 @@ impl ToDoc for Declaration {
                         )).append(Doc::newline())
                         .append("}")
                 }),
-            Declaration::Error(_) => Doc::text("<error>"),
+            Item::Error(_) => Doc::text("<error>"),
         }.append(";")
     }
 }

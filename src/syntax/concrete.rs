@@ -64,9 +64,9 @@ pub enum Module {
     /// ```text
     /// module my-module;
     ///
-    /// <declarations>
+    /// <items>
     /// ```
-    Valid { declarations: Vec<Declaration> },
+    Valid { items: Vec<Item> },
     /// Modules commands that could not be parsed correctly
     ///
     /// This is used for error recovery
@@ -95,9 +95,9 @@ pub type RecordTypeField = (ByteIndex, String, Term);
 
 pub type RecordField = (ByteIndex, String, LamParams, Option<Box<Term>>, Term);
 
-/// Top level declarations
+/// Top level items
 #[derive(Debug, Clone, PartialEq)]
-pub enum Declaration {
+pub enum Item {
     /// Claims that a term abides by the given type
     ///
     /// ```text
@@ -117,32 +117,32 @@ pub enum Declaration {
     ///         some-value = some-body
     ///     }
     /// ```
-    Definition {
+    Define {
         span: ByteSpan,
         name: String,
         params: LamParams,
         ann: Option<Box<Term>>,
         body: Term,
-        wheres: Vec<Declaration>,
+        wheres: Vec<Item>,
     },
-    /// Declarations that could not be correctly parsed
+    /// Items that could not be correctly parsed
     ///
     /// This is used for error recovery
     Error(ByteSpan),
 }
 
-impl Declaration {
+impl Item {
     /// Return the span of source code that this declaration originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Declaration::Definition { span, .. } => span,
-            Declaration::Claim { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
-            Declaration::Error(span) => span,
+            Item::Define { span, .. } => span,
+            Item::Claim { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
+            Item::Error(span) => span,
         }
     }
 }
 
-impl fmt::Display for Declaration {
+impl fmt::Display for Item {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
     }
@@ -296,7 +296,7 @@ pub enum Term {
     /// in
     ///     x
     /// ```
-    Let(ByteIndex, Vec<Declaration>, Box<Term>),
+    Let(ByteIndex, Vec<Item>, Box<Term>),
     /// If expression
     ///
     /// ```text
