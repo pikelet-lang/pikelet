@@ -13,7 +13,7 @@ pub trait Resugar<T> {
 impl Resugar<concrete::Module> for core::Module {
     fn resugar(&self) -> concrete::Module {
         let definitions = self.definitions.clone().unnest();
-        let mut declarations = Vec::with_capacity(definitions.len() * 2);
+        let mut items = Vec::with_capacity(definitions.len() * 2);
 
         for (name, Embed(definition)) in definitions {
             // pull lambda arguments from the body into the definition
@@ -22,21 +22,21 @@ impl Resugar<concrete::Module> for core::Module {
                 body => (vec![], body),
             };
 
-            declarations.push(concrete::Declaration::Claim {
+            items.push(concrete::Item::Claim {
                 name: (ByteIndex::default(), name.to_string()),
                 ann: resugar_term(&core::Term::from(&*definition.ann), Prec::ANN),
             });
-            declarations.push(concrete::Declaration::Definition {
+            items.push(concrete::Item::Define {
                 span: ByteSpan::default(),
                 name: name.to_string(),
-                ann: None,
+                return_ann: None,
                 params,
                 body,
                 wheres: vec![],
             });
         }
 
-        concrete::Module::Valid { declarations }
+        concrete::Module::Valid { items }
     }
 }
 
