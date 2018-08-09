@@ -5,11 +5,11 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, FreeVar, Scope, Var};
 
 use syntax::core::{
-    Definition, Head, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType,
-    RcValue, Term, Type, Value,
+    Head, Item, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType, RcValue,
+    Term, Type, Value,
 };
 use syntax::raw;
 use syntax::translation::Resugar;
@@ -26,38 +26,98 @@ pub use self::errors::{InternalError, TypeError};
 pub use self::prim::{PrimEnv, PrimFn};
 
 /// Type check and elaborate a module
-pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
-    let mut tc_env = TcEnv::default();
-    let definitions = raw_module
-        .definitions
-        .clone()
-        .unnest()
-        .into_iter()
-        .map(|(Binder(free_var), Embed(raw_definition))| {
-            let (term, ann) = match *raw_definition.ann.inner {
-                // We don't have a type annotation available to us! Instead we will
-                // attempt to infer it based on the body of the definition
-                raw::Term::Hole(_) => infer_term(&tc_env, &raw_definition.term)?,
-                // We have a type annotation! Elaborate it, then normalize it, then
-                // check that it matches the body of the definition
-                _ => {
-                    let (ann, _) = infer_term(&tc_env, &raw_definition.ann)?;
-                    let ann = normalize(&tc_env, &ann)?;
-                    let term = check_term(&tc_env, &raw_definition.term, &ann)?;
-                    (term, ann)
-                },
-            };
+pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, TypeError> {
+    use im::HashMap;
 
-            // Add the definition to the type checking environment
-            tc_env.claims.insert(free_var.clone(), ann.clone());
-            tc_env.definitions.insert(free_var.clone(), term.clone());
+    #[derive(Clone)]
+    pub enum Claim {
+        Pending(ByteSpan, RcTerm),
+        Defined(ByteSpan),
+    }
 
-            Ok((Binder(free_var), Embed(Definition { term, ann })))
-        }).collect::<Result<_, TypeError>>()?;
+    // Claims that may be waiting for a definition
+    let mut pending_claims = HashMap::new();
+    let mut tc_env = tc_env.clone();
+    // The elaborated items, pre-allocated to improve performance
+    let mut items = Vec::with_capacity(raw_module.items.len());
 
-    Ok(Module {
-        definitions: Nest::new(definitions),
-    })
+    // Iterate through the items in the module, checking each in turn
+    for raw_item in &raw_module.items {
+        match *raw_item {
+            raw::Item::Claim(claim_span, ref free_var, ref raw_ty) => {
+                // Ensure that this claim has not already been seen
+                match pending_claims.get(free_var).cloned() {
+                    // There's already a definition associated with this name -
+                    // we can't add a new claim for it!
+                    Some(Claim::Defined(definition_span)) => {
+                        return Err(TypeError::ClaimFollowedDefinition {
+                            definition_span,
+                            claim_span,
+                            free_var: free_var.clone(),
+                        });
+                    },
+                    // There's a claim  for this name already pending - we can't
+                    // add a new one!
+                    Some(Claim::Pending(original_span, _)) => {
+                        return Err(TypeError::DuplicateClaims {
+                            original_span,
+                            duplicate_span: claim_span,
+                            free_var: free_var.clone(),
+                        });
+                    },
+                    // No previous claim for this name was seen, so we can go
+                    // ahead and type check, elaborate, and add it to the context
+                    None => {
+                        // Ensure that the claim's type annotation is actually a type
+                        let (ty, _) = infer_universe(&tc_env, raw_ty)?;
+                        // Remember the claim for when we get to a subsequent definition
+                        let claim = Claim::Pending(claim_span, ty.clone());
+                        pending_claims.insert(free_var.clone(), claim);
+                        // Add the claim to the elaborated items
+                        items.push(Item::Claim(free_var.clone(), ty));
+                    },
+                }
+            },
+
+            raw::Item::Define(span, ref free_var, ref raw_term) => {
+                let (term, ty) = match pending_claims.get(free_var).cloned() {
+                    // This claim was already defined, so this is an error!
+                    //
+                    // NOTE: Some languages (eg. Haskell, Agda, Idris, and
+                    // Erlang) turn duplicate definitions into case matches.
+                    // Languages like Elm don't. What should we do here?
+                    Some(Claim::Defined(original_span)) => {
+                        return Err(TypeError::DuplicateDefinitions {
+                            original_span,
+                            duplicate_span: span,
+                            free_var: free_var.clone(),
+                        });
+                    },
+                    // We found a prior claim, so lets use it as a basis for
+                    // checking the definition
+                    Some(Claim::Pending(_, ty)) => {
+                        let ty = normalize(&tc_env, &ty)?;
+                        (check_term(&tc_env, &raw_term, &ty)?, ty)
+                    },
+                    // No prior claim was found, so try to infer the type from
+                    // the given definition alone
+                    None => infer_term(&tc_env, &raw_term)?,
+                };
+
+                // We must not remove this from the list of pending claims, lest
+                // we encounter another claim or definition of the same name later on!
+                pending_claims.insert(free_var.clone(), Claim::Defined(span));
+                // Add the claim and definition to the environment, allowing
+                // them to be used in later type checking
+                tc_env.claims.insert(free_var.clone(), ty);
+                tc_env.definitions.insert(free_var.clone(), term.clone());
+                // Add the definition to the elaborated items
+                items.push(Item::Define(free_var.clone(), term));
+            },
+        }
+    }
+
+    Ok(Module { items })
 }
 
 /// Reduce a term to its normal form
@@ -583,10 +643,10 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
         raw::Term::Var(span, ref var) => match *var {
             Var::Free(ref free_var) => match tc_env.claims.get(free_var) {
                 Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
-                None => Err(InternalError::UndefinedFreeVar {
+                None => Err(TypeError::NotYetDefined {
                     span,
                     free_var: free_var.clone(),
-                }.into()),
+                }),
             },
 
             // We should always be substituting bound variables with fresh

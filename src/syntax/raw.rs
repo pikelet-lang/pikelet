@@ -2,7 +2,7 @@
 //! be elaborated in a type-directed way during type checking and inference
 
 use codespan::{ByteIndex, ByteSpan};
-use moniker::{Binder, Embed, Nest, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, Scope, Var};
 use std::fmt;
 use std::ops;
 use std::rc::Rc;
@@ -12,17 +12,33 @@ use syntax::Level;
 
 /// A module definition
 pub struct Module {
-    /// The definitions contained in the module
-    pub definitions: Nest<(Binder<String>, Embed<Definition>)>,
+    /// The items contained in the module
+    pub items: Vec<Item>,
 }
 
-/// Top level definitions
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
-pub struct Definition {
-    /// The body of the definition
-    pub term: RcTerm,
-    /// An optional type annotation to aid in type inference
-    pub ann: RcTerm,
+/// Top-level items within a module
+#[derive(Debug, Clone, PartialEq)]
+pub enum Item {
+    /// Claims that a term abides by the given type
+    Claim(ByteSpan, FreeVar<String>, RcTerm),
+    /// Defines the body of a term
+    Define(ByteSpan, FreeVar<String>, RcTerm),
+}
+
+impl Item {
+    pub fn free_var(&self) -> &FreeVar<String> {
+        match *self {
+            Item::Claim(_, ref free_var, _) | Item::Define(_, ref free_var, _) => free_var,
+        }
+    }
+
+    pub fn span(&self) -> ByteSpan {
+        match *self {
+            Item::Claim(name_span, _, ref term) | Item::Define(name_span, _, ref term) => {
+                name_span.to(term.span())
+            },
+        }
+    }
 }
 
 /// Literals

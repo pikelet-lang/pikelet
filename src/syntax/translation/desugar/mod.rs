@@ -1,6 +1,6 @@
 use codespan::{ByteOffset, ByteSpan};
 use im::HashMap;
-use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, Scope, Var};
 
 use syntax::concrete;
 use syntax::raw;
@@ -27,8 +27,15 @@ impl DesugarEnv {
         DesugarEnv::default()
     }
 
-    pub fn on_binding(&mut self, name: impl Into<String>) -> FreeVar<String> {
-        let name = name.into();
+    pub fn on_item(&mut self, name: &str) -> FreeVar<String> {
+        if let Some(free_var) = self.locals.get(name) {
+            return free_var.clone();
+        }
+        self.on_binding(name)
+    }
+
+    pub fn on_binding(&mut self, name: &str) -> FreeVar<String> {
+        let name = String::from(name);
         let free_var = FreeVar::fresh_named(name.clone());
         self.locals.insert(name, free_var.clone());
         free_var
@@ -77,7 +84,7 @@ fn desugar_pi(
     for &(ref names, ref ann) in param_groups {
         let ann = raw::RcTerm::from(ann.desugar(&env));
         params.extend(names.iter().map(|&(start, ref name)| {
-            let free_var = env.on_binding(name.clone());
+            let free_var = env.on_binding(name);
             (start, Binder(free_var), ann.clone())
         }));
     }
@@ -120,7 +127,7 @@ fn desugar_lam(
         };
 
         params.extend(names.iter().map(|&(start, ref name)| {
-            let free_var = env.on_binding(name.clone());
+            let free_var = env.on_binding(name);
             (start, Binder(free_var), ann.clone())
         }));
     }
@@ -152,7 +159,7 @@ fn desugar_record_ty(
         .iter()
         .map(|&(start, ref label, ref ann)| {
             let ann = ann.desugar(&env);
-            let free_var = env.on_binding(label.clone());
+            let free_var = env.on_binding(label);
             (start, label.clone(), Binder(free_var), ann)
         }).collect::<Vec<_>>();
 
@@ -180,7 +187,7 @@ fn desugar_record(
         .map(
             |&(start, ref label, ref params, ref return_ann, ref value)| {
                 let value = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), value);
-                let free_var = env.on_binding(label.clone());
+                let free_var = env.on_binding(label);
                 (start, label.clone(), Binder(free_var), value)
             },
         ).collect::<Vec<_>>();
@@ -198,98 +205,49 @@ fn desugar_record(
 }
 
 impl Desugar<raw::Module> for concrete::Module {
-    /// Convert the module in the concrete syntax to a module in the core syntax
     fn desugar(&self, env: &DesugarEnv) -> raw::Module {
         let mut env = env.clone();
-        let items = match *self {
+        let concrete_items = match *self {
             concrete::Module::Valid { ref items } => items,
             concrete::Module::Error(_) => unimplemented!("error recovery"),
         };
 
-        // The type claims that we have encountered so far! We'll use these when
-        // we encounter their corresponding definitions later as type annotations
-        let mut prev_claim = None::<(&str, raw::RcTerm)>;
-        // The definitions, desugared from the concrete syntax
-        let mut definitions = Vec::<(Binder<String>, Embed<raw::Definition>)>::new();
-
-        for item in items {
-            match *item {
+        let mut items = Vec::with_capacity(concrete_items.len());
+        for concrete_item in concrete_items {
+            let item = match *concrete_item {
                 concrete::Item::Claim {
-                    name: (_, ref name),
+                    name: (start, ref name),
                     ref ann,
-                } => match prev_claim.take() {
-                    Some((claim_name, claim_ann)) => {
-                        definitions.push((
-                            Binder(env.on_binding(claim_name)),
-                            Embed(raw::Definition {
-                                ann: claim_ann,
-                                term: raw::RcTerm::from(raw::Term::Hole(ByteSpan::default())),
-                            }),
-                        ));
-                    },
-                    None => prev_claim = Some((name, ann.desugar(&env))),
+                } => {
+                    let name_span = ByteSpan::from_offset(start, ByteOffset::from_str(name));
+                    let ann = ann.desugar(&env);
+                    let free_var = env.on_item(name);
+                    raw::Item::Claim(name_span, free_var, ann)
                 },
                 concrete::Item::Define {
+                    ref span,
                     ref name,
                     ref params,
                     ref return_ann,
                     ref body,
                     ref wheres,
-                    ..
                 } => {
-                    let default_span = ByteSpan::default();
+                    let name_span = ByteSpan::from_offset(span.start(), ByteOffset::from_str(name));
                     let return_ann = return_ann.as_ref().map(<_>::as_ref);
-
+                    let term = desugar_lam(&env, params, return_ann, body);
+                    let free_var = env.on_item(name);
                     if !wheres.is_empty() {
                         unimplemented!("where clauses");
                     }
-
-                    match prev_claim.take() {
-                        None => {
-                            definitions.push((
-                                Binder(env.on_binding(name.clone())),
-                                Embed(raw::Definition {
-                                    ann: raw::RcTerm::from(raw::Term::Hole(default_span)),
-                                    term: desugar_lam(&env, params, return_ann, body),
-                                }),
-                            ));
-                        },
-                        Some((claim_name, claim_ann)) => {
-                            if claim_name == *name {
-                                definitions.push((
-                                    Binder(env.on_binding(name.clone())),
-                                    Embed(raw::Definition {
-                                        ann: claim_ann,
-                                        term: desugar_lam(&env, params, return_ann, body),
-                                    }),
-                                ));
-                            } else {
-                                definitions.push((
-                                    Binder(env.on_binding(claim_name.clone())),
-                                    Embed(raw::Definition {
-                                        ann: claim_ann,
-                                        term: raw::RcTerm::from(raw::Term::Hole(default_span)),
-                                    }),
-                                ));
-
-                                definitions.push((
-                                    Binder(env.on_binding(name.clone())),
-                                    Embed(raw::Definition {
-                                        ann: raw::RcTerm::from(raw::Term::Hole(default_span)),
-                                        term: desugar_lam(&env, params, return_ann, body),
-                                    }),
-                                ));
-                            }
-                        },
-                    };
+                    raw::Item::Define(name_span, free_var, term)
                 },
                 concrete::Item::Error(_) => unimplemented!("error recovery"),
-            }
+            };
+
+            items.push(item);
         }
 
-        raw::Module {
-            definitions: Nest::new(definitions),
-        }
+        raw::Module { items }
     }
 }
 
@@ -318,7 +276,7 @@ impl Desugar<(raw::RcPattern, DesugarEnv)> for concrete::Pattern {
             },
             concrete::Pattern::Binder(_, ref name) => {
                 let mut env = env.clone();
-                let free_var = env.on_binding(name.clone());
+                let free_var = env.on_binding(name);
                 let pattern = raw::RcPattern::from(raw::Pattern::Binder(span, Binder(free_var)));
 
                 (pattern, env)

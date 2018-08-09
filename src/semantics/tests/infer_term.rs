@@ -9,10 +9,10 @@ fn free() {
 
     assert_eq!(
         infer_term(&tc_env, &given_expr),
-        Err(InternalError::UndefinedFreeVar {
+        Err(TypeError::NotYetDefined {
             span: ByteSpan::default(),
             free_var: x.clone(),
-        }.into()),
+        }),
     );
 }
 
