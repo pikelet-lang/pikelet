@@ -47,10 +47,10 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
         match *raw_item {
             raw::Item::Declaration(declaration_span, ref free_var, ref raw_ty) => {
                 // Ensure that this declaration has not already been seen
-                match forward_declarations.get(free_var).cloned() {
+                match forward_declarations.get(free_var) {
                     // There's already a definition associated with this name -
                     // we can't add a new declaration for it!
-                    Some(ForwardDecl::Defined(definition_span)) => {
+                    Some(&ForwardDecl::Defined(definition_span)) => {
                         return Err(TypeError::DeclarationFollowedDefinition {
                             definition_span,
                             declaration_span,
@@ -59,7 +59,7 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                     },
                     // There's a declaration  for this name already pending - we
                     // can't add a new one!
-                    Some(ForwardDecl::Pending(original_span, _)) => {
+                    Some(&ForwardDecl::Pending(original_span, _)) => {
                         return Err(TypeError::DuplicateDeclarations {
                             original_span,
                             duplicate_span: declaration_span,
@@ -69,16 +69,16 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                     // No previous declaration for this name was seen, so we can
                     // go-ahead and type check, elaborate, and then add it to
                     // the context
-                    None => {
-                        // Ensure that the declaration's type annotation is actually a type
-                        let (ty, _) = infer_universe(&tc_env, raw_ty)?;
-                        // Remember the declaration for when we get to a subsequent definition
-                        let declaration = ForwardDecl::Pending(declaration_span, ty.clone());
-                        forward_declarations.insert(free_var.clone(), declaration);
-                        // Add the declaration to the elaborated items
-                        items.push(Item::Declaration(free_var.clone(), ty));
-                    },
+                    None => {},
                 }
+
+                // Ensure that the declaration's type annotation is actually a type
+                let (ty, _) = infer_universe(&tc_env, raw_ty)?;
+                // Remember the declaration for when we get to a subsequent definition
+                let declaration = ForwardDecl::Pending(declaration_span, ty.clone());
+                forward_declarations.insert(free_var.clone(), declaration);
+                // Add the declaration to the elaborated items
+                items.push(Item::Declaration(free_var.clone(), ty));
             },
 
             raw::Item::Definition(span, ref free_var, ref raw_term) => {
@@ -96,7 +96,7 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                             free_var: free_var.clone(),
                         });
                     },
-                    // We found a prior declaration, so lets use it as a basis
+                    // We found a prior declaration, so we'll use it as a basis
                     // for checking the definition
                     Some(ForwardDecl::Pending(_, ty)) => {
                         let ty = nf_term(&tc_env, &ty)?;
