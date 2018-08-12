@@ -181,7 +181,7 @@ fn eval_print(
         ReplCommand::Eval(parse_term) => {
             let raw_term = parse_term.desugar(desugar_env);
             let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
-            let evaluated = semantics::normalize(tc_env, &term)?;
+            let evaluated = semantics::nf_term(tc_env, &term)?;
 
             let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
 

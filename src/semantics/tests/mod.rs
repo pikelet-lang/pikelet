@@ -49,9 +49,9 @@ fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm
     }
 }
 
-fn parse_normalize(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
+fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
     let term = parse_infer_term(codemap, tc_env, src).0;
-    match normalize(tc_env, &term) {
+    match nf_term(tc_env, &term) {
         Ok(value) => value,
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
