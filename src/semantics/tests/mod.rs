@@ -23,6 +23,21 @@ fn parse(codemap: &mut CodeMap, src: &str) -> raw::RcTerm {
     concrete_term.desugar(&DesugarEnv::new())
 }
 
+fn parse_module(codemap: &mut CodeMap, src: &str) -> raw::Module {
+    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+    let (concrete_module, errors) = parse::module(&filemap);
+
+    if !errors.is_empty() {
+        let writer = StandardStream::stdout(ColorChoice::Always);
+        for error in errors {
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
+        }
+        panic!("parse error!")
+    }
+
+    concrete_module.desugar(&DesugarEnv::new())
+}
+
 fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm, RcType) {
     match infer_term(tc_env, &parse(codemap, src)) {
         Ok((term, ty)) => (term, ty),

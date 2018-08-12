@@ -12,28 +12,37 @@ pub trait Resugar<T> {
 
 impl Resugar<concrete::Module> for core::Module {
     fn resugar(&self) -> concrete::Module {
-        let definitions = self.definitions.clone().unnest();
-        let mut items = Vec::with_capacity(definitions.len() * 2);
+        let mut items = Vec::with_capacity(self.items.len() * 2);
 
-        for (name, Embed(definition)) in definitions {
-            // pull lambda arguments from the body into the definition
-            let (params, body) = match resugar_term(&definition.term, Prec::ANN) {
-                concrete::Term::Lam(_, params, body) => (params, *body),
-                body => (vec![], body),
+        for item in &self.items {
+            match item {
+                core::Item::Declaration(ref free_var, ref ty) => {
+                    items.push(concrete::Item::Declaration {
+                        // TODO: use name if it is present, and not used in the current scope
+                        // TODO: otherwise create a pretty name
+                        name: (ByteIndex::default(), free_var.to_string()),
+                        ann: resugar_term(ty, Prec::ANN),
+                    });
+                },
+                core::Item::Definition(ref free_var, ref term) => {
+                    // pull lambda arguments from the body into the definition
+                    let (params, body) = match resugar_term(term, Prec::ANN) {
+                        concrete::Term::Lam(_, params, body) => (params, *body),
+                        body => (vec![], body),
+                    };
+
+                    items.push(concrete::Item::Definition {
+                        span: ByteSpan::default(),
+                        // TODO: use name if it is present, and not used in the current scope
+                        // TODO: otherwise create a pretty name
+                        name: free_var.to_string(),
+                        return_ann: None,
+                        params,
+                        body,
+                        wheres: vec![],
+                    });
+                },
             };
-
-            items.push(concrete::Item::Claim {
-                name: (ByteIndex::default(), name.to_string()),
-                ann: resugar_term(&core::Term::from(&*definition.ann), Prec::ANN),
-            });
-            items.push(concrete::Item::Define {
-                span: ByteSpan::default(),
-                name: name.to_string(),
-                return_ann: None,
-                params,
-                body,
-                wheres: vec![],
-            });
         }
 
         concrete::Module::Valid { items }

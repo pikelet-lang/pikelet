@@ -208,8 +208,8 @@ fn eval_print(
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            let free_var = desugar_env.on_binding(name);
-            tc_env.claims.insert(free_var.clone(), inferred);
+            let free_var = desugar_env.on_binding(&name);
+            tc_env.declarations.insert(free_var.clone(), inferred);
             tc_env.definitions.insert(free_var.clone(), term);
 
             return Ok(ControlFlow::Continue);

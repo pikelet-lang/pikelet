@@ -426,17 +426,17 @@ Category = Record {
     -- seq-cong : (a b c : Object) (f0 f1 : Arrow a b) (g0 g1 : Arrow b c) (p : rel f0 f1) (q : g0 = g1) -> seq f0 g0 = seq f1 g1;
 };
 
-||| The identity arrow
-id : (C : Category) (a : C.Object) -> C.Arrow a a;
-id C = C.id;
+-- ||| The identity arrow
+-- id : (C : Category) (a : C.Object) -> C.Arrow a a;
+-- id C = C.id;
 
 ||| The sequencing of two arrows
 seq : (C : Category) (a b c : C.Object) -> C.Arrow a b -> C.Arrow b c -> C.Arrow a c;
 seq C = C.seq;
 
-||| The composition of two arrows
-compose : (C : Category) (a b c : C.Object) -> C.Arrow b c -> C.Arrow a b -> C.Arrow a c;
-compose C a b c f g = seq C a b c g f;
+-- ||| The composition of two arrows
+-- compose : (C : Category) (a b c : C.Object) -> C.Arrow b c -> C.Arrow a b -> C.Arrow a c;
+-- compose C a b c f g = seq C a b c g f;
 
 
 Category-Function : Category = record {

@@ -5,11 +5,11 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, FreeVar, Scope, Var};
 
 use syntax::core::{
-    Definition, Head, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType,
-    RcValue, Term, Type, Value,
+    Head, Item, Literal, Module, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcType, RcValue,
+    Term, Type, Value,
 };
 use syntax::raw;
 use syntax::translation::Resugar;
@@ -26,38 +26,101 @@ pub use self::errors::{InternalError, TypeError};
 pub use self::prim::{PrimEnv, PrimFn};
 
 /// Type check and elaborate a module
-pub fn check_module(raw_module: &raw::Module) -> Result<Module, TypeError> {
-    let mut tc_env = TcEnv::default();
-    let definitions = raw_module
-        .definitions
-        .clone()
-        .unnest()
-        .into_iter()
-        .map(|(Binder(free_var), Embed(raw_definition))| {
-            let (term, ann) = match *raw_definition.ann.inner {
-                // We don't have a type annotation available to us! Instead we will
-                // attempt to infer it based on the body of the definition
-                raw::Term::Hole(_) => infer_term(&tc_env, &raw_definition.term)?,
-                // We have a type annotation! Elaborate it, then normalize it, then
-                // check that it matches the body of the definition
-                _ => {
-                    let (ann, _) = infer_term(&tc_env, &raw_definition.ann)?;
-                    let ann = normalize(&tc_env, &ann)?;
-                    let term = check_term(&tc_env, &raw_definition.term, &ann)?;
-                    (term, ann)
-                },
-            };
+pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, TypeError> {
+    use im::HashMap;
 
-            // Add the definition to the type checking environment
-            tc_env.claims.insert(free_var.clone(), ann.clone());
-            tc_env.definitions.insert(free_var.clone(), term.clone());
+    #[derive(Clone)]
+    pub enum ForwardDecl {
+        Pending(ByteSpan, RcTerm),
+        Defined(ByteSpan),
+    }
 
-            Ok((Binder(free_var), Embed(Definition { term, ann })))
-        }).collect::<Result<_, TypeError>>()?;
+    // Declarations that may be waiting to be defined
+    let mut forward_declarations = HashMap::new();
+    let mut tc_env = tc_env.clone();
+    // The elaborated items, pre-allocated to improve performance
+    let mut items = Vec::with_capacity(raw_module.items.len());
 
-    Ok(Module {
-        definitions: Nest::new(definitions),
-    })
+    // Iterate through the items in the module, checking each in turn
+    for raw_item in &raw_module.items {
+        match *raw_item {
+            raw::Item::Declaration(declaration_span, ref free_var, ref raw_ty) => {
+                // Ensure that this declaration has not already been seen
+                match forward_declarations.get(free_var).cloned() {
+                    // There's already a definition associated with this name -
+                    // we can't add a new declaration for it!
+                    Some(ForwardDecl::Defined(definition_span)) => {
+                        return Err(TypeError::DeclarationFollowedDefinition {
+                            definition_span,
+                            declaration_span,
+                            free_var: free_var.clone(),
+                        });
+                    },
+                    // There's a declaration  for this name already pending - we
+                    // can't add a new one!
+                    Some(ForwardDecl::Pending(original_span, _)) => {
+                        return Err(TypeError::DuplicateDeclarations {
+                            original_span,
+                            duplicate_span: declaration_span,
+                            free_var: free_var.clone(),
+                        });
+                    },
+                    // No previous declaration for this name was seen, so we can
+                    // go-ahead and type check, elaborate, and then add it to
+                    // the context
+                    None => {
+                        // Ensure that the declaration's type annotation is actually a type
+                        let (ty, _) = infer_universe(&tc_env, raw_ty)?;
+                        // Remember the declaration for when we get to a subsequent definition
+                        let declaration = ForwardDecl::Pending(declaration_span, ty.clone());
+                        forward_declarations.insert(free_var.clone(), declaration);
+                        // Add the declaration to the elaborated items
+                        items.push(Item::Declaration(free_var.clone(), ty));
+                    },
+                }
+            },
+
+            raw::Item::Definition(span, ref free_var, ref raw_term) => {
+                let (term, ty) = match forward_declarations.get(free_var).cloned() {
+                    // This declaration was already given a definition, so this
+                    // is an error!
+                    //
+                    // NOTE: Some languages (eg. Haskell, Agda, Idris, and
+                    // Erlang) turn duplicate definitions into case matches.
+                    // Languages like Elm don't. What should we do here?
+                    Some(ForwardDecl::Defined(original_span)) => {
+                        return Err(TypeError::DuplicateDefinitions {
+                            original_span,
+                            duplicate_span: span,
+                            free_var: free_var.clone(),
+                        });
+                    },
+                    // We found a prior declaration, so lets use it as a basis
+                    // for checking the definition
+                    Some(ForwardDecl::Pending(_, ty)) => {
+                        let ty = normalize(&tc_env, &ty)?;
+                        (check_term(&tc_env, &raw_term, &ty)?, ty)
+                    },
+                    // No prior declaration was found, so try to infer the type
+                    // from the given definition alone
+                    None => infer_term(&tc_env, &raw_term)?,
+                };
+
+                // We must not remove this from the list of pending
+                // declarations, lest we encounter another declaration or
+                // definition of the same name later on!
+                forward_declarations.insert(free_var.clone(), ForwardDecl::Defined(span));
+                // Add the declaration and definition to the environment,
+                // allowing them to be used in later type checking
+                tc_env.declarations.insert(free_var.clone(), ty);
+                tc_env.definitions.insert(free_var.clone(), term.clone());
+                // Add the definition to the elaborated items
+                items.push(Item::Definition(free_var.clone(), term));
+            },
+        }
+    }
+
+    Ok(Module { items })
 }
 
 /// Reduce a term to its normal form
@@ -344,7 +407,7 @@ fn infer_literal(raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeEr
 }
 
 /// Checks that a pattern is compatible with the given type, returning the
-/// elaborated pattern and a vector of the claims it introduced if successful
+/// elaborated pattern and a vector of the declarations it introduced if successful
 pub fn check_pattern(
     tc_env: &TcEnv,
     raw_pattern: &raw::RcPattern,
@@ -364,9 +427,9 @@ pub fn check_pattern(
         _ => {},
     }
 
-    let (pattern, inferred_ty, claims) = infer_pattern(tc_env, raw_pattern)?;
+    let (pattern, inferred_ty, declarations) = infer_pattern(tc_env, raw_pattern)?;
     if Type::term_eq(&inferred_ty, expected_ty) {
-        Ok((pattern, claims))
+        Ok((pattern, declarations))
     } else {
         Err(TypeError::Mismatch {
             span: raw_pattern.span(),
@@ -377,7 +440,7 @@ pub fn check_pattern(
 }
 
 /// Synthesize the type of a pattern, returning the elaborated pattern, the
-/// inferred type, and a vector of the claims it introduced if successful
+/// inferred type, and a vector of the declarations it introduced if successful
 pub fn infer_pattern(
     tc_env: &TcEnv,
     raw_pattern: &raw::RcPattern,
@@ -386,12 +449,12 @@ pub fn infer_pattern(
         raw::Pattern::Ann(ref raw_pattern, Embed(ref raw_ty)) => {
             let (ty, _) = infer_universe(tc_env, raw_ty)?;
             let value_ty = normalize(tc_env, &ty)?;
-            let (pattern, claims) = check_pattern(tc_env, raw_pattern, &value_ty)?;
+            let (pattern, declarations) = check_pattern(tc_env, raw_pattern, &value_ty)?;
 
             Ok((
                 RcPattern::from(Pattern::Ann(pattern, Embed(ty))),
                 value_ty,
-                claims,
+                declarations,
             ))
         },
         raw::Pattern::Literal(ref literal) => {
@@ -428,7 +491,7 @@ pub fn check_term(
                 let lam_ann = RcTerm::from(Term::from(&*pi_ann));
                 let lam_body = {
                     let mut body_tc_env = tc_env.clone();
-                    body_tc_env.claims.insert(pi_name, pi_ann);
+                    body_tc_env.declarations.insert(pi_name, pi_ann);
                     check_term(&body_tc_env, &lam_body, &pi_body)?
                 };
                 let lam_scope = Scope::new((lam_name, Embed(lam_ann)), lam_body);
@@ -491,10 +554,10 @@ pub fn check_term(
                 .iter()
                 .map(|raw_clause| {
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, claims) = check_pattern(tc_env, &raw_pattern, &head_ty)?;
+                    let (pattern, declarations) = check_pattern(tc_env, &raw_pattern, &head_ty)?;
 
                     let mut body_tc_env = tc_env.clone();
-                    body_tc_env.claims.extend(claims);
+                    body_tc_env.declarations.extend(declarations);
                     let body = check_term(&body_tc_env, &raw_body, expected_ty)?;
 
                     Ok(Scope::new(pattern, body))
@@ -581,12 +644,12 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
 
         // I-VAR
         raw::Term::Var(span, ref var) => match *var {
-            Var::Free(ref free_var) => match tc_env.claims.get(free_var) {
+            Var::Free(ref free_var) => match tc_env.declarations.get(free_var) {
                 Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
-                None => Err(InternalError::UndefinedFreeVar {
+                None => Err(TypeError::NotYetDefined {
                     span,
                     free_var: free_var.clone(),
-                }.into()),
+                }),
             },
 
             // We should always be substituting bound variables with fresh
@@ -627,7 +690,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
             let (body, body_level) = {
                 let ann = normalize(tc_env, &ann)?;
                 let mut body_tc_env = tc_env.clone();
-                body_tc_env.claims.insert(free_var.clone(), ann);
+                body_tc_env.declarations.insert(free_var.clone(), ann);
                 infer_universe(&body_tc_env, &raw_body)?
             };
 
@@ -654,7 +717,9 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
             let pi_ann = normalize(tc_env, &lam_ann)?;
             let (lam_body, pi_body) = {
                 let mut body_tc_env = tc_env.clone();
-                body_tc_env.claims.insert(free_var.clone(), pi_ann.clone());
+                body_tc_env
+                    .declarations
+                    .insert(free_var.clone(), pi_ann.clone());
                 infer_term(&body_tc_env, &raw_body)?
             };
 
@@ -710,7 +775,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
             let (body, body_level) = {
                 let ann = normalize(tc_env, &ann)?;
                 let mut body_tc_env = tc_env.clone();
-                body_tc_env.claims.insert(free_var.clone(), ann);
+                body_tc_env.declarations.insert(free_var.clone(), ann);
                 infer_universe(&body_tc_env, &raw_body)?
             };
 
@@ -781,11 +846,11 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
                 .iter()
                 .map(|raw_clause| {
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, claims) = check_pattern(tc_env, &raw_pattern, &head_ty)?;
+                    let (pattern, declarations) = check_pattern(tc_env, &raw_pattern, &head_ty)?;
 
                     let (body, body_ty) = {
                         let mut body_tc_env = tc_env.clone();
-                        body_tc_env.claims.extend(claims);
+                        body_tc_env.declarations.extend(declarations);
                         infer_term(&body_tc_env, &raw_body)?
                     };
 

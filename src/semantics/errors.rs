@@ -10,11 +10,6 @@ use syntax::raw;
 /// An internal error. These are bugs!
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
-    #[fail(display = "Undefined free variable `{}`", free_var)]
-    UndefinedFreeVar {
-        span: ByteSpan,
-        free_var: FreeVar<String>,
-    },
     #[fail(display = "Unexpected bound variable: `{}`.", var)]
     UnexpectedBoundVar {
         span: Option<ByteSpan>,
@@ -33,10 +28,6 @@ pub enum InternalError {
 impl InternalError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
-            InternalError::UndefinedFreeVar { ref free_var, span } => {
-                Diagnostic::new_bug(format!("cannot find `{}` in scope", free_var))
-                    .with_label(Label::new_primary(span).with_message("not found in this scope"))
-            },
             InternalError::UnexpectedBoundVar { span, ref var } => {
                 let base = Diagnostic::new_bug(format!("unexpected bound variable: `{}`", var));
                 match span {
@@ -63,6 +54,30 @@ impl InternalError {
 /// An error produced during type checking
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum TypeError {
+    #[fail(
+        display = "Name had more than one declaration associated with it: `{}`",
+        free_var,
+    )]
+    DuplicateDeclarations {
+        original_span: ByteSpan,
+        duplicate_span: ByteSpan,
+        free_var: FreeVar<String>,
+    },
+    #[fail(display = "Declaration followed definition: `{}`", free_var)]
+    DeclarationFollowedDefinition {
+        definition_span: ByteSpan,
+        declaration_span: ByteSpan,
+        free_var: FreeVar<String>,
+    },
+    #[fail(
+        display = "Name had more than one definition associated with it: `{}`",
+        free_var,
+    )]
+    DuplicateDefinitions {
+        original_span: ByteSpan,
+        duplicate_span: ByteSpan,
+        free_var: FreeVar<String>,
+    },
     #[fail(
         display = "Applied an argument to a non-function type `{}`",
         found,
@@ -133,6 +148,11 @@ pub enum TypeError {
         span: ByteSpan,
         found: Box<concrete::Term>,
     },
+    #[fail(display = "Not yet defined: `{}`", free_var)]
+    NotYetDefined {
+        span: ByteSpan,
+        free_var: FreeVar<String>,
+    },
     #[fail(display = "Undefined name `{}`", name)]
     UndefinedName { span: ByteSpan, name: String },
     #[fail(display = "Undefined extern name `{:?}`", name)]
@@ -152,7 +172,7 @@ pub enum TypeError {
     #[fail(
         display = "Mismatched array length: expected {} elements but found {}",
         expected_len,
-        found_len
+        found_len,
     )]
     ArrayLengthMismatch {
         span: ByteSpan,
@@ -180,6 +200,39 @@ impl TypeError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             TypeError::Internal(ref err) => err.to_diagnostic(),
+            TypeError::DuplicateDeclarations {
+                original_span,
+                duplicate_span,
+                ref free_var,
+            } => Diagnostic::new_error(format!(
+                "name had more than one declaration associated with it `{}`",
+                free_var,
+            )).with_label(
+                Label::new_primary(duplicate_span).with_message("the duplicated declaration"),
+            ).with_label(
+                Label::new_secondary(original_span).with_message("the original declaration"),
+            ),
+            TypeError::DeclarationFollowedDefinition {
+                definition_span,
+                declaration_span,
+                free_var: _,
+            } => Diagnostic::new_error(format!("declarations cannot follow definitions"))
+                .with_label(Label::new_primary(declaration_span).with_message("the declaration"))
+                .with_label(
+                    Label::new_secondary(definition_span).with_message("the original definition"),
+                ),
+            TypeError::DuplicateDefinitions {
+                original_span,
+                duplicate_span,
+                ref free_var,
+            } => Diagnostic::new_error(format!(
+                "name had more than one definition associated with it `{}`",
+                free_var
+            )).with_label(
+                Label::new_primary(duplicate_span).with_message("the duplicated definition"),
+            ).with_label(
+                Label::new_secondary(original_span).with_message("the original definition"),
+            ),
             TypeError::ArgAppliedToNonFunction {
                 fn_span,
                 arg_span,
@@ -262,6 +315,10 @@ impl TypeError {
             TypeError::ExpectedUniverse { ref found, span } => {
                 Diagnostic::new_error(format!("expected type, found a value of type `{}`", found))
                     .with_label(Label::new_primary(span).with_message("the value"))
+            },
+            TypeError::NotYetDefined { ref free_var, span } => {
+                Diagnostic::new_bug(format!("not yet defined `{}`", free_var))
+                    .with_label(Label::new_primary(span).with_message("not yet defined"))
             },
             TypeError::UndefinedName { ref name, span } => {
                 Diagnostic::new_error(format!("cannot find `{}` in scope", name))

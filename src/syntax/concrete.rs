@@ -95,19 +95,19 @@ pub type RecordTypeField = (ByteIndex, String, Term);
 
 pub type RecordField = (ByteIndex, String, LamParams, Option<Box<Term>>, Term);
 
-/// Top level items
+/// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    /// Claims that a term abides by the given type
+    /// Declares the type associated with a name, prior to its definition
     ///
     /// ```text
     /// foo : some-type
     /// ```
-    Claim {
+    Declaration {
         name: (ByteIndex, String),
         ann: Term,
     },
-    /// Declares the body of a term
+    /// Defines the term that should be associated with a name
     ///
     /// ```text
     /// foo = some-body
@@ -117,7 +117,7 @@ pub enum Item {
     ///         some-value = some-body
     ///     }
     /// ```
-    Define {
+    Definition {
         span: ByteSpan,
         name: String,
         params: LamParams,
@@ -135,8 +135,8 @@ impl Item {
     /// Return the span of source code that this declaration originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Item::Define { span, .. } => span,
-            Item::Claim { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
+            Item::Definition { span, .. } => span,
+            Item::Declaration { ref name, ref ann } => ByteSpan::new(name.0, ann.span().end()),
             Item::Error(span) => span,
         }
     }

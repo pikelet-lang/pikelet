@@ -238,7 +238,7 @@ even though we don't know the exact values these will eventually take during nor
 \\[
 \begin{array}{rrll}
     \Gamma,\Delta  & ::= & \varnothing          & \text{the empty context} \\\\
-                   &   | & \Gamma,x:\vtype      & \text{context extended with a type claim} \\\\
+                   &   | & \Gamma,x:\vtype      & \text{context extended with a declaration} \\\\
                    &   | & \Gamma,x=\texpr      & \text{context extended with a definition} \\\\
 \end{array}
 \\]
