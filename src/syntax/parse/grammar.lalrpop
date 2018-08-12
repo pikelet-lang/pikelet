@@ -97,7 +97,7 @@ pub Module: Module = {
 
 Item: Item = {
     <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {
-        Item::Claim { name, ann }
+        Item::Declaration { name, ann }
     },
     <_comment: "doc comment"*> <name: IndexedIdent> <params: AtomicLamParam*> <return_ann: (":" <Term>)?> "="
         <body: Term> <wheres: ("where" "{" <Item+> "}")?> <end: @R> ";" =>
@@ -107,7 +107,7 @@ Item: Item = {
         let return_ann = return_ann.map(Box::new);
         let wheres = wheres.unwrap_or(vec![]);
 
-        Item::Define { span, name, params, return_ann, body, wheres }
+        Item::Definition { span, name, params, return_ann, body, wheres }
     },
     <start: @L> <recovered: !> <end: @R> ";" => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));

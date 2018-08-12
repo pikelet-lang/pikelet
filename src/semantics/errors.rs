@@ -55,18 +55,18 @@ impl InternalError {
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum TypeError {
     #[fail(
-        display = "Name had more than one claim associated with it: `{}`",
+        display = "Name had more than one declaration associated with it: `{}`",
         free_var,
     )]
-    DuplicateClaims {
+    DuplicateDeclarations {
         original_span: ByteSpan,
         duplicate_span: ByteSpan,
         free_var: FreeVar<String>,
     },
-    #[fail(display = "Claim followed definition: `{}`", free_var)]
-    ClaimFollowedDefinition {
+    #[fail(display = "Declaration followed definition: `{}`", free_var)]
+    DeclarationFollowedDefinition {
         definition_span: ByteSpan,
-        claim_span: ByteSpan,
+        declaration_span: ByteSpan,
         free_var: FreeVar<String>,
     },
     #[fail(
@@ -200,21 +200,24 @@ impl TypeError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             TypeError::Internal(ref err) => err.to_diagnostic(),
-            TypeError::DuplicateClaims {
+            TypeError::DuplicateDeclarations {
                 original_span,
                 duplicate_span,
                 ref free_var,
             } => Diagnostic::new_error(format!(
-                "name had more than one claim associated with it `{}`",
+                "name had more than one declaration associated with it `{}`",
                 free_var,
-            )).with_label(Label::new_primary(duplicate_span).with_message("the duplicated claim"))
-            .with_label(Label::new_secondary(original_span).with_message("the original claim")),
-            TypeError::ClaimFollowedDefinition {
+            )).with_label(
+                Label::new_primary(duplicate_span).with_message("the duplicated declaration"),
+            ).with_label(
+                Label::new_secondary(original_span).with_message("the original declaration"),
+            ),
+            TypeError::DeclarationFollowedDefinition {
                 definition_span,
-                claim_span,
+                declaration_span,
                 free_var: _,
-            } => Diagnostic::new_error(format!("claims cannot follow definitions"))
-                .with_label(Label::new_primary(claim_span).with_message("the claim"))
+            } => Diagnostic::new_error(format!("declarations cannot follow definitions"))
+                .with_label(Label::new_primary(declaration_span).with_message("the declaration"))
                 .with_label(
                     Label::new_secondary(definition_span).with_message("the original definition"),
                 ),

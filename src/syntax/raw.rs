@@ -19,24 +19,25 @@ pub struct Module {
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    /// Claims that a term abides by the given type
-    Claim(ByteSpan, FreeVar<String>, RcTerm),
-    /// Defines the body of a term
-    Define(ByteSpan, FreeVar<String>, RcTerm),
+    /// Declares the type associated with a name, prior to its definition
+    Declaration(ByteSpan, FreeVar<String>, RcTerm),
+    /// Defines the term that should be associated with a name
+    Definition(ByteSpan, FreeVar<String>, RcTerm),
 }
 
 impl Item {
     pub fn free_var(&self) -> &FreeVar<String> {
         match *self {
-            Item::Claim(_, ref free_var, _) | Item::Define(_, ref free_var, _) => free_var,
+            Item::Declaration(_, ref free_var, _) | Item::Definition(_, ref free_var, _) => {
+                free_var
+            },
         }
     }
 
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Item::Claim(name_span, _, ref term) | Item::Define(name_span, _, ref term) => {
-                name_span.to(term.span())
-            },
+            Item::Declaration(name_span, _, ref term)
+            | Item::Definition(name_span, _, ref term) => name_span.to(term.span()),
         }
     }
 }

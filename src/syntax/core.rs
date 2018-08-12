@@ -18,10 +18,10 @@ pub struct Module {
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    /// Claims that a term abides by the given type
-    Claim(FreeVar<String>, RcTerm),
-    /// Defines the body of a term
-    Define(FreeVar<String>, RcTerm),
+    /// Declares the type associated with a name, prior to its definition
+    Declaration(FreeVar<String>, RcTerm),
+    /// Defines the term that should be associated with a name
+    Definition(FreeVar<String>, RcTerm),
 }
 
 /// Literals

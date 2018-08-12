@@ -215,16 +215,16 @@ impl Desugar<raw::Module> for concrete::Module {
         let mut items = Vec::with_capacity(concrete_items.len());
         for concrete_item in concrete_items {
             let item = match *concrete_item {
-                concrete::Item::Claim {
+                concrete::Item::Declaration {
                     name: (start, ref name),
                     ref ann,
                 } => {
                     let name_span = ByteSpan::from_offset(start, ByteOffset::from_str(name));
                     let ann = ann.desugar(&env);
                     let free_var = env.on_item(name);
-                    raw::Item::Claim(name_span, free_var, ann)
+                    raw::Item::Declaration(name_span, free_var, ann)
                 },
-                concrete::Item::Define {
+                concrete::Item::Definition {
                     ref span,
                     ref name,
                     ref params,
@@ -239,7 +239,7 @@ impl Desugar<raw::Module> for concrete::Module {
                     if !wheres.is_empty() {
                         unimplemented!("where clauses");
                     }
-                    raw::Item::Define(name_span, free_var, term)
+                    raw::Item::Definition(name_span, free_var, term)
                 },
                 concrete::Item::Error(_) => unimplemented!("error recovery"),
             };

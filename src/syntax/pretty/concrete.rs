@@ -23,17 +23,17 @@ impl ToDoc for Module {
 impl ToDoc for Item {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Item::Claim {
+            Item::Declaration {
                 ref name, ref ann, ..
             } => Doc::as_string(&name.1)
                 .append(Doc::space())
                 .append(":")
                 .append(Doc::space())
                 .append(ann.to_doc()),
-            Item::Define { ref wheres, .. } if !wheres.is_empty() => {
+            Item::Definition { ref wheres, .. } if !wheres.is_empty() => {
                 unimplemented!("where clauses")
             },
-            Item::Define {
+            Item::Definition {
                 ref name,
                 ref params,
                 ref return_ann,
