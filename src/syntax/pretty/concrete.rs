@@ -24,22 +24,19 @@ impl ToDoc for Item {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Item::Declaration {
-                ref name, ref ann, ..
-            } => Doc::as_string(&name.1)
+                name: (_, ref name),
+                ref ann,
+                ..
+            } => Doc::as_string(name)
                 .append(Doc::space())
                 .append(":")
                 .append(Doc::space())
                 .append(ann.to_doc()),
-            Item::Definition { ref wheres, .. } if !wheres.is_empty() => {
-                unimplemented!("where clauses")
-            },
             Item::Definition {
-                ref name,
+                name: (_, ref name),
                 ref params,
                 ref return_ann,
                 ref body,
-                ref wheres,
-                ..
             } => Doc::as_string(name)
                 .append(Doc::space())
                 .append(match params[..] {
@@ -51,22 +48,7 @@ impl ToDoc for Item {
                         .append(Doc::space())
                 })).append("=")
                 .append(Doc::space())
-                .append(body.to_doc().nest(INDENT_WIDTH))
-                .append(if wheres.is_empty() {
-                    Doc::nil()
-                } else {
-                    // FIXME: Indentation
-                    Doc::newline()
-                        .append("where")
-                        .append(Doc::space())
-                        .append("{")
-                        .append(Doc::newline())
-                        .append(Doc::intersperse(
-                            wheres.iter().map(|w| w.to_doc()),
-                            Doc::newline(),
-                        )).append(Doc::newline())
-                        .append("}")
-                }),
+                .append(body.to_doc().nest(INDENT_WIDTH)),
             Item::Error(_) => Doc::text("<error>"),
         }.append(";")
     }
