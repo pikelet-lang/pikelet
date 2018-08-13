@@ -7,6 +7,7 @@
   - [Conditionals](./language/conditionals.md)
   - [Records](./language/records.md)
   - [Functions](./language/functions.md)
+  - [Modules](./language/modules.md)
   - [Type inference](./language/type-inference.md)
   - [Types of types](./language/types-of-types.md)
 - [Appendix](./appendix/index.md)
