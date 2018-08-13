@@ -122,7 +122,6 @@ pub enum Token<S> {
     RecordType, // Record
     Then,       // then
     Type,       // Type
-    Where,      // where
 
     // Symbols
     BSlash,    // \
@@ -166,7 +165,6 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::RecordType => write!(f, "Record"),
             Token::Then => write!(f, "then"),
             Token::Type => write!(f, "Type"),
-            Token::Where => write!(f, "where"),
             Token::BSlash => write!(f, "\\"),
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
@@ -208,7 +206,6 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::RecordType => Token::RecordType,
             Token::Then => Token::Then,
             Token::Type => Token::Type,
-            Token::Where => Token::Where,
             Token::BSlash => Token::BSlash,
             Token::Colon => Token::Colon,
             Token::Comma => Token::Comma,
@@ -355,7 +352,6 @@ impl<'input> Lexer<'input> {
             "Record" => Token::RecordType,
             "then" => Token::Then,
             "Type" => Token::Type,
-            "where" => Token::Where,
             ident => Token::Ident(ident),
         };
 
@@ -584,20 +580,19 @@ mod tests {
     #[test]
     fn keywords() {
         test! {
-            "  as case else extern if in let of record Record then Type where  ",
-            "  ~~                                                              " => Token::As,
-            "     ~~~~                                                         " => Token::Case,
-            "          ~~~~                                                    " => Token::Else,
-            "               ~~~~~~                                             " => Token::Extern,
-            "                      ~~                                          " => Token::If,
-            "                         ~~                                       " => Token::In,
-            "                            ~~~                                   " => Token::Let,
-            "                                ~~                                " => Token::Of,
-            "                                   ~~~~~~                         " => Token::Record,
-            "                                          ~~~~~~                  " => Token::RecordType,
-            "                                                 ~~~~             " => Token::Then,
-            "                                                      ~~~~        " => Token::Type,
-            "                                                           ~~~~~  " => Token::Where,
+            "  as case else extern if in let of record Record then Type  ",
+            "  ~~                                                        " => Token::As,
+            "     ~~~~                                                   " => Token::Case,
+            "          ~~~~                                              " => Token::Else,
+            "               ~~~~~~                                       " => Token::Extern,
+            "                      ~~                                    " => Token::If,
+            "                         ~~                                 " => Token::In,
+            "                            ~~~                             " => Token::Let,
+            "                                ~~                          " => Token::Of,
+            "                                   ~~~~~~                   " => Token::Record,
+            "                                          ~~~~~~            " => Token::RecordType,
+            "                                                 ~~~~       " => Token::Then,
+            "                                                      ~~~~  " => Token::Type,
         };
     }
 

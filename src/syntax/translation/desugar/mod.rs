@@ -225,20 +225,16 @@ impl Desugar<raw::Module> for concrete::Module {
                     raw::Item::Declaration(name_span, free_var, ann)
                 },
                 concrete::Item::Definition {
-                    ref span,
-                    ref name,
+                    name: (start, ref name),
                     ref params,
                     ref return_ann,
                     ref body,
-                    ref wheres,
                 } => {
-                    let name_span = ByteSpan::from_offset(span.start(), ByteOffset::from_str(name));
+                    let name_span = ByteSpan::from_offset(start, ByteOffset::from_str(name));
                     let return_ann = return_ann.as_ref().map(<_>::as_ref);
                     let term = desugar_lam(&env, params, return_ann, body);
                     let free_var = env.on_item(name);
-                    if !wheres.is_empty() {
-                        unimplemented!("where clauses");
-                    }
+
                     raw::Item::Definition(name_span, free_var, term)
                 },
                 concrete::Item::Error(_) => unimplemented!("error recovery"),

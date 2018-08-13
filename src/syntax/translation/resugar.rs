@@ -32,14 +32,12 @@ impl Resugar<concrete::Module> for core::Module {
                     };
 
                     items.push(concrete::Item::Definition {
-                        span: ByteSpan::default(),
                         // TODO: use name if it is present, and not used in the current scope
                         // TODO: otherwise create a pretty name
-                        name: free_var.to_string(),
+                        name: (ByteIndex::default(), free_var.to_string()),
                         return_ann: None,
                         params,
                         body,
-                        wheres: vec![],
                     });
                 },
             };
