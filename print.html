@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.4.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.5.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.6.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -196,37 +196,14 @@ sooner or later the REPL will be ready for you to interact with!</p>
 <a class="header" href="#language" id="language"><h1>Language</h1></a>
 <a class="header" href="#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="#declarations">Declarations</a></li>
 <li><a href="#comments">Comments</a></li>
 <li><a href="#primitive-types-and-their-literals">Primitive types and their literals</a></li>
 <li><a href="#type-annotations">Type annotations</a></li>
 <li><a href="#identifiers">Identifiers</a></li>
 </ul>
-<a class="header" href="#declarations" id="declarations"><h2>Declarations</h2></a>
-<p>Declarations are preceded by a type annotation, and followed by a definition:</p>
-<pre><code class="language-pikelet">greeting : String;
-greeting = &quot;hello there!&quot;;
-</code></pre>
-<p>We can also make type aliases in the same way:</p>
-<pre><code class="language-pikelet">name : Type;
-name = String;
-</code></pre>
 <a class="header" href="#comments" id="comments"><h2>Comments</h2></a>
 <p>Line comments are preceded by a double dash:</p>
 <pre><code class="language-pikelet">-- this is a comment!
-</code></pre>
-<p>Doc comments are preceded by a triple pipe, and are used to document
-definitions:</p>
-<pre><code class="language-pikelet">||| This is a documented definition
-|||
-||| # Example
-|||
-||| ```pikelet-repl
-||| Pikelet&gt; self-aware-string
-||| &quot;I am a string!&quot; : String
-||| ```
-self-aware-string : String;
-self-aware-string = &quot;I am a string!&quot;;
 </code></pre>
 <a class="header" href="#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
 <p>Pikelet has a number of primitive types:</p>
@@ -403,6 +380,64 @@ example the following function types are equivalent:</p>
 (a : Type) -&gt; (x : a) -&gt; a
 (a : Type) -&gt; a -&gt; a
 </code></pre>
+<a class="header" href="#modules" id="modules"><h1>Modules</h1></a>
+<a class="header" href="#contents-3" id="contents-3"><h2>Contents</h2></a>
+<ul>
+<li><a href="#items">Items</a></li>
+<li><a href="#function-definitions">Function definitions</a></li>
+<li><a href="#type-aliases">Type aliases</a></li>
+<li><a href="#doc-comments">Doc comments</a></li>
+</ul>
+<a class="header" href="#items" id="items"><h2>Items</h2></a>
+<p>Modules are made up of items. At the moment these can either be <em>declarations</em>
+or <em>definitions</em>.</p>
+<p>A <em>declaration</em> states the type for of an identifier that we should
+expect to see in a subsequent <em>definition</em> for that identifier. For example:</p>
+<pre><code class="language-pikelet">greeting : String;              -- declaration
+greeting = &quot;hello there!&quot;;      -- definition
+</code></pre>
+<p>We can make supply a number of forward declarations before providing their
+associated definitions:</p>
+<pre><code class="language-pikelet">one : I32;
+two : I32;
+
+one = 1;
+two = 1;
+</code></pre>
+<p>Values that can be inferred do not require a declaration, although sometimes a
+declaration may be useful for documentations purposes!</p>
+<pre><code class="language-pikelet">string = &quot;hello&quot;  -- ok!
+one = 1 : U16     -- ok!
+two = 2           -- error: is this an U8, U16, etc?
+</code></pre>
+<a class="header" href="#function-definitions" id="function-definitions"><h2>Function definitions</h2></a>
+<p>We have some nice syntactic sugar for defining functions. For example:</p>
+<pre><code class="language-pikelet">const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+const = \a b x y =&gt; x;
+</code></pre>
+<p>Could be expressed more cleanly as:</p>
+<pre><code class="language-pikelet">const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+const a b x y = x;
+</code></pre>
+<a class="header" href="#type-aliases" id="type-aliases"><h2>Type aliases</h2></a>
+<p>Because Pikelet is dependently typed, we need no other mechanism for making
+type aliases. Instead we just use definitions!</p>
+<pre><code class="language-pikelet">name : Type;
+name = String;
+</code></pre>
+<a class="header" href="#doc-comments" id="doc-comments"><h2>Doc comments</h2></a>
+<p>Documentation can be provided for above declarations, by using doc comments:</p>
+<pre><code class="language-pikelet">||| This is a documented definition
+|||
+||| # Example
+|||
+||| ```pikelet-repl
+||| Pikelet&gt; self-aware-string
+||| &quot;I am a string!&quot; : String
+||| ```
+self-aware-string : String;
+self-aware-string = &quot;I am a string!&quot;;
+</code></pre>
 <a class="header" href="#type-inference" id="type-inference"><h1>Type inference</h1></a>
 <p>Many statically typed languages perform type inference to varying degrees, and
 Pikelet is no different! The goal is to reduce the burden of writing type
@@ -412,7 +447,7 @@ any annotations at all!</p>
 <p>Pikelet's type inference follows some very simple rules that you can probably
 pick up on your own, but we thought it might help to give a deeper explanation
 of how it works, without getting too bogged down in the theoretical details.</p>
-<a class="header" href="#contents-3" id="contents-3"><h2>Contents</h2></a>
+<a class="header" href="#contents-4" id="contents-4"><h2>Contents</h2></a>
 <ul>
 <li><a href="#bidirectional-typechecking">Bidirectional type checking</a>
 <ul>
@@ -655,7 +690,7 @@ downside of a verified implementation is that it could take a prohibitive
 amount of time to complete.</p>
 <a class="header" href="#theory" id="theory"><h1>Theory</h1></a>
 <p>A formalization of the semantics for type checking and normalizing Pikelet.</p>
-<a class="header" href="#contents-4" id="contents-4"><h2>Contents</h2></a>
+<a class="header" href="#contents-5" id="contents-5"><h2>Contents</h2></a>
 <ul>
 <li><a href="#introduction">Introduction</a>
 <ul>
@@ -1445,7 +1480,7 @@ be useful for this?</p>
 <p>Some languages have been inspiring when building Pikelet. We list some of them
 here, and the contributions they have made in our thinking. These ideas may or
 may not be included in the final Pikelet language, but they are worth mentioning!</p>
-<a class="header" href="#contents-5" id="contents-5"><h2>Contents</h2></a>
+<a class="header" href="#contents-6" id="contents-6"><h2>Contents</h2></a>
 <ul>
 <li><a href="#1ml">1ML</a></li>
 <li><a href="#agda">Agda</a></li>

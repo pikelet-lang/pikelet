@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Language - Pikelet Language Book</title>
+        <title>Modules - Pikelet Language Book</title>
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="Documentation for the Pikelet Language">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html" class="active"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="../language/types-of-types.html"><strong aria-hidden="true">2.6.</strong> Types of types</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/modules.html" class="active"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="../language/types-of-types.html"><strong aria-hidden="true">2.6.</strong> Types of types</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -139,75 +139,77 @@
 
                 <div id="content" class="content">
                     <main>
-                        <a class="header" href="#language" id="language"><h1>Language</h1></a>
+                        <a class="header" href="#modules" id="modules"><h1>Modules</h1></a>
 <a class="header" href="#contents" id="contents"><h2>Contents</h2></a>
 <ul>
-<li><a href="#comments">Comments</a></li>
-<li><a href="#primitive-types-and-their-literals">Primitive types and their literals</a></li>
-<li><a href="#type-annotations">Type annotations</a></li>
-<li><a href="#identifiers">Identifiers</a></li>
+<li><a href="#items">Items</a></li>
+<li><a href="#function-definitions">Function definitions</a></li>
+<li><a href="#type-aliases">Type aliases</a></li>
+<li><a href="#doc-comments">Doc comments</a></li>
 </ul>
-<a class="header" href="#comments" id="comments"><h2>Comments</h2></a>
-<p>Line comments are preceded by a double dash:</p>
-<pre><code class="language-pikelet">-- this is a comment!
+<a class="header" href="#items" id="items"><h2>Items</h2></a>
+<p>Modules are made up of items. At the moment these can either be <em>declarations</em>
+or <em>definitions</em>.</p>
+<p>A <em>declaration</em> states the type for of an identifier that we should
+expect to see in a subsequent <em>definition</em> for that identifier. For example:</p>
+<pre><code class="language-pikelet">greeting : String;              -- declaration
+greeting = &quot;hello there!&quot;;      -- definition
 </code></pre>
-<a class="header" href="#primitive-types-and-their-literals" id="primitive-types-and-their-literals"><h2>Primitive types and their literals</h2></a>
-<p>Pikelet has a number of primitive types:</p>
-<table><thead><tr><th> Type     </th><th> Literal                                </th></tr></thead><tbody>
-<tr><td> <code>Bool</code>   </td><td> <code>true</code>, <code>false</code>                        </td></tr>
-<tr><td> <code>String</code> </td><td> <code>&quot;hello there!&quot;</code>                       </td></tr>
-<tr><td> <code>Char</code>   </td><td> <code>'a'</code>, <code>'b'</code>, ..., <code>'\n'</code>, <code>'\t'</code>, ... </td></tr>
-<tr><td> <code>U8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>U16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>U32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>U64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>F32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
-<tr><td> <code>F64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
-</tbody></table>
-<blockquote>
-<p><strong>Note:</strong> You can't do much with these primitive types yet. In the future we
-will add some primitive functions to allow you to manipulate them.</p>
-</blockquote>
-<a class="header" href="#type-annotations" id="type-annotations"><h2>Type annotations</h2></a>
-<p>If you note <a href="#primitive-types-and-their-literals">above</a>, a number of the
-primitive types share a literal representation. Pikelet will try to predictably
-infer the types, but if it fails to do so you will get an error. In that case
-you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; 1
-error: ambiguous integer literal
-Pikelet&gt; 1 : I32
-1 : I32
-Pikelet&gt; 1 : F32
-1 : F32
-Pikelet&gt; 1.0 : F32
-1.0 : F32
-Pikelet&gt; 1.1 : U64
-error: found a floating point literal, but expected a type `U64`
-- &lt;repl&gt;:1:1
-1 | 1.1 : U64
-  | ^^^ the literal
+<p>We can make supply a number of forward declarations before providing their
+associated definitions:</p>
+<pre><code class="language-pikelet">one : I32;
+two : I32;
+
+one = 1;
+two = 1;
 </code></pre>
-<a class="header" href="#identifiers" id="identifiers"><h2>Identifiers</h2></a>
-<blockquote>
-<p>TODO</p>
-</blockquote>
+<p>Values that can be inferred do not require a declaration, although sometimes a
+declaration may be useful for documentations purposes!</p>
+<pre><code class="language-pikelet">string = &quot;hello&quot;  -- ok!
+one = 1 : U16     -- ok!
+two = 2           -- error: is this an U8, U16, etc?
+</code></pre>
+<a class="header" href="#function-definitions" id="function-definitions"><h2>Function definitions</h2></a>
+<p>We have some nice syntactic sugar for defining functions. For example:</p>
+<pre><code class="language-pikelet">const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+const = \a b x y =&gt; x;
+</code></pre>
+<p>Could be expressed more cleanly as:</p>
+<pre><code class="language-pikelet">const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+const a b x y = x;
+</code></pre>
+<a class="header" href="#type-aliases" id="type-aliases"><h2>Type aliases</h2></a>
+<p>Because Pikelet is dependently typed, we need no other mechanism for making
+type aliases. Instead we just use definitions!</p>
+<pre><code class="language-pikelet">name : Type;
+name = String;
+</code></pre>
+<a class="header" href="#doc-comments" id="doc-comments"><h2>Doc comments</h2></a>
+<p>Documentation can be provided for above declarations, by using doc comments:</p>
+<pre><code class="language-pikelet">||| This is a documented definition
+|||
+||| # Example
+|||
+||| ```pikelet-repl
+||| Pikelet&gt; self-aware-string
+||| &quot;I am a string!&quot; : String
+||| ```
+self-aware-string : String;
+self-aware-string = &quot;I am a string!&quot;;
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
                         
-                            <a rel="prev" href="../installation/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../language/functions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
                         
 
                         
-                            <a rel="next" href="../language/conditionals.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../language/type-inference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         
@@ -219,13 +221,13 @@ error: found a floating point literal, but expected a type `U64`
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
                 
-                    <a href="../installation/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a href="../language/functions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
                 
 
                 
-                    <a href="../language/conditionals.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a href="../language/type-inference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
                 
