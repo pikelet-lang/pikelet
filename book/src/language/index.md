@@ -2,28 +2,10 @@
 
 ## Contents
 
-- [Declarations](#declarations)
 - [Comments](#comments)
 - [Primitive types and their literals](#primitive-types-and-their-literals)
 - [Type annotations](#type-annotations)
 - [Identifiers](#identifiers)
-
-
-## Declarations
-
-Declarations are preceded by a type annotation, and followed by a definition:
-
-```pikelet
-greeting : String;
-greeting = "hello there!";
-```
-
-We can also make type aliases in the same way:
-
-```pikelet
-name : Type;
-name = String;
-```
 
 ## Comments
 
@@ -31,22 +13,6 @@ Line comments are preceded by a double dash:
 
 ```pikelet
 -- this is a comment!
-```
-
-Doc comments are preceded by a triple pipe, and are used to document
-definitions:
-
-```pikelet
-||| This is a documented definition
-|||
-||| # Example
-|||
-||| ```pikelet-repl
-||| Pikelet> self-aware-string
-||| "I am a string!" : String
-||| ```
-self-aware-string : String;
-self-aware-string = "I am a string!";
 ```
 
 ## Primitive types and their literals
