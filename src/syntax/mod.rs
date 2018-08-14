@@ -30,3 +30,21 @@ impl fmt::Display for Level {
         write!(f, "{}", self.0)
     }
 }
+
+/// A label that describes the name of a field in a record
+///
+/// Labels are significant when comparing for alpha-equality
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, BoundPattern, BoundTerm)]
+pub struct Label(pub String);
+
+impl From<String> for Label {
+    fn from(src: String) -> Label {
+        Label(src)
+    }
+}
+
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

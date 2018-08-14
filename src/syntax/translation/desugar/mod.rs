@@ -4,7 +4,7 @@ use moniker::{Binder, Embed, FreeVar, Scope, Var};
 
 use syntax::concrete;
 use syntax::raw;
-use syntax::Level;
+use syntax::{Label, Level};
 
 #[cfg(test)]
 mod test;
@@ -160,7 +160,7 @@ fn desugar_record_ty(
         .map(|&(start, ref label, ref ann)| {
             let ann = ann.desugar(&env);
             let free_var = env.on_binding(label);
-            (start, label.clone(), Binder(free_var), ann)
+            (start, Label(label.clone()), Binder(free_var), ann)
         }).collect::<Vec<_>>();
 
     let end_span = ByteSpan::new(span.end(), span.end());
@@ -188,7 +188,7 @@ fn desugar_record(
             |&(start, ref label, ref params, ref return_ann, ref value)| {
                 let value = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), value);
                 let free_var = env.on_binding(label);
-                (start, label.clone(), Binder(free_var), value)
+                (start, Label(label.clone()), Binder(free_var), value)
             },
         ).collect::<Vec<_>>();
 
@@ -351,7 +351,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                     span,
                     tm.desugar(env),
                     ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
-                    label.clone(),
+                    Label(label.clone()),
                 ))
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),

@@ -8,7 +8,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::Level;
+use syntax::{Label, Level};
 
 /// A module definition
 pub struct Module {
@@ -155,19 +155,19 @@ pub enum Term {
     /// Dependent record types
     RecordType(
         ByteSpan,
-        Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>,
+        Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// Dependent record
     Record(
         ByteSpan,
-        Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>,
+        Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// The unit type
     RecordTypeEmpty(ByteSpan),
     /// The element of the unit type
     RecordEmpty(ByteSpan),
     /// Field projection
-    Proj(ByteSpan, RcTerm, ByteSpan, String),
+    Proj(ByteSpan, RcTerm, ByteSpan, Label),
     /// Case expressions
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
