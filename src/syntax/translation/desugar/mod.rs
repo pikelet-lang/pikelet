@@ -27,11 +27,11 @@ impl DesugarEnv {
         DesugarEnv::default()
     }
 
-    pub fn on_item(&mut self, name: &str) -> FreeVar<String> {
+    pub fn on_item(&mut self, name: &str) -> Binder<String> {
         if let Some(free_var) = self.locals.get(name) {
-            return free_var.clone();
+            return Binder(free_var.clone());
         }
-        self.on_binding(name)
+        Binder(self.on_binding(name))
     }
 
     pub fn on_binding(&mut self, name: &str) -> FreeVar<String> {
@@ -219,10 +219,14 @@ impl Desugar<raw::Module> for concrete::Module {
                     name: (start, ref name),
                     ref ann,
                 } => {
-                    let name_span = ByteSpan::from_offset(start, ByteOffset::from_str(name));
-                    let ann = ann.desugar(&env);
-                    let free_var = env.on_item(name);
-                    raw::Item::Declaration(name_span, free_var, ann)
+                    let term = ann.desugar(&env);
+
+                    raw::Item::Declaration {
+                        label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
+                        label: Label(name.clone()),
+                        binder: env.on_item(name),
+                        term,
+                    }
                 },
                 concrete::Item::Definition {
                     name: (start, ref name),
@@ -230,12 +234,15 @@ impl Desugar<raw::Module> for concrete::Module {
                     ref return_ann,
                     ref body,
                 } => {
-                    let name_span = ByteSpan::from_offset(start, ByteOffset::from_str(name));
                     let return_ann = return_ann.as_ref().map(<_>::as_ref);
                     let term = desugar_lam(&env, params, return_ann, body);
-                    let free_var = env.on_item(name);
 
-                    raw::Item::Definition(name_span, free_var, term)
+                    raw::Item::Definition {
+                        label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
+                        label: Label(name.clone()),
+                        binder: env.on_item(name),
+                        term,
+                    }
                 },
                 concrete::Item::Error(_) => unimplemented!("error recovery"),
             };

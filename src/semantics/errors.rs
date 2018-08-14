@@ -57,27 +57,27 @@ impl InternalError {
 pub enum TypeError {
     #[fail(
         display = "Name had more than one declaration associated with it: `{}`",
-        free_var,
+        binder,
     )]
     DuplicateDeclarations {
         original_span: ByteSpan,
         duplicate_span: ByteSpan,
-        free_var: FreeVar<String>,
+        binder: Binder<String>,
     },
-    #[fail(display = "Declaration followed definition: `{}`", free_var)]
+    #[fail(display = "Declaration followed definition: `{}`", binder)]
     DeclarationFollowedDefinition {
         definition_span: ByteSpan,
         declaration_span: ByteSpan,
-        free_var: FreeVar<String>,
+        binder: Binder<String>,
     },
     #[fail(
         display = "Name had more than one definition associated with it: `{}`",
-        free_var,
+        binder,
     )]
     DuplicateDefinitions {
         original_span: ByteSpan,
         duplicate_span: ByteSpan,
-        free_var: FreeVar<String>,
+        binder: Binder<String>,
     },
     #[fail(
         display = "Applied an argument to a non-function type `{}`",
@@ -204,10 +204,10 @@ impl TypeError {
             TypeError::DuplicateDeclarations {
                 original_span,
                 duplicate_span,
-                ref free_var,
+                ref binder,
             } => Diagnostic::new_error(format!(
                 "name had more than one declaration associated with it `{}`",
-                free_var,
+                binder,
             )).with_label(
                 Label::new_primary(duplicate_span).with_message("the duplicated declaration"),
             ).with_label(
@@ -216,7 +216,7 @@ impl TypeError {
             TypeError::DeclarationFollowedDefinition {
                 definition_span,
                 declaration_span,
-                free_var: _,
+                binder: _,
             } => Diagnostic::new_error(format!("declarations cannot follow definitions"))
                 .with_label(Label::new_primary(declaration_span).with_message("the declaration"))
                 .with_label(
@@ -225,10 +225,10 @@ impl TypeError {
             TypeError::DuplicateDefinitions {
                 original_span,
                 duplicate_span,
-                ref free_var,
+                ref binder,
             } => Diagnostic::new_error(format!(
                 "name had more than one definition associated with it `{}`",
-                free_var
+                binder,
             )).with_label(
                 Label::new_primary(duplicate_span).with_message("the duplicated definition"),
             ).with_label(

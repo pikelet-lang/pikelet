@@ -18,10 +18,28 @@ pub struct Module {
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    /// Declares the type associated with a name, prior to its definition
-    Declaration(FreeVar<String>, RcTerm),
-    /// Defines the term that should be associated with a name
-    Definition(FreeVar<String>, RcTerm),
+    /// Declares the type associated with a label, prior to its definition
+    Declaration {
+        /// The external name for this declaration, to be used when referring
+        /// to this item from other modules
+        label: Label,
+        /// The internal name for this declaration., to be used when binding
+        /// this name to variables
+        binder: Binder<String>,
+        /// The type annotation for associated with the label
+        term: RcTerm,
+    },
+    /// Defines the term that should be associated with a label
+    Definition {
+        /// The external name for this definition, to be used when referring
+        /// to this item from other modules
+        label: Label,
+        /// The internal name for this definition., to be used when binding
+        /// this name to variables
+        binder: Binder<String>,
+        /// The term for associated with the label
+        term: RcTerm,
+    },
 }
 
 /// Literals
