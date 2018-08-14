@@ -3,7 +3,7 @@ use moniker::{Binder, BoundTerm, Embed, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
-use syntax::Level;
+use syntax::{Label, Level};
 
 /// Translate something to the corresponding concrete representation
 pub trait Resugar<T> {
@@ -16,15 +16,23 @@ impl Resugar<concrete::Module> for core::Module {
 
         for item in &self.items {
             match item {
-                core::Item::Declaration(ref free_var, ref ty) => {
+                core::Item::Declaration {
+                    label,
+                    binder: _,
+                    ref term,
+                } => {
+                    // TODO: add label->binder mapping to locals
                     items.push(concrete::Item::Declaration {
-                        // TODO: use name if it is present, and not used in the current scope
-                        // TODO: otherwise create a pretty name
-                        name: (ByteIndex::default(), free_var.to_string()),
-                        ann: resugar_term(ty, Prec::ANN),
+                        name: (ByteIndex::default(), label.0.clone()),
+                        ann: resugar_term(term, Prec::ANN),
                     });
                 },
-                core::Item::Definition(ref free_var, ref term) => {
+                core::Item::Definition {
+                    label,
+                    binder: _,
+                    ref term,
+                } => {
+                    // TODO: add label->binder mapping to locals
                     // pull lambda arguments from the body into the definition
                     let (params, body) = match resugar_term(term, Prec::ANN) {
                         concrete::Term::Lam(_, params, body) => (params, *body),
@@ -32,9 +40,7 @@ impl Resugar<concrete::Module> for core::Module {
                     };
 
                     items.push(concrete::Item::Definition {
-                        // TODO: use name if it is present, and not used in the current scope
-                        // TODO: otherwise create a pretty name
-                        name: (ByteIndex::default(), free_var.to_string()),
+                        name: (ByteIndex::default(), label.0.clone()),
                         return_ann: None,
                         params,
                         body,
@@ -399,13 +405,11 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             let mut scope = scope.clone();
 
             loop {
-                let ((label, _, Embed(expr)), body) = scope.unbind();
+                // TODO: add label->binder mapping to locals
+                let ((Label(label), _, Embed(term)), body) = scope.unbind();
+                let term = resugar_term(&term, Prec::NO_WRAP);
 
-                fields.push((
-                    ByteIndex::default(),
-                    label.clone(),
-                    resugar_term(&expr, Prec::NO_WRAP),
-                ));
+                fields.push((ByteIndex::default(), label, term));
 
                 match *body {
                     core::Term::RecordType(ref next_scope) => scope = next_scope.clone(),
@@ -422,19 +426,14 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             let mut scope = scope.clone();
 
             loop {
-                let ((label, _, Embed(expr)), body) = scope.unbind();
-                let (expr_params, expr_body) = match resugar_term(&expr, Prec::NO_WRAP) {
-                    concrete::Term::Lam(_, params, expr_body) => (params, *expr_body),
-                    expr_body => (vec![], expr_body),
+                // TODO: add label->binder mapping to locals
+                let ((Label(label), _, Embed(term)), body) = scope.unbind();
+                let (term_params, term_body) = match resugar_term(&term, Prec::NO_WRAP) {
+                    concrete::Term::Lam(_, params, term_body) => (params, *term_body),
+                    term_body => (vec![], term_body),
                 };
 
-                fields.push((
-                    ByteIndex::default(),
-                    label.clone(),
-                    expr_params,
-                    None,
-                    expr_body,
-                ));
+                fields.push((ByteIndex::default(), label, term_params, None, term_body));
 
                 match *body.inner {
                     core::Term::Record(ref next_scope) => scope = next_scope.clone(),
@@ -446,7 +445,7 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             concrete::Term::Record(ByteSpan::default(), fields)
         },
         core::Term::RecordEmpty => concrete::Term::Record(ByteSpan::default(), vec![]),
-        core::Term::Proj(ref expr, ref label) => concrete::Term::Proj(
+        core::Term::Proj(ref expr, Label(ref label)) => concrete::Term::Proj(
             Box::new(resugar_term(expr, Prec::ATOMIC)),
             ByteIndex::default(),
             label.clone(),

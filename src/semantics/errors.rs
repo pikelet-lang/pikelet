@@ -4,6 +4,7 @@ use codespan::ByteSpan;
 use codespan_reporting::{Diagnostic, Label};
 use moniker::{Binder, FreeVar, Var};
 
+use syntax;
 use syntax::concrete;
 use syntax::raw;
 
@@ -20,7 +21,7 @@ pub enum InternalError {
     #[fail(display = "Expected a boolean expression.")]
     ExpectedBoolExpr,
     #[fail(display = "Projected on non-existent field `{}`.", label)]
-    ProjectedOnNonExistentField { label: String },
+    ProjectedOnNonExistentField { label: syntax::Label },
     #[fail(display = "No patterns matched the given expression.")]
     NoPatternsApplicable,
 }
@@ -56,27 +57,27 @@ impl InternalError {
 pub enum TypeError {
     #[fail(
         display = "Name had more than one declaration associated with it: `{}`",
-        free_var,
+        binder,
     )]
     DuplicateDeclarations {
         original_span: ByteSpan,
         duplicate_span: ByteSpan,
-        free_var: FreeVar<String>,
+        binder: Binder<String>,
     },
-    #[fail(display = "Declaration followed definition: `{}`", free_var)]
+    #[fail(display = "Declaration followed definition: `{}`", binder)]
     DeclarationFollowedDefinition {
         definition_span: ByteSpan,
         declaration_span: ByteSpan,
-        free_var: FreeVar<String>,
+        binder: Binder<String>,
     },
     #[fail(
         display = "Name had more than one definition associated with it: `{}`",
-        free_var,
+        binder,
     )]
     DuplicateDefinitions {
         original_span: ByteSpan,
         duplicate_span: ByteSpan,
-        free_var: FreeVar<String>,
+        binder: Binder<String>,
     },
     #[fail(
         display = "Applied an argument to a non-function type `{}`",
@@ -164,8 +165,8 @@ pub enum TypeError {
     )]
     LabelMismatch {
         span: ByteSpan,
-        found: String,
-        expected: String,
+        found: syntax::Label,
+        expected: syntax::Label,
     },
     #[fail(display = "Ambiguous record")]
     AmbiguousRecord { span: ByteSpan },
@@ -188,7 +189,7 @@ pub enum TypeError {
     )]
     NoFieldInType {
         label_span: ByteSpan,
-        expected_label: String,
+        expected_label: syntax::Label,
         found: Box<concrete::Term>,
     },
     #[fail(display = "Internal error - this is a bug! {}", _0)]
@@ -203,10 +204,10 @@ impl TypeError {
             TypeError::DuplicateDeclarations {
                 original_span,
                 duplicate_span,
-                ref free_var,
+                ref binder,
             } => Diagnostic::new_error(format!(
                 "name had more than one declaration associated with it `{}`",
-                free_var,
+                binder,
             )).with_label(
                 Label::new_primary(duplicate_span).with_message("the duplicated declaration"),
             ).with_label(
@@ -215,7 +216,7 @@ impl TypeError {
             TypeError::DeclarationFollowedDefinition {
                 definition_span,
                 declaration_span,
-                free_var: _,
+                binder: _,
             } => Diagnostic::new_error(format!("declarations cannot follow definitions"))
                 .with_label(Label::new_primary(declaration_span).with_message("the declaration"))
                 .with_label(
@@ -224,10 +225,10 @@ impl TypeError {
             TypeError::DuplicateDefinitions {
                 original_span,
                 duplicate_span,
-                ref free_var,
+                ref binder,
             } => Diagnostic::new_error(format!(
                 "name had more than one definition associated with it `{}`",
-                free_var
+                binder,
             )).with_label(
                 Label::new_primary(duplicate_span).with_message("the duplicated definition"),
             ).with_label(

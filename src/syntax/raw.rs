@@ -2,13 +2,13 @@
 //! be elaborated in a type-directed way during type checking and inference
 
 use codespan::{ByteIndex, ByteSpan};
-use moniker::{Binder, Embed, FreeVar, Scope, Var};
+use moniker::{Binder, Embed, Scope, Var};
 use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::Level;
+use syntax::{Label, Level};
 
 /// A module definition
 pub struct Module {
@@ -19,25 +19,47 @@ pub struct Module {
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    /// Declares the type associated with a name, prior to its definition
-    Declaration(ByteSpan, FreeVar<String>, RcTerm),
-    /// Defines the term that should be associated with a name
-    Definition(ByteSpan, FreeVar<String>, RcTerm),
+    /// Declares the type associated with a label, prior to its definition
+    Declaration {
+        /// The span of source code where the label was introduced
+        label_span: ByteSpan,
+        /// The external name for this declaration, to be used when referring
+        /// to this item from other modules
+        label: Label,
+        /// The internal name for this declaration., to be used when binding
+        /// this name to variables
+        binder: Binder<String>,
+        /// The type annotation for associated with the label
+        term: RcTerm,
+    },
+    /// Defines the term that should be associated with a label
+    Definition {
+        /// The span of source code where the label was introduced
+        label_span: ByteSpan,
+        /// The external name for this definition, to be used when referring
+        /// to this item from other modules
+        label: Label,
+        /// The internal name for this definition., to be used when binding
+        /// this name to variables
+        binder: Binder<String>,
+        /// The term for associated with the label
+        term: RcTerm,
+    },
 }
 
 impl Item {
-    pub fn free_var(&self) -> &FreeVar<String> {
-        match *self {
-            Item::Declaration(_, ref free_var, _) | Item::Definition(_, ref free_var, _) => {
-                free_var
-            },
-        }
-    }
-
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Item::Declaration(name_span, _, ref term)
-            | Item::Definition(name_span, _, ref term) => name_span.to(term.span()),
+            Item::Declaration {
+                label_span,
+                ref term,
+                ..
+            }
+            | Item::Definition {
+                label_span,
+                ref term,
+                ..
+            } => label_span.to(term.span()),
         }
     }
 }
@@ -155,19 +177,19 @@ pub enum Term {
     /// Dependent record types
     RecordType(
         ByteSpan,
-        Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>,
+        Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// Dependent record
     Record(
         ByteSpan,
-        Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>,
+        Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>,
     ),
     /// The unit type
     RecordTypeEmpty(ByteSpan),
     /// The element of the unit type
     RecordEmpty(ByteSpan),
     /// Field projection
-    Proj(ByteSpan, RcTerm, ByteSpan, String),
+    Proj(ByteSpan, RcTerm, ByteSpan, Label),
     /// Case expressions
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals

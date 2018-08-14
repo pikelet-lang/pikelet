@@ -45,16 +45,21 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
     // Iterate through the items in the module, checking each in turn
     for raw_item in &raw_module.items {
         match *raw_item {
-            raw::Item::Declaration(declaration_span, ref free_var, ref raw_ty) => {
+            raw::Item::Declaration {
+                label_span,
+                ref label,
+                ref binder,
+                term: ref raw_term,
+            } => {
                 // Ensure that this declaration has not already been seen
-                match forward_declarations.get(free_var) {
+                match forward_declarations.get(binder) {
                     // There's already a definition associated with this name -
                     // we can't add a new declaration for it!
                     Some(&ForwardDecl::Defined(definition_span)) => {
                         return Err(TypeError::DeclarationFollowedDefinition {
                             definition_span,
-                            declaration_span,
-                            free_var: free_var.clone(),
+                            declaration_span: label_span,
+                            binder: binder.clone(),
                         });
                     },
                     // There's a declaration  for this name already pending - we
@@ -62,8 +67,8 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                     Some(&ForwardDecl::Pending(original_span, _)) => {
                         return Err(TypeError::DuplicateDeclarations {
                             original_span,
-                            duplicate_span: declaration_span,
-                            free_var: free_var.clone(),
+                            duplicate_span: label_span,
+                            binder: binder.clone(),
                         });
                     },
                     // No previous declaration for this name was seen, so we can
@@ -73,16 +78,25 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                 }
 
                 // Ensure that the declaration's type annotation is actually a type
-                let (ty, _) = infer_universe(&tc_env, raw_ty)?;
+                let (term, _) = infer_universe(&tc_env, raw_term)?;
                 // Remember the declaration for when we get to a subsequent definition
-                let declaration = ForwardDecl::Pending(declaration_span, ty.clone());
-                forward_declarations.insert(free_var.clone(), declaration);
+                let declaration = ForwardDecl::Pending(label_span, term.clone());
+                forward_declarations.insert(binder.clone(), declaration);
                 // Add the declaration to the elaborated items
-                items.push(Item::Declaration(free_var.clone(), ty));
+                items.push(Item::Declaration {
+                    label: label.clone(),
+                    binder: binder.clone(),
+                    term,
+                });
             },
 
-            raw::Item::Definition(span, ref free_var, ref raw_term) => {
-                let (term, ty) = match forward_declarations.get(free_var).cloned() {
+            raw::Item::Definition {
+                label_span,
+                ref label,
+                ref binder,
+                term: ref raw_term,
+            } => {
+                let (term, ty) = match forward_declarations.get(binder).cloned() {
                     // This declaration was already given a definition, so this
                     // is an error!
                     //
@@ -92,8 +106,8 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                     Some(ForwardDecl::Defined(original_span)) => {
                         return Err(TypeError::DuplicateDefinitions {
                             original_span,
-                            duplicate_span: span,
-                            free_var: free_var.clone(),
+                            duplicate_span: label_span,
+                            binder: binder.clone(),
                         });
                     },
                     // We found a prior declaration, so we'll use it as a basis
@@ -110,13 +124,17 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                 // We must not remove this from the list of pending
                 // declarations, lest we encounter another declaration or
                 // definition of the same name later on!
-                forward_declarations.insert(free_var.clone(), ForwardDecl::Defined(span));
+                forward_declarations.insert(binder.clone(), ForwardDecl::Defined(label_span));
                 // Add the declaration and definition to the environment,
                 // allowing them to be used in later type checking
-                tc_env.declarations.insert(free_var.clone(), ty);
-                tc_env.definitions.insert(free_var.clone(), term.clone());
+                tc_env.declarations.insert(binder.0.clone(), ty);
+                tc_env.definitions.insert(binder.0.clone(), term.clone());
                 // Add the definition to the elaborated items
-                items.push(Item::Definition(free_var.clone(), term));
+                items.push(Item::Definition {
+                    label: label.clone(),
+                    binder: binder.clone(),
+                    term,
+                });
             },
         }
     }

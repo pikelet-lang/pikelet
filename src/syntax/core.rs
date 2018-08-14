@@ -7,7 +7,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::Level;
+use syntax::{Label, Level};
 
 /// A module definition
 pub struct Module {
@@ -18,10 +18,28 @@ pub struct Module {
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
-    /// Declares the type associated with a name, prior to its definition
-    Declaration(FreeVar<String>, RcTerm),
-    /// Defines the term that should be associated with a name
-    Definition(FreeVar<String>, RcTerm),
+    /// Declares the type associated with a label, prior to its definition
+    Declaration {
+        /// The external name for this declaration, to be used when referring
+        /// to this item from other modules
+        label: Label,
+        /// The internal name for this declaration., to be used when binding
+        /// this name to variables
+        binder: Binder<String>,
+        /// The type annotation for associated with the label
+        term: RcTerm,
+    },
+    /// Defines the term that should be associated with a label
+    Definition {
+        /// The external name for this definition, to be used when referring
+        /// to this item from other modules
+        label: Label,
+        /// The internal name for this definition., to be used when binding
+        /// this name to variables
+        binder: Binder<String>,
+        /// The term for associated with the label
+        term: RcTerm,
+    },
 }
 
 /// Literals
@@ -118,15 +136,15 @@ pub enum Term {
     /// If expression
     If(RcTerm, RcTerm, RcTerm),
     /// Dependent record types
-    RecordType(Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>),
+    RecordType(Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(String, Binder<String>, Embed<RcTerm>), RcTerm>),
+    Record(Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>),
     /// The element of the unit type
     RecordEmpty,
     /// Field projection
-    Proj(RcTerm, String),
+    Proj(RcTerm, Label),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -263,11 +281,11 @@ pub enum Value {
     /// A lambda abstraction
     Lam(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
     /// Dependent record types
-    RecordType(Scope<(String, Binder<String>, Embed<RcValue>), RcValue>),
+    RecordType(Scope<(Label, Binder<String>, Embed<RcValue>), RcValue>),
     /// The unit type
     RecordTypeEmpty,
     /// Dependent record
-    Record(Scope<(String, Binder<String>, Embed<RcValue>), RcValue>),
+    Record(Scope<(Label, Binder<String>, Embed<RcValue>), RcValue>),
     /// The element of the unit type
     RecordEmpty,
     /// Array literals
@@ -290,26 +308,26 @@ impl Value {
         RcTerm::from(Term::from(self)).substs(mappings)
     }
 
-    pub fn record_ty(&self) -> Option<Scope<(String, Binder<String>, Embed<RcValue>), RcValue>> {
+    pub fn record_ty(&self) -> Option<Scope<(Label, Binder<String>, Embed<RcValue>), RcValue>> {
         match *self {
             Value::RecordType(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn record(&self) -> Option<Scope<(String, Binder<String>, Embed<RcValue>), RcValue>> {
+    pub fn record(&self) -> Option<Scope<(Label, Binder<String>, Embed<RcValue>), RcValue>> {
         match *self {
             Value::Record(ref scope) => Some(scope.clone()),
             _ => None,
         }
     }
 
-    pub fn lookup_record(&self, label: &str) -> Option<RcValue> {
+    pub fn lookup_record(&self, label: &Label) -> Option<RcValue> {
         let mut current_scope = self.record();
 
         while let Some(scope) = current_scope {
             let ((current_label, _, Embed(value)), body) = scope.unbind();
-            if current_label == label {
+            if current_label == *label {
                 return Some(value);
             }
             current_scope = body.record();
@@ -431,7 +449,7 @@ pub enum Neutral {
     /// If expression
     If(RcNeutral, RcValue, RcValue),
     /// Field projection
-    Proj(RcNeutral, String),
+    Proj(RcNeutral, Label),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }

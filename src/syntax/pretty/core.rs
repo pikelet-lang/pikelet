@@ -6,7 +6,7 @@ use std::iter;
 
 use syntax::core::{Head, Literal, Neutral, Pattern, Term, Value};
 use syntax::raw;
-use syntax::Level;
+use syntax::{Label, Level};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
@@ -124,7 +124,7 @@ where
     )
 }
 
-fn pretty_proj(expr: &impl ToDoc, label: &str) -> StaticDoc {
+fn pretty_proj(expr: &impl ToDoc, label: &Label) -> StaticDoc {
     sexpr(
         "proj",
         expr.to_doc()
