@@ -129,7 +129,7 @@ AtomicPattern : Pattern = {
         Pattern::Parens(ByteSpan::new(start, end), Box::new(pattern))
     },
     <literal: Literal> => Pattern::Literal(literal),
-    <start: @L> <ident: Ident> => Pattern::Binder(start, ident),
+    <start: @L> <ident: Ident> => Pattern::Name(start, ident),
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Pattern::Error(ByteSpan::new(start, end))

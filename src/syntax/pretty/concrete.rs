@@ -75,7 +75,7 @@ impl ToDoc for Pattern {
                 .append(":")
                 .append(Doc::space())
                 .append(ty.to_doc()),
-            Pattern::Binder(_, ref name) => Doc::as_string(name),
+            Pattern::Name(_, ref name) => Doc::as_string(name),
             Pattern::Literal(ref literal) => literal.to_doc(),
             Pattern::Error(_) => Doc::text("<error>"),
         }

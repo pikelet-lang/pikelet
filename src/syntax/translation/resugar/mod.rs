@@ -192,6 +192,18 @@ fn resugar_pattern(
             Box::new(resugar_pattern(env, pattern, Prec::NO_WRAP)),
             Box::new(resugar_term(env, ty, Prec::LAM)),
         ),
+        core::Pattern::Binder(ref binder) => {
+            let name = env.on_binder(binder);
+            concrete::Pattern::Name(ByteIndex::default(), name)
+        },
+        core::Pattern::Var(Embed(Var::Free(ref free_var))) => {
+            let name = env.on_free_var(free_var);
+            concrete::Pattern::Name(ByteIndex::default(), name)
+        },
+        core::Pattern::Var(Embed(Var::Bound(_))) => {
+            // TODO: Better message
+            panic!("Tried to convert a term that was not locally closed");
+        },
         core::Pattern::Literal(ref literal) => {
             use syntax::concrete::{Literal, Pattern};
 
@@ -199,8 +211,8 @@ fn resugar_pattern(
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Pattern::Binder(span.start(), "true".to_owned()),
-                core::Literal::Bool(false) => Pattern::Binder(span.start(), "false".to_owned()),
+                core::Literal::Bool(true) => Pattern::Name(span.start(), "true".to_owned()),
+                core::Literal::Bool(false) => Pattern::Name(span.start(), "false".to_owned()),
 
                 core::Literal::String(ref value) => {
                     Pattern::Literal(Literal::String(span, value.clone()))
@@ -223,10 +235,6 @@ fn resugar_pattern(
                 },
                 core::Literal::F64(value) => Pattern::Literal(Literal::Float(span, value)),
             }
-        },
-        core::Pattern::Binder(ref binder) => {
-            let name = env.on_binder(binder);
-            concrete::Pattern::Binder(ByteIndex::default(), name)
         },
     }
 }

@@ -208,12 +208,15 @@ pub enum Pattern {
     Ann(Box<Pattern>, Box<Term>),
     /// Literal patterns
     Literal(Literal),
-    /// Patterns that bind variables
+    /// Patterns that either introduce bound variables, or match by structural
+    /// equality with a constant in-scope
     ///
     /// ```text
     /// x
+    /// true
+    /// false
     /// ```
-    Binder(ByteIndex, String),
+    Name(ByteIndex, String),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -227,7 +230,7 @@ impl Pattern {
             Pattern::Parens(span, _) | Pattern::Error(span) => span,
             Pattern::Ann(ref pattern, ref ty) => pattern.span().to(ty.span()),
             Pattern::Literal(ref literal) => literal.span(),
-            Pattern::Binder(start, ref name) => {
+            Pattern::Name(start, ref name) => {
                 ByteSpan::from_offset(start, ByteOffset::from_str(name))
             },
         }

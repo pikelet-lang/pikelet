@@ -348,6 +348,36 @@ mod nf_term {
     }
 
     #[test]
+    fn case_expr_bool() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r#"
+            record {
+                test-true = case true of {
+                    true => "true";
+                    false => "false";
+                };
+                test-false = case false of {
+                    true => "true";
+                    false => "false";
+                };
+            }
+        "#;
+        let expected_expr = r#"
+            record {
+                test-true = "true";
+                test-false = "false";
+            }
+        "#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
+
+    #[test]
     fn record_shadow() {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
