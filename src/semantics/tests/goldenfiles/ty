@@ -1,7 +1,0 @@
-RcValue {
-    inner: Universe(
-        Level(
-            0
-        )
-    )
-}

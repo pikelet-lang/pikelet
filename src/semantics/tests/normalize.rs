@@ -5,23 +5,6 @@ mod nf_term {
 
     use super::*;
 
-    fn golden(filename: &str, literal: &str) {
-        use goldenfile::Mint;
-        use std::io::Write;
-
-        let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
-
-        let path = "src/semantics/tests/goldenfiles";
-
-        let mut mint = Mint::new(path);
-        let mut file = mint.new_goldenfile(filename).unwrap();
-
-        let term = parse_nf_term(&mut codemap, &tc_env, literal);
-
-        write!(file, "{:#?}", term).unwrap();
-    }
-
     #[test]
     fn var() {
         let tc_env = TcEnv::default();
@@ -37,7 +20,13 @@ mod nf_term {
 
     #[test]
     fn ty() {
-        golden("ty", r"Type");
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        assert_eq!(
+            parse_nf_term(&mut codemap, &tc_env, r"Type"),
+            RcValue::from(Value::universe(0)),
+        );
     }
 
     #[test]
