@@ -99,14 +99,6 @@ fn pretty_record(inner: StaticDoc) -> StaticDoc {
     sexpr("record", inner)
 }
 
-fn pretty_empty_record_ty() -> StaticDoc {
-    pretty_record_ty(Doc::text("()"))
-}
-
-fn pretty_empty_record() -> StaticDoc {
-    pretty_record(Doc::text("()"))
-}
-
 fn pretty_case<'a, Cs, P, T>(head: &impl ToDoc, clauses: Cs) -> StaticDoc
 where
     Cs: 'a + IntoIterator<Item = (&'a P, &'a T)>,
@@ -178,56 +170,30 @@ impl ToDoc for raw::Term {
             raw::Term::If(_, ref cond, ref if_true, ref if_false) => {
                 pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
-            raw::Term::RecordType(_, ref scope) => {
-                let mut inner = Doc::nil();
-                let mut scope = scope;
-
-                for i in 0.. {
-                    inner = inner
-                        .append(match i {
-                            0 => Doc::nil(),
-                            _ => Doc::space(),
-                        }).append(parens(
-                            Doc::as_string(&scope.unsafe_pattern.0)
+            raw::Term::RecordType(_, ref scope) => pretty_record_ty(Doc::concat(
+                scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref label, _, Embed(ref ann))| {
+                        parens(
+                            Doc::as_string(label)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.2).0.to_doc()),
-                        ));
-
-                    match *scope.unsafe_body {
-                        raw::Term::RecordType(_, ref next_scope) => scope = next_scope,
-                        raw::Term::RecordTypeEmpty(_) => break,
-                        _ => panic!("ill-formed record"),
-                    }
-                }
-
-                pretty_record_ty(inner)
-            },
-            raw::Term::RecordTypeEmpty(_) => pretty_empty_record_ty(),
-            raw::Term::Record(_, ref scope) => {
-                let mut inner = Doc::nil();
-                let mut scope = scope;
-
-                for i in 0.. {
-                    inner = inner
-                        .append(match i {
-                            0 => Doc::nil(),
-                            _ => Doc::space(),
-                        }).append(parens(
-                            Doc::as_string(&scope.unsafe_pattern.0)
+                                .append(ann.to_doc())
+                                .append(Doc::newline()),
+                        )
+                    },
+                ),
+            )),
+            raw::Term::Record(_, ref scope) => pretty_record(Doc::concat(
+                scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref label, _, Embed(ref term))| {
+                        parens(
+                            Doc::as_string(label)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.2).0.to_doc()),
-                        ));
-
-                    match *scope.unsafe_body {
-                        raw::Term::Record(_, ref next_scope) => scope = next_scope,
-                        raw::Term::RecordEmpty(_) => break,
-                        _ => panic!("ill-formed record"),
-                    }
-                }
-
-                pretty_record(inner)
-            },
-            raw::Term::RecordEmpty(_) => pretty_empty_record(),
+                                .append(term.to_doc())
+                                .append(Doc::newline()),
+                        )
+                    },
+                ),
+            )),
             raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(&expr.inner, label),
             raw::Term::Case(_, ref head, ref clauses) => pretty_case(
                 &head.inner,
@@ -298,56 +264,30 @@ impl ToDoc for Term {
             Term::If(ref cond, ref if_true, ref if_false) => {
                 pretty_if(&cond.inner, &if_true.inner, &if_false.inner)
             },
-            Term::RecordType(ref scope) => {
-                let mut inner = Doc::nil();
-                let mut scope = scope;
-
-                for i in 0.. {
-                    inner = inner
-                        .append(match i {
-                            0 => Doc::nil(),
-                            _ => Doc::space(),
-                        }).append(parens(
-                            Doc::as_string(&scope.unsafe_pattern.0)
+            Term::RecordType(ref scope) => pretty_record_ty(Doc::concat(
+                scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref label, _, Embed(ref ann))| {
+                        parens(
+                            Doc::as_string(label)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.2).0.to_doc()),
-                        ));
-
-                    match *scope.unsafe_body {
-                        Term::RecordType(ref next_scope) => scope = next_scope,
-                        Term::RecordTypeEmpty => break,
-                        _ => panic!("ill-formed record"),
-                    }
-                }
-
-                pretty_record_ty(inner)
-            },
-            Term::RecordTypeEmpty => pretty_empty_record_ty(),
-            Term::Record(ref scope) => {
-                let mut inner = Doc::nil();
-                let mut scope = scope;
-
-                for i in 0.. {
-                    inner = inner
-                        .append(match i {
-                            0 => Doc::nil(),
-                            _ => Doc::space(),
-                        }).append(parens(
-                            Doc::as_string(&scope.unsafe_pattern.0)
+                                .append(ann.to_doc())
+                                .append(Doc::newline()),
+                        )
+                    },
+                ),
+            )),
+            Term::Record(ref scope) => pretty_record(Doc::concat(
+                scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref label, _, Embed(ref term))| {
+                        parens(
+                            Doc::as_string(label)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.2).0.to_doc()),
-                        ));
-
-                    match *scope.unsafe_body {
-                        Term::Record(ref next_scope) => scope = next_scope,
-                        Term::RecordEmpty => break,
-                        _ => panic!("ill-formed record"),
-                    }
-                }
-
-                pretty_record(inner)
-            },
-            Term::RecordEmpty => pretty_empty_record(),
+                                .append(term.to_doc())
+                                .append(Doc::newline()),
+                        )
+                    },
+                ),
+            )),
             Term::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
             Term::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
@@ -379,56 +319,30 @@ impl ToDoc for Value {
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            Value::RecordType(ref scope) => {
-                let mut inner = Doc::nil();
-                let mut scope = scope;
-
-                for i in 0.. {
-                    inner = inner
-                        .append(match i {
-                            0 => Doc::nil(),
-                            _ => Doc::space(),
-                        }).append(parens(
-                            Doc::as_string(&scope.unsafe_pattern.0)
+            Value::RecordType(ref scope) => pretty_record_ty(Doc::concat(
+                scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref label, _, Embed(ref ann))| {
+                        parens(
+                            Doc::as_string(label)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.2).0.to_doc()),
-                        ));
-
-                    match *scope.unsafe_body {
-                        Value::RecordType(ref next_scope) => scope = next_scope,
-                        Value::RecordTypeEmpty => break,
-                        _ => panic!("ill-formed record"),
-                    }
-                }
-
-                pretty_record_ty(inner)
-            },
-            Value::RecordTypeEmpty => pretty_empty_record_ty(),
-            Value::Record(ref scope) => {
-                let mut inner = Doc::nil();
-                let mut scope = scope;
-
-                for i in 0.. {
-                    inner = inner
-                        .append(match i {
-                            0 => Doc::nil(),
-                            _ => Doc::space(),
-                        }).append(parens(
-                            Doc::as_string(&scope.unsafe_pattern.0)
+                                .append(ann.to_doc())
+                                .append(Doc::newline()),
+                        )
+                    },
+                ),
+            )),
+            Value::Record(ref scope) => pretty_record(Doc::concat(
+                scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref label, _, Embed(ref term))| {
+                        parens(
+                            Doc::as_string(label)
                                 .append(Doc::space())
-                                .append((scope.unsafe_pattern.2).0.to_doc()),
-                        ));
-
-                    match *scope.unsafe_body {
-                        Value::Record(ref next_scope) => scope = next_scope,
-                        Value::RecordEmpty => break,
-                        _ => panic!("ill-formed record"),
-                    }
-                }
-
-                pretty_record(inner)
-            },
-            Value::RecordEmpty => pretty_empty_record(),
+                                .append(term.to_doc())
+                                .append(Doc::newline()),
+                        )
+                    },
+                ),
+            )),
             Value::Array(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),

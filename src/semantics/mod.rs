@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use moniker::{Binder, BoundTerm, Embed, FreeVar, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{
     Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Type, Value,
@@ -323,30 +323,43 @@ pub fn check_term(
         },
 
         // C-RECORD
-        (&raw::Term::Record(span, ref scope), &Value::RecordType(ref ty_scope)) => {
-            let (
-                (label, binder, Embed(raw_expr)),
-                raw_body,
-                (ty_label, ty_binder, Embed(ann)),
-                ty_body,
-            ) = Scope::unbind2(scope.clone(), ty_scope.clone());
+        (&raw::Term::Record(span, ref raw_scope), &Value::RecordType(ref raw_ty_scope)) => {
+            let (raw_fields, (), raw_ty_fields, ()) =
+                Scope::unbind2(raw_scope.clone(), raw_ty_scope.clone());
 
-            if label == ty_label {
-                let expr = check_term(tc_env, &raw_expr, &ann)?;
-                let ty_body = nf_term(tc_env, &ty_body.substs(&[(ty_binder.0, expr.clone())]))?;
-                let body = check_term(tc_env, &raw_body, &ty_body)?;
+            let raw_fields = raw_fields.unnest();
+            let raw_ty_fields = raw_ty_fields.unnest();
 
-                return Ok(RcTerm::from(Term::Record(Scope::new(
-                    (label, binder, Embed(expr)),
-                    body,
-                ))));
-            } else {
-                return Err(TypeError::LabelMismatch {
-                    span,
-                    found: label,
-                    expected: ty_label,
-                });
+            if raw_fields.len() != raw_ty_fields.len() {
+                unimplemented!();
             }
+
+            // FIXME: Check that record is well-formed?
+            let fields = {
+                let mut mappings = Vec::with_capacity(raw_fields.len());
+                let fields = <_>::zip(raw_fields.into_iter(), raw_ty_fields.into_iter())
+                    .map(|(field, ty_field)| {
+                        let (label, Binder(free_var), Embed(raw_expr)) = field;
+                        let (ty_label, Binder(ty_free_var), Embed(ann)) = ty_field;
+
+                        if label == ty_label {
+                            let ann = nf_term(tc_env, &ann.substs(&mappings))?;
+                            let expr = check_term(&tc_env, &raw_expr, &ann)?;
+                            mappings.push((ty_free_var, expr.clone()));
+                            Ok((label, Binder(free_var), Embed(expr)))
+                        } else {
+                            Err(TypeError::LabelMismatch {
+                                span,
+                                found: label,
+                                expected: ty_label,
+                            })
+                        }
+                    }).collect::<Result<_, _>>()?;
+
+                Nest::new(fields)
+            };
+
+            return Ok(RcTerm::from(Term::Record(Scope::new(fields, ()))));
         },
 
         (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
@@ -566,77 +579,74 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
             }
         },
 
-        // I-RECORD-TYPE
+        // I-RECORD-TYPE, I-EMPTY-RECORD-TYPE
         raw::Term::RecordType(_, ref raw_scope) => {
-            let ((label, Binder(free_var), Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
+            let (raw_fields, ()) = raw_scope.clone().unbind();
+            let mut max_level = Level(0);
 
-            // Check that rest of record is well-formed?
-            // Might be able to skip that for now, because there's no way to
-            // express ill-formed records in the concrete syntax...
+            // FIXME: Check that record is well-formed?
+            let fields = {
+                let mut tc_env = tc_env.clone();
+                raw_fields
+                    .unnest()
+                    .into_iter()
+                    .map(|(label, Binder(free_var), Embed(raw_ann))| {
+                        let (ann, ann_level) = infer_universe(&tc_env, &raw_ann)?;
+                        let nf_ann = nf_term(&tc_env, &ann)?;
 
-            let (ann, ann_level) = infer_universe(tc_env, &raw_ann)?;
-            let (body, body_level) = {
-                let ann = nf_term(tc_env, &ann)?;
-                let mut body_tc_env = tc_env.clone();
-                body_tc_env.declarations.insert(free_var.clone(), ann);
-                infer_universe(&body_tc_env, &raw_body)?
+                        max_level = cmp::max(max_level, ann_level);
+                        tc_env.declarations.insert(free_var.clone(), nf_ann);
+
+                        Ok((label, Binder(free_var), Embed(ann)))
+                    }).collect::<Result<_, TypeError>>()?
             };
 
-            let scope = Scope::new((label, Binder(free_var), Embed(ann)), body);
-
             Ok((
-                RcTerm::from(Term::RecordType(scope)),
-                RcValue::from(Value::Universe(cmp::max(ann_level, body_level))),
+                RcTerm::from(Term::RecordType(Scope::new(Nest::new(fields), ()))),
+                RcValue::from(Value::Universe(max_level)),
             ))
         },
 
-        raw::Term::Record(span, _) => Err(TypeError::AmbiguousRecord { span }),
-
-        // I-EMPTY-RECORD-TYPE
-        raw::Term::RecordTypeEmpty(_) => Ok((
-            RcTerm::from(Term::RecordTypeEmpty),
-            RcValue::from(Value::universe(0)),
-        )),
-
         // I-EMPTY-RECORD
-        raw::Term::RecordEmpty(_) => Ok((
-            RcTerm::from(Term::RecordEmpty),
-            RcValue::from(Value::RecordTypeEmpty),
-        )),
+        raw::Term::Record(span, ref raw_scope) => {
+            if raw_scope.unsafe_pattern.unsafe_patterns.is_empty() {
+                Ok((
+                    RcTerm::from(Term::Record(Scope::new(Nest::new(vec![]), ()))),
+                    RcValue::from(Value::RecordType(Scope::new(Nest::new(vec![]), ()))),
+                ))
+            } else {
+                Err(TypeError::AmbiguousRecord { span })
+            }
+        },
 
         // I-PROJ
         raw::Term::Proj(_, ref expr, label_span, ref label) => {
             let (expr, ty) = infer_term(tc_env, expr)?;
 
-            let mut mappings = vec![];
-            let mut current_scope = ty.record_ty();
-            let mut field_ty = None;
+            if let Value::RecordType(ref scope) = *ty.inner {
+                let (fields, ()) = scope.clone().unbind();
+                let mut mappings = vec![];
 
-            while let Some(scope) = current_scope {
-                let ((current_label, current_binder, Embed(current_field_ty)), body) =
-                    scope.unbind();
-
-                if current_label == *label {
-                    field_ty = Some(current_field_ty.substs(&mappings));
-                    break;
+                for (current_label, Binder(free_var), Embed(current_ann)) in fields.unnest() {
+                    if current_label == *label {
+                        return Ok((
+                            RcTerm::from(Term::Proj(expr, current_label)),
+                            nf_term(tc_env, &current_ann.substs(&mappings))?,
+                        ));
+                    } else {
+                        mappings.push((
+                            free_var,
+                            RcTerm::from(Term::Proj(expr.clone(), current_label)),
+                        ));
+                    }
                 }
-
-                let proj = RcTerm::from(Term::Proj(expr.clone(), current_label));
-                mappings.push((current_binder.0, proj));
-                current_scope = body.record_ty();
             }
 
-            match field_ty {
-                Some(field_ty) => Ok((
-                    RcTerm::from(Term::Proj(expr, label.clone())),
-                    nf_term(tc_env, &field_ty)?,
-                )),
-                None => Err(TypeError::NoFieldInType {
-                    label_span,
-                    expected_label: label.clone(),
-                    found: Box::new(ty.resugar()),
-                }),
-            }
+            Err(TypeError::NoFieldInType {
+                label_span,
+                expected_label: label.clone(),
+                found: Box::new(ty.resugar()),
+            })
         },
 
         // I-CASE

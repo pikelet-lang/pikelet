@@ -1,6 +1,6 @@
 use codespan::{ByteOffset, ByteSpan};
 use im::HashMap;
-use moniker::{Binder, Embed, FreeVar, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::concrete;
 use syntax::raw;
@@ -157,22 +157,16 @@ fn desugar_record_ty(
 
     let fields = fields
         .iter()
-        .map(|&(start, ref label, ref ann)| {
+        .map(|&(_, ref label, ref ann)| {
             let ann = ann.desugar(&env);
             let free_var = env.on_binding(label);
-            (start, Label(label.clone()), Binder(free_var), ann)
+            (Label(label.clone()), Binder(free_var), Embed(ann))
         }).collect::<Vec<_>>();
 
-    let end_span = ByteSpan::new(span.end(), span.end());
-    fields.into_iter().rev().fold(
-        raw::RcTerm::from(raw::Term::RecordTypeEmpty(end_span)),
-        |acc, (start, label, binder, ann)| {
-            raw::RcTerm::from(raw::Term::RecordType(
-                ByteSpan::new(start, acc.span().end()),
-                Scope::new((label, binder, Embed(ann)), acc),
-            ))
-        },
-    )
+    raw::RcTerm::from(raw::Term::RecordType(
+        span,
+        Scope::new(Nest::new(fields), ()),
+    ))
 }
 
 fn desugar_record(
@@ -184,24 +178,13 @@ fn desugar_record(
 
     let fields = fields
         .iter()
-        .map(
-            |&(start, ref label, ref params, ref return_ann, ref value)| {
-                let value = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), value);
-                let free_var = env.on_binding(label);
-                (start, Label(label.clone()), Binder(free_var), value)
-            },
-        ).collect::<Vec<_>>();
+        .map(|&(_, ref label, ref params, ref return_ann, ref expr)| {
+            let expr = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), expr);
+            let free_var = env.on_binding(label);
+            (Label(label.clone()), Binder(free_var), Embed(expr))
+        }).collect::<Vec<_>>();
 
-    let end_span = ByteSpan::new(span.end(), span.end());
-    fields.into_iter().rev().fold(
-        raw::RcTerm::from(raw::Term::RecordEmpty(end_span)),
-        |acc, (start, label, binder, value)| {
-            raw::RcTerm::from(raw::Term::Record(
-                ByteSpan::new(start, acc.span().end()),
-                Scope::new((label, binder, Embed(value)), acc),
-            ))
-        },
-    )
+    raw::RcTerm::from(raw::Term::Record(span, Scope::new(Nest::new(fields), ())))
 }
 
 impl Desugar<raw::Module> for concrete::Module {

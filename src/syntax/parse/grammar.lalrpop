@@ -69,6 +69,7 @@ pub ReplCommand: ReplCommand = {
         },
     },
     <start: @L> <command: "REPL command"> <end: @R> <term: Term> =>? match command {
+        "raw" => Ok(ReplCommand::Raw(Box::new(term))),
         "core" => Ok(ReplCommand::Core(Box::new(term))),
         "t" | "type" => Ok(ReplCommand::TypeOf(Box::new(term))),
         command => {

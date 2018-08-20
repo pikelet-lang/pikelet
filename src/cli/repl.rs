@@ -70,6 +70,7 @@ fn print_help_text() {
         "",
         "<term>                         evaluate a term",
         ":? :h :help                    display this help text",
+        ":raw          <term>           print the raw representation of a term",
         ":core         <term>           print the core representation of a term",
         ":let          <name> = <term>  add a named term to the REPL context",
         ":q :quit                       quit the repl",
@@ -196,6 +197,11 @@ fn eval_print(
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
+        },
+        ReplCommand::Raw(parse_term) => {
+            let raw_term = parse_term.desugar(desugar_env);
+
+            println!("{}", raw_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Let(name, parse_term) => {
             let raw_term = parse_term.desugar(desugar_env);
