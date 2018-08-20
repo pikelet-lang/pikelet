@@ -1,4 +1,4 @@
-use moniker::{Binder, Embed, FreeVar, Scope, Var};
+use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{
     Head, Literal, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcValue, Term, Value,
@@ -124,42 +124,61 @@ pub fn nf_term(tc_env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> 
             }
         },
 
-        // E-RECORD-TYPE
+        // E-RECORD-TYPE, E-EMPTY-RECORD-TYPE
         Term::RecordType(ref scope) => {
-            let ((label, binder, Embed(ann)), body) = scope.clone().unbind();
-            let ann = nf_term(tc_env, &ann)?;
-            let body = nf_term(tc_env, &body)?;
+            let (fields, ()) = scope.clone().unbind();
+            let fields = Nest::new(
+                fields
+                    .unnest()
+                    .into_iter()
+                    .map(|(label, binder, Embed(ann))| {
+                        Ok((label, binder, Embed(nf_term(tc_env, &ann)?)))
+                    }).collect::<Result<_, _>>()?,
+            );
 
-            Ok(Value::RecordType(Scope::new((label, binder, Embed(ann)), body)).into())
+            Ok(RcValue::from(Value::RecordType(Scope::new(fields, ()))))
         },
 
-        // E-EMPTY-RECORD-TYPE
-        Term::RecordTypeEmpty => Ok(RcValue::from(Value::RecordTypeEmpty)),
-
-        // E-RECORD
+        // E-RECORD, E-EMPTY-RECORD
         Term::Record(ref scope) => {
-            let ((label, binder, Embed(term)), body) = scope.clone().unbind();
-            let value = nf_term(tc_env, &term)?;
-            let body = nf_term(tc_env, &body)?;
+            let (fields, ()) = scope.clone().unbind();
+            let fields = Nest::new(
+                fields
+                    .unnest()
+                    .into_iter()
+                    .map(|(label, binder, Embed(term))| {
+                        Ok((label, binder, Embed(nf_term(tc_env, &term)?)))
+                    }).collect::<Result<_, _>>()?,
+            );
 
-            Ok(Value::Record(Scope::new((label, binder, Embed(value)), body)).into())
+            Ok(RcValue::from(Value::Record(Scope::new(fields, ()))))
         },
-
-        // E-EMPTY-RECORD
-        Term::RecordEmpty => Ok(RcValue::from(Value::RecordEmpty)),
 
         // E-PROJ
-        Term::Proj(ref expr, ref label) => match *nf_term(tc_env, expr)? {
-            Value::Neutral(ref neutral, ref spine) => Ok(RcValue::from(Value::Neutral(
-                RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone())),
-                spine.clone(),
-            ))),
-            ref expr => match expr.lookup_record(label) {
-                Some(value) => Ok(value.clone()),
-                None => Err(InternalError::ProjectedOnNonExistentField {
-                    label: label.clone(),
-                }),
-            },
+        Term::Proj(ref expr, ref label) => {
+            match *nf_term(tc_env, expr)? {
+                Value::Neutral(ref neutral, ref spine) => {
+                    return Ok(RcValue::from(Value::Neutral(
+                        RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone())),
+                        spine.clone(),
+                    )));
+                },
+                Value::Record(ref scope) => {
+                    let (fields, ()) = scope.clone().unbind();
+
+                    // FIXME: mappings?
+                    for (current_label, _, Embed(current_expr)) in fields.unnest() {
+                        if current_label == *label {
+                            return Ok(current_expr.clone());
+                        }
+                    }
+                },
+                _ => {},
+            }
+
+            Err(InternalError::ProjectedOnNonExistentField {
+                label: label.clone(),
+            })
         },
 
         // E-CASE

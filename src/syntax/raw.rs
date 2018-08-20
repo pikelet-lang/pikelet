@@ -2,7 +2,7 @@
 //! be elaborated in a type-directed way during type checking and inference
 
 use codespan::{ByteIndex, ByteSpan};
-use moniker::{Binder, Embed, Scope, Var};
+use moniker::{Binder, Embed, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
 use std::rc::Rc;
@@ -177,17 +177,13 @@ pub enum Term {
     /// Dependent record types
     RecordType(
         ByteSpan,
-        Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>,
+        Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
     /// Dependent record
     Record(
         ByteSpan,
-        Scope<(Label, Binder<String>, Embed<RcTerm>), RcTerm>,
+        Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
-    /// The unit type
-    RecordTypeEmpty(ByteSpan),
-    /// The element of the unit type
-    RecordEmpty(ByteSpan),
     /// Field projection
     Proj(ByteSpan, RcTerm, ByteSpan, Label),
     /// Case expressions
@@ -208,8 +204,6 @@ impl Term {
             | Term::Lam(span, _)
             | Term::RecordType(span, _)
             | Term::Record(span, _)
-            | Term::RecordTypeEmpty(span)
-            | Term::RecordEmpty(span)
             | Term::Proj(span, _, _, _)
             | Term::Case(span, _, _)
             | Term::Array(span, _) => span,

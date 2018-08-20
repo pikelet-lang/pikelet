@@ -401,50 +401,37 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             ),
         ),
         core::Term::RecordType(ref scope) => {
-            let mut fields = vec![];
-            let mut scope = scope.clone();
+            let (scope, ()) = scope.clone().unbind();
 
-            loop {
-                // TODO: add label->binder mapping to locals
-                let ((Label(label), _, Embed(term)), body) = scope.unbind();
-                let term = resugar_term(&term, Prec::NO_WRAP);
-
-                fields.push((ByteIndex::default(), label, term));
-
-                match *body {
-                    core::Term::RecordType(ref next_scope) => scope = next_scope.clone(),
-                    core::Term::RecordTypeEmpty => break,
-                    _ => panic!("ill-formed record type"), // FIXME: better error
-                }
-            }
+            let fields = scope
+                .unnest()
+                .into_iter()
+                .map(|(Label(label), _, Embed(term))| {
+                    // TODO: add label->binder mapping to locals
+                    let term = resugar_term(&term, Prec::NO_WRAP);
+                    (ByteIndex::default(), label, term)
+                }).collect();
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
-        core::Term::RecordTypeEmpty => concrete::Term::RecordType(ByteSpan::default(), vec![]),
         core::Term::Record(ref scope) => {
-            let mut fields = vec![];
-            let mut scope = scope.clone();
+            let (scope, ()) = scope.clone().unbind();
 
-            loop {
-                // TODO: add label->binder mapping to locals
-                let ((Label(label), _, Embed(term)), body) = scope.unbind();
-                let (term_params, term_body) = match resugar_term(&term, Prec::NO_WRAP) {
-                    concrete::Term::Lam(_, params, term_body) => (params, *term_body),
-                    term_body => (vec![], term_body),
-                };
+            let fields = scope
+                .unnest()
+                .into_iter()
+                .map(|(Label(label), _, Embed(term))| {
+                    // TODO: add label->binder mapping to locals
+                    let (term_params, term_body) = match resugar_term(&term, Prec::NO_WRAP) {
+                        concrete::Term::Lam(_, params, term_body) => (params, *term_body),
+                        term_body => (vec![], term_body),
+                    };
 
-                fields.push((ByteIndex::default(), label, term_params, None, term_body));
-
-                match *body.inner {
-                    core::Term::Record(ref next_scope) => scope = next_scope.clone(),
-                    core::Term::RecordEmpty => break,
-                    _ => panic!("ill-formed record"), // FIXME: better error
-                }
-            }
+                    (ByteIndex::default(), label, term_params, None, term_body)
+                }).collect();
 
             concrete::Term::Record(ByteSpan::default(), fields)
         },
-        core::Term::RecordEmpty => concrete::Term::Record(ByteSpan::default(), vec![]),
         core::Term::Proj(ref expr, Label(ref label)) => concrete::Term::Proj(
             Box::new(resugar_term(expr, Prec::ATOMIC)),
             ByteIndex::default(),
