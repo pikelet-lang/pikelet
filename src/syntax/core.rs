@@ -1,6 +1,5 @@
 //! The core syntax of the language
 
-use im::Vector;
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
@@ -318,20 +317,6 @@ impl Value {
         RcTerm::from(Term::from(self)).substs(mappings)
     }
 
-    pub fn record_ty(&self) -> Option<&Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>> {
-        match *self {
-            Value::RecordType(ref scope) => Some(scope),
-            _ => None,
-        }
-    }
-
-    pub fn record(&self) -> Option<&Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>> {
-        match *self {
-            Value::Record(ref scope) => Some(scope),
-            _ => None,
-        }
-    }
-
     /// Returns `true` if the value is in weak head normal form
     pub fn is_whnf(&self) -> bool {
         match *self {
@@ -429,7 +414,7 @@ pub enum Head {
 /// The spine of a neutral term
 ///
 /// These are arguments that are awaiting application
-pub type Spine = Vector<RcValue>;
+pub type Spine = Vec<RcValue>;
 
 /// Neutral values
 ///

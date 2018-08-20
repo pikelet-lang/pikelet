@@ -65,13 +65,13 @@ pub trait Desugar<T> {
 /// Convert a sugary pi type from something like:
 ///
 /// ```text
-/// (a b : t1) -> t3
+/// (a b : t1) (c : t2) -> t3
 /// ```
 ///
 /// To a bunch of nested pi types like:
 ///
 /// ```text
-/// (a : t1) -> (b : t1) -> t3
+/// (a : t1) -> (b : t1) -> (c : t2) -> t3
 /// ```
 fn desugar_pi(
     env: &DesugarEnv,
