@@ -86,7 +86,7 @@ mod nf_term {
                     (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                     RcValue::from(Value::Neutral(
                         RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
-                        vector![RcValue::from(Value::from(Var::Free(y)))],
+                        vec![RcValue::from(Value::from(Var::Free(y)))],
                     )),
                 ))),
             ))),
@@ -118,7 +118,7 @@ mod nf_term {
                     (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                     RcValue::from(Value::Neutral(
                         RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
-                        vector![RcValue::from(Value::from(Var::Free(y)))],
+                        vec![RcValue::from(Value::from(Var::Free(y)))],
                     )),
                 ))),
             ))),

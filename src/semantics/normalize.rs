@@ -77,7 +77,7 @@ pub fn nf_term(tc_env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> 
 
                     match *neutral.inner {
                         Neutral::Head(Head::Extern(ref name, _)) => {
-                            spine.push_back(arg);
+                            spine.push(arg);
 
                             // Apply the arguments to primitive definitions if the number of
                             // arguments matches the arity of the primitive, all aof the arguments
@@ -96,7 +96,7 @@ pub fn nf_term(tc_env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> 
                         | Neutral::Head(Head::Global(_))
                         | Neutral::If(_, _, _)
                         | Neutral::Proj(_, _)
-                        | Neutral::Case(_, _) => spine.push_back(arg),
+                        | Neutral::Case(_, _) => spine.push(arg),
                     }
 
                     Ok(RcValue::from(Value::Neutral(neutral.clone(), spine)))

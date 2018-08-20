@@ -1,6 +1,5 @@
 //! The core syntax of the language
 
-use im::Vector;
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
@@ -429,7 +428,7 @@ pub enum Head {
 /// The spine of a neutral term
 ///
 /// These are arguments that are awaiting application
-pub type Spine = Vector<RcValue>;
+pub type Spine = Vec<RcValue>;
 
 /// Neutral values
 ///
