@@ -1,8 +1,11 @@
-# Pikelet 🥞
+# Pikelet!
+
+![Pikelet Mascot][pikelet-mascot]
 
 [![Build Status][travis-badge]][travis-url]
 [![Gitter][gitter-badge]][gitter-lobby]
 
+[pikelet-mascot]: assets/pikelet.png
 [travis-badge]: https://travis-ci.org/pikelet-lang/pikelet.svg?branch=master
 [travis-url]: https://travis-ci.org/pikelet-lang/pikelet
 [gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
