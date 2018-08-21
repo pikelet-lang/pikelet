@@ -20,7 +20,7 @@ pub mod semantics;
 pub mod syntax;
 
 #[cfg(feature = "cli")]
-extern crate rustyline;
+extern crate linefeed;
 #[cfg(feature = "cli")]
 #[macro_use]
 extern crate structopt;

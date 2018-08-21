@@ -4,8 +4,7 @@ use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
+use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
 use term_size;
 
@@ -85,15 +84,17 @@ fn print_help_text() {
 
 /// Run the `repl` subcommand with the given options
 pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
-    // TODO: Load files
-
-    let mut rl = Editor::<()>::new();
+    let interface = Interface::new("repl")?;
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
     let mut desugar_env = DesugarEnv::new();
     let mut tc_env = TcEnv::default();
 
-    if !opts.no_history && rl.load_history(&opts.history_file).is_err() {
+    interface.set_prompt(&opts.prompt)?;
+    interface.set_report_signal(Signal::Interrupt, true);
+    interface.set_report_signal(Signal::Quit, true);
+
+    if !opts.no_history && interface.load_history(&opts.history_file).is_err() {
         // No previous REPL history!
     }
 
@@ -104,10 +105,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     // TODO: Load files
 
     loop {
-        match rl.readline(&opts.prompt) {
-            Ok(line) => {
-                if !opts.no_history {
-                    rl.add_history_entry(&line);
+        match interface.read_line()? {
+            ReadResult::Input(line) => {
+                if !opts.no_history && !line.trim().is_empty() {
+                    interface.add_history_unique(line.clone());
                 }
 
                 let filename = FileName::virtual_("repl");
@@ -119,34 +120,23 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        codespan_reporting::emit(
-                            &mut writer.lock(),
-                            &codemap,
-                            &err.to_diagnostic(),
-                        )?;
+                        let diagnostic = err.to_diagnostic();
+                        codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
                     },
                     Err(EvalPrintError::Type(err)) => {
-                        codespan_reporting::emit(
-                            &mut writer.lock(),
-                            &codemap,
-                            &err.to_diagnostic(),
-                        )?;
+                        let diagnostic = err.to_diagnostic();
+                        codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
                     },
                 }
             },
-            Err(err) => match err {
-                ReadlineError::Interrupted => println!("Interrupt"),
-                ReadlineError::Eof => break,
-                err => {
-                    println!("readline error: {:?}", err);
-                    break;
-                },
-            },
+            ReadResult::Signal(Signal::Quit) | ReadResult::Eof => break,
+            ReadResult::Signal(Signal::Interrupt) => println!("Interrupt"),
+            ReadResult::Signal(_) => {},
         }
     }
 
     if !opts.no_history {
-        rl.save_history(&opts.history_file)?;
+        interface.save_history(&opts.history_file)?;
     }
 
     println!("Bye bye");
