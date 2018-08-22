@@ -207,14 +207,11 @@ and p q = (c : Type) -> (p -> q -> c) -> c;
 and-intro : (p q : Type) -> p -> q -> and p q;
 and-intro p q x y c f = f x y;
 
--- FIXME: These don't type check - I might have got the definitions wrong, or
--- there is a bug in the type checker!
+and-elim-left : (p q : Type) -> and p q -> p;
+and-elim-left p q (pq : and p q) = pq p (const p q);
 
--- and-elim-left : (p q : Type) -> and p q -> p;
--- and-elim-left p q (pq : and p q) = pq p const;
-
--- and-elim-right : (p q : Type) -> and p q -> q;
--- and-elim-right p q (pq : and p q) = pq p (flip const);
+and-elim-right : (p q : Type) -> and p q -> q;
+and-elim-right p q (pq : and p q) = pq q (flip q p q (const q p));
 
 
 ||| Logical disjunction (Church encoded)
@@ -223,14 +220,13 @@ and-intro p q x y c f = f x y;
 or : Type -> Type -> Type 1;
 or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
 
--- FIXME: These don't type check - I might have got the definitions wrong, or
--- there is a bug in the type checker!
+or-intro-left : (p q : Type) -> p -> or p q;
+or-intro-left p q x =
+    \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-p x;
 
--- or-intro-left : (p q : Type) -> p -> or p q;
--- or-intro-left p q (x : p) c (on-p : p -> c) (on-q : q -> c) = on-p x;
-
--- or-intro-right : (p q : Type) -> q -> or p q;
--- or-intro-right p q (y : q) c (on-p : p -> c) (on-q : q -> c) = on-q y;
+or-intro-right : (p q : Type) -> q -> or p q;
+or-intro-right p q y =
+    \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-q y;
 
 
 ||| Dependent products
