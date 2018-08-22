@@ -8,21 +8,6 @@ use syntax::translation::{Desugar, DesugarEnv};
 
 use super::*;
 
-fn parse(codemap: &mut CodeMap, src: &str) -> raw::RcTerm {
-    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
-    let (concrete_term, errors) = parse::term(&filemap);
-
-    if !errors.is_empty() {
-        let writer = StandardStream::stdout(ColorChoice::Always);
-        for error in errors {
-            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
-        }
-        panic!("parse error!")
-    }
-
-    concrete_term.desugar(&DesugarEnv::new())
-}
-
 fn parse_module(codemap: &mut CodeMap, src: &str) -> raw::Module {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
     let (concrete_module, errors) = parse::module(&filemap);
@@ -38,8 +23,23 @@ fn parse_module(codemap: &mut CodeMap, src: &str) -> raw::Module {
     concrete_module.desugar(&DesugarEnv::new())
 }
 
+fn parse_term(codemap: &mut CodeMap, src: &str) -> raw::RcTerm {
+    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+    let (concrete_term, errors) = parse::term(&filemap);
+
+    if !errors.is_empty() {
+        let writer = StandardStream::stdout(ColorChoice::Always);
+        for error in errors {
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
+        }
+        panic!("parse error!")
+    }
+
+    concrete_term.desugar(&DesugarEnv::new())
+}
+
 fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm, RcType) {
-    match infer_term(tc_env, &parse(codemap, src)) {
+    match infer_term(tc_env, &parse_term(codemap, src)) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -62,7 +62,7 @@ fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
 }
 
 fn parse_check_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str, expected: &RcType) {
-    match check_term(tc_env, &parse(codemap, src), expected) {
+    match check_term(tc_env, &parse_term(codemap, src), expected) {
         Ok(_) => {},
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);

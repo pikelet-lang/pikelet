@@ -17,17 +17,18 @@ use syntax::Level;
 mod env;
 mod errors;
 mod normalize;
-mod prim;
 #[cfg(test)]
 mod tests;
 
-pub use self::env::TcEnv;
+pub use self::env::{DeclarationEnv, DefinitionEnv, Extern, TcEnv};
 pub use self::errors::{InternalError, TypeError};
 pub use self::normalize::{match_value, nf_term};
-pub use self::prim::{PrimEnv, PrimFn};
 
 /// Type check and elaborate a module
-pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, TypeError> {
+pub fn check_module<Env>(env: &Env, raw_module: &raw::Module) -> Result<Module, TypeError>
+where
+    Env: DeclarationEnv + DefinitionEnv,
+{
     use im::HashMap;
 
     #[derive(Clone)]
@@ -38,7 +39,7 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
 
     // Declarations that may be waiting to be defined
     let mut forward_declarations = HashMap::new();
-    let mut tc_env = tc_env.clone();
+    let mut env = env.clone();
     // The elaborated items, pre-allocated to improve performance
     let mut items = Vec::with_capacity(raw_module.items.len());
 
@@ -78,7 +79,7 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                 }
 
                 // Ensure that the declaration's type annotation is actually a type
-                let (term, _) = infer_universe(&tc_env, raw_term)?;
+                let (term, _) = infer_universe(&env, raw_term)?;
                 // Remember the declaration for when we get to a subsequent definition
                 let declaration = ForwardDecl::Pending(label_span, term.clone());
                 forward_declarations.insert(binder.clone(), declaration);
@@ -113,12 +114,12 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                     // We found a prior declaration, so we'll use it as a basis
                     // for checking the definition
                     Some(ForwardDecl::Pending(_, ty)) => {
-                        let ty = nf_term(&tc_env, &ty)?;
-                        (check_term(&tc_env, &raw_term, &ty)?, ty)
+                        let ty = nf_term(&env, &ty)?;
+                        (check_term(&env, &raw_term, &ty)?, ty)
                     },
                     // No prior declaration was found, so try to infer the type
                     // from the given definition alone
-                    None => infer_term(&tc_env, &raw_term)?,
+                    None => infer_term(&env, &raw_term)?,
                 };
 
                 // We must not remove this from the list of pending
@@ -127,8 +128,8 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
                 forward_declarations.insert(binder.clone(), ForwardDecl::Defined(label_span));
                 // Add the declaration and definition to the environment,
                 // allowing them to be used in later type checking
-                tc_env.declarations.insert(binder.0.clone(), ty);
-                tc_env.definitions.insert(binder.0.clone(), term.clone());
+                env.insert_declaration(binder.0.clone(), ty);
+                env.insert_definition(binder.0.clone(), term.clone());
                 // Add the definition to the elaborated items
                 items.push(Item::Definition {
                     label: label.clone(),
@@ -144,8 +145,11 @@ pub fn check_module(tc_env: &TcEnv, raw_module: &raw::Module) -> Result<Module, 
 
 /// Ensures that the given term is a universe, returning the level of that
 /// universe and its elaborated form.
-fn infer_universe(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError> {
-    let (term, ty) = infer_term(tc_env, raw_term)?;
+fn infer_universe<Env>(env: &Env, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError>
+where
+    Env: DeclarationEnv + DefinitionEnv,
+{
+    let (term, ty) = infer_term(env, raw_term)?;
     match *ty {
         Value::Universe(level) => Ok((term, level)),
         _ => Err(TypeError::ExpectedUniverse {
@@ -211,11 +215,14 @@ fn infer_literal(raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeEr
 
 /// Checks that a pattern is compatible with the given type, returning the
 /// elaborated pattern and a vector of the declarations it introduced if successful
-pub fn check_pattern(
-    tc_env: &TcEnv,
+pub fn check_pattern<Env>(
+    env: &Env,
     raw_pattern: &raw::RcPattern,
     expected_ty: &RcType,
-) -> Result<(RcPattern, Vec<(FreeVar<String>, RcType)>), TypeError> {
+) -> Result<(RcPattern, Vec<(FreeVar<String>, RcType)>), TypeError>
+where
+    Env: DeclarationEnv + DefinitionEnv,
+{
     match (&*raw_pattern.inner, &*expected_ty.inner) {
         (&raw::Pattern::Binder(_, Binder(ref free_var)), _) => {
             return Ok((
@@ -230,7 +237,7 @@ pub fn check_pattern(
         _ => {},
     }
 
-    let (pattern, inferred_ty, declarations) = infer_pattern(tc_env, raw_pattern)?;
+    let (pattern, inferred_ty, declarations) = infer_pattern(env, raw_pattern)?;
     if Type::term_eq(&inferred_ty, expected_ty) {
         Ok((pattern, declarations))
     } else {
@@ -244,15 +251,18 @@ pub fn check_pattern(
 
 /// Synthesize the type of a pattern, returning the elaborated pattern, the
 /// inferred type, and a vector of the declarations it introduced if successful
-pub fn infer_pattern(
-    tc_env: &TcEnv,
+pub fn infer_pattern<Env>(
+    env: &Env,
     raw_pattern: &raw::RcPattern,
-) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError> {
+) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError>
+where
+    Env: DeclarationEnv + DefinitionEnv,
+{
     match *raw_pattern.inner {
         raw::Pattern::Ann(ref raw_pattern, Embed(ref raw_ty)) => {
-            let (ty, _) = infer_universe(tc_env, raw_ty)?;
-            let value_ty = nf_term(tc_env, &ty)?;
-            let (pattern, declarations) = check_pattern(tc_env, raw_pattern, &value_ty)?;
+            let (ty, _) = infer_universe(env, raw_ty)?;
+            let value_ty = nf_term(env, &ty)?;
+            let (pattern, declarations) = check_pattern(env, raw_pattern, &value_ty)?;
 
             Ok((
                 RcPattern::from(Pattern::Ann(pattern, Embed(ty))),
@@ -273,11 +283,14 @@ pub fn infer_pattern(
 
 /// Checks that a term is compatible with the given type, returning the
 /// elaborated term if successful
-pub fn check_term(
-    tc_env: &TcEnv,
+pub fn check_term<Env>(
+    env: &Env,
     raw_term: &raw::RcTerm,
     expected_ty: &RcType,
-) -> Result<RcTerm, TypeError> {
+) -> Result<RcTerm, TypeError>
+where
+    Env: DeclarationEnv + DefinitionEnv,
+{
     match (&*raw_term.inner, &*expected_ty.inner) {
         (&raw::Term::Literal(ref raw_literal), _) => {
             let literal = check_literal(raw_literal, expected_ty)?;
@@ -293,9 +306,9 @@ pub fn check_term(
             if let raw::Term::Hole(_) = *lam_ann.inner {
                 let lam_ann = RcTerm::from(Term::from(&*pi_ann));
                 let lam_body = {
-                    let mut body_tc_env = tc_env.clone();
-                    body_tc_env.declarations.insert(pi_name, pi_ann);
-                    check_term(&body_tc_env, &lam_body, &pi_body)?
+                    let mut body_env = env.clone();
+                    body_env.insert_declaration(pi_name, pi_ann);
+                    check_term(&body_env, &lam_body, &pi_body)?
                 };
                 let lam_scope = Scope::new((lam_name, Embed(lam_ann)), lam_body);
 
@@ -315,9 +328,9 @@ pub fn check_term(
         // C-IF
         (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
             let bool_ty = RcValue::from(Value::global("Bool"));
-            let cond = check_term(tc_env, raw_cond, &bool_ty)?;
-            let if_true = check_term(tc_env, raw_if_true, expected_ty)?;
-            let if_false = check_term(tc_env, raw_if_false, expected_ty)?;
+            let cond = check_term(env, raw_cond, &bool_ty)?;
+            let if_true = check_term(env, raw_if_true, expected_ty)?;
+            let if_false = check_term(env, raw_if_false, expected_ty)?;
 
             return Ok(RcTerm::from(Term::If(cond, if_true, if_false)));
         },
@@ -343,8 +356,8 @@ pub fn check_term(
                         let (ty_label, Binder(ty_free_var), Embed(ann)) = ty_field;
 
                         if label == ty_label {
-                            let ann = nf_term(tc_env, &ann.substs(&mappings))?;
-                            let expr = check_term(&tc_env, &raw_expr, &ann)?;
+                            let ann = nf_term(env, &ann.substs(&mappings))?;
+                            let expr = check_term(env, &raw_expr, &ann)?;
                             mappings.push((ty_free_var, expr.clone()));
                             Ok((label, Binder(free_var), Embed(expr)))
                         } else {
@@ -363,18 +376,18 @@ pub fn check_term(
         },
 
         (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
-            let (head, head_ty) = infer_term(tc_env, raw_head)?;
+            let (head, head_ty) = infer_term(env, raw_head)?;
 
             // TODO: ensure that patterns are exhaustive
             let clauses = raw_clauses
                 .iter()
                 .map(|raw_clause| {
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, declarations) = check_pattern(tc_env, &raw_pattern, &head_ty)?;
+                    let (pattern, declarations) = check_pattern(env, &raw_pattern, &head_ty)?;
 
-                    let mut body_tc_env = tc_env.clone();
-                    body_tc_env.declarations.extend(declarations);
-                    let body = check_term(&body_tc_env, &raw_body, expected_ty)?;
+                    let mut body_env = env.clone();
+                    body_env.extend_declarations(declarations);
+                    let body = check_term(&body_env, &raw_body, expected_ty)?;
 
                     Ok(Scope::new(pattern, body))
                 }).collect::<Result<_, TypeError>>()?;
@@ -399,7 +412,7 @@ pub fn check_term(
                 return Ok(RcTerm::from(Term::Array(
                     elems
                         .iter()
-                        .map(|elem| check_term(tc_env, elem, elem_ty))
+                        .map(|elem| check_term(env, elem, elem_ty))
                         .collect::<Result<_, _>>()?,
                 )));
             },
@@ -415,7 +428,7 @@ pub fn check_term(
     }
 
     // C-CONV
-    let (term, inferred_ty) = infer_term(tc_env, raw_term)?;
+    let (term, inferred_ty) = infer_term(env, raw_term)?;
     if Type::term_eq(&inferred_ty, expected_ty) {
         Ok(term)
     } else {
@@ -429,15 +442,18 @@ pub fn check_term(
 
 /// Synthesize the type of a term, returning the elaborated term and the
 /// inferred type if successful
-pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType), TypeError> {
+pub fn infer_term<Env>(env: &Env, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType), TypeError>
+where
+    Env: DeclarationEnv + DefinitionEnv,
+{
     use std::cmp;
 
     match *raw_term.inner {
         //  I-ANN
         raw::Term::Ann(ref raw_expr, ref raw_ty) => {
-            let (ty, _) = infer_universe(tc_env, raw_ty)?;
-            let value_ty = nf_term(tc_env, &ty)?;
-            let expr = check_term(tc_env, raw_expr, &value_ty)?;
+            let (ty, _) = infer_universe(env, raw_ty)?;
+            let value_ty = nf_term(env, &ty)?;
+            let expr = check_term(env, raw_expr, &value_ty)?;
 
             Ok((RcTerm::from(Term::Ann(expr, ty)), value_ty))
         },
@@ -460,7 +476,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
 
         // I-VAR
         raw::Term::Var(span, ref var) => match *var {
-            Var::Free(ref free_var) => match tc_env.declarations.get(free_var) {
+            Var::Free(ref free_var) => match env.get_declaration(free_var) {
                 Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
                 None => Err(TypeError::NotYetDefined {
                     span,
@@ -477,7 +493,9 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
             }.into()),
         },
 
-        raw::Term::Extern(_, name_span, ref name, _) if tc_env.primitives.get(name).is_none() => {
+        raw::Term::Extern(_, name_span, ref name, _)
+            if env.get_extern_definition(name).is_none() =>
+        {
             Err(TypeError::UndefinedExternName {
                 span: name_span,
                 name: name.clone(),
@@ -485,13 +503,13 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
         },
 
         raw::Term::Extern(_, _, ref name, ref raw_ty) => {
-            let (ty, _) = infer_universe(tc_env, raw_ty)?;
-            let value_ty = nf_term(tc_env, &ty)?;
+            let (ty, _) = infer_universe(env, raw_ty)?;
+            let value_ty = nf_term(env, &ty)?;
             Ok((RcTerm::from(Term::Extern(name.clone(), ty)), value_ty))
         },
 
-        raw::Term::Global(span, ref name) => match tc_env.globals.get(name.as_str()) {
-            Some((_, ref ty)) => Ok((RcTerm::from(Term::global(name.clone())), ty.clone())),
+        raw::Term::Global(span, ref name) => match env.get_global_declaration(name.as_str()) {
+            Some(ty) => Ok((RcTerm::from(Term::global(name.clone())), ty.clone())),
             None => Err(TypeError::UndefinedName {
                 span,
                 name: name.clone(),
@@ -502,12 +520,12 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
         raw::Term::Pi(_, ref raw_scope) => {
             let ((Binder(free_var), Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
-            let (ann, ann_level) = infer_universe(tc_env, &raw_ann)?;
+            let (ann, ann_level) = infer_universe(env, &raw_ann)?;
             let (body, body_level) = {
-                let ann = nf_term(tc_env, &ann)?;
-                let mut body_tc_env = tc_env.clone();
-                body_tc_env.declarations.insert(free_var.clone(), ann);
-                infer_universe(&body_tc_env, &raw_body)?
+                let ann = nf_term(env, &ann)?;
+                let mut body_env = env.clone();
+                body_env.insert_declaration(free_var.clone(), ann);
+                infer_universe(&body_env, &raw_body)?
             };
 
             Ok((
@@ -529,14 +547,12 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
                 });
             }
 
-            let (lam_ann, _) = infer_universe(tc_env, &raw_ann)?;
-            let pi_ann = nf_term(tc_env, &lam_ann)?;
+            let (lam_ann, _) = infer_universe(env, &raw_ann)?;
+            let pi_ann = nf_term(env, &lam_ann)?;
             let (lam_body, pi_body) = {
-                let mut body_tc_env = tc_env.clone();
-                body_tc_env
-                    .declarations
-                    .insert(free_var.clone(), pi_ann.clone());
-                infer_term(&body_tc_env, &raw_body)?
+                let mut body_env = env.clone();
+                body_env.insert_declaration(free_var.clone(), pi_ann.clone());
+                infer_term(&body_env, &raw_body)?
             };
 
             let lam_param = (Binder(free_var.clone()), Embed(lam_ann));
@@ -551,23 +567,23 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
         // I-IF
         raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
             let bool_ty = RcValue::from(Value::global("Bool"));
-            let cond = check_term(tc_env, raw_cond, &bool_ty)?;
-            let (if_true, ty) = infer_term(tc_env, raw_if_true)?;
-            let if_false = check_term(tc_env, raw_if_false, &ty)?;
+            let cond = check_term(env, raw_cond, &bool_ty)?;
+            let (if_true, ty) = infer_term(env, raw_if_true)?;
+            let if_false = check_term(env, raw_if_false, &ty)?;
 
             Ok((RcTerm::from(Term::If(cond, if_true, if_false)), ty))
         },
 
         // I-APP
         raw::Term::App(ref raw_head, ref raw_arg) => {
-            let (head, head_ty) = infer_term(tc_env, raw_head)?;
+            let (head, head_ty) = infer_term(env, raw_head)?;
 
             match *head_ty {
                 Value::Pi(ref scope) => {
                     let ((Binder(free_var), Embed(ann)), body) = scope.clone().unbind();
 
-                    let arg = check_term(tc_env, raw_arg, &ann)?;
-                    let body = nf_term(tc_env, &body.substs(&[(free_var, arg.clone())]))?;
+                    let arg = check_term(env, raw_arg, &ann)?;
+                    let body = nf_term(env, &body.substs(&[(free_var, arg.clone())]))?;
 
                     Ok((RcTerm::from(Term::App(head, arg)), body))
                 },
@@ -586,16 +602,16 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
 
             // FIXME: Check that record is well-formed?
             let fields = {
-                let mut tc_env = tc_env.clone();
+                let mut env = env.clone();
                 raw_fields
                     .unnest()
                     .into_iter()
                     .map(|(label, Binder(free_var), Embed(raw_ann))| {
-                        let (ann, ann_level) = infer_universe(&tc_env, &raw_ann)?;
-                        let nf_ann = nf_term(&tc_env, &ann)?;
+                        let (ann, ann_level) = infer_universe(&env, &raw_ann)?;
+                        let nf_ann = nf_term(&env, &ann)?;
 
                         max_level = cmp::max(max_level, ann_level);
-                        tc_env.declarations.insert(free_var.clone(), nf_ann);
+                        env.insert_declaration(free_var.clone(), nf_ann);
 
                         Ok((label, Binder(free_var), Embed(ann)))
                     }).collect::<Result<_, TypeError>>()?
@@ -621,7 +637,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
 
         // I-PROJ
         raw::Term::Proj(_, ref expr, label_span, ref label) => {
-            let (expr, ty) = infer_term(tc_env, expr)?;
+            let (expr, ty) = infer_term(env, expr)?;
 
             if let Value::RecordType(ref scope) = *ty.inner {
                 let (fields, ()) = scope.clone().unbind();
@@ -631,7 +647,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
                     if current_label == *label {
                         return Ok((
                             RcTerm::from(Term::Proj(expr, current_label)),
-                            nf_term(tc_env, &current_ann.substs(&mappings))?,
+                            nf_term(env, &current_ann.substs(&mappings))?,
                         ));
                     } else {
                         mappings.push((
@@ -651,7 +667,7 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
 
         // I-CASE
         raw::Term::Case(span, ref raw_head, ref raw_clauses) => {
-            let (head, head_ty) = infer_term(tc_env, raw_head)?;
+            let (head, head_ty) = infer_term(env, raw_head)?;
             let mut ty = None;
 
             // TODO: ensure that patterns are exhaustive
@@ -659,12 +675,12 @@ pub fn infer_term(tc_env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcT
                 .iter()
                 .map(|raw_clause| {
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, declarations) = check_pattern(tc_env, &raw_pattern, &head_ty)?;
+                    let (pattern, declarations) = check_pattern(env, &raw_pattern, &head_ty)?;
 
                     let (body, body_ty) = {
-                        let mut body_tc_env = tc_env.clone();
-                        body_tc_env.declarations.extend(declarations);
-                        infer_term(&body_tc_env, &raw_body)?
+                        let mut body_env = env.clone();
+                        body_env.extend_declarations(declarations);
+                        infer_term(&body_env, &raw_body)?
                     };
 
                     match ty {

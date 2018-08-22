@@ -64,7 +64,7 @@ fn case_expr_bad_literal() {
     }"#;
 
     let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
-    match check_term(&tc_env, &parse(&mut codemap, given_expr), &expected_ty) {
+    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
         Err(TypeError::LiteralMismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok(term) => panic!("expected error but found: {}", term),
@@ -130,7 +130,7 @@ fn array_len_mismatch() {
     let given_expr = r#"["hello"; "hi"]"#;
 
     let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
-    match check_term(&tc_env, &parse(&mut codemap, given_expr), &expected_ty) {
+    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
         Err(TypeError::ArrayLengthMismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok(term) => panic!("expected error but found: {}", term),
@@ -146,7 +146,7 @@ fn array_elem_ty_mismatch() {
     let given_expr = r#"["hello"; "hi"; 4]"#;
 
     let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
-    match check_term(&tc_env, &parse(&mut codemap, given_expr), &expected_ty) {
+    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
         Err(_) => {},
         Ok(term) => panic!("expected error but found: {}", term),
     }
