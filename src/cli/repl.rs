@@ -9,7 +9,7 @@ use rustyline::Editor;
 use std::path::PathBuf;
 use term_size;
 
-use semantics::{self, TcEnv};
+use semantics::{self, DeclarationEnv, DefinitionEnv, TcEnv};
 use syntax::parse;
 use syntax::translation::DesugarEnv;
 
@@ -215,8 +215,8 @@ fn eval_print(
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
             let free_var = desugar_env.on_binding(&name);
-            tc_env.declarations.insert(free_var.clone(), inferred);
-            tc_env.definitions.insert(free_var.clone(), term);
+            tc_env.insert_declaration(free_var.clone(), inferred);
+            tc_env.insert_definition(free_var.clone(), term);
 
             return Ok(ControlFlow::Continue);
         },
