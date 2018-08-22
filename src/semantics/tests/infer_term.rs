@@ -24,7 +24,7 @@ fn undefined_name() {
     let given_expr = "x";
 
     assert_eq!(
-        infer_term(&tc_env, &parse(&mut codemap, given_expr)),
+        infer_term(&tc_env, &parse_term(&mut codemap, given_expr)),
         Err(TypeError::UndefinedName {
             span: ByteSpan::new(ByteIndex(1), ByteIndex(2)),
             name: String::from("x"),
@@ -39,7 +39,7 @@ fn extern_not_found() {
 
     let given_expr = r#"extern "does-not-exist" : Record {}"#;
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::UndefinedExternName { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
@@ -109,7 +109,7 @@ fn ann_id_as_ty() {
 
     let given_expr = r"(\a => a) : Type";
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::UnexpectedFunction { .. }) => {},
         other => panic!("unexpected result: {:#?}", other),
     }
@@ -137,7 +137,7 @@ fn app_ty() {
     let given_expr = r"Type Type";
 
     assert_eq!(
-        infer_term(&tc_env, &parse(&mut codemap, given_expr)),
+        infer_term(&tc_env, &parse_term(&mut codemap, given_expr)),
         Err(TypeError::ArgAppliedToNonFunction {
             fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
             arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
@@ -377,7 +377,7 @@ fn case_expr_bool_bad() {
         false => "hi";
     }"#;
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::Mismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
@@ -407,7 +407,7 @@ fn case_expr_empty() {
 
     let given_expr = r#"case "helloo" of {}"#;
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::AmbiguousEmptyCase { .. }) => {},
         other => panic!("unexpected result: {:#?}", other),
     }
@@ -539,7 +539,7 @@ fn record() {
 
     let given_expr = r#"record { x = "Hello" }"#;
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::AmbiguousRecord { .. }) => {},
         x => panic!("expected an ambiguous record error, found {:?}", x),
     }
@@ -566,7 +566,7 @@ fn proj_missing() {
 
     let given_expr = r#"(record { x = "hello" } : Record { x : String }).bloop"#;
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::NoFieldInType { .. }) => {},
         x => panic!("expected a field lookup error, found {:?}", x),
     }
@@ -622,7 +622,7 @@ fn array_ambiguous() {
 
     let given_expr = r#"[1; 2 : I32]"#;
 
-    match infer_term(&tc_env, &parse(&mut codemap, given_expr)) {
+    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
         Err(TypeError::AmbiguousArrayLiteral { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
