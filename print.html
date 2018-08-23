@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.6.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/implementation.html"><strong aria-hidden="true">3.3.</strong> Implementation</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.4.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.5.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="language/types-of-types.html"><strong aria-hidden="true">2.6.</strong> Types of types</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -1391,91 +1391,6 @@ directly on types</a>? McBride seems to <a href="https://stackoverflow.com/quest
 cake and eat it</a>!</li>
 </ul>
 </blockquote>
-<a class="header" href="#compiler-architecture" id="compiler-architecture"><h1>Compiler Architecture</h1></a>
-<p>In order to create a separation of concerns, we break up our compiler into many
-small stages, beginning with a source string, and ultimately ending up with
-compiled machine code.</p>
-<p>Below is a rough flow chart showing how source strings are currently lexed,
-parsed, desugared, and type checked/elaborated:</p>
-<pre><code class="language-bob">         .------------.
-         |   String   |
-         '------------'
-                |
-      syntax::parse::lexer
-                |
-                v
-  .-----------------------------.
-  | syntax::parse::lexer::Token |
-  '-----------------------------'
-                |
-     syntax::parse::grammar
-                |
-                v
-    .------------------------.
-    | syntax::concrete::Term |
-    '------------------------'
-                |
-   syntax::translation::desugar
-                |
-                v
-      .-------------------.
-      | syntax::raw::Term |
-      '-------------------'
-                |                        .---------------------.
-    semantics::{check,infer} &lt;---------- | syntax::core::Value |
-                |                        '---------------------'
-                v                                    ^
-      .--------------------.                         |
-      | syntax::core::Term | - semantics::normalize -'
-      '--------------------'
-                |
-                v
-    TODO: compiler back end(s)
-</code></pre>
-<p>As you can see we have only built the front-end as of the time of writing. When
-we begin to build out a <a href="https://github.com/pikelet-lang/pikelet/issues/9">compiler back end</a>,
-more stages will be added after type checking and elaboration.</p>
-<a class="header" href="#name-binding" id="name-binding"><h2>Name binding</h2></a>
-<p>Name binding is a surprisingly challenging thing to implement in type checkers
-and compilers. We use the <a href="https://github.com/brendanzab/moniker"><code>moniker</code> crate</a>
-for this. Unfortunately this uses a quite slow method of name binding, and could
-result in performance blowouts in the future. This is something to keep an eye on!</p>
-<a class="header" href="#performance-considerations" id="performance-considerations"><h2>Performance considerations</h2></a>
-<p>As you can see from the diagram above, this architecture leads to an
-easy-to-reason about pipeline. It does however result in the creation of lots of
-intermediate allocations of heap-allocated tree data structures that will
-ultimately be discarded. This is quite similar to the problem we face with
-iterators:</p>
-<pre><pre class="playpen"><code class="language-rust">
-# #![allow(unused_variables)]
-#fn main() {
-// 'internal' iteration
-vec![1, 2, 3].map(|x| x * x).filter(|x| x &lt; 3)
-
-// 'external' iteration
-vec![1, 2, 3].iter().map(|x| x * x).filter(|x| x &lt; 3).collect()
-#}</code></pre></pre>
-<p>The first example, which uses 'internal' iteration allocates a new collection
-after each operation, resulting in three allocated collections. We can improve
-the performance however by using 'external' iteration - ie. returning a series
-of chained iterator adaptors, that only perform the allocation on the call to
-<code>collect</code>. This emulates the 'fusion' that languages like Haskell perform to
-reduce intermediate allocations.</p>
-<p>We could potentially get some fusion between the stages of our compiler by way
-of the <a href="https://github.com/pikelet-lang/pikelet/issues/75">visitor pattern</a>.</p>
-<a class="header" href="#support-for-interactive-development" id="support-for-interactive-development"><h2>Support for interactive development</h2></a>
-<p>It would be interesting to see how Pikelet could be implemented using an
-asynchronous, query-based architecture. This will become more important as the
-demands of interactive development and incremental compilation become more
-pressing. In this model we would have to think of compilation as less a pure
-function from source code to machine code, and more as interacting with a
-database. Perhaps a CQRS (Command-Query-Responsibility-Segregation) model would
-be useful for this?</p>
-<a class="header" href="#resources" id="resources"><h3>Resources</h3></a>
-<ul>
-<li><a href="https://rust-lang-nursery.github.io/rustc-guide/query.html">Queries: demand-driven compilation (Rustc Book)</a></li>
-<li><a href="https://www.youtube.com/watch?v=wSdV1M7n4gQ">Anders Hejlsberg on Modern Compiler Construction (YouTube)</a></li>
-</ul>
 <a class="header" href="#influences" id="influences"><h1>Influences</h1></a>
 <p>Some languages have been inspiring when building Pikelet. We list some of them
 here, and the contributions they have made in our thinking. These ideas may or
