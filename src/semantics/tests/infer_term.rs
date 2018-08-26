@@ -5,7 +5,11 @@ fn undefined_name() {
     let tc_env = TcEnv::default();
 
     let x = FreeVar::fresh_named("x");
-    let given_expr = raw::RcTerm::from(raw::Term::Var(ByteSpan::default(), Var::Free(x.clone())));
+    let given_expr = raw::RcTerm::from(raw::Term::Var(
+        ByteSpan::default(),
+        Var::Free(x.clone()),
+        LevelShift(0),
+    ));
 
     assert_eq!(
         infer_term(&tc_env, &given_expr),
@@ -38,7 +42,7 @@ fn ty() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
+    let expected_ty = r"Type^1";
     let given_expr = r"Type";
 
     assert_term_eq!(
@@ -52,8 +56,8 @@ fn ty_levels() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
-    let given_expr = r"Type 0 : Type 1 : Type 2 : Type 3"; //... Type ∞       ...+:｡(ﾉ･ω･)ﾉﾞ
+    let expected_ty = r"Type^1";
+    let given_expr = r"Type^0 : Type^1 : Type^2 : Type^3"; //... Type^∞       ...+:｡(ﾉ･ω･)ﾉﾞ
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -110,8 +114,8 @@ fn app() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
-    let given_expr = r"(\a : Type 1 => a) Type";
+    let expected_ty = r"Type^1";
+    let given_expr = r"(\a : Type^1 => a) Type";
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -158,7 +162,7 @@ fn pi() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
+    let expected_ty = r"Type^1";
     let given_expr = r"(a : Type) -> a";
 
     assert_term_eq!(
@@ -203,7 +207,7 @@ fn id_app_ty() {
     let tc_env = TcEnv::default();
 
     let expected_ty = r"Type -> Type";
-    let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
+    let given_expr = r"(\(a : Type^1) (x : a) => x) Type";
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -217,8 +221,8 @@ fn id_app_ty_ty() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
-    let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
+    let expected_ty = r"Type^1";
+    let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) Type";
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -231,8 +235,8 @@ fn id_app_ty_arr_ty() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
-    let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
+    let expected_ty = r"Type^1";
+    let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -246,7 +250,7 @@ fn id_app_arr_pi_ty() {
     let tc_env = TcEnv::default();
 
     let expected_ty = r"Type -> Type";
-    let given_expr = r"(\(a : Type 1) (x : a) => x) (Type -> Type) (\x => x)";
+    let given_expr = r"(\(a : Type^1) (x : a) => x) (Type -> Type) (\x => x)";
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -456,7 +460,7 @@ mod church_encodings {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
 
-        let expected_ty = r"Type -> Type -> Type 1";
+        let expected_ty = r"Type -> Type -> Type^1";
         let given_expr = r"\(p q : Type) => (c : Type) -> (p -> q -> c) -> c";
 
         assert_term_eq!(
@@ -558,8 +562,8 @@ fn dependent_record_ty() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 2";
-    let given_expr = r"Record { t : Type 1; x : t }";
+    let expected_ty = r"Type^2";
+    let given_expr = r"Record { t : Type^1; x : t }";
 
     assert_term_eq!(
         parse_infer_term(&mut codemap, &tc_env, given_expr).1,
@@ -616,7 +620,7 @@ fn proj_weird1() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
+    let expected_ty = r"Type^1";
     let given_expr = r"Record {
         data : Record {
             t : Type;
@@ -638,7 +642,7 @@ fn proj_weird2() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"Type 1";
+    let expected_ty = r"Type^1";
     let given_expr = r"Record {
         Array : U16 -> Type -> Type;
         t : Record { n : U16; x : Array n I8; y : Array n I8 };

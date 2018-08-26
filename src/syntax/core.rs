@@ -6,7 +6,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::{Label, Level};
+use syntax::{Label, Level, LevelShift};
 
 /// A module definition
 pub struct Module {
@@ -74,7 +74,7 @@ pub enum Pattern {
     /// Patterns that bind variables
     Binder(Binder<String>),
     /// Patterns to be compared structurally with a variable in scope
-    Var(Embed<Var<String>>),
+    Var(Embed<Var<String>>, LevelShift),
     /// Literal patterns
     Literal(Literal),
 }
@@ -123,7 +123,7 @@ pub enum Term {
     /// Literals
     Literal(Literal),
     /// A variable
-    Var(Var<String>),
+    Var(Var<String>, LevelShift),
     /// An external definition
     Extern(String, RcTerm),
     /// Dependent function types
@@ -152,6 +152,10 @@ impl Term {
     pub fn universe(level: impl Into<Level>) -> Term {
         Term::Universe(level.into())
     }
+
+    pub fn var(var: impl Into<Var<String>>, shift: impl Into<LevelShift>) -> Term {
+        Term::Var(var.into(), shift.into())
+    }
 }
 
 impl fmt::Display for Term {
@@ -173,7 +177,7 @@ impl RcTerm {
                 RcTerm::from(Term::Ann(term.substs(mappings), ty.substs(mappings)))
             },
             Term::Universe(_) | Term::Literal(_) => self.clone(),
-            Term::Var(ref var) => match mappings.iter().find(|&(ref name, _)| var == name) {
+            Term::Var(ref var, _) => match mappings.iter().find(|&(ref name, _)| var == name) {
                 Some(&(_, ref term)) => term.clone(),
                 None => self.clone(),
             },
@@ -318,6 +322,10 @@ impl Value {
         Value::Universe(level.into())
     }
 
+    pub fn var(var: impl Into<Var<String>>, shift: impl Into<LevelShift>) -> Value {
+        Value::Neutral(RcNeutral::from(Neutral::var(var, shift)), Spine::new())
+    }
+
     pub fn substs(&self, mappings: &[(FreeVar<String>, RcTerm)]) -> RcTerm {
         // FIXME: This seems quite wasteful!
         RcTerm::from(Term::from(self)).substs(mappings)
@@ -363,10 +371,10 @@ impl Value {
         None
     }
 
-    pub fn free_var_app(&self) -> Option<(&FreeVar<String>, &Spine)> {
-        self.head_app().and_then(|(head, spine)| match head {
-            Head::Var(Var::Free(ref free_var)) => Some((free_var, spine)),
-            Head::Extern(_, _) | Head::Var(Var::Bound(_)) => None,
+    pub fn free_var_app(&self) -> Option<(&FreeVar<String>, LevelShift, &Spine)> {
+        self.head_app().and_then(|(head, spine)| match *head {
+            Head::Var(Var::Free(ref free_var), shift) => Some((free_var, shift, spine)),
+            Head::Extern(_, _) | Head::Var(Var::Bound(_), _) => None,
         })
     }
 }
@@ -381,6 +389,33 @@ impl fmt::Display for Value {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct RcValue {
     pub inner: Rc<Value>,
+}
+
+impl RcValue {
+    pub fn shift_universes(&mut self, shift: LevelShift) {
+        match *Rc::make_mut(&mut self.inner) {
+            Value::Universe(ref mut level) => *level += shift,
+            Value::Literal(_) => {},
+            Value::Pi(ref mut scope) | Value::Lam(ref mut scope) => {
+                (scope.unsafe_pattern.1).0.shift_universes(shift);
+                scope.unsafe_body.shift_universes(shift);
+            },
+            Value::RecordType(ref mut scope) | Value::Record(ref mut scope) => {
+                for &mut (_, _, Embed(ref mut term)) in &mut scope.unsafe_pattern.unsafe_patterns {
+                    term.shift_universes(shift);
+                }
+            },
+            Value::Array(ref mut elems) => for elem in elems {
+                elem.shift_universes(shift);
+            },
+            Value::Neutral(ref mut neutral, ref mut spine) => {
+                neutral.shift_universes(shift);
+                for arg in spine {
+                    arg.shift_universes(shift);
+                }
+            },
+        }
+    }
 }
 
 impl From<Value> for RcValue {
@@ -409,7 +444,7 @@ impl fmt::Display for RcValue {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Head {
     /// Variables that have not yet been replaced with a definition
-    Var(Var<String>),
+    Var(Var<String>, LevelShift),
     /// External definitions
     Extern(String, RcType),
     // TODO: Metavariables
@@ -436,6 +471,12 @@ pub enum Neutral {
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }
 
+impl Neutral {
+    pub fn var(var: impl Into<Var<String>>, shift: impl Into<LevelShift>) -> Neutral {
+        Neutral::Head(Head::Var(var.into(), shift.into()))
+    }
+}
+
 impl fmt::Display for Neutral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
@@ -446,6 +487,32 @@ impl fmt::Display for Neutral {
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct RcNeutral {
     pub inner: Rc<Neutral>,
+}
+
+impl RcNeutral {
+    pub fn shift_universes(&mut self, shift: LevelShift) {
+        match *Rc::make_mut(&mut self.inner) {
+            // Neutral::Head(Head::Var(_, ref mut head_shift)) => {
+            //     *head_shift += shift; // NOTE: Not sure if this is correct!
+            // },
+            Neutral::Head(Head::Var(_, _)) => {},
+            Neutral::Head(Head::Extern(_, ref mut ty)) => ty.shift_universes(shift),
+            Neutral::If(ref mut cond, ref mut if_true, ref mut if_false) => {
+                cond.shift_universes(shift);
+                if_true.shift_universes(shift);
+                if_false.shift_universes(shift);
+            },
+            Neutral::Proj(ref mut expr, _) => expr.shift_universes(shift),
+            Neutral::Case(ref mut expr, ref mut clauses) => {
+                expr.shift_universes(shift);
+                for clause in clauses {
+                    // FIXME: implement shifting for patterns as well!
+                    // clause.unsafe_pattern.shift_universes(shift);
+                    clause.unsafe_body.shift_universes(shift);
+                }
+            },
+        }
+    }
 }
 
 impl From<Neutral> for RcNeutral {
@@ -469,18 +536,6 @@ pub type Type = Value;
 
 /// Types are at the term level, so this is just an alias
 pub type RcType = RcValue;
-
-impl From<Var<String>> for Neutral {
-    fn from(src: Var<String>) -> Neutral {
-        Neutral::Head(Head::Var(src))
-    }
-}
-
-impl From<Var<String>> for Value {
-    fn from(src: Var<String>) -> Value {
-        Value::from(Neutral::from(src))
-    }
-}
 
 impl From<Neutral> for Value {
     fn from(src: Neutral) -> Value {
@@ -588,7 +643,7 @@ impl<'a> From<&'a Neutral> for RcTerm {
 impl<'a> From<&'a Head> for Term {
     fn from(src: &'a Head) -> Term {
         match *src {
-            Head::Var(ref var) => Term::Var(var.clone()),
+            Head::Var(ref var, shift) => Term::Var(var.clone(), shift),
             Head::Extern(ref name, ref ty) => Term::Extern(name.clone(), RcTerm::from(&**ty)),
         }
     }

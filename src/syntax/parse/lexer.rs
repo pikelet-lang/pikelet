@@ -8,7 +8,8 @@ use unicode_xid::UnicodeXID;
 
 fn is_symbol(ch: char) -> bool {
     match ch {
-        '&' | '!' | ':' | ',' | '.' | '=' | '/' | '>' | '<' | '-' | '|' | '+' | ';' | '*' => true,
+        '&' | '!' | ':' | ',' | '.' | '=' | '/' | '>' | '<' | '-' | '|' | '+' | ';' | '*' | '^'
+        | '?' => true,
         _ => false,
     }
 }
@@ -125,6 +126,7 @@ pub enum Token<S> {
 
     // Symbols
     BSlash,    // \
+    Caret,     // ^
     Colon,     // :
     Comma,     // ,
     Dot,       // .
@@ -132,6 +134,7 @@ pub enum Token<S> {
     Equal,     // =
     LArrow,    // ->
     LFatArrow, // =>
+    Question,  // ?
     Semi,      // ;
 
     // Delimiters
@@ -166,6 +169,7 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Then => write!(f, "then"),
             Token::Type => write!(f, "Type"),
             Token::BSlash => write!(f, "\\"),
+            Token::Caret => write!(f, "^"),
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
             Token::Dot => write!(f, "."),
@@ -173,6 +177,7 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Equal => write!(f, "="),
             Token::LFatArrow => write!(f, "=>"),
             Token::LArrow => write!(f, "->"),
+            Token::Question => write!(f, "?"),
             Token::Semi => write!(f, ";"),
             Token::LParen => write!(f, "("),
             Token::RParen => write!(f, ")"),
@@ -207,6 +212,7 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Then => Token::Then,
             Token::Type => Token::Type,
             Token::BSlash => Token::BSlash,
+            Token::Caret => Token::Caret,
             Token::Colon => Token::Colon,
             Token::Comma => Token::Comma,
             Token::Dot => Token::Dot,
@@ -214,6 +220,7 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Equal => Token::Equal,
             Token::LFatArrow => Token::LFatArrow,
             Token::LArrow => Token::LArrow,
+            Token::Question => Token::Question,
             Token::Semi => Token::Semi,
             Token::LParen => Token::LParen,
             Token::RParen => Token::RParen,
@@ -459,12 +466,14 @@ impl<'input> Iterator for Lexer<'input> {
 
                     match symbol {
                         ":" => Ok(self.repl_command(start)),
+                        "^" => Ok((start, Token::Caret, end)),
                         "," => Ok((start, Token::Comma, end)),
                         "." => Ok((start, Token::Dot, end)),
                         ".." => Ok((start, Token::DotDot, end)),
                         "=" => Ok((start, Token::Equal, end)),
                         "->" => Ok((start, Token::LArrow, end)),
                         "=>" => Ok((start, Token::LFatArrow, end)),
+                        "?" => Ok((start, Token::Question, end)),
                         ";" => Ok((start, Token::Semi, end)),
                         symbol if symbol.starts_with("|||") => Ok(self.doc_comment(start)),
                         symbol if symbol.starts_with("--") => {
@@ -599,15 +608,17 @@ mod tests {
     #[test]
     fn symbols() {
         test! {
-            r" \ : , .. = -> => ; ",
-            r" ~                  " => Token::BSlash,
-            r"   ~                " => Token::Colon,
-            r"     ~              " => Token::Comma,
-            r"       ~~           " => Token::DotDot,
-            r"          ~         " => Token::Equal,
-            r"            ~~      " => Token::LArrow,
-            r"               ~~   " => Token::LFatArrow,
-            r"                  ~ " => Token::Semi,
+            r" \ ^ : , .. = -> => ? ; ",
+            r" ~                      " => Token::BSlash,
+            r"   ~                    " => Token::Caret,
+            r"     ~                  " => Token::Colon,
+            r"       ~                " => Token::Comma,
+            r"         ~~             " => Token::DotDot,
+            r"            ~           " => Token::Equal,
+            r"              ~~        " => Token::LArrow,
+            r"                 ~~     " => Token::LFatArrow,
+            r"                    ~   " => Token::Question,
+            r"                      ~ " => Token::Semi,
         }
     }
 

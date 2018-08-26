@@ -114,7 +114,7 @@ mod term {
     #[test]
     fn lit_bool_true() {
         let core_term = core::Term::Literal(core::Literal::Bool(true));
-        let concrete_term = concrete::Term::Name(index(), "true".to_owned());
+        let concrete_term = concrete::Term::Name(span(), "true".to_owned(), None);
 
         assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
     }
@@ -122,7 +122,7 @@ mod term {
     #[test]
     fn lit_bool_false() {
         let core_term = core::Term::Literal(core::Literal::Bool(false));
-        let concrete_term = concrete::Term::Name(index(), "false".to_owned());
+        let concrete_term = concrete::Term::Name(span(), "false".to_owned(), None);
 
         assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
     }
@@ -142,8 +142,8 @@ mod term {
         let mut env = ResugarEnv::new();
         env.on_item(&Label("x".to_owned()), &Binder(free_var.clone()));
 
-        let core_term = core::Term::Var(Var::Free(free_var));
-        let concrete_term = concrete::Term::Name(index(), "x".to_owned());
+        let core_term = core::Term::var(Var::Free(free_var), 0);
+        let concrete_term = concrete::Term::Name(span(), "x".to_owned(), None);
 
         assert_eq!(core_term.resugar(&env), concrete_term);
     }
@@ -154,8 +154,8 @@ mod term {
         let mut env = ResugarEnv::new();
         env.on_item(&Label("if".to_owned()), &Binder(free_var.clone()));
 
-        let core_term = core::Term::Var(Var::Free(free_var));
-        let concrete_term = concrete::Term::Name(index(), "if1".to_owned());
+        let core_term = core::Term::var(Var::Free(free_var), 0);
+        let concrete_term = concrete::Term::Name(span(), "if1".to_owned(), None);
 
         assert_eq!(core_term.resugar(&env), concrete_term);
     }
@@ -245,7 +245,7 @@ mod term {
         );
         let concrete_term = concrete::Term::If(
             index(),
-            Box::new(concrete::Term::Name(index(), "false".to_owned())),
+            Box::new(concrete::Term::Name(span(), "false".to_owned(), None)),
             Box::new(concrete::Term::Literal(concrete::Literal::String(
                 span(),
                 "hello".to_owned(),
@@ -290,8 +290,9 @@ mod term {
                 (
                     Label("x".to_owned()),
                     Binder(var_x.clone()),
-                    Embed(core::RcTerm::from(core::RcTerm::from(core::Term::Var(
+                    Embed(core::RcTerm::from(core::RcTerm::from(core::Term::var(
                         Var::Free(var_string),
+                        0,
                     )))),
                 ),
             ]),
@@ -308,7 +309,7 @@ mod term {
                 concrete::RecordTypeField {
                     label: (index(), "x".to_owned()),
                     binder: None,
-                    ann: concrete::Term::Name(index(), "String1".to_owned()),
+                    ann: concrete::Term::Name(span(), "String1".to_owned(), None),
                 },
             ],
         );

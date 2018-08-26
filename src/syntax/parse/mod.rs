@@ -71,7 +71,7 @@ fn reparse_pi_type_hack<L, T>(
         names: &mut Vec<(ByteIndex, String)>,
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match *term {
-            Term::Name(start, ref name) => names.push((start, name.clone())),
+            Term::Name(span, ref name, None) => names.push((span.start(), name.clone())),
             Term::App(ref head, ref args) => {
                 param_names(head, names)?;
                 for arg in args {
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn integer_overflow() {
-        let src = "Type 111111111111111111111111111111";
+        let src = "Type^111111111111111111111111111111";
         let mut codemap = CodeMap::new();
         let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
 

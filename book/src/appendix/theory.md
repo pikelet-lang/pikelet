@@ -17,6 +17,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Normalization](#normalization)
   - [Type checking](#type-checking)
   - [Type inference](#type-inference)
+  - [Universe shifting](#universe-shifting)
   - [Pattern matching](#pattern-matching)
   - [Type checking of patterns](#type-checking-of-patterns)
   - [Type inference of patterns](#type-inference-of-patterns)
@@ -86,6 +87,7 @@ etc. If you would like to discuss this with us, please check out
 \\DeclareMathOperator{\fieldty}{fieldty}
 \\DeclareMathOperator{\fieldsubst}{fieldsubst}
 \\DeclareMathOperator{\Match}{\sc{MATCH}}
+\\DeclareMathOperator{\shift}{shift}
 \\
 % Judgments
 \\newcommand{\eval}[3]{ #1 \vdash #2 \hookrightarrow #3 }
@@ -117,9 +119,12 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\kw}[1]{ \mathsf{#1} }
 \\
 % Term and Type constructors
-\\newcommand{\var}{x}
 \\newcommand{\label}{l}
-\\newcommand{\Type}{\kw{Type}}
+\\newcommand{\binder}{x}
+\\newcommand{\var}[1]{x^{#1}}
+\\newcommand{\Type}[1]{\kw{Type}^{#1}}
+% \\newcommand{\var}[1]{x^\wedge#1}
+% \\newcommand{\Type}[1]{\kw{Type}^\wedge#1}
 \\newcommand{\Bool}{\kw{Bool}}
 \\newcommand{\true}{\kw{true}}
 \\newcommand{\false}{\kw{false}}
@@ -145,25 +150,25 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\extendCtx}[2]{ #1, #2 }
 \\
 \begin{array}{rrll}
-    \rexpr,\rtype   & ::= & \var                                & \text{variables} \\\\
-                    &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+    \rexpr,\rtype   & ::= & \var{i}                             & \text{variables ($i \in \mathbb{N}$)} \\\\
+                    &   | & \Type{i}                            & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & ?                                   & \text{holes} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \rexpr : \rtype                     & \text{term annotated with a type} \\\\
-                    &   | & \Pi{\var:\rtype_1}{\rtype_2}        & \text{dependent function type} \\\\
-                    &   | & \lam{\var:\rtype}{\rexpr}           & \text{functions} \\\\
+                    &   | & \Pi{\binder:\rtype_1}{\rtype_2}     & \text{dependent function type} \\\\
+                    &   | & \lam{\binder:\rtype}{\rexpr}        & \text{functions} \\\\
                     &   | & \app{\rexpr_1}{\rexpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} & \text{if expressions} \\\\
                     &   | & \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}}
                                                                 & \text{case expressions} \\\\
-                    &   | & \RecordCons{\label \as \var:\rtype_1}{\rtype_2} & \text{record type extension} \\\\
+                    &   | & \RecordCons{\label \as \binder:\rtype_1}{\rtype_2} & \text{record type extension} \\\\
                     &   | & \RecordEmpty{}                      & \text{empty record type} \\\\
                     &   | & \record{\label=\rexpr_1, \rexpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
                     &   | & \rexpr.\label                       & \text{record projection} \\\\
     \\\\
-    \rpat           & ::= & \var                                & \text{binder pattern} \\\\
+    \rpat           & ::= & \binder                             & \text{binder pattern} \\\\
                     &   | & \rpat : \rtype                      & \text{pattern annotated with a type} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literal patterns} \\\\
                 %   &   | & \record{\label=\rpat_1, \rpat_2}    & \text{record extension pattern} \\\\
@@ -174,8 +179,8 @@ etc. If you would like to discuss this with us, please check out
 
 \\[
 \begin{array}{lrll}
-    \Arrow{\rtype_1}{\rtype_2} & := & \Pi{\var:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
-    \lam{\var}{\rexpr}         & := & \lam{\var:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
+    \Arrow{\rtype_1}{\rtype_2} & := & \Pi{\binder:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
+    \lam{\binder}{\rexpr}      & := & \lam{\binder:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
 \end{array}
 \\]
 
@@ -185,23 +190,23 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 
 \\[
 \begin{array}{rrll}
-    \texpr,\ttype   & ::= & \var                                & \text{variables} \\\\
-                    &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+    \texpr,\ttype   & ::= & \var{i}                             & \text{variables ($i \in \mathbb{N}$)} \\\\
+                    &   | & \Type{i}                            & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \texpr : \ttype                     & \text{term annotated with a type} \\\\
-                    &   | & \Pi{\var:\ttype_1}{\ttype_2}        & \text{dependent function type} \\\\
-                    &   | & \lam{\var:\ttype}{\texpr}           & \text{functions} \\\\
+                    &   | & \Pi{\binder:\ttype_1}{\ttype_2}     & \text{dependent function type} \\\\
+                    &   | & \lam{\binder:\ttype}{\texpr}        & \text{functions} \\\\
                     &   | & \app{\texpr_1}{\texpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} & \text{case expressions} \\\\
-                    &   | & \RecordCons{\label \as \var:\ttype_1}{\ttype_2} & \text{record type extension} \\\\
+                    &   | & \RecordCons{\label \as \binder:\ttype_1}{\ttype_2} & \text{record type extension} \\\\
                     &   | & \RecordEmpty{}                      & \text{empty record type} \\\\
                     &   | & \record{\label=\texpr_1, \texpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
                     &   | & \texpr.\label                       & \text{record projection} \\\\
     \\\\
-    \tpat           & ::= & \var                                 & \text{binder pattern} \\\\
+    \tpat           & ::= & \binder                             & \text{binder pattern} \\\\
                     &   | & \tpat : \ttype                      & \text{pattern annotated with a type} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literal patterns} \\\\
                     &   | & \record{\label=\tpat_1, \tpat_2}    & \text{record extension pattern} \\\\
@@ -221,18 +226,18 @@ and neutral terms (\\(\nexpr\\)):
     \vexpr,\vtype   & ::= & \wexpr                              & \text{weak head normal forms} \\\\
                     &   | & \nexpr                              & \text{neutral terms} \\\\
     \\\\
-    \nexpr,\ntype   & ::= & \var                                & \text{variables} \\\\
+    \nexpr,\ntype   & ::= & \var{i}                             & \text{variables ($i \in \mathbb{N}$)} \\\\
                     &   | & \app{\nexpr}{\texpr}                & \text{function application} \\\\
                     &   | & \ifte{\nexpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} & \text{case expressions} \\\\
                     &   | & \nexpr.\label                       & \text{record projection} \\\\
     \\\\
-    \wexpr,\wtype   & ::= & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
+    \wexpr,\wtype   & ::= & \Type{i}                            & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
-                    &   | & \Pi{\var:\vtype_1}{\vtype_2}        & \text{dependent function type} \\\\
-                    &   | & \lam{\var:\vtype}{\vexpr}           & \text{functions} \\\\
-                    &   | & \RecordCons{\label \as \var:\vtype_1}{\vtype_2} & \text{record type extension} \\\\
+                    &   | & \Pi{\binder:\vtype_1}{\vtype_2}     & \text{dependent function type} \\\\
+                    &   | & \lam{\binder:\vtype}{\vexpr}        & \text{functions} \\\\
+                    &   | & \RecordCons{\label \as \binder:\vtype_1}{\vtype_2} & \text{record type extension} \\\\
                     &   | & \RecordEmpty{}                      & \text{empty record type} \\\\
                     &   | & \record{\label=\vexpr_1, \vexpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
@@ -250,9 +255,9 @@ even though we don't know the exact values these will eventually take during nor
 
 \\[
 \begin{array}{rrll}
-    \ctx    & ::= & \emptyCtx                                   & \text{the empty context} \\\\
-            &   | & \extendCtx{\ctx}{\declItem{\var}{\vtype}}   & \text{context extended with a declaration} \\\\
-            &   | & \extendCtx{\ctx}{\defnItem{\var}{\texpr}}   & \text{context extended with a definition} \\\\
+    \ctx    & ::= & \emptyCtx                                      & \text{the empty context} \\\\
+            &   | & \extendCtx{\ctx}{\declItem{\binder}{\vtype}}   & \text{context extended with a declaration} \\\\
+            &   | & \extendCtx{\ctx}{\defnItem{\binder}{\texpr}}   & \text{context extended with a definition} \\\\
 \end{array}
 \\]
 
@@ -309,7 +314,7 @@ in the context.
     }
     \\\\[2em]
     \rule{E-TYPE}{}{
-        \eval{ \ctx }{ \Type_i }{ \Type_i }
+        \eval{ \ctx }{ \Type{i} }{ \Type{i} }
     }
     \\\\[2em]
     \rule{E-BOOL}{}{
@@ -325,17 +330,17 @@ in the context.
     }
     \\\\[2em]
     \rule{E-VAR}{
-        \defnItem{\var}{\texpr} \notin \ctx
+        \defnItem{\binder}{\texpr} \notin \ctx
     }{
-        \eval{ \ctx }{ \var }{ \var }
+        \eval{ \ctx }{ \var{i} }{ \var{i} }
     }
     \\\\[2em]
     \rule{E-VAR-DEF}{
-        \defnItem{\var}{\texpr} \in \ctx
+        \defnItem{\binder}{\texpr} \in \ctx
         \qquad
         \eval{ \ctx }{ \texpr }{ \vexpr }
     }{
-        \eval{ \ctx }{ \var }{ \vexpr }
+        \eval{ \ctx }{ \var{i} }{ \shift(\vexpr,i) }
     }
     \\\\[2em]
     \rule{E-PI}{
@@ -343,7 +348,7 @@ in the context.
         \qquad
         \eval{ \ctx }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \ctx }{ \Pi{\var:\ttype_1}{\ttype_2} }{ \Pi{\var:\vtype_1}{\vtype_2} }
+        \eval{ \ctx }{ \Pi{\binder:\ttype_1}{\ttype_2} }{ \Pi{\binder:\vtype_1}{\vtype_2} }
     }
     \\\\[2em]
     \rule{E-LAM}{
@@ -351,13 +356,13 @@ in the context.
         \qquad
         \eval{ \ctx }{ \texpr }{ \vexpr }
     }{
-        \eval{ \ctx }{ \lam{\var:\ttype}{\texpr} }{ \lam{\var:\vtype}{\vexpr} }
+        \eval{ \ctx }{ \lam{\binder:\ttype}{\texpr} }{ \lam{\binder:\vtype}{\vexpr} }
     }
     \\\\[2em]
     \rule{E-APP}{
-        \eval{ \ctx }{ \texpr_1 }{ \lam{\var:\vtype_1}{\vexpr_1} }
+        \eval{ \ctx }{ \texpr_1 }{ \lam{\binder:\vtype_1}{\vexpr_1} }
         \qquad
-        \eval{ \ctx }{ \subst{\vexpr_1}{\var}{\texpr_2} }{ \vexpr_3 }
+        \eval{ \ctx }{ \subst{\vexpr_1}{\binder}{\texpr_2} }{ \vexpr_3 }
     }{
         \eval{ \ctx }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
     }
@@ -406,7 +411,7 @@ in the context.
         \qquad
         \eval{ \ctx }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \ctx }{ \RecordCons{\label \as \var:\ttype_1}{\ttype_2} }{ \RecordCons{\label \as \var:\vtype_1}{\vtype_2} }
+        \eval{ \ctx }{ \RecordCons{\label \as \binder:\ttype_1}{\ttype_2} }{ \RecordCons{\label \as \binder:\vtype_1}{\vtype_2} }
     }
     \\\\[2em]
     \rule{E-RECORD}{
@@ -457,9 +462,9 @@ elaborated form.
 \\\\[2em]
 \begin{array}{cl}
     \rule{C-LAM}{
-        \infer{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rexpr }{ \ttype_2 }{ \texpr }
+        \infer{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_1}} }{ \rexpr }{ \ttype_2 }{ \texpr }
     }{
-        \check{ \ctx }{ \lam{\var}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\vtype_1}{\texpr} }
+        \check{ \ctx }{ \lam{\binder}{\rexpr} }{ \Pi{\binder:\vtype_1}{\vtype_2} }{ \lam{\binder:\vtype_1}{\texpr} }
     }
     \\\\[2em]
     \rule{C-IF}{
@@ -493,12 +498,12 @@ elaborated form.
         \qquad
         \check{ \ctx }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
         \qquad
-        \eval{ \ctx }{ \subst{\vtype_2}{\var}{\texpr_1} }{ \vtype_3 }
+        \eval{ \ctx }{ \subst{\vtype_2}{\binder}{\texpr_1} }{ \vtype_3 }
         \qquad
         \check{ \ctx }{ \rexpr_2 }{ \vtype_3 }{ \texpr_2 }
     }{
         \check{ \ctx }{ \record{\label_1=\rexpr_1, \rexpr_2} }
-            { \RecordCons{\label_2 \as \var:\vtype_1}{\vtype_2} }
+            { \RecordCons{\label_2 \as \binder:\vtype_1}{\vtype_2} }
             { \record{\label_1=\texpr_1, \texpr_2} }
     }
     \\\\[2em]
@@ -532,21 +537,21 @@ returns its elaborated form.
 \\\\[2em]
 \begin{array}{cl}
     \rule{I-ANN}{
-        \infer{ \ctx }{ \rtype }{ \Type_i }{ \ttype }
+        \infer{ \ctx }{ \rtype }{ \Type{i} }{ \ttype }
         \qquad
         \eval{ \ctx }{ \ttype }{ \vtype }
         \qquad
         \check{ \ctx }{ \rexpr }{ \vtype }{ \texpr }
     }{
-        \infer{ \ctx }{ \rexpr:\rtype }{ \Type_{i+1} }{ \texpr:\ttype }
+        \infer{ \ctx }{ \rexpr:\rtype }{ \Type{i+1} }{ \texpr:\ttype }
     }
     \\\\[2em]
     \rule{I-TYPE}{}{
-        \infer{ \ctx }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
+        \infer{ \ctx }{ \Type{i} }{ \Type{i+1} }{ \Type{i} }
     }
     \\\\[2em]
     \rule{I-BOOL}{}{
-        \infer{ \ctx }{ \Bool }{ \Type_0 }{ \Bool }
+        \infer{ \ctx }{ \Bool }{ \Type{0} }{ \Bool }
     }
     \\\\[2em]
     \rule{I-TRUE}{}{
@@ -558,56 +563,56 @@ returns its elaborated form.
     }
     \\\\[2em]
     \rule{I-VAR}{
-        \declItem{\var}{\vtype} \in \ctx
+        \declItem{\binder}{\vtype} \in \ctx
     }{
-        \infer{ \ctx }{ \var }{ \vtype }{ \var }
+        \infer{ \ctx }{ \var{i} }{ \shift(\vtype,i) }{ \var{i} }
     }
     \\\\[2em]
     \rule{I-PI}{
-        \infer{ \ctx }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
+        \infer{ \ctx }{ \rtype_1 }{ \Type{i} }{ \ttype_1 }
         \qquad
         \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \check{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \check{ \extendCtx{\ctx}{\declItem{\var{}}{\vtype_1}} }{ \rtype_2 }{ \Type{j} }{ \ttype_2 }
     }{
-        \infer{ \ctx }{ \Pi{\var:\rtype_1}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Pi{\var:\ttype_1}{\ttype_2} }
+        \infer{ \ctx }{ \Pi{x:\rtype_1}{\rtype_2} }{ \Type{\max(i,j)} }{ \Pi{x:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
     \rule{I-LAM}{
-        \infer{ \ctx }{ \rtype }{ \Type_i }{ \ttype }
+        \infer{ \ctx }{ \rtype }{ \Type{i} }{ \ttype }
         \qquad
         \eval{ \ctx }{ \ttype }{ \vtype_1 }
         \qquad
-        \check{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rexpr}{ \vtype_2 }{ \texpr }
+        \check{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_1}} }{ \rexpr}{ \vtype_2 }{ \texpr }
     }{
-        \infer{ \ctx }{ \lam{\var:\rtype}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\ttype}{\texpr} }
+        \infer{ \ctx }{ \lam{\binder:\rtype}{\rexpr} }{ \Pi{\binder:\vtype_1}{\vtype_2} }{ \lam{\binder:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{I-APP}{
-        \infer{ \ctx }{ \rexpr_1 }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \texpr_1 }
+        \infer{ \ctx }{ \rexpr_1 }{ \Pi{\binder:\vtype_1}{\vtype_2} }{ \texpr_1 }
         \qquad
         \check{ \ctx }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
-        \eval{ \ctx }{ \subst{\vtype_2}{\var}{\texpr_2} }{ \vtype_3 }
+        \eval{ \ctx }{ \subst{\vtype_2}{\binder}{\texpr_2} }{ \vtype_3 }
     }{
         \infer{ \ctx }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
     }
     \\\\[2em]
     \rule{I-RECORD-TYPE}{
-        \infer{ \ctx }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
+        \infer{ \ctx }{ \rtype_1 }{ \Type{i} }{ \ttype_1 }
         \qquad
         \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \infer{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \infer{ \extendCtx{\ctx}{\declItem{\var{}}{\vtype_1}} }{ \rtype_2 }{ \Type{j} }{ \ttype_2 }
     }{
         \infer{ \ctx }
-            { \RecordCons{\label \as \var:\rtype_1}{\rtype_2} }
-            { \Type_{\max(i,j)} }
-            { \RecordCons{\label \as \var:\ttype_1}{\ttype_2} }
+            { \RecordCons{\label \as \binder:\rtype_1}{\rtype_2} }
+            { \Type{\max(i,j)} }
+            { \RecordCons{\label \as \binder:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD-TYPE}{}{
-        \infer{ \ctx }{ \RecordEmpty{} }{ \Type_0 }{ \RecordEmpty{} }
+        \infer{ \ctx }{ \RecordEmpty{} }{ \Type{0} }{ \RecordEmpty{} }
     }
     \\\\[2em]
     \rule{I-RECORD}{
@@ -615,10 +620,10 @@ returns its elaborated form.
         \qquad
         \infer{ \ctx }{ \rexpr_2 }{ \vtype_2 }{ \texpr_2 }
         \qquad
-        \eval{ \ctx }{ \subst{\vtype_2}{\var}{\texpr_1} }{ \vtype_3 }
+        \eval{ \ctx }{ \subst{\vtype_2}{\binder}{\texpr_1} }{ \vtype_3 }
     }{
         \infer{ \ctx }{ \record{\label=\rexpr_1, \rexpr_2} }
-            { \RecordCons{\label \as \var:\vtype_1}{\vtype_3} }
+            { \RecordCons{\label \as \binder:\vtype_1}{\vtype_3} }
             { \record{\label=\texpr_1, \texpr_2} }
     }
     \\\\[2em]
@@ -662,6 +667,39 @@ we project on them, we define \\(\fieldsubst(-,-,-)\\) as:
 \end{array}
 \\]
 
+### Universe shifting
+
+We implement explicit level shifts, giving us something like what Conor McBride
+describes in his blog post, [Universe Hierarchies][universe-hierarchies].
+
+We define \\(\shift(-,-)\\) for values:
+
+\\[
+\begin{array}{llrl}
+    \shift(\var{i},                                             & j) & = & \var{i} \\\\
+    \shift(\app{\nexpr}{\texpr},                                & j) & = & \app{\shift(\nexpr, j)}{\shift(\texpr, j)} \\\\
+    \shift(\ifte{\nexpr_1}{\texpr_2}{\texpr_3},                 & j) & = & \ifte{\shift(\nexpr_1, j)}{\shift(\texpr_2, j)}{\shift(\texpr_3, j)} \\\\
+    \shift(\case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}, & j) & = &
+        % FIXME: define pattern shifting
+        \case{\shift(\nexpr, j)}{\overline{\shift(\tpat_i, j) \rightarrow \shift(\texpr_i, j)}^{;}} \\\\
+    \shift(\nexpr.\label,                                       & j) & = & \shift(\nexpr, j).\label \\\\
+    \\\\
+    \shift(\Type{i},                                            & j) & = & \Type{i + j} \\\\
+    \shift(\Bool,                                               & j) & = & \Bool \\\\
+    \shift(\true,                                               & j) & = & \true \\\\
+    \shift(\false,                                              & j) & = & \false \\\\
+    \shift(\Pi{\binder:\vtype_1}{\vtype_2},                     & j) & = & \Pi{\binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\\\
+    \shift(\lam{\binder:\vtype}{\vexpr},                        & j) & = & \lam{\binder:\shift(\vtype, j)}{\shift(\vexpr, j)} \\\\
+    \shift(\RecordCons{\label \as \binder:\vtype_1}{\vtype_2},  & j) & = & \RecordCons{\label \as \binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\\\
+    \shift(\RecordEmpty{},                                      & j) & = & \RecordEmpty{} \\\\
+    \shift(\record{\label=\vexpr_1, \vexpr_2},                  & j) & = & \record{\label=\shift(\vexpr_1, j), \shift(\vexpr_2, j)} \\\\
+    \shift(\record{},                                           & j) & = & \record{} \\\\
+    \\\\[2em]
+\end{array}
+\\]
+
+[universe-hierarchies]: https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/
+
 ### Pattern matching
 
 This judement takes an expression \\(\wexpr\\) in weak head normal form, and a
@@ -674,7 +712,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 \\\\[2em]
 \begin{array}{cl}
     \rule{M-VAR}{}{
-        \match{ \wexpr }{ \var }{ [\var \rightarrow \wexpr] }
+        \match{ \wexpr }{ \binder }{ [\binder \rightarrow \wexpr] }
     }
     \\\\[2em]
     \rule{M-TRUE}{}{
@@ -710,7 +748,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 \\\\[2em]
 \begin{array}{cl}
     \rule{CP-BINDER}{}{
-        \checkpat{ \ctx }{ \var }{ \vtype }{ \var }{ \var : \vtype }
+        \checkpat{ \ctx }{ \binder }{ \vtype }{ \binder }{ \binder : \vtype }
     }
     \\\\[2em]
     \rule{CP-CONV}{
@@ -733,7 +771,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 \\\\[2em]
 \begin{array}{cl}
     \rule{IP-ANN}{
-        \infer{ \ctx }{ \rtype }{ \Type_i }{ \ttype }
+        \infer{ \ctx }{ \rtype }{ \Type{i} }{ \ttype }
         \qquad
         \eval{ \ctx }{ \ttype }{ \vtype }
         \qquad
@@ -755,7 +793,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 
 > **TODO:**
 >
-> - Coverage (ie. that a series of patterns covers all possible values)
+> - Pattern matching coverage checking
 > - Ensure that parametericity is maintained. Should we forbid [pattern matching
 >   directly on types][type-patterns]? McBride seems to [think we can have our
 >   cake and eat it][type-patterns-mcbride]!

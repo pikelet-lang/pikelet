@@ -1,7 +1,7 @@
 use super::*;
 
 mod nf_term {
-    use syntax::core::{Head, Neutral, RcNeutral};
+    use syntax::core::{Neutral, RcNeutral};
 
     use super::*;
 
@@ -10,11 +10,11 @@ mod nf_term {
         let tc_env = TcEnv::default();
 
         let x = FreeVar::fresh_named("x");
-        let var = RcTerm::from(Term::Var(Var::Free(x.clone())));
+        let var = RcTerm::from(Term::var(Var::Free(x.clone()), 0));
 
         assert_eq!(
             nf_term(&tc_env, &var).unwrap(),
-            RcValue::from(Value::from(Var::Free(x))),
+            RcValue::from(Value::var(Var::Free(x), 0)),
         );
     }
 
@@ -40,7 +40,7 @@ mod nf_term {
             parse_nf_term(&mut codemap, &tc_env, r"\x : Type => x"),
             RcValue::from(Value::Lam(Scope::new(
                 (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
-                RcValue::from(Value::from(Var::Free(x))),
+                RcValue::from(Value::var(Var::Free(x), 0)),
             ))),
         );
     }
@@ -56,7 +56,7 @@ mod nf_term {
             parse_nf_term(&mut codemap, &tc_env, r"(x : Type) -> x"),
             RcValue::from(Value::Pi(Scope::new(
                 (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
-                RcValue::from(Value::from(Var::Free(x))),
+                RcValue::from(Value::var(Var::Free(x), 0)),
             ))),
         );
     }
@@ -85,8 +85,8 @@ mod nf_term {
                 RcValue::from(Value::Lam(Scope::new(
                     (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                     RcValue::from(Value::Neutral(
-                        RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
-                        vec![RcValue::from(Value::from(Var::Free(y)))],
+                        RcNeutral::from(Neutral::var(Var::Free(x), 0)),
+                        vec![RcValue::from(Value::var(Var::Free(y), 0))],
                     )),
                 ))),
             ))),
@@ -117,8 +117,8 @@ mod nf_term {
                 RcValue::from(Value::Pi(Scope::new(
                     (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                     RcValue::from(Value::Neutral(
-                        RcNeutral::from(Neutral::Head(Head::Var(Var::Free(x)))),
-                        vec![RcValue::from(Value::from(Var::Free(y)))],
+                        RcNeutral::from(Neutral::var(Var::Free(x), 0)),
+                        vec![RcValue::from(Value::var(Var::Free(y), 0))],
                     )),
                 ))),
             ))),
@@ -132,7 +132,7 @@ mod nf_term {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
 
-        let given_expr = r"(\(a : Type 1) (x : a) => x) Type";
+        let given_expr = r"(\(a : Type^1) (x : a) => x) Type";
         let expected_expr = r"\x : Type => x";
 
         assert_term_eq!(
@@ -147,7 +147,7 @@ mod nf_term {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
 
-        let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) Type";
+        let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) Type";
         let expected_expr = r"Type";
 
         assert_term_eq!(
@@ -163,7 +163,7 @@ mod nf_term {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
 
-        let given_expr = r"(\(a : Type 2) (x : a) => x) (Type 1) (Type -> Type)";
+        let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
         let expected_expr = r"Type -> Type";
 
         assert_term_eq!(
@@ -179,7 +179,7 @@ mod nf_term {
         let tc_env = TcEnv::default();
 
         let given_expr = r"
-            (\(a : Type 1) (x : a) => x)
+            (\(a : Type^1) (x : a) => x)
                 ((a : Type) -> a -> a)
                 (\(a : Type) (x : a) => x)
         ";
@@ -199,9 +199,9 @@ mod nf_term {
         let tc_env = TcEnv::default();
 
         let given_expr = r"
-            (\(a : Type 1) (b : Type 2) (x : a) (y : b) => x)
+            (\(a : Type^1) (b : Type^2) (x : a) (y : b) => x)
                 ((a : Type) -> a -> a)
-                (Type 1)
+                (Type^1)
                 (\(a : Type) (x : a) => x)
                 Type
         ";

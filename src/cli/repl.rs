@@ -151,7 +151,7 @@ fn eval_print(
     tc_env: &mut TcEnv,
     filemap: &FileMap,
 ) -> Result<ControlFlow, EvalPrintError> {
-    use codespan::ByteIndex;
+    use codespan::ByteSpan;
 
     use syntax::concrete::{ReplCommand, Term};
     use syntax::pretty::{self, ToDoc};
@@ -203,7 +203,7 @@ fn eval_print(
             let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
             let ann_term = Term::Ann(
-                Box::new(Term::Name(ByteIndex::default(), name.clone())),
+                Box::new(Term::Name(ByteSpan::default(), name.clone(), None)),
                 Box::new(inferred.resugar(tc_env.resugar_env())),
             );
 

@@ -12,7 +12,7 @@ use syntax::core::{
 };
 use syntax::raw;
 use syntax::translation::Resugar;
-use syntax::Level;
+use syntax::{Level, LevelShift};
 
 mod env;
 mod errors;
@@ -170,7 +170,9 @@ where
     Env: GlobalEnv,
 {
     match expected_ty.free_var_app() {
-        Some((free_var, spine)) if spine.is_empty() => {
+        // Conservatively forcing the shift to be zero for now. Perhaps this
+        // could be relaxed in the future if it becomes a problem?
+        Some((free_var, LevelShift(0), spine)) if spine.is_empty() => {
             match *raw_literal {
                 raw::Literal::String(_, ref val) if *free_var == env.globals().string => {
                     return Ok(Literal::String(val.clone()));
@@ -239,11 +241,11 @@ where
     match *raw_literal {
         raw::Literal::String(_, ref value) => Ok((
             Literal::String(value.clone()),
-            RcValue::from(Value::from(Var::Free(env.globals().string.clone()))),
+            RcValue::from(Value::var(Var::Free(env.globals().string.clone()), 0)),
         )),
         raw::Literal::Char(_, value) => Ok((
             Literal::Char(value),
-            RcValue::from(Value::from(Var::Free(env.globals().char.clone()))),
+            RcValue::from(Value::var(Var::Free(env.globals().char.clone()), 0)),
         )),
         raw::Literal::Int(span, _) => Err(TypeError::AmbiguousIntLiteral { span }),
         raw::Literal::Float(span, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
@@ -311,13 +313,15 @@ where
             span,
             binder: binder.clone(),
         }),
-        raw::Pattern::Var(span, Embed(ref var)) => match *var {
+        raw::Pattern::Var(span, Embed(ref var), shift) => match *var {
             Var::Free(ref free_var) => match env.get_declaration(free_var) {
-                Some(ty) => Ok((
-                    RcPattern::from(Pattern::Var(Embed(var.clone()))),
-                    ty.clone(),
-                    vec![],
-                )),
+                Some(ty) => {
+                    let mut ty = ty.clone();
+                    ty.shift_universes(shift);
+                    let pattern = RcPattern::from(Pattern::Var(Embed(var.clone()), shift));
+
+                    Ok((pattern, ty, vec![]))
+                },
                 None => Err(TypeError::UndefinedName {
                     span,
                     free_var: free_var.clone(),
@@ -385,7 +389,7 @@ where
 
         // C-IF
         (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
-            let bool_ty = RcValue::from(Value::from(Var::Free(env.globals().bool.clone())));
+            let bool_ty = RcValue::from(Value::var(Var::Free(env.globals().bool.clone()), 0));
 
             let cond = check_term(env, raw_cond, &bool_ty)?;
             let if_true = check_term(env, raw_if_true, expected_ty)?;
@@ -463,7 +467,11 @@ where
         },
 
         (&raw::Term::Array(span, ref elems), ty) => match ty.free_var_app() {
-            Some((free_var, spine)) if *free_var == env.globals().array && spine.len() == 2 => {
+            // Conservatively forcing the shift to be zero for now. Perhaps this
+            // could be relaxed in the future if it becomes a problem?
+            Some((free_var, LevelShift(0), spine))
+                if *free_var == env.globals().array && spine.len() == 2 =>
+            {
                 let len = &spine[0];
                 let elem_ty = &spine[1];
                 if let Value::Literal(Literal::U64(len)) = **len {
@@ -482,7 +490,7 @@ where
                         .map(|elem| check_term(env, elem, elem_ty))
                         .collect::<Result<_, _>>()?,
                 )));
-            },
+            }
             Some(_) | None => {
                 return Err(TypeError::Internal(InternalError::Unimplemented {
                     span: Some(span),
@@ -547,9 +555,14 @@ where
         },
 
         // I-VAR
-        raw::Term::Var(span, ref var) => match *var {
+        raw::Term::Var(span, ref var, shift) => match *var {
             Var::Free(ref free_var) => match env.get_declaration(free_var) {
-                Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
+                Some(ty) => {
+                    let mut ty = ty.clone();
+                    ty.shift_universes(shift);
+
+                    Ok((RcTerm::from(Term::Var(var.clone(), shift)), ty))
+                },
                 None => Err(TypeError::UndefinedName {
                     span,
                     free_var: free_var.clone(),
@@ -652,7 +665,7 @@ where
 
         // I-IF
         raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
-            let bool_ty = RcValue::from(Value::from(Var::Free(env.globals().bool.clone())));
+            let bool_ty = RcValue::from(Value::var(Var::Free(env.globals().bool.clone()), 0));
             let cond = check_term(env, raw_cond, &bool_ty)?;
             let (if_true, ty) = infer_term(env, raw_if_true)?;
             let if_false = check_term(env, raw_if_false, &ty)?;

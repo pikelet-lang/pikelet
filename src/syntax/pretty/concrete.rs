@@ -75,7 +75,8 @@ impl ToDoc for Pattern {
                 .append(":")
                 .append(Doc::space())
                 .append(ty.to_doc()),
-            Pattern::Name(_, ref name) => Doc::as_string(name),
+            Pattern::Name(_, ref name, None) => Doc::text(format!("{}", name)),
+            Pattern::Name(_, ref name, Some(shift)) => Doc::text(format!("{}^{}", name, shift)),
             Pattern::Literal(ref literal) => literal.to_doc(),
             Pattern::Error(_) => Doc::text("<error>"),
         }
@@ -92,11 +93,8 @@ impl ToDoc for Term {
                 .append(":")
                 .append(Doc::space())
                 .append(ty.to_doc()),
-            Term::Universe(_, level) => {
-                Doc::text("Type").append(level.map_or(Doc::nil(), |level| {
-                    Doc::space().append(Doc::as_string(&level))
-                }))
-            },
+            Term::Universe(_, None) => Doc::text("Type"),
+            Term::Universe(_, Some(level)) => Doc::text(format!("Type^{}", level)),
             Term::Literal(ref literal) => literal.to_doc(),
             Term::Array(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
@@ -104,7 +102,8 @@ impl ToDoc for Term {
                     Doc::text(";").append(Doc::space()),
                 )).append("]"),
             Term::Hole(_) => Doc::text("_"),
-            Term::Name(_, ref name) => Doc::as_string(name),
+            Term::Name(_, ref name, None) => Doc::text(format!("{}", name)),
+            Term::Name(_, ref name, Some(shift)) => Doc::text(format!("{}^{}", name, shift)),
             Term::Extern(_, _, ref name, ref ty) => Doc::text("extern")
                 .append(Doc::space())
                 .append(format!("{:?}", name))

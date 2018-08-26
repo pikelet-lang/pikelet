@@ -207,16 +207,16 @@ flip a b c f x y = f y x;
 |||
 ||| This type should have no inhabitants - if it does, it's a bug in our
 ||| type checker!
-void : Type 1;
+void : Type^1;
 void = (a : Type) -> a;
 
 
 ||| Logical negation
-not : Type -> Type 1;
+not : Type -> Type^1;
 not a = a -> void;
 
 
-unit : Type 1;
+unit : Type^1;
 unit = (a : Type) -> a -> a;
 
 unit-intro : unit;
@@ -229,7 +229,7 @@ unit-elim a f x = f a x;
 ||| Logical conjunction (Church encoded)
 |||
 ||| You could also interpret this as a product type
-and : Type -> Type -> Type 1;
+and : Type -> Type -> Type^1;
 and p q = (c : Type) -> (p -> q -> c) -> c;
 
 ||| Introduce a logical conjunction between two types
@@ -246,7 +246,7 @@ and-elim-right p q (pq : and p q) = pq q (flip q p q (const q p));
 ||| Logical disjunction (Church encoded)
 |||
 ||| You could also interpret this as a sum type
-or : Type -> Type -> Type 1;
+or : Type -> Type -> Type^1;
 or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
 
 or-intro-left : (p q : Type) -> p -> or p q;
@@ -434,7 +434,7 @@ Num-F64-Add : Num F64 = record { add = Monoid-F64-Add; mul = Monoid-F64-Mul };
 ||| - etc.
 Category = Record {
     ||| An object in the category
-    Object : Type 1; -- FIXME: universe polymorphism!
+    Object : Type^1; -- FIXME: universe polymorphism!
     ||| Arrows between the objects in the category
     Arrow : Object -> Object -> Type;
     ||| The identity arrow
@@ -466,7 +466,7 @@ seq C = C.seq;
 
 Category-Function : Category = record {
     Object = Type;
-    Arrow a b = a -> b;
+    Arrow (a : Type) (b : Type) = a -> b;
     id (a : Type) (x : a) = x;
     seq (a b c : Type) (f : a -> b) (g : b -> c) (x : a) = g (f x);
 };
