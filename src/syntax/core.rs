@@ -300,6 +300,9 @@ pub enum Value {
     /// Array literals
     Array(Vec<RcValue>),
     /// Neutral terms
+    ///
+    /// A term whose computation has stopped because of an attempt to compute an
+    /// application `Head`.
     Neutral(RcNeutral, Spine),
 }
 
