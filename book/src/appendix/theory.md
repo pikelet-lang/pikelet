@@ -88,7 +88,7 @@ etc. If you would like to discuss this with us, please check out
 \\DeclareMathOperator{\Match}{\sc{MATCH}}
 \\
 % Judgments
-\\newcommand{\eval}[3]{ #1 \vdash #2 \Rightarrow #3 }
+\\newcommand{\eval}[3]{ #1 \vdash #2 \hookrightarrow #3 }
 \\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \leadsto #4 }
 \\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \leadsto #4 }
 \\newcommand{\match}[3]{ \Match(#1,#2) \Longrightarrow #3 }
@@ -115,43 +115,46 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\kw}[1]{ \mathsf{#1} }
 \\
 % Term and Type constructors
-\\newcommand{\Type}{\mathsf{Type}}
-\\newcommand{\Bool}{\mathsf{Bool}}
-\\newcommand{\true}{\mathsf{true}}
-\\newcommand{\false}{\mathsf{false}}
+\\newcommand{\var}{x}
+\\newcommand{\label}{l}
+\\newcommand{\Type}{\kw{Type}}
+\\newcommand{\Bool}{\kw{Bool}}
+\\newcommand{\true}{\kw{true}}
+\\newcommand{\false}{\kw{false}}
 \\newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \\newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
-\\newcommand{\lam}[2]{ \lambda #1 . #2 }
+\\newcommand{\lam}[2]{ \kw{\lambda} #1 . #2 }
 \\newcommand{\app}[2]{ #1 ~ #2 }
 \\newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
 \\newcommand{\case}[2]{ \kw{case} ~ #1 \left\\{ #2 \right\\} }
-\\newcommand{\Record}[1]{ ( #1 ) }
-\\newcommand{\record}[1]{ \langle #1 \rangle }
+\\newcommand{\Record}[1]{ \kw{Record} \left\\{ #1 \right\\} }
+\\newcommand{\record}[1]{ \kw{record} \left\\{ #1 \right\\} }
 \\newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
 \\
 \begin{array}{rrll}
-    \rexpr,\rtype   & ::= & x                                   & \text{variables} \\\\
+    \rexpr,\rtype   & ::= & \var                                & \text{variables} \\\\
                     &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & ?                                   & \text{holes} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \rexpr : \rtype                     & \text{term annotated with a type} \\\\
-                    &   | & \Pi{x:\rtype_1}{\rtype_2}           & \text{dependent function type} \\\\
-                    &   | & \lam{x:\rtype}{\rexpr}              & \text{functions} \\\\
+                    &   | & \Pi{\var:\rtype_1}{\rtype_2}        & \text{dependent function type} \\\\
+                    &   | & \lam{\var:\rtype}{\rexpr}           & \text{functions} \\\\
                     &   | & \app{\rexpr_1}{\rexpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} & \text{if expressions} \\\\
                     &   | & \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}}
                                                                 & \text{case expressions} \\\\
-                    &   | & \Record{l:\rtype_1, \rtype_2}       & \text{record type extension} \\\\
+                    &   | & \Record{\label[\var]:\rtype_1, \rtype_2}
+                                                                & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
-                    &   | & \record{l=\rexpr_1, \rexpr_2}       & \text{record extension} \\\\
+                    &   | & \record{\label=\rexpr_1, \rexpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
-                    &   | & \rexpr.l                            & \text{record projection} \\\\
+                    &   | & \rexpr.\label                       & \text{record projection} \\\\
     \\\\
-    \rpat           & ::= & x                                   & \text{binder pattern} \\\\
+    \rpat           & ::= & \var                                & \text{binder pattern} \\\\
                     &   | & \rpat : \rtype                      & \text{pattern annotated with a type} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literal patterns} \\\\
-                %   &   | & \record{l=\rpat_1, \rpat_2}         & \text{record extension pattern} \\\\
+                %   &   | & \record{\label=\rpat_1, \rpat_2}    & \text{record extension pattern} \\\\
                 %   &   | & \record{}                           & \text{empty record pattern} \\\\
     \\\\
 \end{array}
@@ -159,8 +162,8 @@ etc. If you would like to discuss this with us, please check out
 
 \\[
 \begin{array}{lrll}
-    \Arrow{\rtype_1}{\rtype_2} & := & \Pi{x:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
-    \lam{x}{\rexpr}            & := & \lam{x:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
+    \Arrow{\rtype_1}{\rtype_2} & := & \Pi{\var:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
+    \lam{x}{\rexpr}            & := & \lam{\var:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
 \end{array}
 \\]
 
@@ -170,27 +173,28 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
 
 \\[
 \begin{array}{rrll}
-    \texpr,\ttype   & ::= & x                                   & \text{variables} \\\\
+    \texpr,\ttype   & ::= & \var                                & \text{variables} \\\\
                     &   | & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
                     &   | & \texpr : \ttype                     & \text{term annotated with a type} \\\\
-                    &   | & \Pi{x:\ttype_1}{\ttype_2}           & \text{dependent function type} \\\\
-                    &   | & \lam{x:\ttype}{\texpr}              & \text{functions} \\\\
+                    &   | & \Pi{\var:\ttype_1}{\ttype_2}        & \text{dependent function type} \\\\
+                    &   | & \lam{\var:\ttype}{\texpr}           & \text{functions} \\\\
                     &   | & \app{\texpr_1}{\texpr_2}            & \text{function application} \\\\
                     &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
                                                                 & \text{case expressions} \\\\
-                    &   | & \Record{l:\ttype_1, \ttype_2}       & \text{record type extension} \\\\
+                    &   | & \Record{\label[\var]:\ttype_1, \ttype_2}
+                                                                & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
-                    &   | & \record{l=\texpr_1, \texpr_2}       & \text{record extension} \\\\
+                    &   | & \record{\label=\texpr_1, \texpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
-                    &   | & \texpr.l                            & \text{record projection} \\\\
+                    &   | & \texpr.\label                       & \text{record projection} \\\\
     \\\\
-    \tpat           & ::= & x                                   & \text{binder pattern} \\\\
+    \tpat           & ::= & \var                                 & \text{binder pattern} \\\\
                     &   | & \tpat : \ttype                      & \text{pattern annotated with a type} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literal patterns} \\\\
-                    &   | & \record{l=\tpat_1, \tpat_2}         & \text{record extension pattern} \\\\
+                    &   | & \record{\label=\tpat_1, \tpat_2}    & \text{record extension pattern} \\\\
                     &   | & \record{}                           & \text{empty record pattern} \\\\
     \\\\
 \end{array}
@@ -207,21 +211,22 @@ and neutral terms (\\(\nexpr\\)):
     \vexpr,\vtype   & ::= & \wexpr                              & \text{weak head normal forms} \\\\
                     &   | & \nexpr                              & \text{neutral terms} \\\\
     \\\\
-    \nexpr,\ntype   & ::= & x                                   & \text{variables} \\\\
+    \nexpr,\ntype   & ::= & \var                                & \text{variables} \\\\
                     &   | & \app{\nexpr}{\texpr}                & \text{function application} \\\\
                     &   | & \ifte{\nexpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
                                                                 & \text{case expressions} \\\\
-                    &   | & \nexpr.l                            & \text{record projection} \\\\
+                    &   | & \nexpr.\label                       & \text{record projection} \\\\
     \\\\
     \wexpr,\wtype   & ::= & \Type_i                             & \text{universe of types ($i \in \mathbb{N}$)} \\\\
                     &   | & \Bool                               & \text{type of booleans} \\\\
                     &   | & \true ~|~ \false                    & \text{boolean literals} \\\\
-                    &   | & \Pi{x:\vtype_1}{\vtype_2}           & \text{dependent function type} \\\\
-                    &   | & \lam{x:\vtype}{\vexpr}              & \text{functions} \\\\
-                    &   | & \Record{l:\vtype_1, \vtype_2}       & \text{record type extension} \\\\
+                    &   | & \Pi{\var:\vtype_1}{\vtype_2}        & \text{dependent function type} \\\\
+                    &   | & \lam{\var:\vtype}{\vexpr}           & \text{functions} \\\\
+                    &   | & \Record{\label[\var]:\vtype_1, \vtype_2}
+                                                                & \text{record type extension} \\\\
                     &   | & \Record{}                           & \text{empty record type} \\\\
-                    &   | & \record{l=\vexpr_1, \vexpr_2}       & \text{record extension} \\\\
+                    &   | & \record{\label=\vexpr_1, \vexpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
     \\\\
 \end{array}
@@ -238,8 +243,8 @@ even though we don't know the exact values these will eventually take during nor
 \\[
 \begin{array}{rrll}
     \Gamma,\Delta  & ::= & \varnothing          & \text{the empty context} \\\\
-                   &   | & \Gamma,x:\vtype      & \text{context extended with a declaration} \\\\
-                   &   | & \Gamma,x=\texpr      & \text{context extended with a definition} \\\\
+                   &   | & \Gamma,\var:\vtype   & \text{context extended with a declaration} \\\\
+                   &   | & \Gamma,\var=\texpr   & \text{context extended with a definition} \\\\
 \end{array}
 \\]
 
@@ -338,15 +343,15 @@ in the context.
     \rule{E-VAR}{
         x=\texpr \notin \Gamma
     }{
-        \eval{ \Gamma }{ x }{ x }
+        \eval{ \Gamma }{ \var }{ \var }
     }
     \\\\[2em]
     \rule{E-VAR-DEF}{
-        x=\texpr \in \Gamma
+        \var=\texpr \in \Gamma
         \qquad
         \eval{ \Gamma }{ \texpr }{ \vexpr }
     }{
-        \eval{ \Gamma }{ x }{ \vexpr }
+        \eval{ \Gamma }{ \var }{ \vexpr }
     }
     \\\\[2em]
     \rule{E-PI}{
@@ -354,7 +359,7 @@ in the context.
         \qquad
         \eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \Gamma }{ \Pi{x:\ttype_1}{\ttype_2} }{ \Pi{x:\vtype_1}{\vtype_2} }
+        \eval{ \Gamma }{ \Pi{\var:\ttype_1}{\ttype_2} }{ \Pi{\var:\vtype_1}{\vtype_2} }
     }
     \\\\[2em]
     \rule{E-LAM}{
@@ -362,11 +367,11 @@ in the context.
         \qquad
         \eval{ \Gamma }{ \texpr }{ \vexpr }
     }{
-        \eval{ \Gamma }{ \lam{x:\ttype}{\texpr} }{ \lam{x:\vtype}{\vexpr} }
+        \eval{ \Gamma }{ \lam{\var:\ttype}{\texpr} }{ \lam{\var:\vtype}{\vexpr} }
     }
     \\\\[2em]
     \rule{E-APP}{
-        \eval{ \Gamma }{ \texpr_1 }{ \lam{x:\vtype_1}{\vexpr_1} }
+        \eval{ \Gamma }{ \texpr_1 }{ \lam{\var:\vtype_1}{\vexpr_1} }
         \qquad
         \eval{ \Gamma }{ \subst{\vexpr_1}{x}{\texpr_2} }{ \vexpr_3 }
     }{
@@ -417,7 +422,7 @@ in the context.
         \qquad
         \eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \Gamma }{ \Record{l:\ttype_1, \ttype_2} }{ \Record{l:\vtype_1, \vtype_2} }
+        \eval{ \Gamma }{ \Record{\label[\var]:\ttype_1, \ttype_2} }{ \Record{\label[\var]:\vtype_1, \vtype_2} }
     }
     \\\\[2em]
     \rule{E-RECORD}{
@@ -425,7 +430,7 @@ in the context.
         \qquad
         \eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
     }{
-        \eval{ \Gamma }{ \record{l=\texpr_1, \texpr_2} }{ \record{l=\vexpr_1, \vexpr_2} }
+        \eval{ \Gamma }{ \record{\label=\texpr_1, \texpr_2} }{ \record{\label=\vexpr_1, \vexpr_2} }
     }
     \\\\[2em]
     \rule{E-EMPTY-RECORD-TYPE}{}{
@@ -439,9 +444,9 @@ in the context.
     \rule{E-PROJ}{
         \eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
         \qquad
-        \vexpr_2 = \field(l, \vexpr_1)
+        \vexpr_2 = \field(\label, \vexpr_1)
     }{
-        \eval{ \Gamma }{ \texpr_1.l }{ \vexpr_2 }
+        \eval{ \Gamma }{ \texpr_1.\label }{ \vexpr_2 }
     }
     \\\\[2em]
 \end{array}
@@ -451,8 +456,8 @@ We define \\(\field(-,-)\\) like so:
 
 \\[
 \begin{array}{lrll}
-    \field(l_1, \record{l_2 = \vexpr_1, \vexpr_2}) & = & \vexpr_1 & \text{if} ~ l_1 \equiv l_2 \\\\
-    \field(l_1, \record{l_2 = \vexpr_1, \vexpr_2}) & = & \field(l_1, \vexpr_2) \\\\
+    \field(\label_1, \record{\label_2 = \vexpr_1, \vexpr_2}) & = & \vexpr_1 & \text{if} ~ \label_1 \equiv \label_2 \\\\
+    \field(\label_1, \record{\label_2 = \vexpr_1, \vexpr_2}) & = & \field(\label_1, \vexpr_2) \\\\
 \end{array}
 \\]
 
@@ -470,7 +475,7 @@ elaborated form.
     \rule{C-LAM}{
         \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
     }{
-        \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\vtype_1}{\texpr} }
+        \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\vtype_1}{\texpr} }
     }
     \\\\[2em]
     \rule{C-IF}{
@@ -500,15 +505,17 @@ elaborated form.
     }
     \\\\[2em]
     \rule{C-RECORD}{
-        l_1 \equiv l_2
+        \label_1 \equiv \label_2
         \qquad
         \check{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
         \qquad
-        \eval{ \Gamma }{ \subst{\vtype_2}{l_1}{\texpr_1} }{ \vtype_3 }
+        \eval{ \Gamma }{ \subst{\vtype_2}{\var}{\texpr_1} }{ \vtype_3 }
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_3 }{ \texpr_2 }
     }{
-        \check{ \Gamma }{ \record{l_1=\rexpr_1, \rexpr_2} }{ \Record{l_2:\vtype_1, \vtype_2} }{ \record{l_1=\texpr_1, \texpr_2} }
+        \check{ \Gamma }{ \record{\label_1=\rexpr_1, \rexpr_2} }
+            { \Record{\label_2[\var]:\vtype_1, \vtype_2} }
+            { \record{\label_1=\texpr_1, \texpr_2} }
     }
     \\\\[2em]
     \rule{C-CONV}{
@@ -567,9 +574,9 @@ returns its elaborated form.
     }
     \\\\[2em]
     \rule{I-VAR}{
-        x:\vtype \in \Gamma
+        \var:\vtype \in \Gamma
     }{
-        \infer{ \Gamma }{ x }{ \vtype }{ x }
+        \infer{ \Gamma }{ \var }{ \vtype }{ \var }
     }
     \\\\[2em]
     \rule{I-PI}{
@@ -577,9 +584,9 @@ returns its elaborated form.
         \qquad
         \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \check{ \Gamma, x:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \check{ \Gamma, \var:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
     }{
-        \infer{ \Gamma }{ \Pi{x:\rtype_1}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Pi{x:\ttype_1}{\ttype_2} }
+        \infer{ \Gamma }{ \Pi{\var:\rtype_1}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Pi{\var:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
     \rule{I-LAM}{
@@ -587,13 +594,13 @@ returns its elaborated form.
         \qquad
         \eval{ \Gamma }{ \ttype }{ \vtype_1 }
         \qquad
-        \check{ \Gamma, x:\vtype_1 }{ \rexpr}{ \vtype_2 }{ \texpr }
+        \check{ \Gamma, \var:\vtype_1 }{ \rexpr}{ \vtype_2 }{ \texpr }
     }{
-        \infer{ \Gamma }{ \lam{x:\rtype}{\rexpr} }{ \Pi{x:\vtype_1}{\vtype_2} }{ \lam{x:\ttype}{\texpr} }
+        \infer{ \Gamma }{ \lam{\var:\rtype}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{I-APP}{
-        \infer{ \Gamma }{ \rexpr_1 }{ \Pi{x:\vtype_1}{\vtype_2} }{ \texpr_1 }
+        \infer{ \Gamma }{ \rexpr_1 }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \texpr_1 }
         \qquad
         \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
@@ -607,9 +614,12 @@ returns its elaborated form.
         \qquad
         \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \infer{ \Gamma, x:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \infer{ \Gamma, \var:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
     }{
-        \infer{ \Gamma }{ \Record{l:\rtype_1, \rtype_2} }{ \Type_{\max(i,j)} }{ \Record{l:\ttype_1, \ttype_2} }
+        \infer{ \Gamma }
+            { \Record{\label[\var]:\rtype_1, \rtype_2} }
+            { \Type_{\max(i,j)} }
+            { \Record{\label[\var]:\ttype_1, \ttype_2} }
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD-TYPE}{}{
@@ -623,11 +633,11 @@ returns its elaborated form.
     \rule{I-PROJ}{
         \infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
         \qquad
-        \vtype_2 = \fieldty(l, \vtype_1)
+        \vtype_2 = \fieldty(\label, \vtype_1)
         \qquad
-        \theta = \fieldsubst(\texpr, l, \vtype_1)
+        \theta = \fieldsubst(\texpr, \label, \vtype_1)
     }{
-        \infer{ \Gamma }{ \rexpr.l }{ \vtype_2 ~ \theta }{ \texpr.l }
+        \infer{ \Gamma }{ \rexpr.\label }{ \vtype_2 ~ \theta }{ \texpr.\label }
     }
     \\\\[2em]
 \end{array}
@@ -637,8 +647,8 @@ We define \\(\fieldty(-,-)\\) and \\(\fieldsubst(-,-,-)\\) like so:
 
 \\[
 \begin{array}{lrll}
-    \fieldty(l_1, \Record{l_2 : \vtype_1, \vtype_2}) & = & \vtype_1 & \text{if} ~ l_1 \equiv l_2 \\\\
-    \fieldty(l_1, \Record{l_2 : \vtype_1, \vtype_2}) & = & \fieldty(l_1, \vtype_2) \\\\
+    \fieldty(\label_1, \Record{\label_2 : \vtype_1, \vtype_2}) & = & \vtype_1 & \text{if} ~ \label_1 \equiv \label_2 \\\\
+    \fieldty(\label_1, \Record{\label_2 : \vtype_1, \vtype_2}) & = & \fieldty(\label_1, \vtype_2) \\\\
     \\\\[2em]
 \end{array}
 \\]
@@ -648,10 +658,10 @@ we project on them, we define \\(\fieldsubst(-,-,-)\\) as:
 
 \\[
 \begin{array}{lrll}
-    \fieldsubst(\texpr, l_1, \Record{l_2 : \vtype_1, \vtype_2}) & =
-        & [] & \text{if} ~ l_1 \equiv l_2 \\\\
-    \fieldsubst(\texpr, l_1, \Record{l_2 : \vtype_1, \vtype_2}) & =
-        & \fieldsubst(\texpr, l_1, \vtype_2) \doubleplus [ l_2 \rightarrow \texpr.l_2 ] \\\\
+    \fieldsubst(\texpr, \label_1, \Record{\label_2 : \vtype_1, \vtype_2}) & =
+        & [] & \text{if} ~ \label_1 \equiv \label_2 \\\\
+    \fieldsubst(\texpr, \label_1, \Record{\label_2 : \vtype_1, \vtype_2}) & =
+        & \fieldsubst(\texpr, \label_1, \vtype_2) \doubleplus [ \label_2 \rightarrow \texpr.\label_2 ] \\\\
     \\\\[2em]
 \end{array}
 \\]
@@ -685,7 +695,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 %       \qquad
 %       \match{ \wexpr_2 }{ \tpat_2 }{ \theta_2 }
 %   }{
-%       \match{ \record{l=\wexpr_1, \wexpr_2} }{ \record{l=\tpat_1, \tpat_2} }{ \theta_1 \doubleplus \theta_2 }
+%       \match{ \record{\label=\wexpr_1, \wexpr_2} }{ \record{\label=\tpat_1, \tpat_2} }{ \theta_1 \doubleplus \theta_2 }
 %   }
 %   \\\\[2em]
 %   \rule{M-EMPTY-RECORD}{}{
@@ -704,7 +714,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 \\\\[2em]
 \begin{array}{cl}
     \rule{CP-BINDER}{}{
-        \checkpat{ \Gamma }{ x }{ \vtype }{ x }{ x : \vtype }
+        \checkpat{ \Gamma }{ \var }{ \vtype }{ \var }{ \var : \vtype }
     }
     \\\\[2em]
     \rule{CP-CONV}{
