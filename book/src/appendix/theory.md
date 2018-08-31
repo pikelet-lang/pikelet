@@ -111,6 +111,8 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\nexpr}{n} % neutral expressions
 \\newcommand{\ntype}{N} % neutral types
 \\
+\\newcommand{\ctx}{\Gamma} % contexts
+\\
 % Keywords
 \\newcommand{\kw}[1]{ \mathsf{#1} }
 \\
@@ -130,6 +132,15 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\Record}[1]{ \kw{Record} \left\\{ #1 \right\\} }
 \\newcommand{\record}[1]{ \kw{record} \left\\{ #1 \right\\} }
 \\newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
+\\
+% Items
+\\newcommand{\declItem}[2]{ #1 : #2 }
+\\newcommand{\defnItem}[2]{ #1 = #2 }
+\\
+% Contexts
+\\newcommand{\emptyCtx}{ \varnothing }
+\\newcommand{\composeCtx}[2]{ #1 \sim #2 }
+\\newcommand{\extendCtx}[2]{ #1, #2 }
 \\
 \begin{array}{rrll}
     \rexpr,\rtype   & ::= & \var                                & \text{variables} \\\\
@@ -163,7 +174,7 @@ etc. If you would like to discuss this with us, please check out
 \\[
 \begin{array}{lrll}
     \Arrow{\rtype_1}{\rtype_2} & := & \Pi{\var:\rtype_1}{\rtype_2} & \text{non-dependent function types} \\\\
-    \lam{x}{\rexpr}            & := & \lam{\var:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
+    \lam{\var}{\rexpr}         & := & \lam{\var:?}{\rexpr}         & \text{functions (without an annotation)} \\\\
 \end{array}
 \\]
 
@@ -242,9 +253,9 @@ even though we don't know the exact values these will eventually take during nor
 
 \\[
 \begin{array}{rrll}
-    \Gamma,\Delta  & ::= & \varnothing          & \text{the empty context} \\\\
-                   &   | & \Gamma,\var:\vtype   & \text{context extended with a declaration} \\\\
-                   &   | & \Gamma,\var=\texpr   & \text{context extended with a definition} \\\\
+    \ctx    & ::= & \emptyCtx                                   & \text{the empty context} \\\\
+            &   | & \extendCtx{\ctx}{\declItem{\var}{\vtype}}   & \text{context extended with a declaration} \\\\
+            &   | & \extendCtx{\ctx}{\defnItem{\var}{\texpr}}   & \text{context extended with a definition} \\\\
 \end{array}
 \\]
 
@@ -258,43 +269,19 @@ used during type checking.
 
 With that in mind, the next sections will describe the following judgments:
 
-| name                                                      | notation                                                         | inputs                                   | outputs                                 |
-|-----------------------------------------------------------|------------------------------------------------------------------|------------------------------------------|-----------------------------------------|
-| [normalization](#normalization)                           | \\(\eval{ \Gamma }{ \texpr }{ \vexpr }\\)                        | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vexpr\\)                            |
-| [type checking](#type-checking)                           | \\(\check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\)             | \\(\Gamma\\), \\(\rexpr\\), \\(\vtype\\) | \\(\texpr\\)                            |
-| [type inference](#type-inference)                         | \\(\infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }\\)             | \\(\Gamma\\), \\(\rexpr\\)               | \\(\vtype\\), \\(\texpr\\)              |
-| [pattern matching](#pattern-matching)                     | \\(\match{ \wexpr }{ \tpat }{ \theta }\\)                        | \\(\wexpr\\), \\(\tpat\\)                | \\(\theta\\)                            |
-| [type checking of patterns](#type-checking-of-patterns)   | \\(\checkpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }\\)  | \\(\Gamma\\), \\(\rpat\\), \\(\vtype\\)  | \\(\tpat\\), \\(\Delta\\)               |
-| [type inference of patterns](#type-inference-of-patterns) | \\(\inferpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }\\)  | \\(\Gamma\\), \\(\rpat\\),               | \\(\vtype\\), \\(\tpat\\), \\(\Delta\\) |
+| Name                                                      | Notation                                                      | Inputs                                    | Outputs                                   |
+|-----------------------------------------------------------|---------------------------------------------------------------|-------------------------------------------|-------------------------------------------|
+| [normalization](#normalization)                           | \\(\eval{ \ctx }{ \texpr }{ \vexpr }\\)                       | \\(\ctx\\), \\(\rexpr\\)                  | \\(\vexpr\\)                              |
+| [type checking](#type-checking)                           | \\(\check{ \ctx }{ \rexpr }{ \vtype }{ \texpr }\\)            | \\(\ctx\\), \\(\rexpr\\), \\(\vtype\\)    | \\(\texpr\\)                              |
+| [type inference](#type-inference)                         | \\(\infer{ \ctx }{ \rexpr }{ \vtype }{ \texpr }\\)            | \\(\ctx\\), \\(\rexpr\\)                  | \\(\vtype\\), \\(\texpr\\)                |
+| [pattern matching](#pattern-matching)                     | \\(\match{ \wexpr }{ \tpat }{ \theta }\\)                     | \\(\wexpr\\), \\(\tpat\\)                 | \\(\theta\\)                              |
+| [type checking of patterns](#type-checking-of-patterns)   | \\(\checkpat{ \ctx }{ \rpat }{ \vtype }{ \tpat }{ \ctx' }\\)  | \\(\ctx\\), \\(\rpat\\), \\(\vtype\\)     | \\(\tpat\\), \\(\ctx'\\)                  |
+| [type inference of patterns](#type-inference-of-patterns) | \\(\inferpat{ \ctx }{ \rpat }{ \vtype }{ \tpat }{ \ctx' }\\)  | \\(\ctx\\), \\(\rpat\\),                  | \\(\vtype\\), \\(\tpat\\), \\(\ctx'\\)    |
 
 Normalization stands on its own, but both checking and inference are mutually
 dependent on each other. Care has been taken to design the judgments so that
 they are _syntax-directed_, meaning that an algorithm can be clearly derived
 from them.
-
-Here is a rough overview of how Pikelet terms are checked:
-
-```
-                (from parser)
-                      |
-                      v
-     +---------- raw::Term -----------+
-     |                                |
-     v                                v
-Type Inference <- - - - - - -> Type checking
-     |                                ^
-     |                                |
- core::Term                      core::Value
-     |                                |
-     +-------> Normalization ---------+
-     |
-     |
-     v
- (to compiler)
-```
-
-> **TODO:**
-> Use SVG for this diagram
 
 ### Elaboration
 
@@ -314,139 +301,139 @@ in the context.
 
 \\[
 \boxed{
-    \eval{ \Gamma }{ \texpr }{ \vexpr }
+    \eval{ \ctx }{ \texpr }{ \vexpr }
 }
 \\\\[2em]
 \begin{array}{cl}
     \rule{E-ANN}{
-        \eval{ \Gamma }{ \texpr }{ \vexpr }
+        \eval{ \ctx }{ \texpr }{ \vexpr }
     }{
-        \eval{ \Gamma }{ \texpr:\ttype }{ \vexpr }
+        \eval{ \ctx }{ \texpr:\ttype }{ \vexpr }
     }
     \\\\[2em]
     \rule{E-TYPE}{}{
-        \eval{ \Gamma }{ \Type_i }{ \Type_i }
+        \eval{ \ctx }{ \Type_i }{ \Type_i }
     }
     \\\\[2em]
     \rule{E-BOOL}{}{
-        \eval{ \Gamma }{ \Bool }{ \Bool }
+        \eval{ \ctx }{ \Bool }{ \Bool }
     }
     \\\\[2em]
     \rule{E-TRUE}{}{
-        \eval{ \Gamma }{ \true }{ \true }
+        \eval{ \ctx }{ \true }{ \true }
     }
     \\\\[2em]
     \rule{E-FALSE}{}{
-        \eval{ \Gamma }{ \false }{ \false }
+        \eval{ \ctx }{ \false }{ \false }
     }
     \\\\[2em]
     \rule{E-VAR}{
-        x=\texpr \notin \Gamma
+        \defnItem{\var}{\texpr} \notin \ctx
     }{
-        \eval{ \Gamma }{ \var }{ \var }
+        \eval{ \ctx }{ \var }{ \var }
     }
     \\\\[2em]
     \rule{E-VAR-DEF}{
-        \var=\texpr \in \Gamma
+        \defnItem{\var,\texpr} \in \ctx
         \qquad
-        \eval{ \Gamma }{ \texpr }{ \vexpr }
+        \eval{ \ctx }{ \texpr }{ \vexpr }
     }{
-        \eval{ \Gamma }{ \var }{ \vexpr }
+        \eval{ \ctx }{ \var }{ \vexpr }
     }
     \\\\[2em]
     \rule{E-PI}{
-        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
+        \eval{ \ctx }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \Gamma }{ \Pi{\var:\ttype_1}{\ttype_2} }{ \Pi{\var:\vtype_1}{\vtype_2} }
+        \eval{ \ctx }{ \Pi{\var:\ttype_1}{\ttype_2} }{ \Pi{\var:\vtype_1}{\vtype_2} }
     }
     \\\\[2em]
     \rule{E-LAM}{
-        \eval{ \Gamma }{ \ttype }{ \vtype }
+        \eval{ \ctx }{ \ttype }{ \vtype }
         \qquad
-        \eval{ \Gamma }{ \texpr }{ \vexpr }
+        \eval{ \ctx }{ \texpr }{ \vexpr }
     }{
-        \eval{ \Gamma }{ \lam{\var:\ttype}{\texpr} }{ \lam{\var:\vtype}{\vexpr} }
+        \eval{ \ctx }{ \lam{\var:\ttype}{\texpr} }{ \lam{\var:\vtype}{\vexpr} }
     }
     \\\\[2em]
     \rule{E-APP}{
-        \eval{ \Gamma }{ \texpr_1 }{ \lam{\var:\vtype_1}{\vexpr_1} }
+        \eval{ \ctx }{ \texpr_1 }{ \lam{\var:\vtype_1}{\vexpr_1} }
         \qquad
-        \eval{ \Gamma }{ \subst{\vexpr_1}{x}{\texpr_2} }{ \vexpr_3 }
+        \eval{ \ctx }{ \subst{\vexpr_1}{\var}{\texpr_2} }{ \vexpr_3 }
     }{
-        \eval{ \Gamma }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
+        \eval{ \ctx }{ \app{\texpr_1}{\texpr_2} }{ \vexpr_3 }
     }
     \\\\[2em]
     \rule{E-IF}{
-        \eval{ \Gamma }{ \nexpr }{ \nexpr' }
+        \eval{ \ctx }{ \nexpr }{ \nexpr' }
     }{
-        \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \ifte{\nexpr'}{\texpr_1}{\texpr_2} }
+        \eval{ \ctx }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \ifte{\nexpr'}{\texpr_1}{\texpr_2} }
     }
     \\\\[2em]
     \rule{E-IF-TRUE}{
-        \eval{ \Gamma }{ \nexpr }{ \true }
+        \eval{ \ctx }{ \nexpr }{ \true }
         \qquad
-        \eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+        \eval{ \ctx }{ \texpr_1 }{ \vexpr_1 }
     }{
-        \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_1 }
+        \eval{ \ctx }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_1 }
     }
     \\\\[2em]
     \rule{E-IF-FALSE}{
-        \eval{ \Gamma }{ \nexpr }{ \false }
+        \eval{ \ctx }{ \nexpr }{ \false }
         \qquad
-        \eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+        \eval{ \ctx }{ \texpr_2 }{ \vexpr_2 }
     }{
-        \eval{ \Gamma }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_2 }
+        \eval{ \ctx }{ \ifte{\nexpr}{\texpr_1}{\texpr_2} }{ \vexpr_2 }
     }
     \\\\[2em]
     \rule{E-CASE}{
-        \eval{ \Gamma }{ \nexpr }{ \nexpr' }
+        \eval{ \ctx }{ \nexpr }{ \nexpr' }
     }{
-        \eval{ \Gamma }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
+        \eval{ \ctx }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
             { \case{\nexpr'}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
     }
     \\\\[2em]
     \rule{E-CASE-MATCH}{
-        \eval{ \Gamma }{ \nexpr }{ \wexpr }
+        \eval{ \ctx }{ \nexpr }{ \wexpr }
         \qquad
         \match{ \wexpr }{ \tpat_i }{ \theta }
         \qquad
-        \eval{ \Gamma }{ \texpr_i ~ \theta }{ \vexpr_i }
+        \eval{ \ctx }{ \texpr_i ~ \theta }{ \vexpr_i }
     }{
-        \eval{ \Gamma }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }{ \vexpr_i }
+        \eval{ \ctx }{ \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }{ \vexpr_i }
     }
     \\\\[2em]
     \rule{E-RECORD-TYPE}{
-        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \eval{ \Gamma }{ \ttype_2 }{ \vtype_2 }
+        \eval{ \ctx }{ \ttype_2 }{ \vtype_2 }
     }{
-        \eval{ \Gamma }{ \Record{\label[\var]:\ttype_1, \ttype_2} }{ \Record{\label[\var]:\vtype_1, \vtype_2} }
+        \eval{ \ctx }{ \Record{\label[\var]:\ttype_1, \ttype_2} }{ \Record{\label[\var]:\vtype_1, \vtype_2} }
     }
     \\\\[2em]
     \rule{E-RECORD}{
-        \eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+        \eval{ \ctx }{ \texpr_1 }{ \vexpr_1 }
         \qquad
-        \eval{ \Gamma }{ \texpr_2 }{ \vexpr_2 }
+        \eval{ \ctx }{ \texpr_2 }{ \vexpr_2 }
     }{
-        \eval{ \Gamma }{ \record{\label=\texpr_1, \texpr_2} }{ \record{\label=\vexpr_1, \vexpr_2} }
+        \eval{ \ctx }{ \record{\label=\texpr_1, \texpr_2} }{ \record{\label=\vexpr_1, \vexpr_2} }
     }
     \\\\[2em]
     \rule{E-EMPTY-RECORD-TYPE}{}{
-        \eval{ \Gamma }{ \Record{} }{ \Record{} }
+        \eval{ \ctx }{ \Record{} }{ \Record{} }
     }
     \\\\[2em]
     \rule{E-EMPTY-RECORD}{}{
-        \eval{ \Gamma }{ \record{} }{ \record{} }
+        \eval{ \ctx }{ \record{} }{ \record{} }
     }
     \\\\[2em]
     \rule{E-PROJ}{
-        \eval{ \Gamma }{ \texpr_1 }{ \vexpr_1 }
+        \eval{ \ctx }{ \texpr_1 }{ \vexpr_1 }
         \qquad
         \vexpr_2 = \field(\label, \vexpr_1)
     }{
-        \eval{ \Gamma }{ \texpr_1.\label }{ \vexpr_2 }
+        \eval{ \ctx }{ \texpr_1.\label }{ \vexpr_2 }
     }
     \\\\[2em]
 \end{array}
@@ -468,62 +455,62 @@ elaborated form.
 
 \\[
 \boxed{
-    \check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+    \check{ \ctx }{ \rexpr }{ \vtype }{ \texpr }
 }
 \\\\[2em]
 \begin{array}{cl}
     \rule{C-LAM}{
-        \infer{ \Gamma,x:\vtype_1 }{ \rexpr }{ \ttype_2 }{ \texpr }
+        \infer{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rexpr }{ \ttype_2 }{ \texpr }
     }{
-        \check{ \Gamma }{ \lam{x}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\vtype_1}{\texpr} }
+        \check{ \ctx }{ \lam{\var}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\vtype_1}{\texpr} }
     }
     \\\\[2em]
     \rule{C-IF}{
-        \check{ \Gamma }{ \rexpr_1 }{ \Bool }{ \texpr_1 }
+        \check{ \ctx }{ \rexpr_1 }{ \Bool }{ \texpr_1 }
         \qquad
-        \check{ \Gamma }{ \rexpr_2 }{ \vtype }{ \texpr_2 }
+        \check{ \ctx }{ \rexpr_2 }{ \vtype }{ \texpr_2 }
         \qquad
-        \check{ \Gamma }{ \rexpr_3 }{ \vtype }{ \texpr_3 }
+        \check{ \ctx }{ \rexpr_3 }{ \vtype }{ \texpr_3 }
     }{
-        \check{ \Gamma }{ \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} }{ \vtype }{ \ifte{\texpr_1}{\texpr_2}{\texpr_3} }
+        \check{ \ctx }{ \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} }{ \vtype }{ \ifte{\texpr_1}{\texpr_2}{\texpr_3} }
     }
     \\\\[2em]
     \rule{C-CASE}{
-        \infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+        \infer{ \ctx }{ \rexpr }{ \vtype_1 }{ \texpr }
         \qquad
         \overline{
             % TODO: impl pattern checks
             ~
-            \check{ \Gamma }{ \rpat_i }{ \vtype_1 }{ \tpat_i } \Rightarrow \Delta
+            \check{ \ctx }{ \rpat_i }{ \vtype_1 }{ \tpat_i } \Rightarrow \ctx'
             \qquad
-            \check{ \Gamma \sim \Delta }{ \rexpr_i }{ \vtype_2 }{ \texpr_i }
+            \check{ \composeCtx{\ctx}{\ctx'} }{ \rexpr_i }{ \vtype_2 }{ \texpr_i }
             ~
         }
     }{
-        \check{ \Gamma }{ \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}} }{ \vtype_2 }
+        \check{ \ctx }{ \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}} }{ \vtype_2 }
             { \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} }
     }
     \\\\[2em]
     \rule{C-RECORD}{
         \label_1 \equiv \label_2
         \qquad
-        \check{ \Gamma }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
+        \check{ \ctx }{ \rexpr_1 }{ \vtype_1 }{ \texpr_1 }
         \qquad
-        \eval{ \Gamma }{ \subst{\vtype_2}{\var}{\texpr_1} }{ \vtype_3 }
+        \eval{ \ctx }{ \subst{\vtype_2}{\var}{\texpr_1} }{ \vtype_3 }
         \qquad
-        \check{ \Gamma }{ \rexpr_2 }{ \vtype_3 }{ \texpr_2 }
+        \check{ \ctx }{ \rexpr_2 }{ \vtype_3 }{ \texpr_2 }
     }{
-        \check{ \Gamma }{ \record{\label_1=\rexpr_1, \rexpr_2} }
+        \check{ \ctx }{ \record{\label_1=\rexpr_1, \rexpr_2} }
             { \Record{\label_2[\var]:\vtype_1, \vtype_2} }
             { \record{\label_1=\texpr_1, \texpr_2} }
     }
     \\\\[2em]
     \rule{C-CONV}{
-        \infer{ \Gamma }{ \rexpr }{ \vtype_2 }{ \texpr }
+        \infer{ \ctx }{ \rexpr }{ \vtype_2 }{ \texpr }
         \qquad
         \vtype_1 \equiv_{\alpha} \vtype_2
     }{
-        \check{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+        \check{ \ctx }{ \rexpr }{ \vtype_1 }{ \texpr }
     }
     \\\\[2em]
 \end{array}
@@ -543,101 +530,101 @@ returns its elaborated form.
 
 \\[
 \boxed{
-    \infer{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+    \infer{ \ctx }{ \rexpr }{ \vtype }{ \texpr }
 }
 \\\\[2em]
 \begin{array}{cl}
     \rule{I-ANN}{
-        \infer{ \Gamma }{ \rtype }{ \Type_i }{ \ttype }
+        \infer{ \ctx }{ \rtype }{ \Type_i }{ \ttype }
         \qquad
-        \eval{ \Gamma }{ \ttype }{ \vtype }
+        \eval{ \ctx }{ \ttype }{ \vtype }
         \qquad
-        \check{ \Gamma }{ \rexpr }{ \vtype }{ \texpr }
+        \check{ \ctx }{ \rexpr }{ \vtype }{ \texpr }
     }{
-        \infer{ \Gamma }{ \rexpr:\rtype }{ \Type_{i+1} }{ \texpr:\ttype }
+        \infer{ \ctx }{ \rexpr:\rtype }{ \Type_{i+1} }{ \texpr:\ttype }
     }
     \\\\[2em]
     \rule{I-TYPE}{}{
-        \infer{ \Gamma }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
+        \infer{ \ctx }{ \Type_i }{ \Type_{i+1} }{ \Type_i }
     }
     \\\\[2em]
     \rule{I-BOOL}{}{
-        \infer{ \Gamma }{ \Bool }{ \Type_0 }{ \Bool }
+        \infer{ \ctx }{ \Bool }{ \Type_0 }{ \Bool }
     }
     \\\\[2em]
     \rule{I-TRUE}{}{
-        \infer{ \Gamma }{ \true }{ \Bool }{ \true }
+        \infer{ \ctx }{ \true }{ \Bool }{ \true }
     }
     \\\\[2em]
     \rule{I-FALSE}{}{
-        \infer{ \Gamma }{ \false }{ \Bool }{ \false }
+        \infer{ \ctx }{ \false }{ \Bool }{ \false }
     }
     \\\\[2em]
     \rule{I-VAR}{
-        \var:\vtype \in \Gamma
+        \declItem{\var}{\vtype} \in \ctx
     }{
-        \infer{ \Gamma }{ \var }{ \vtype }{ \var }
+        \infer{ \ctx }{ \var }{ \vtype }{ \var }
     }
     \\\\[2em]
     \rule{I-PI}{
-        \infer{ \Gamma }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
+        \infer{ \ctx }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
         \qquad
-        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \check{ \Gamma, \var:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \check{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
     }{
-        \infer{ \Gamma }{ \Pi{\var:\rtype_1}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Pi{\var:\ttype_1}{\ttype_2} }
+        \infer{ \ctx }{ \Pi{\var:\rtype_1}{\rtype_2} }{ \Type_{\max(i,j)} }{ \Pi{\var:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
     \rule{I-LAM}{
-        \infer{ \Gamma }{ \rtype }{ \Type_i }{ \ttype }
+        \infer{ \ctx }{ \rtype }{ \Type_i }{ \ttype }
         \qquad
-        \eval{ \Gamma }{ \ttype }{ \vtype_1 }
+        \eval{ \ctx }{ \ttype }{ \vtype_1 }
         \qquad
-        \check{ \Gamma, \var:\vtype_1 }{ \rexpr}{ \vtype_2 }{ \texpr }
+        \check{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rexpr}{ \vtype_2 }{ \texpr }
     }{
-        \infer{ \Gamma }{ \lam{\var:\rtype}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\ttype}{\texpr} }
+        \infer{ \ctx }{ \lam{\var:\rtype}{\rexpr} }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \lam{\var:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{I-APP}{
-        \infer{ \Gamma }{ \rexpr_1 }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \texpr_1 }
+        \infer{ \ctx }{ \rexpr_1 }{ \Pi{\var:\vtype_1}{\vtype_2} }{ \texpr_1 }
         \qquad
-        \check{ \Gamma }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
+        \check{ \ctx }{ \rexpr_2 }{ \vtype_1 }{ \texpr_2 }
         \qquad
-        \eval{ \Gamma }{ \subst{\vtype_2}{x}{\texpr_2} }{ \vtype_3 }
+        \eval{ \ctx }{ \subst{\vtype_2}{\var}{\texpr_2} }{ \vtype_3 }
     }{
-        \infer{ \Gamma }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
+        \infer{ \ctx }{ \app{\rexpr_1}{\rexpr_2} }{ \vtype_3 }{ \app{\texpr_1}{\texpr_2} }
     }
     \\\\[2em]
     \rule{I-RECORD-TYPE}{
-        \infer{ \Gamma }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
+        \infer{ \ctx }{ \rtype_1 }{ \Type_i }{ \ttype_1 }
         \qquad
-        \eval{ \Gamma }{ \ttype_1 }{ \vtype_1 }
+        \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \infer{ \Gamma, \var:\vtype_1 }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
+        \infer{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
     }{
-        \infer{ \Gamma }
+        \infer{ \ctx }
             { \Record{\label[\var]:\rtype_1, \rtype_2} }
             { \Type_{\max(i,j)} }
             { \Record{\label[\var]:\ttype_1, \ttype_2} }
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD-TYPE}{}{
-        \infer{ \Gamma }{ \Record{} }{ \Type_0 }{ \Record{} }
+        \infer{ \ctx }{ \Record{} }{ \Type_0 }{ \Record{} }
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD}{}{
-        \infer{ \Gamma }{ \record{} }{ \Record{} }{ \record{} }
+        \infer{ \ctx }{ \record{} }{ \Record{} }{ \record{} }
     }
     \\\\[2em]
     \rule{I-PROJ}{
-        \infer{ \Gamma }{ \rexpr }{ \vtype_1 }{ \texpr }
+        \infer{ \ctx }{ \rexpr }{ \vtype_1 }{ \texpr }
         \qquad
         \vtype_2 = \fieldty(\label, \vtype_1)
         \qquad
         \theta = \fieldsubst(\texpr, \label, \vtype_1)
     }{
-        \infer{ \Gamma }{ \rexpr.\label }{ \vtype_2 ~ \theta }{ \texpr.\label }
+        \infer{ \ctx }{ \rexpr.\label }{ \vtype_2 ~ \theta }{ \texpr.\label }
     }
     \\\\[2em]
 \end{array}
@@ -678,7 +665,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 \\\\[2em]
 \begin{array}{cl}
     \rule{M-VAR}{}{
-        \match{ \wexpr }{ x }{ [x \rightarrow \wexpr] }
+        \match{ \wexpr }{ \var }{ [\var \rightarrow \wexpr] }
     }
     \\\\[2em]
     \rule{M-TRUE}{}{
@@ -709,20 +696,20 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 
 \\[
 \boxed{
-    \checkpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }
+    \checkpat{ \ctx }{ \rpat }{ \vtype }{ \tpat }{ \ctx' }
 }
 \\\\[2em]
 \begin{array}{cl}
     \rule{CP-BINDER}{}{
-        \checkpat{ \Gamma }{ \var }{ \vtype }{ \var }{ \var : \vtype }
+        \checkpat{ \ctx }{ \var }{ \vtype }{ \var }{ \var : \vtype }
     }
     \\\\[2em]
     \rule{CP-CONV}{
-        \inferpat{ \Gamma }{ \rpat }{ \vtype_2 }{ \tpat }{ \Delta }
+        \inferpat{ \ctx }{ \rpat }{ \vtype_2 }{ \tpat }{ \ctx' }
         \qquad
         \vtype_1 \equiv_{\alpha} \vtype_2
     }{
-        \checkpat{ \Gamma }{ \rpat }{ \vtype_1 }{ \tpat }{ \Delta }
+        \checkpat{ \ctx }{ \rpat }{ \vtype_1 }{ \tpat }{ \ctx' }
     }
     \\\\[2em]
 \end{array}
@@ -732,26 +719,26 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
 
 \\[
 \boxed{
-    \inferpat{ \Gamma }{ \rpat }{ \vtype }{ \tpat }{ \Delta }
+    \inferpat{ \ctx }{ \rpat }{ \vtype }{ \tpat }{ \ctx' }
 }
 \\\\[2em]
 \begin{array}{cl}
     \rule{IP-ANN}{
-        \infer{ \Gamma }{ \rtype }{ \Type_i }{ \ttype }
+        \infer{ \ctx }{ \rtype }{ \Type_i }{ \ttype }
         \qquad
-        \eval{ \Gamma }{ \ttype }{ \vtype }
+        \eval{ \ctx }{ \ttype }{ \vtype }
         \qquad
-        \checkpat{ \Gamma }{ \rpat }{ \vtype }{ \rpat }{ \Delta }
+        \checkpat{ \ctx }{ \rpat }{ \vtype }{ \rpat }{ \ctx' }
     }{
-        \inferpat{ \Gamma }{ \rpat : \rtype }{ \rtype }{ \rpat : \rtype }{ \Delta }
+        \inferpat{ \ctx }{ \rpat : \rtype }{ \rtype }{ \rpat : \rtype }{ \ctx' }
     }
     \\\\[2em]
     \rule{IP-TRUE}{}{
-        \inferpat{ \Gamma }{ \true }{ \Bool }{ \true }{ \varnothing }
+        \inferpat{ \ctx }{ \true }{ \Bool }{ \true }{ \emptyCtx }
     }
     \\\\[2em]
     \rule{IP-FALSE}{}{
-        \inferpat{ \Gamma }{ \false }{ \Bool }{ \false }{ \varnothing }
+        \inferpat{ \ctx }{ \false }{ \Bool }{ \false }{ \emptyCtx }
     }
     \\\\[2em]
 \end{array}
