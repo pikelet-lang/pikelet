@@ -272,30 +272,6 @@ dependent on each other. Care has been taken to design the judgments so that
 they are _syntax-directed_, meaning that an algorithm can be clearly derived
 from them.
 
-Here is a rough overview of how Pikelet terms are checked:
-
-```
-                (from parser)
-                      |
-                      v
-     +---------- raw::Term -----------+
-     |                                |
-     v                                v
-Type Inference <- - - - - - -> Type checking
-     |                                ^
-     |                                |
- core::Term                      core::Value
-     |                                |
-     +-------> Normalization ---------+
-     |
-     |
-     v
- (to compiler)
-```
-
-> **TODO:**
-> Use SVG for this diagram
-
 ### Elaboration
 
 Elaboration is the process of filling in missing information that the
