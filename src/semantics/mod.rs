@@ -329,10 +329,20 @@ where
         (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
             let bool_ty = RcValue::from(Value::global("Bool"));
             let cond = check_term(env, raw_cond, &bool_ty)?;
+
+            let if_true_pattern = RcPattern::from(Pattern::Literal(Literal::Bool(true)));
+            let if_false_pattern = RcPattern::from(Pattern::Literal(Literal::Bool(false)));
+
             let if_true = check_term(env, raw_if_true, expected_ty)?;
             let if_false = check_term(env, raw_if_false, expected_ty)?;
 
-            return Ok(RcTerm::from(Term::If(cond, if_true, if_false)));
+            return Ok(RcTerm::from(Term::Case(
+                cond,
+                vec![
+                    Scope::new(if_true_pattern, if_true),
+                    Scope::new(if_false_pattern, if_false),
+                ],
+            )));
         },
 
         // C-RECORD
@@ -568,10 +578,22 @@ where
         raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
             let bool_ty = RcValue::from(Value::global("Bool"));
             let cond = check_term(env, raw_cond, &bool_ty)?;
+
+            let if_true_pattern = RcPattern::from(Pattern::Literal(Literal::Bool(true)));
+            let if_false_pattern = RcPattern::from(Pattern::Literal(Literal::Bool(false)));
+
             let (if_true, ty) = infer_term(env, raw_if_true)?;
             let if_false = check_term(env, raw_if_false, &ty)?;
 
-            Ok((RcTerm::from(Term::If(cond, if_true, if_false)), ty))
+            let case_expr = RcTerm::from(Term::Case(
+                cond,
+                vec![
+                    Scope::new(if_true_pattern, if_true),
+                    Scope::new(if_false_pattern, if_false),
+                ],
+            ));
+
+            return Ok((case_expr, ty));
         },
 
         // I-APP

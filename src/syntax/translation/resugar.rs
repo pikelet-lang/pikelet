@@ -391,15 +391,6 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
                 vec![resugar_term(arg, Prec::NO_WRAP)], // TODO
             ),
         ),
-        core::Term::If(ref cond, ref if_true, ref if_false) => parens_if(
-            Prec::LAM < prec,
-            concrete::Term::If(
-                ByteIndex::default(),
-                Box::new(resugar_term(cond, Prec::APP)),
-                Box::new(resugar_term(if_true, Prec::APP)),
-                Box::new(resugar_term(if_false, Prec::APP)),
-            ),
-        ),
         core::Term::RecordType(ref scope) => {
             let (scope, ()) = scope.clone().unbind();
 
