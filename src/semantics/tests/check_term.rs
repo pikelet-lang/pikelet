@@ -13,6 +13,38 @@ fn record() {
 }
 
 #[test]
+fn record_field_mismatch_lt() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"Record { x : String; y : String }";
+    let given_expr = r#"record { x = "hello" }"#;
+
+    let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
+    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
+        Err(TypeError::RecordSizeMismatch { .. }) => {},
+        Err(err) => panic!("unexpected error: {:?}", err),
+        Ok(term) => panic!("expected error but found: {}", term),
+    }
+}
+
+#[test]
+fn record_field_mismatch_gt() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"Record { x : String }";
+    let given_expr = r#"record { x = "hello"; y = "hello" }"#;
+
+    let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
+    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
+        Err(TypeError::RecordSizeMismatch { .. }) => {},
+        Err(err) => panic!("unexpected error: {:?}", err),
+        Ok(term) => panic!("expected error but found: {}", term),
+    }
+}
+
+#[test]
 fn dependent_record() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
@@ -148,38 +180,6 @@ fn array_elem_ty_mismatch() {
     let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
     match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
         Err(_) => {},
-        Ok(term) => panic!("expected error but found: {}", term),
-    }
-}
-
-#[test]
-fn record_field_mismatch_lt() {
-    let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-
-    let expected_ty = r"Record { x : String; y : String }";
-    let given_expr = r#"record { x = "hello" }"#;
-
-    let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
-    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
-        Err(TypeError::RecordSizeMismatch { .. }) => {},
-        Err(err) => panic!("unexpected error: {:?}", err),
-        Ok(term) => panic!("expected error but found: {}", term),
-    }
-}
-
-#[test]
-fn record_field_mismatch_gt() {
-    let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-
-    let expected_ty = r"Record { x : String }";
-    let given_expr = r#"record { x = "hello"; y = "hello" }"#;
-
-    let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
-    match check_term(&tc_env, &parse_term(&mut codemap, given_expr), &expected_ty) {
-        Err(TypeError::RecordSizeMismatch { .. }) => {},
-        Err(err) => panic!("unexpected error: {:?}", err),
         Ok(term) => panic!("expected error but found: {}", term),
     }
 }
