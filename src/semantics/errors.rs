@@ -192,6 +192,16 @@ pub enum TypeError {
         expected_label: syntax::Label,
         found: Box<concrete::Term>,
     },
+    #[fail(
+        display = "Mismatched record size: expected {} fields but found {}",
+        expected_size,
+        found_size,
+    )]
+    RecordSizeMismatch {
+        span: ByteSpan,
+        found_size: u64,
+        expected_size: u64,
+    },
     #[fail(display = "Internal error - this is a bug! {}", _0)]
     Internal(#[cause] InternalError),
 }
@@ -362,6 +372,16 @@ impl TypeError {
                 "the type `{}` does not contain a field called `{}`",
                 found, expected_label
             )).with_label(Label::new_primary(label_span).with_message("the field lookup")),
+            TypeError::RecordSizeMismatch {
+                span,
+                found_size,
+                expected_size,
+            } => Diagnostic::new_error(format!(
+                "mismatched record size: expected {} fields but found {}",
+                expected_size, found_size
+            )).with_label(
+                Label::new_primary(span).with_message(format!("record with {} fields", found_size)),
+            ),
         }
     }
 }

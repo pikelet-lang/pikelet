@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundTerm, BoundPattern, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{
     Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Type, Value,
@@ -337,8 +337,20 @@ where
 
         // C-RECORD
         (&raw::Term::Record(span, ref raw_scope), &Value::RecordType(ref raw_ty_scope)) => {
-            let (raw_fields, (), raw_ty_fields, ()) =
-                Scope::unbind2(raw_scope.clone(), raw_ty_scope.clone());
+            let (raw_fields, (), raw_ty_fields, ()) = {
+                // Until Scope::unbind2 returns a Result.
+                let found_size = raw_scope.unsafe_pattern.binders().len();
+                let expected_size = raw_ty_scope.unsafe_pattern.binders().len();
+                if found_size == expected_size {
+                    Scope::unbind2(raw_scope.clone(), raw_ty_scope.clone())
+                } else {
+                    return Err(TypeError::RecordSizeMismatch {
+                        span,
+                        found_size: found_size as u64,
+                        expected_size: expected_size as u64,
+                    });
+                }
+            };
 
             let raw_fields = raw_fields.unnest();
             let raw_ty_fields = raw_ty_fields.unnest();
