@@ -38,10 +38,6 @@ fn pretty_extern(name: &str, ty: &impl ToDoc) -> StaticDoc {
     )
 }
 
-fn pretty_global(name: &str) -> StaticDoc {
-    sexpr("global", Doc::as_string(name))
-}
-
 fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
@@ -186,7 +182,6 @@ impl ToDoc for raw::Term {
             raw::Term::Literal(ref literal) => literal.to_doc(),
             raw::Term::Var(_, ref var) => pretty_var(var),
             raw::Term::Extern(_, _, ref name, ref ty) => pretty_extern(name, &ty.inner),
-            raw::Term::Global(_, ref name) => pretty_global(name),
             raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
@@ -286,7 +281,6 @@ impl ToDoc for Term {
             Term::Literal(ref literal) => literal.to_doc(),
             Term::Var(ref var) => pretty_var(var),
             Term::Extern(ref name, ref ty) => pretty_extern(name, &ty.inner),
-            Term::Global(ref name) => pretty_global(name),
             Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
@@ -421,7 +415,6 @@ impl ToDoc for Head {
         match *self {
             Head::Var(ref var) => pretty_var(var),
             Head::Extern(ref name, ref ty) => pretty_extern(name, &ty.inner),
-            Head::Global(ref name) => pretty_global(name),
         }
     }
 }

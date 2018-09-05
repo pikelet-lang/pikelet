@@ -87,8 +87,8 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let interface = Interface::new("repl")?;
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
-    let mut desugar_env = DesugarEnv::new();
     let mut tc_env = TcEnv::default();
+    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);

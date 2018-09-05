@@ -371,7 +371,6 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
             // TODO: otherwise create a pretty name
             concrete::Term::Name(ByteIndex::default(), free_var.to_string())
         },
-        core::Term::Global(ref name) => concrete::Term::Name(ByteIndex::default(), name.clone()),
         core::Term::Var(Var::Bound(_)) => {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");

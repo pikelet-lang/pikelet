@@ -124,8 +124,6 @@ pub enum Term {
     Var(Var<String>),
     /// An external definition
     Extern(String, RcTerm),
-    /// A global name
-    Global(String),
     /// Dependent function types
     Pi(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
@@ -152,10 +150,6 @@ impl Term {
     pub fn universe(level: impl Into<Level>) -> Term {
         Term::Universe(level.into())
     }
-
-    pub fn global(name: impl Into<String>) -> Term {
-        Term::Global(name.into())
-    }
 }
 
 impl fmt::Display for Term {
@@ -176,7 +170,7 @@ impl RcTerm {
             Term::Ann(ref term, ref ty) => {
                 RcTerm::from(Term::Ann(term.substs(mappings), ty.substs(mappings)))
             },
-            Term::Universe(_) | Term::Literal(_) | Term::Global(_) => self.clone(),
+            Term::Universe(_) | Term::Literal(_) => self.clone(),
             Term::Var(ref var) => match mappings.iter().find(|&(ref name, _)| var == name) {
                 Some(&(_, ref term)) => term.clone(),
                 None => self.clone(),
@@ -322,10 +316,6 @@ impl Value {
         Value::Universe(level.into())
     }
 
-    pub fn global(name: impl Into<String>) -> Value {
-        Value::Neutral(RcNeutral::from(Neutral::global(name)), Spine::new())
-    }
-
     pub fn substs(&self, mappings: &[(FreeVar<String>, RcTerm)]) -> RcTerm {
         // FIXME: This seems quite wasteful!
         RcTerm::from(Term::from(self)).substs(mappings)
@@ -371,10 +361,10 @@ impl Value {
         None
     }
 
-    pub fn global_app(&self) -> Option<(&str, &Spine)> {
+    pub fn free_var_app(&self) -> Option<(&FreeVar<String>, &Spine)> {
         self.head_app().and_then(|(head, spine)| match head {
-            Head::Global(ref name) => Some((name.as_str(), spine)),
-            Head::Extern(_, _) | Head::Var(_) => None,
+            Head::Var(Var::Free(ref free_var)) => Some((free_var, spine)),
+            Head::Extern(_, _) | Head::Var(Var::Bound(_)) => None,
         })
     }
 }
@@ -420,8 +410,6 @@ pub enum Head {
     Var(Var<String>),
     /// External definitions
     Extern(String, RcType),
-    /// A global name
-    Global(String),
     // TODO: Metavariables
 }
 
@@ -444,12 +432,6 @@ pub enum Neutral {
     Proj(RcNeutral, Label),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
-}
-
-impl Neutral {
-    pub fn global(name: impl Into<String>) -> Neutral {
-        Neutral::Head(Head::Global(name.into()))
-    }
 }
 
 impl fmt::Display for Neutral {
@@ -606,7 +588,6 @@ impl<'a> From<&'a Head> for Term {
         match *src {
             Head::Var(ref var) => Term::Var(var.clone()),
             Head::Extern(ref name, ref ty) => Term::Extern(name.clone(), RcTerm::from(&**ty)),
-            Head::Global(ref name) => Term::Global(name.clone()),
         }
     }
 }

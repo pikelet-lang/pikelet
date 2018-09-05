@@ -1,9 +1,0 @@
-RcTerm {
-    inner: Global(
-        Span {
-            start: ByteIndex(1),
-            end: ByteIndex(2)
-        },
-        "x"
-    )
-}

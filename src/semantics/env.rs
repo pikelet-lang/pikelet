@@ -1,6 +1,7 @@
 use im::HashMap;
 use moniker::FreeVar;
 use std::fmt;
+use std::rc::Rc;
 
 use syntax::core::{Literal, RcTerm, RcType, RcValue, Spine, Value};
 
@@ -261,30 +262,30 @@ fn default_extern_definitions() -> HashMap<&'static str, Extern> {
     }
 }
 
-fn default_global_declarations() -> HashMap<&'static str, RcType> {
-    use moniker::{Binder, Embed, Scope};
+fn default_declarations(globals: &Globals) -> HashMap<FreeVar<String>, RcType> {
+    use moniker::{Binder, Embed, Scope, Var};
 
     let universe0 = RcValue::from(Value::universe(0));
-    let bool_ty = RcValue::from(Value::global("Bool"));
+    let bool_ty = RcValue::from(Value::from(Var::Free(globals.bool.clone())));
 
     hashmap!{
-        "Bool" => universe0.clone(),
-        "true" => bool_ty.clone(),
-        "false" => bool_ty.clone(),
-        "String" => universe0.clone(),
-        "Char" => universe0.clone(),
-        "U8" => universe0.clone(),
-        "U16" => universe0.clone(),
-        "U32" => universe0.clone(),
-        "U64" => universe0.clone(),
-        "I8" => universe0.clone(),
-        "I16" => universe0.clone(),
-        "I32" => universe0.clone(),
-        "I64" => universe0.clone(),
-        "F32" => universe0.clone(),
-        "F64" => universe0.clone(),
-        "Array" => RcValue::from(Value::Pi(Scope::new(
-            (Binder(FreeVar::fresh_unnamed()), Embed(RcValue::from(Value::global("U64")))),
+        globals.bool.clone() => universe0.clone(),
+        globals.true_.clone() => bool_ty.clone(),
+        globals.false_.clone() => bool_ty.clone(),
+        globals.string.clone() => universe0.clone(),
+        globals.char.clone() => universe0.clone(),
+        globals.u8.clone() => universe0.clone(),
+        globals.u16.clone() => universe0.clone(),
+        globals.u32.clone() => universe0.clone(),
+        globals.u64.clone() => universe0.clone(),
+        globals.i8.clone() => universe0.clone(),
+        globals.i16.clone() => universe0.clone(),
+        globals.i32.clone() => universe0.clone(),
+        globals.i64.clone() => universe0.clone(),
+        globals.f32.clone() => universe0.clone(),
+        globals.f64.clone() => universe0.clone(),
+        globals.array.clone() => RcValue::from(Value::Pi(Scope::new(
+            (Binder(FreeVar::fresh_unnamed()), Embed(RcValue::from(Value::from(Var::Free(globals.u64.clone()))))),
             RcValue::from(Value::Pi(Scope::new(
                 (Binder(FreeVar::fresh_unnamed()), Embed(universe0.clone())),
                 universe0.clone(),
@@ -293,16 +294,64 @@ fn default_global_declarations() -> HashMap<&'static str, RcType> {
     }
 }
 
-fn default_global_definitions() -> HashMap<&'static str, RcValue> {
+fn default_definitions(globals: &Globals) -> HashMap<FreeVar<String>, RcTerm> {
+    use syntax::core::Term;
+
     hashmap!{
-        "true" => RcValue::from(Value::Literal(Literal::Bool(true))),
-        "false" => RcValue::from(Value::Literal(Literal::Bool(false))),
+        globals.true_.clone() => RcTerm::from(Term::Literal(Literal::Bool(true))),
+        globals.false_.clone() => RcTerm::from(Term::Literal(Literal::Bool(false))),
+    }
+}
+
+pub trait GlobalEnv {
+    fn globals(&self) -> &Globals;
+}
+
+#[derive(Clone, Debug)]
+pub struct Globals {
+    pub bool: FreeVar<String>,
+    pub true_: FreeVar<String>,
+    pub false_: FreeVar<String>,
+    pub string: FreeVar<String>,
+    pub char: FreeVar<String>,
+    pub u8: FreeVar<String>,
+    pub u16: FreeVar<String>,
+    pub u32: FreeVar<String>,
+    pub u64: FreeVar<String>,
+    pub i8: FreeVar<String>,
+    pub i16: FreeVar<String>,
+    pub i32: FreeVar<String>,
+    pub i64: FreeVar<String>,
+    pub f32: FreeVar<String>,
+    pub f64: FreeVar<String>,
+    pub array: FreeVar<String>,
+}
+
+impl Default for Globals {
+    fn default() -> Globals {
+        Globals {
+            bool: FreeVar::fresh_named("Bool"),
+            true_: FreeVar::fresh_named("true"),
+            false_: FreeVar::fresh_named("false"),
+            string: FreeVar::fresh_named("String"),
+            char: FreeVar::fresh_named("Char"),
+            u8: FreeVar::fresh_named("U8"),
+            u16: FreeVar::fresh_named("U16"),
+            u32: FreeVar::fresh_named("U32"),
+            u64: FreeVar::fresh_named("U64"),
+            i8: FreeVar::fresh_named("I8"),
+            i16: FreeVar::fresh_named("I16"),
+            i32: FreeVar::fresh_named("I32"),
+            i64: FreeVar::fresh_named("I64"),
+            f32: FreeVar::fresh_named("F32"),
+            f64: FreeVar::fresh_named("F64"),
+            array: FreeVar::fresh_named("Array"),
+        }
     }
 }
 
 /// An environment that contains declarations
-pub trait DeclarationEnv: Clone {
-    fn get_global_declaration(&self, name: &str) -> Option<&RcType>;
+pub trait DeclarationEnv: Clone + GlobalEnv {
     fn get_declaration(&self, free_var: &FreeVar<String>) -> Option<&RcType>;
     fn insert_declaration(&mut self, free_var: FreeVar<String>, ty: RcType);
     fn extend_declarations<T>(&mut self, iter: T)
@@ -311,9 +360,8 @@ pub trait DeclarationEnv: Clone {
 }
 
 /// An environment that contains definitions
-pub trait DefinitionEnv: Clone {
+pub trait DefinitionEnv: Clone + GlobalEnv {
     fn get_extern_definition(&self, name: &str) -> Option<&Extern>;
-    fn get_global_definition(&self, name: &str) -> Option<&RcValue>;
     fn get_definition(&self, free_var: &FreeVar<String>) -> Option<&RcTerm>;
     fn insert_definition(&mut self, free_var: FreeVar<String>, RcTerm);
     fn extend_definitions<T>(&mut self, iter: T)
@@ -331,35 +379,49 @@ pub trait DefinitionEnv: Clone {
 /// error-prone tedium of working with mutable context.
 #[derive(Clone, Debug)]
 pub struct TcEnv {
+    globals: Rc<Globals>,
     /// External definitions
     extern_definitions: HashMap<&'static str, Extern>,
-    /// Global declarations
-    global_declarations: HashMap<&'static str, RcType>,
-    /// Global definitions
-    global_definitions: HashMap<&'static str, RcValue>,
     /// The type annotations of the binders we have passed over
     declarations: HashMap<FreeVar<String>, RcType>,
     /// Any definitions we have passed over
     definitions: HashMap<FreeVar<String>, RcTerm>,
 }
 
+impl TcEnv {
+    pub fn mappings(&self) -> HashMap<String, FreeVar<String>> {
+        self.declarations
+            .iter()
+            .filter_map(|(free_var, _)| {
+                let pretty_name = free_var.pretty_name.as_ref()?;
+                Some((pretty_name.clone(), free_var.clone()))
+            }).collect()
+    }
+}
+
 impl Default for TcEnv {
     fn default() -> TcEnv {
+        let globals = Rc::new(Globals::default());
+        let extern_definitions = default_extern_definitions();
+        let declarations = default_declarations(&globals);
+        let definitions = default_definitions(&globals);
+
         TcEnv {
-            extern_definitions: default_extern_definitions(),
-            global_declarations: default_global_declarations(),
-            global_definitions: default_global_definitions(),
-            declarations: hashmap!{},
-            definitions: hashmap!{},
+            globals,
+            extern_definitions,
+            declarations,
+            definitions,
         }
     }
 }
 
-impl DeclarationEnv for TcEnv {
-    fn get_global_declaration(&self, name: &str) -> Option<&RcType> {
-        self.global_declarations.get(name)
+impl GlobalEnv for TcEnv {
+    fn globals(&self) -> &Globals {
+        &self.globals
     }
+}
 
+impl DeclarationEnv for TcEnv {
     fn get_declaration(&self, free_var: &FreeVar<String>) -> Option<&RcType> {
         self.declarations.get(free_var)
     }
@@ -379,10 +441,6 @@ impl DeclarationEnv for TcEnv {
 impl DefinitionEnv for TcEnv {
     fn get_extern_definition(&self, name: &str) -> Option<&Extern> {
         self.extern_definitions.get(name)
-    }
-
-    fn get_global_definition(&self, name: &str) -> Option<&RcValue> {
-        self.global_definitions.get(name)
     }
 
     fn get_definition(&self, free_var: &FreeVar<String>) -> Option<&RcTerm> {

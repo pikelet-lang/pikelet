@@ -23,8 +23,8 @@ pub struct DesugarEnv {
 }
 
 impl DesugarEnv {
-    pub fn new() -> DesugarEnv {
-        DesugarEnv::default()
+    pub fn new(mappings: HashMap<String, FreeVar<String>>) -> DesugarEnv {
+        DesugarEnv { locals: mappings }
     }
 
     pub fn on_item(&mut self, name: &str) -> Binder<String> {
@@ -42,18 +42,13 @@ impl DesugarEnv {
     }
 
     pub fn on_var(&self, span: ByteSpan, name: &str) -> raw::RcTerm {
-        raw::RcTerm::from(match self.locals.get(name) {
-            None => raw::Term::Global(span, String::from(name)),
-            Some(free_var) => raw::Term::Var(span, Var::Free(free_var.clone())),
-        })
-    }
-}
-
-impl Default for DesugarEnv {
-    fn default() -> DesugarEnv {
-        DesugarEnv {
-            locals: HashMap::new(),
-        }
+        raw::RcTerm::from(raw::Term::Var(
+            span,
+            Var::Free(match self.locals.get(name) {
+                None => FreeVar::fresh_named(name.clone()),
+                Some(free_var) => free_var.clone(),
+            }),
+        ))
     }
 }
 

@@ -16,8 +16,9 @@ fn prelude() {
         panic!("parse error!")
     }
 
-    let raw_module = concrete_module.desugar(&DesugarEnv::new());
-    if let Err(err) = check_module(&TcEnv::default(), &raw_module) {
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    if let Err(err) = check_module(&tc_env, &concrete_module.desugar(&desugar_env)) {
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
         panic!("type error!")
     }
@@ -26,13 +27,15 @@ fn prelude() {
 #[test]
 fn infer_bare_definition() {
     let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
 
     let src = "
         foo = true;
     ";
 
-    let raw_module = parse_module(&mut codemap, src);
-    if let Err(err) = check_module(&TcEnv::default(), &raw_module) {
+    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
         panic!("type error!")
@@ -42,7 +45,8 @@ fn infer_bare_definition() {
 #[test]
 fn forward_declarations() {
     let mut codemap = CodeMap::new();
-    let writer = StandardStream::stdout(ColorChoice::Always);
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
 
     let src = "
         foo : Bool;
@@ -51,8 +55,9 @@ fn forward_declarations() {
         foo = false;
     ";
 
-    let raw_module = parse_module(&mut codemap, src);
-    if let Err(err) = check_module(&TcEnv::default(), &raw_module) {
+    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    if let Err(err) = check_module(&tc_env, &raw_module) {
+        let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
         panic!("type error!")
     }
@@ -61,6 +66,8 @@ fn forward_declarations() {
 #[test]
 fn forward_declarations_forward_ref() {
     let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
 
     let src = "
         foo : Bool;
@@ -69,10 +76,10 @@ fn forward_declarations_forward_ref() {
         foo = false;
     ";
 
-    let raw_module = parse_module(&mut codemap, src);
-    match check_module(&TcEnv::default(), &raw_module) {
+    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
-        Err(TypeError::NotYetDefined { .. }) => {},
+        Err(TypeError::UndefinedName { .. }) => {},
         Err(err) => panic!("unexpected error: {}", err),
     }
 }
@@ -80,14 +87,16 @@ fn forward_declarations_forward_ref() {
 #[test]
 fn declaration_after_definition() {
     let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
 
     let src = "
         foo = true;
         foo : Bool;
     ";
 
-    let raw_module = parse_module(&mut codemap, src);
-    match check_module(&TcEnv::default(), &raw_module) {
+    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::DeclarationFollowedDefinition { .. }) => {},
         Err(err) => panic!("unexpected error: {}", err),
@@ -97,14 +106,16 @@ fn declaration_after_definition() {
 #[test]
 fn duplicate_declarations() {
     let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
 
     let src = "
         foo : Bool;
         foo : I32;
     ";
 
-    let raw_module = parse_module(&mut codemap, src);
-    match check_module(&TcEnv::default(), &raw_module) {
+    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::DuplicateDeclarations { .. }) => {},
         Err(err) => panic!("unexpected error: {}", err),
@@ -114,14 +125,16 @@ fn duplicate_declarations() {
 #[test]
 fn duplicate_definitions() {
     let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
 
     let src = "
         foo = Bool;
         foo = I32;
     ";
 
-    let raw_module = parse_module(&mut codemap, src);
-    match check_module(&TcEnv::default(), &raw_module) {
+    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::DuplicateDefinitions { .. }) => {},
         Err(err) => panic!("unexpected error: {}", err),
