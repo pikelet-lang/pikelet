@@ -277,4 +277,18 @@ mod nf_term {
             parse_nf_term(&mut codemap, &tc_env, expected_expr),
         );
     }
+
+    #[test]
+    fn record_shadow() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r"(\t : Type => Record { String : Type; x : t; y : String }) String";
+        let expected_expr = r#"Record { String as String1 : Type; x : String; y : String1 }"#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
 }

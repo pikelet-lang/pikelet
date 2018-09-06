@@ -154,7 +154,7 @@ where
         Value::Universe(level) => Ok((term, level)),
         _ => Err(TypeError::ExpectedUniverse {
             span: raw_term.span(),
-            found: Box::new(ty.resugar()),
+            found: Box::new(ty.resugar(env.resugar_env())),
         }),
     }
 }
@@ -226,7 +226,7 @@ where
     Err(TypeError::LiteralMismatch {
         literal_span: raw_literal.span(),
         found: raw_literal.clone(),
-        expected: Box::new(expected_ty.resugar()),
+        expected: Box::new(expected_ty.resugar(env.resugar_env())),
     })
 }
 
@@ -280,8 +280,8 @@ where
     } else {
         Err(TypeError::Mismatch {
             span: raw_pattern.span(),
-            found: Box::new(inferred_ty.resugar()),
-            expected: Box::new(expected_ty.resugar()),
+            found: Box::new(inferred_ty.resugar(env.resugar_env())),
+            expected: Box::new(expected_ty.resugar(env.resugar_env())),
         })
     }
 }
@@ -358,7 +358,7 @@ where
         (&raw::Term::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
-                expected: Box::new(expected_ty.resugar()),
+                expected: Box::new(expected_ty.resugar(env.resugar_env())),
             });
         },
 
@@ -471,7 +471,7 @@ where
         },
 
         (&raw::Term::Hole(span), _) => {
-            let expected = Some(Box::new(expected_ty.resugar()));
+            let expected = Some(Box::new(expected_ty.resugar(env.resugar_env())));
             return Err(TypeError::UnableToElaborateHole { span, expected });
         },
 
@@ -485,8 +485,8 @@ where
     } else {
         Err(TypeError::Mismatch {
             span: raw_term.span(),
-            found: Box::new(inferred_ty.resugar()),
-            expected: Box::new(expected_ty.resugar()),
+            found: Box::new(inferred_ty.resugar(env.resugar_env())),
+            expected: Box::new(expected_ty.resugar(env.resugar_env())),
         })
     }
 }
@@ -655,7 +655,7 @@ where
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_head.span(),
                     arg_span: raw_arg.span(),
-                    found: Box::new(head_ty.resugar()),
+                    found: Box::new(head_ty.resugar(env.resugar_env())),
                 }),
             }
         },
@@ -741,7 +741,7 @@ where
             Err(TypeError::NoFieldInType {
                 label_span,
                 expected_label: label.clone(),
-                found: Box::new(ty.resugar()),
+                found: Box::new(ty.resugar(env.resugar_env())),
             })
         },
 
@@ -769,8 +769,8 @@ where
                         Some(ref ty) => {
                             return Err(TypeError::Mismatch {
                                 span: raw_body.span(),
-                                found: Box::new(body_ty.resugar()),
-                                expected: Box::new(ty.resugar()),
+                                found: Box::new(body_ty.resugar(env.resugar_env())),
+                                expected: Box::new(ty.resugar(env.resugar_env())),
                             });
                         },
                     }

@@ -7,7 +7,7 @@ use syntax::raw;
 use syntax::{Label, Level};
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 /// The environment used when desugaring from the concrete to raw syntax
 #[derive(Debug, Clone)]
@@ -41,7 +41,7 @@ impl DesugarEnv {
         free_var
     }
 
-    pub fn on_var(&self, span: ByteSpan, name: &str) -> raw::RcTerm {
+    pub fn on_name(&self, span: ByteSpan, name: &str) -> raw::RcTerm {
         raw::RcTerm::from(raw::Term::Var(
             span,
             Var::Free(match self.locals.get(name) {
@@ -210,9 +210,14 @@ fn desugar_record_ty(
 
     let fields = fields
         .iter()
-        .map(|&(_, ref label, ref ann)| {
-            let ann = ann.desugar(&env);
-            let free_var = env.on_binding(label);
+        .map(|field| {
+            let (_, ref label) = field.label;
+            let ann = field.ann.desugar(&env);
+            let free_var = match field.binder {
+                Some((_, ref binder)) => env.on_binding(binder),
+                None => env.on_binding(label),
+            };
+
             (Label(label.clone()), Binder(free_var), Embed(ann))
         }).collect::<Vec<_>>();
 
@@ -231,10 +236,15 @@ fn desugar_record(
 
     let fields = fields
         .iter()
-        .map(|&(_, ref label, ref params, ref return_ann, ref expr)| {
-            let expr = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), expr);
-            let free_var = env.on_binding(label);
-            (Label(label.clone()), Binder(free_var), Embed(expr))
+        .map(|field| {
+            let expr = desugar_lam(
+                &env,
+                &field.params,
+                field.return_ann.as_ref().map(<_>::as_ref),
+                &field.term,
+            );
+            let free_var = env.on_binding(&field.label.1);
+            (Label(field.label.1.clone()), Binder(free_var), Embed(expr))
         }).collect::<Vec<_>>();
 
     raw::RcTerm::from(raw::Term::Record(span, Scope::new(Nest::new(fields), ())))
@@ -311,7 +321,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                 elems.iter().map(|elem| elem.desugar(env)).collect(),
             )),
             concrete::Term::Hole(_) => raw::RcTerm::from(raw::Term::Hole(span)),
-            concrete::Term::Name(_, ref name) => env.on_var(span, name),
+            concrete::Term::Name(_, ref name) => env.on_name(span, name),
             concrete::Term::Extern(_, name_span, ref name, ref ty) => raw::RcTerm::from(
                 raw::Term::Extern(span, name_span, name.clone(), ty.desugar(env)),
             ),

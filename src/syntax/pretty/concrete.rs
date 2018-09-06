@@ -179,12 +179,18 @@ impl ToDoc for Term {
                 .append(Doc::space())
                 .append(
                     Doc::intersperse(
-                        fields.iter().map(|&(_, ref name, ref ann)| {
-                            Doc::as_string(name)
-                                .append(Doc::space())
+                        fields.iter().map(|field| {
+                            Doc::as_string(&field.label.1)
+                                .append(match field.binder {
+                                    Some((_, ref binder)) => Doc::space()
+                                        .append("as")
+                                        .append(Doc::space())
+                                        .append(Doc::as_string(binder)),
+                                    None => Doc::nil(),
+                                }).append(Doc::space())
                                 .append(":")
                                 .append(Doc::space())
-                                .append(ann.to_doc())
+                                .append(field.ann.to_doc())
                         }),
                         Doc::text(";").append(Doc::space()),
                     ).nest(INDENT_WIDTH),
@@ -194,22 +200,23 @@ impl ToDoc for Term {
                 .append(Doc::space())
                 .append(
                     Doc::intersperse(
-                        fields.iter().map(
-                            |&(_, ref name, ref params, ref return_ann, ref expr)| {
-                                Doc::as_string(name)
-                                    .append(Doc::space())
-                                    .append(match params[..] {
-                                        [] => Doc::nil(),
-                                        _ => pretty_lam_params(params).append(Doc::space()),
-                                    }).append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
+                        fields.iter().map(|field| {
+                            Doc::as_string(&field.label.1)
+                                .append(Doc::space())
+                                .append(match field.params[..] {
+                                    [] => Doc::nil(),
+                                    _ => pretty_lam_params(&field.params).append(Doc::space()),
+                                }).append(field.return_ann.as_ref().map_or(
+                                    Doc::nil(),
+                                    |return_ann| {
                                         Doc::text(":")
                                             .append(return_ann.to_doc())
                                             .append(Doc::space())
-                                    })).append("=")
-                                    .append(Doc::space())
-                                    .append(expr.to_doc())
-                            },
-                        ),
+                                    },
+                                )).append("=")
+                                .append(Doc::space())
+                                .append(field.term.to_doc())
+                        }),
                         Doc::text(";").append(Doc::space()),
                     ).nest(INDENT_WIDTH),
                 ).append(Doc::space())

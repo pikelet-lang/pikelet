@@ -353,7 +353,7 @@ impl TypeError {
                 ref expected,
                 ref found,
             } => Diagnostic::new_error(format!(
-                "expected field called `{}`, but found a field called `{}",
+                "expected field called `{}`, but found a field called `{}`",
                 expected, found,
             )).with_label(Label::new_primary(span)),
             TypeError::ArrayLengthMismatch {

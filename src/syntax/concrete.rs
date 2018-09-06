@@ -97,9 +97,20 @@ pub type PiParamGroup = (Vec<(ByteIndex, String)>, Term);
 /// The parameters to a dependent function type
 pub type PiParams = Vec<PiParamGroup>;
 
-pub type RecordTypeField = (ByteIndex, String, Term);
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecordTypeField {
+    pub label: (ByteIndex, String),
+    pub binder: Option<(ByteIndex, String)>,
+    pub ann: Term,
+}
 
-pub type RecordField = (ByteIndex, String, LamParams, Option<Box<Term>>, Term);
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecordField {
+    pub label: (ByteIndex, String),
+    pub params: LamParams,
+    pub return_ann: Option<Box<Term>>,
+    pub term: Term,
+}
 
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
