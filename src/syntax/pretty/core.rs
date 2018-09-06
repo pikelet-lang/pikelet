@@ -54,6 +54,37 @@ fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> S
     )
 }
 
+fn pretty_let_ann(
+    binder: &Binder<String>,
+    ann: &impl ToDoc,
+    bind: &impl ToDoc,
+    body: &impl ToDoc,
+) -> StaticDoc {
+    sexpr(
+        "let",
+        Doc::group(parens(
+            pretty_binder(binder)
+                .append(Doc::space())
+                .append(ann.to_doc().group())
+                .append(Doc::space())
+                .append(bind.to_doc().group()),
+        )).append(Doc::space())
+        .append(body.to_doc()),
+    )
+}
+
+fn pretty_let(binder: &Binder<String>, bind: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+    sexpr(
+        "let",
+        Doc::group(parens(
+            pretty_binder(binder)
+                .append(Doc::space())
+                .append(bind.to_doc().group()),
+        )).append(Doc::space())
+        .append(body.to_doc()),
+    )
+}
+
 fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
@@ -206,6 +237,12 @@ impl ToDoc for raw::Term {
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 )).append("]"),
+            raw::Term::Let(_, ref scope) => pretty_let_ann(
+                &scope.unsafe_pattern.0,
+                &((scope.unsafe_pattern.1).0).0.inner,
+                &((scope.unsafe_pattern.1).0).1.inner,
+                &scope.unsafe_body.inner,
+            ),
         }
     }
 }
@@ -256,6 +293,11 @@ impl ToDoc for Term {
                 &scope.unsafe_body.inner,
             ),
             Term::Pi(ref scope) => pretty_pi(
+                &scope.unsafe_pattern.0,
+                &(scope.unsafe_pattern.1).0.inner,
+                &scope.unsafe_body.inner,
+            ),
+            Term::Let(ref scope) => pretty_let(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,

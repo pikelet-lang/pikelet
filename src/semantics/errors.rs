@@ -24,6 +24,8 @@ pub enum InternalError {
     ProjectedOnNonExistentField { label: syntax::Label },
     #[fail(display = "No patterns matched the given expression.")]
     NoPatternsApplicable,
+    #[fail(display = "Feature unimplemented: {}", feat)]
+    Unimplemented { feat: String },
 }
 
 impl InternalError {
@@ -47,6 +49,9 @@ impl InternalError {
             },
             InternalError::NoPatternsApplicable => {
                 Diagnostic::new_bug("no patterns matched the given expression")
+            },
+            InternalError::Unimplemented { ref feat } => {
+                Diagnostic::new_bug(format!("Unimplemented feature: {}", feat))
             },
         }
     }

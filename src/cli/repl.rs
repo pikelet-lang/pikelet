@@ -119,9 +119,11 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                 ) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
-                    Err(EvalPrintError::Parse(errs)) => for err in errs {
-                        let diagnostic = err.to_diagnostic();
-                        codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                    Err(EvalPrintError::Parse(errs)) => {
+                        for err in errs {
+                            let diagnostic = err.to_diagnostic();
+                            codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                        }
                     },
                     Err(EvalPrintError::Type(err)) => {
                         let diagnostic = err.to_diagnostic();

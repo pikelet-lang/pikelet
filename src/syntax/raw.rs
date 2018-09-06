@@ -190,6 +190,11 @@ pub enum Term {
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
     Array(ByteSpan, Vec<RcTerm>),
+    /// Let bindings
+    Let(
+        ByteSpan,
+        Scope<(Binder<String>, Embed<(RcTerm, RcTerm)>), RcTerm>,
+    ),
 }
 
 impl Term {
@@ -206,7 +211,8 @@ impl Term {
             | Term::Record(span, _)
             | Term::Proj(span, _, _, _)
             | Term::Case(span, _, _)
-            | Term::Array(span, _) => span,
+            | Term::Array(span, _)
+            | Term::Let(span, _) => span,
             Term::Literal(ref literal) => literal.span(),
             Term::Ann(ref expr, ref ty) => expr.span().to(ty.span()),
             Term::App(ref head, ref arg) => head.span().to(arg.span()),

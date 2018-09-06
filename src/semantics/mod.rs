@@ -5,7 +5,7 @@
 //! For more information, check out the theory appendix of the Pikelet book.
 
 use codespan::ByteSpan;
-use moniker::{Binder, BoundTerm, BoundPattern, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{
     Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Type, Value,
@@ -356,7 +356,9 @@ where
             let raw_ty_fields = raw_ty_fields.unnest();
 
             if raw_fields.len() != raw_ty_fields.len() {
-                unimplemented!();
+                return Err(TypeError::Internal(InternalError::Unimplemented {
+                    feat: "record size mismatch. (change to RecordSizeMismatch)".to_string(),
+                }));
             }
 
             // FIXME: Check that record is well-formed?
@@ -428,7 +430,11 @@ where
                         .collect::<Result<_, _>>()?,
                 )));
             },
-            Some(_) | None => unimplemented!(),
+            Some(_) | None => {
+                return Err(TypeError::Internal(InternalError::Unimplemented {
+                    feat: "arrays".to_string(),
+                }))
+            },
         },
 
         (&raw::Term::Hole(span), _) => {
@@ -487,22 +493,24 @@ where
         },
 
         // I-VAR
-        raw::Term::Var(span, ref var) => match *var {
-            Var::Free(ref free_var) => match env.get_declaration(free_var) {
-                Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
-                None => Err(TypeError::NotYetDefined {
-                    span,
-                    free_var: free_var.clone(),
-                }),
-            },
+        raw::Term::Var(span, ref var) => {
+            match *var {
+                Var::Free(ref free_var) => match env.get_declaration(free_var) {
+                    Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
+                    None => Err(TypeError::NotYetDefined {
+                        span,
+                        free_var: free_var.clone(),
+                    }),
+                },
 
-            // We should always be substituting bound variables with fresh
-            // variables when entering scopes using `unbind`, so if we've
-            // encountered one here this is definitely a bug!
-            Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
-                span: Some(raw_term.span()),
-                var: var.clone(),
-            }.into()),
+                // We should always be substituting bound variables with fresh
+                // variables when entering scopes using `unbind`, so if we've
+                // encountered one here this is definitely a bug!
+                Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
+                    span: Some(raw_term.span()),
+                    var: var.clone(),
+                }.into()),
+            }
         },
 
         raw::Term::Extern(_, name_span, ref name, _)
@@ -574,6 +582,28 @@ where
                 RcTerm::from(Term::Lam(Scope::new(lam_param, lam_body))),
                 RcValue::from(Value::Pi(Scope::new(pi_param, pi_body))),
             ))
+        },
+
+        // I-LET
+        raw::Term::Let(_, ref raw_scope) => {
+            let ((Binder(free_var), Embed((raw_ann, raw_bind))), raw_body) =
+                raw_scope.clone().unbind();
+
+            let (bind_term, bind_type) = if let raw::Term::Hole(_) = *raw_ann {
+                infer_term(env, &raw_bind)?
+            } else {
+                let (bind_ann, _) = infer_universe(env, &raw_ann)?;
+                let ann = nf_term(env, &bind_ann)?;
+                (check_term(env, &raw_bind, &ann)?, ann)
+            };
+            let mut inner_env = env.clone();
+            inner_env.insert_definition(free_var.clone(), bind_term.clone());
+            inner_env.insert_declaration(free_var.clone(), bind_type);
+
+            let (body, ty) = infer_term(&inner_env, &raw_body)?;
+            let bind = (Binder(free_var), Embed(bind_term));
+
+            Ok((RcTerm::from(Term::Let(Scope::new(bind, body))), ty))
         },
 
         // I-IF

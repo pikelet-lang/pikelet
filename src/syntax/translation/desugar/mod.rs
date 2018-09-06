@@ -148,6 +148,64 @@ fn desugar_lam(
         })
 }
 
+fn desugar_bindings(env: &mut DesugarEnv, items: &[concrete::Item]) -> Vec<raw::Item> {
+    items
+        .iter()
+        .map(|concrete_item| match *concrete_item {
+            concrete::Item::Declaration {
+                name: (start, ref name),
+                ref ann,
+            } => {
+                let term = ann.desugar(&env);
+
+                raw::Item::Declaration {
+                    label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
+                    label: Label(name.clone()),
+                    binder: env.on_item(name),
+                    term,
+                }
+            },
+            concrete::Item::Definition {
+                name: (start, ref name),
+                ref params,
+                ref return_ann,
+                ref body,
+            } => {
+                let return_ann = return_ann.as_ref().map(<_>::as_ref);
+                let term = desugar_lam(&env, params, return_ann, body);
+
+                raw::Item::Definition {
+                    label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
+                    label: Label(name.clone()),
+                    binder: env.on_item(name),
+                    term,
+                }
+            },
+            concrete::Item::Error(_) => unimplemented!("error recovery"),
+        }).collect()
+}
+
+fn desugar_let(env: &DesugarEnv, items: &[concrete::Item], body: &concrete::Term) -> raw::RcTerm {
+    let mut env = env.clone();
+    let items = desugar_bindings(&mut env, items);
+    let body = body.desugar(&env);
+
+    let hole = raw::RcTerm::from(raw::Term::Hole(ByteSpan::default()));
+
+    items.into_iter().rev().fold(body, |acc, item| match item {
+        raw::Item::Declaration { .. } => acc, // TODO: Let declarations (maybe not necessary?)
+        raw::Item::Definition {
+            label_span,
+            label: _,
+            binder,
+            term,
+        } => raw::RcTerm::from(raw::Term::Let(
+            label_span.with_end(term.span().end()),
+            Scope::new((binder, Embed((hole.clone(), term))), acc),
+        )),
+    })
+}
+
 fn desugar_record_ty(
     env: &DesugarEnv,
     span: ByteSpan,
@@ -189,51 +247,14 @@ fn desugar_record(
 
 impl Desugar<raw::Module> for concrete::Module {
     fn desugar(&self, env: &DesugarEnv) -> raw::Module {
-        let mut env = env.clone();
         let concrete_items = match *self {
             concrete::Module::Valid { ref items } => items,
             concrete::Module::Error(_) => unimplemented!("error recovery"),
         };
 
-        let mut items = Vec::with_capacity(concrete_items.len());
-        for concrete_item in concrete_items {
-            let item = match *concrete_item {
-                concrete::Item::Declaration {
-                    name: (start, ref name),
-                    ref ann,
-                } => {
-                    let term = ann.desugar(&env);
-
-                    raw::Item::Declaration {
-                        label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
-                        label: Label(name.clone()),
-                        binder: env.on_item(name),
-                        term,
-                    }
-                },
-                concrete::Item::Definition {
-                    name: (start, ref name),
-                    ref params,
-                    ref return_ann,
-                    ref body,
-                } => {
-                    let return_ann = return_ann.as_ref().map(<_>::as_ref);
-                    let term = desugar_lam(&env, params, return_ann, body);
-
-                    raw::Item::Definition {
-                        label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
-                        label: Label(name.clone()),
-                        binder: env.on_item(name),
-                        term,
-                    }
-                },
-                concrete::Item::Error(_) => unimplemented!("error recovery"),
-            };
-
-            items.push(item);
+        raw::Module {
+            items: desugar_bindings(&mut env.clone(), concrete_items),
         }
-
-        raw::Module { items }
     }
 }
 
@@ -313,7 +334,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                     raw::RcTerm::from(raw::Term::App(acc, arg.desugar(env)))
                 })
             },
-            concrete::Term::Let(_, ref _items, ref _body) => unimplemented!("let bindings"),
+            concrete::Term::Let(_, ref items, ref body) => desugar_let(env, items, body),
             concrete::Term::If(start, ref cond, ref if_true, ref if_false) => {
                 raw::RcTerm::from(raw::Term::If(
                     start,

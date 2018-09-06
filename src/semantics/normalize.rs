@@ -22,19 +22,21 @@ where
         Term::Literal(ref lit) => Ok(RcValue::from(Value::Literal(lit.clone()))),
 
         // E-VAR, E-VAR-DEF
-        Term::Var(ref var) => match *var {
-            Var::Free(ref name) => match env.get_definition(name) {
-                Some(term) => nf_term(env, term),
-                None => Ok(RcValue::from(Value::from(var.clone()))),
-            },
+        Term::Var(ref var) => {
+            match *var {
+                Var::Free(ref name) => match env.get_definition(name) {
+                    Some(term) => nf_term(env, term),
+                    None => Ok(RcValue::from(Value::from(var.clone()))),
+                },
 
-            // We should always be substituting bound variables with fresh
-            // variables when entering scopes using `unbind`, so if we've
-            // encountered one here this is definitely a bug!
-            Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
-                span: None,
-                var: var.clone(),
-            }),
+                // We should always be substituting bound variables with fresh
+                // variables when entering scopes using `unbind`, so if we've
+                // encountered one here this is definitely a bug!
+                Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
+                    span: None,
+                    var: var.clone(),
+                }),
+            }
         },
 
         Term::Extern(ref name, ref ty) => Ok(RcValue::from(Value::from(Neutral::Head(
@@ -106,6 +108,12 @@ where
                 },
                 _ => Err(InternalError::ArgumentAppliedToNonFunction),
             }
+        },
+
+        // E-LET
+        Term::Let(ref scope) => {
+            let ((Binder(free_var), Embed(bind)), body) = scope.clone().unbind();
+            nf_term(env, &body.substs(&[(free_var, bind.clone())]))
         },
 
         // E-IF, E-IF-TRUE, E-IF-FALSE
