@@ -24,8 +24,11 @@ pub enum InternalError {
     ProjectedOnNonExistentField { label: syntax::Label },
     #[fail(display = "No patterns matched the given expression.")]
     NoPatternsApplicable,
-    #[fail(display = "Feature unimplemented: {}", feat)]
-    Unimplemented { feat: String },
+    #[fail(display = "not yet implemented: {}", message)]
+    Unimplemented {
+        span: Option<ByteSpan>,
+        message: String,
+    },
 }
 
 impl InternalError {
@@ -50,8 +53,15 @@ impl InternalError {
             InternalError::NoPatternsApplicable => {
                 Diagnostic::new_bug("no patterns matched the given expression")
             },
-            InternalError::Unimplemented { ref feat } => {
-                Diagnostic::new_bug(format!("Unimplemented feature: {}", feat))
+            InternalError::Unimplemented { span, ref message } => {
+                let base = Diagnostic::new_bug(format!("not yet implemented: {}", message));
+                match span {
+                    None => base,
+                    Some(span) => base.with_label(
+                        Label::new_primary(span)
+                            .with_message("unimplemented feature encountered here"),
+                    ),
+                }
             },
         }
     }

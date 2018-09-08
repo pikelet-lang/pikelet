@@ -355,12 +355,6 @@ where
             let raw_fields = raw_fields.unnest();
             let raw_ty_fields = raw_ty_fields.unnest();
 
-            if raw_fields.len() != raw_ty_fields.len() {
-                return Err(TypeError::Internal(InternalError::Unimplemented {
-                    feat: "record size mismatch. (change to RecordSizeMismatch)".to_string(),
-                }));
-            }
-
             // FIXME: Check that record is well-formed?
             let fields = {
                 let mut mappings = Vec::with_capacity(raw_fields.len());
@@ -432,8 +426,9 @@ where
             },
             Some(_) | None => {
                 return Err(TypeError::Internal(InternalError::Unimplemented {
-                    feat: "arrays".to_string(),
-                }))
+                    span: Some(span),
+                    message: "unexpected arguments to `Array`".to_owned(),
+                }));
             },
         },
 
