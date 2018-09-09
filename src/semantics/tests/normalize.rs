@@ -240,4 +240,41 @@ mod nf_term {
             parse_nf_term(&mut codemap, &tc_env, expected_expr),
         );
     }
+
+    #[test]
+    fn let_expr_1() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r#"
+            let x = "helloo";
+            in
+                x
+        "#;
+        let expected_expr = r#""helloo""#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
+
+    #[test]
+    fn let_expr_2() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r#"
+            let x = "helloo";
+                y = x;
+            in
+                x
+        "#;
+        let expected_expr = r#""helloo""#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
 }

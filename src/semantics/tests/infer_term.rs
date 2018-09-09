@@ -332,6 +332,43 @@ fn compose() {
 }
 
 #[test]
+fn let_expr_1() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"
+        let x = "helloo";
+        in
+            x
+    "#;
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &tc_env, given_expr).1,
+        parse_nf_term(&mut codemap, &tc_env, expected_ty),
+    );
+}
+
+#[test]
+fn let_expr_2() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"String";
+    let given_expr = r#"
+        let x = "helloo";
+            y = x;
+        in
+            x
+    "#;
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &tc_env, given_expr).1,
+        parse_nf_term(&mut codemap, &tc_env, expected_ty),
+    );
+}
+
+#[test]
 fn case_expr() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();

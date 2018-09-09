@@ -271,7 +271,7 @@ fn resugar_lam(
     )];
 
     // Argument resugaring
-    #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))] // Need NLL in stable!
+    #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
     loop {
         // Share a parameter list if another lambda is nested directly inside.
         // For example:
@@ -384,13 +384,16 @@ fn resugar_term(term: &core::Term, prec: Prec) -> concrete::Term {
         ),
         core::Term::Pi(ref scope) => resugar_pi(scope, prec),
         core::Term::Lam(ref scope) => resugar_lam(scope, prec),
-        core::Term::App(ref head, ref arg) => parens_if(
-            Prec::APP < prec,
-            concrete::Term::App(
-                Box::new(resugar_term(head, Prec::NO_WRAP)),
-                vec![resugar_term(arg, Prec::NO_WRAP)], // TODO
-            ),
-        ),
+        core::Term::App(ref head, ref arg) => {
+            parens_if(
+                Prec::APP < prec,
+                concrete::Term::App(
+                    Box::new(resugar_term(head, Prec::NO_WRAP)),
+                    vec![resugar_term(arg, Prec::NO_WRAP)], // TODO
+                ),
+            )
+        },
+        core::Term::Let(ref _scope) => unimplemented!("resugar let"),
         core::Term::If(ref cond, ref if_true, ref if_false) => parens_if(
             Prec::LAM < prec,
             concrete::Term::If(

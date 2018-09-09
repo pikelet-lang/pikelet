@@ -144,6 +144,8 @@ pub enum Term {
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
     Array(Vec<RcTerm>),
+    /// Let bindings
+    Let(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
 }
 
 impl Term {
@@ -196,6 +198,13 @@ impl RcTerm {
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
+            Term::Let(ref scope) => {
+                let (ref name, Embed(ref bind)) = scope.unsafe_pattern;
+                RcTerm::from(Term::Let(Scope {
+                    unsafe_pattern: (name.clone(), Embed(bind.substs(mappings))),
+                    unsafe_body: scope.unsafe_body.substs(mappings),
+                }))
+            },
             Term::App(ref head, ref arg) => {
                 RcTerm::from(Term::App(head.substs(mappings), arg.substs(mappings)))
             },
@@ -244,9 +253,11 @@ impl RcTerm {
                 head.substs(mappings),
                 clauses
                     .iter()
-                    .map(|scope| Scope {
-                        unsafe_pattern: scope.unsafe_pattern.clone(), // subst?
-                        unsafe_body: scope.unsafe_body.substs(mappings),
+                    .map(|scope| {
+                        Scope {
+                            unsafe_pattern: scope.unsafe_pattern.clone(), // subst?
+                            unsafe_body: scope.unsafe_body.substs(mappings),
+                        }
                     }).collect(),
             )),
             Term::Array(ref elems) => RcTerm::from(Term::Array(
