@@ -14,148 +14,177 @@
 -- ```
 
 -- TODO: move this to another file (requires imports)
-prim-bool-eq = extern "bool-eq" : Bool -> Bool -> Bool;
-prim-bool-ge = extern "bool-ge" : Bool -> Bool -> Bool;
-prim-bool-gt = extern "bool-gt" : Bool -> Bool -> Bool;
-prim-bool-le = extern "bool-le" : Bool -> Bool -> Bool;
-prim-bool-lt = extern "bool-lt" : Bool -> Bool -> Bool;
-prim-bool-ne = extern "bool-ne" : Bool -> Bool -> Bool;
+||| Primitive definitions
+prim = record {
+    bool = record {
+        eq = extern "bool-eq" : Bool -> Bool -> Bool;
+        ge = extern "bool-ge" : Bool -> Bool -> Bool;
+        gt = extern "bool-gt" : Bool -> Bool -> Bool;
+        le = extern "bool-le" : Bool -> Bool -> Bool;
+        lt = extern "bool-lt" : Bool -> Bool -> Bool;
+        ne = extern "bool-ne" : Bool -> Bool -> Bool;
+    };
 
-prim-f32-add = extern "f32-add" : F32 -> F32 -> F32;
-prim-f32-div = extern "f32-div" : F32 -> F32 -> F32;
-prim-f32-eq = extern "f32-eq" : F32 -> F32 -> Bool;
-prim-f32-ge = extern "f32-ge" : F32 -> F32 -> Bool;
-prim-f32-gt = extern "f32-gt" : F32 -> F32 -> Bool;
-prim-f32-le = extern "f32-le" : F32 -> F32 -> Bool;
-prim-f32-lt = extern "f32-lt" : F32 -> F32 -> Bool;
-prim-f32-mul = extern "f32-mul" : F32 -> F32 -> F32;
-prim-f32-ne = extern "f32-ne" : F32 -> F32 -> Bool;
-prim-f32-sub = extern "f32-sub" : F32 -> F32 -> F32;
-prim-f32-to-string = extern "f32-to-string" : F32 -> String;
+    f32 = record {
+        add = extern "f32-add" : F32 -> F32 -> F32;
+        div = extern "f32-div" : F32 -> F32 -> F32;
+        eq = extern "f32-eq" : F32 -> F32 -> Bool;
+        ge = extern "f32-ge" : F32 -> F32 -> Bool;
+        gt = extern "f32-gt" : F32 -> F32 -> Bool;
+        le = extern "f32-le" : F32 -> F32 -> Bool;
+        lt = extern "f32-lt" : F32 -> F32 -> Bool;
+        mul = extern "f32-mul" : F32 -> F32 -> F32;
+        ne = extern "f32-ne" : F32 -> F32 -> Bool;
+        sub = extern "f32-sub" : F32 -> F32 -> F32;
+        to-string = extern "f32-to-string" : F32 -> String;
+    };
 
-prim-f64-add = extern "f64-add" : F64 -> F64 -> F64;
-prim-f64-div = extern "f64-div" : F64 -> F64 -> F64;
-prim-f64-eq = extern "f64-eq" : F64 -> F64 -> Bool;
-prim-f64-ge = extern "f64-ge" : F64 -> F64 -> Bool;
-prim-f64-gt = extern "f64-gt" : F64 -> F64 -> Bool;
-prim-f64-le = extern "f64-le" : F64 -> F64 -> Bool;
-prim-f64-lt = extern "f64-lt" : F64 -> F64 -> Bool;
-prim-f64-mul = extern "f64-mul" : F64 -> F64 -> F64;
-prim-f64-ne = extern "f64-ne" : F64 -> F64 -> Bool;
-prim-f64-sub = extern "f64-sub" : F64 -> F64 -> F64;
-prim-f64-to-string = extern "f64-to-string" : F64 -> String;
+    f64 = record {
+        add = extern "f64-add" : F64 -> F64 -> F64;
+        div = extern "f64-div" : F64 -> F64 -> F64;
+        eq = extern "f64-eq" : F64 -> F64 -> Bool;
+        ge = extern "f64-ge" : F64 -> F64 -> Bool;
+        gt = extern "f64-gt" : F64 -> F64 -> Bool;
+        le = extern "f64-le" : F64 -> F64 -> Bool;
+        lt = extern "f64-lt" : F64 -> F64 -> Bool;
+        mul = extern "f64-mul" : F64 -> F64 -> F64;
+        ne = extern "f64-ne" : F64 -> F64 -> Bool;
+        sub = extern "f64-sub" : F64 -> F64 -> F64;
+        to-string = extern "f64-to-string" : F64 -> String;
+    };
 
-prim-i8-add = extern "i8-add" : I8 -> I8 -> I8;
-prim-i8-div = extern "i8-div" : I8 -> I8 -> I8;
-prim-i8-eq = extern "i8-eq" : I8 -> I8 -> Bool;
-prim-i8-ge = extern "i8-ge" : I8 -> I8 -> Bool;
-prim-i8-gt = extern "i8-gt" : I8 -> I8 -> Bool;
-prim-i8-le = extern "i8-le" : I8 -> I8 -> Bool;
-prim-i8-lt = extern "i8-lt" : I8 -> I8 -> Bool;
-prim-i8-mul = extern "i8-mul" : I8 -> I8 -> I8;
-prim-i8-ne = extern "i8-ne" : I8 -> I8 -> Bool;
-prim-i8-sub = extern "i8-sub" : I8 -> I8 -> I8;
-prim-i8-to-string = extern "i8-to-string" : I8 -> String;
+    i8 = record {
+        add = extern "i8-add" : I8 -> I8 -> I8;
+        div = extern "i8-div" : I8 -> I8 -> I8;
+        eq = extern "i8-eq" : I8 -> I8 -> Bool;
+        ge = extern "i8-ge" : I8 -> I8 -> Bool;
+        gt = extern "i8-gt" : I8 -> I8 -> Bool;
+        le = extern "i8-le" : I8 -> I8 -> Bool;
+        lt = extern "i8-lt" : I8 -> I8 -> Bool;
+        mul = extern "i8-mul" : I8 -> I8 -> I8;
+        ne = extern "i8-ne" : I8 -> I8 -> Bool;
+        sub = extern "i8-sub" : I8 -> I8 -> I8;
+        to-string = extern "i8-to-string" : I8 -> String;
+    };
 
-prim-i16-add = extern "i16-add" : I16 -> I16 -> I16;
-prim-i16-div = extern "i16-div" : I16 -> I16 -> I16;
-prim-i16-eq = extern "i16-eq" : I16 -> I16 -> Bool;
-prim-i16-ge = extern "i16-ge" : I16 -> I16 -> Bool;
-prim-i16-gt = extern "i16-gt" : I16 -> I16 -> Bool;
-prim-i16-le = extern "i16-le" : I16 -> I16 -> Bool;
-prim-i16-lt = extern "i16-lt" : I16 -> I16 -> Bool;
-prim-i16-mul = extern "i16-mul" : I16 -> I16 -> I16;
-prim-i16-ne = extern "i16-ne" : I16 -> I16 -> Bool;
-prim-i16-sub = extern "i16-sub" : I16 -> I16 -> I16;
-prim-i16-to-string = extern "i16-to-string" : I16 -> String;
+    i16 = record {
+        add = extern "i16-add" : I16 -> I16 -> I16;
+        div = extern "i16-div" : I16 -> I16 -> I16;
+        eq = extern "i16-eq" : I16 -> I16 -> Bool;
+        ge = extern "i16-ge" : I16 -> I16 -> Bool;
+        gt = extern "i16-gt" : I16 -> I16 -> Bool;
+        le = extern "i16-le" : I16 -> I16 -> Bool;
+        lt = extern "i16-lt" : I16 -> I16 -> Bool;
+        mul = extern "i16-mul" : I16 -> I16 -> I16;
+        ne = extern "i16-ne" : I16 -> I16 -> Bool;
+        sub = extern "i16-sub" : I16 -> I16 -> I16;
+        to-string = extern "i16-to-string" : I16 -> String;
+    };
 
-prim-i32-add = extern "i32-add" : I32 -> I32 -> I32;
-prim-i32-div = extern "i32-div" : I32 -> I32 -> I32;
-prim-i32-eq = extern "i32-eq" : I32 -> I32 -> Bool;
-prim-i32-ge = extern "i32-ge" : I32 -> I32 -> Bool;
-prim-i32-gt = extern "i32-gt" : I32 -> I32 -> Bool;
-prim-i32-le = extern "i32-le" : I32 -> I32 -> Bool;
-prim-i32-lt = extern "i32-lt" : I32 -> I32 -> Bool;
-prim-i32-mul = extern "i32-mul" : I32 -> I32 -> I32;
-prim-i32-ne = extern "i32-ne" : I32 -> I32 -> Bool;
-prim-i32-sub = extern "i32-sub" : I32 -> I32 -> I32;
-prim-i32-to-string = extern "i32-to-string" : I32 -> String;
+    i32 = record {
+        add = extern "i32-add" : I32 -> I32 -> I32;
+        div = extern "i32-div" : I32 -> I32 -> I32;
+        eq = extern "i32-eq" : I32 -> I32 -> Bool;
+        ge = extern "i32-ge" : I32 -> I32 -> Bool;
+        gt = extern "i32-gt" : I32 -> I32 -> Bool;
+        le = extern "i32-le" : I32 -> I32 -> Bool;
+        lt = extern "i32-lt" : I32 -> I32 -> Bool;
+        mul = extern "i32-mul" : I32 -> I32 -> I32;
+        ne = extern "i32-ne" : I32 -> I32 -> Bool;
+        sub = extern "i32-sub" : I32 -> I32 -> I32;
+        to-string = extern "i32-to-string" : I32 -> String;
+    };
 
-prim-i64-add = extern "i64-add" : I64 -> I64 -> I64;
-prim-i64-div = extern "i64-div" : I64 -> I64 -> I64;
-prim-i64-eq = extern "i64-eq" : I64 -> I64 -> Bool;
-prim-i64-ge = extern "i64-ge" : I64 -> I64 -> Bool;
-prim-i64-gt = extern "i64-gt" : I64 -> I64 -> Bool;
-prim-i64-le = extern "i64-le" : I64 -> I64 -> Bool;
-prim-i64-lt = extern "i64-lt" : I64 -> I64 -> Bool;
-prim-i64-mul = extern "i64-mul" : I64 -> I64 -> I64;
-prim-i64-ne = extern "i64-ne" : I64 -> I64 -> Bool;
-prim-i64-sub = extern "i64-sub" : I64 -> I64 -> I64;
-prim-i64-to-string = extern "i64-to-string" : I64 -> String;
+    i64 = record {
+        add = extern "i64-add" : I64 -> I64 -> I64;
+        div = extern "i64-div" : I64 -> I64 -> I64;
+        eq = extern "i64-eq" : I64 -> I64 -> Bool;
+        ge = extern "i64-ge" : I64 -> I64 -> Bool;
+        gt = extern "i64-gt" : I64 -> I64 -> Bool;
+        le = extern "i64-le" : I64 -> I64 -> Bool;
+        lt = extern "i64-lt" : I64 -> I64 -> Bool;
+        mul = extern "i64-mul" : I64 -> I64 -> I64;
+        ne = extern "i64-ne" : I64 -> I64 -> Bool;
+        sub = extern "i64-sub" : I64 -> I64 -> I64;
+        to-string = extern "i64-to-string" : I64 -> String;
+    };
 
-prim-u8-add = extern "u8-add" : U8 -> U8 -> U8;
-prim-u8-div = extern "u8-div" : U8 -> U8 -> U8;
-prim-u8-eq = extern "u8-eq" : U8 -> U8 -> Bool;
-prim-u8-ge = extern "u8-ge" : U8 -> U8 -> Bool;
-prim-u8-gt = extern "u8-gt" : U8 -> U8 -> Bool;
-prim-u8-le = extern "u8-le" : U8 -> U8 -> Bool;
-prim-u8-lt = extern "u8-lt" : U8 -> U8 -> Bool;
-prim-u8-mul = extern "u8-mul" : U8 -> U8 -> U8;
-prim-u8-ne = extern "u8-ne" : U8 -> U8 -> Bool;
-prim-u8-sub = extern "u8-sub" : U8 -> U8 -> U8;
-prim-u8-to-string = extern "u8-to-string" : U8 -> String;
+    u8 = record {
+        add = extern "u8-add" : U8 -> U8 -> U8;
+        div = extern "u8-div" : U8 -> U8 -> U8;
+        eq = extern "u8-eq" : U8 -> U8 -> Bool;
+        ge = extern "u8-ge" : U8 -> U8 -> Bool;
+        gt = extern "u8-gt" : U8 -> U8 -> Bool;
+        le = extern "u8-le" : U8 -> U8 -> Bool;
+        lt = extern "u8-lt" : U8 -> U8 -> Bool;
+        mul = extern "u8-mul" : U8 -> U8 -> U8;
+        ne = extern "u8-ne" : U8 -> U8 -> Bool;
+        sub = extern "u8-sub" : U8 -> U8 -> U8;
+        to-string = extern "u8-to-string" : U8 -> String;
+    };
 
-prim-u16-add = extern "u16-add" : U16 -> U16 -> U16;
-prim-u16-div = extern "u16-div" : U16 -> U16 -> U16;
-prim-u16-eq = extern "u16-eq" : U16 -> U16 -> Bool;
-prim-u16-ge = extern "u16-ge" : U16 -> U16 -> Bool;
-prim-u16-gt = extern "u16-gt" : U16 -> U16 -> Bool;
-prim-u16-le = extern "u16-le" : U16 -> U16 -> Bool;
-prim-u16-lt = extern "u16-lt" : U16 -> U16 -> Bool;
-prim-u16-mul = extern "u16-mul" : U16 -> U16 -> U16;
-prim-u16-ne = extern "u16-ne" : U16 -> U16 -> Bool;
-prim-u16-sub = extern "u16-sub" : U16 -> U16 -> U16;
-prim-u16-to-string = extern "u16-to-string" : U16 -> String;
+    u16 = record {
+        add = extern "u16-add" : U16 -> U16 -> U16;
+        div = extern "u16-div" : U16 -> U16 -> U16;
+        eq = extern "u16-eq" : U16 -> U16 -> Bool;
+        ge = extern "u16-ge" : U16 -> U16 -> Bool;
+        gt = extern "u16-gt" : U16 -> U16 -> Bool;
+        le = extern "u16-le" : U16 -> U16 -> Bool;
+        lt = extern "u16-lt" : U16 -> U16 -> Bool;
+        mul = extern "u16-mul" : U16 -> U16 -> U16;
+        ne = extern "u16-ne" : U16 -> U16 -> Bool;
+        sub = extern "u16-sub" : U16 -> U16 -> U16;
+        to-string = extern "u16-to-string" : U16 -> String;
+    };
 
-prim-u32-add = extern "u32-add" : U32 -> U32 -> U32;
-prim-u32-div = extern "u32-div" : U32 -> U32 -> U32;
-prim-u32-eq = extern "u32-eq" : U32 -> U32 -> Bool;
-prim-u32-ge = extern "u32-ge" : U32 -> U32 -> Bool;
-prim-u32-gt = extern "u32-gt" : U32 -> U32 -> Bool;
-prim-u32-le = extern "u32-le" : U32 -> U32 -> Bool;
-prim-u32-lt = extern "u32-lt" : U32 -> U32 -> Bool;
-prim-u32-mul = extern "u32-mul" : U32 -> U32 -> U32;
-prim-u32-ne = extern "u32-ne" : U32 -> U32 -> Bool;
-prim-u32-sub = extern "u32-sub" : U32 -> U32 -> U32;
-prim-u32-to-string = extern "u32-to-string" : U32 -> String;
+    u32 = record {
+        add = extern "u32-add" : U32 -> U32 -> U32;
+        div = extern "u32-div" : U32 -> U32 -> U32;
+        eq = extern "u32-eq" : U32 -> U32 -> Bool;
+        ge = extern "u32-ge" : U32 -> U32 -> Bool;
+        gt = extern "u32-gt" : U32 -> U32 -> Bool;
+        le = extern "u32-le" : U32 -> U32 -> Bool;
+        lt = extern "u32-lt" : U32 -> U32 -> Bool;
+        mul = extern "u32-mul" : U32 -> U32 -> U32;
+        ne = extern "u32-ne" : U32 -> U32 -> Bool;
+        sub = extern "u32-sub" : U32 -> U32 -> U32;
+        to-string = extern "u32-to-string" : U32 -> String;
+    };
 
-prim-u64-add = extern "u64-add" : U64 -> U64 -> U64;
-prim-u64-div = extern "u64-div" : U64 -> U64 -> U64;
-prim-u64-eq = extern "u64-eq" : U64 -> U64 -> Bool;
-prim-u64-ge = extern "u64-ge" : U64 -> U64 -> Bool;
-prim-u64-gt = extern "u64-gt" : U64 -> U64 -> Bool;
-prim-u64-le = extern "u64-le" : U64 -> U64 -> Bool;
-prim-u64-lt = extern "u64-lt" : U64 -> U64 -> Bool;
-prim-u64-mul = extern "u64-mul" : U64 -> U64 -> U64;
-prim-u64-ne = extern "u64-ne" : U64 -> U64 -> Bool;
-prim-u64-sub = extern "u64-sub" : U64 -> U64 -> U64;
-prim-u64-to-string = extern "u64-to-string" : U64 -> String;
+    u64 = record {
+        add = extern "u64-add" : U64 -> U64 -> U64;
+        div = extern "u64-div" : U64 -> U64 -> U64;
+        eq = extern "u64-eq" : U64 -> U64 -> Bool;
+        ge = extern "u64-ge" : U64 -> U64 -> Bool;
+        gt = extern "u64-gt" : U64 -> U64 -> Bool;
+        le = extern "u64-le" : U64 -> U64 -> Bool;
+        lt = extern "u64-lt" : U64 -> U64 -> Bool;
+        mul = extern "u64-mul" : U64 -> U64 -> U64;
+        ne = extern "u64-ne" : U64 -> U64 -> Bool;
+        sub = extern "u64-sub" : U64 -> U64 -> U64;
+        to-string = extern "u64-to-string" : U64 -> String;
+    };
 
-prim-char-eq = extern "char-eq" : Char -> Char -> Bool;
-prim-char-ge = extern "char-ge" : Char -> Char -> Bool;
-prim-char-gt = extern "char-gt" : Char -> Char -> Bool;
-prim-char-le = extern "char-le" : Char -> Char -> Bool;
-prim-char-lt = extern "char-lt" : Char -> Char -> Bool;
-prim-char-ne = extern "char-ne" : Char -> Char -> Bool;
-prim-char-to-string = extern "char-to-string" : Char -> String;
+    char = record {
+        eq = extern "char-eq" : Char -> Char -> Bool;
+        ge = extern "char-ge" : Char -> Char -> Bool;
+        gt = extern "char-gt" : Char -> Char -> Bool;
+        le = extern "char-le" : Char -> Char -> Bool;
+        lt = extern "char-lt" : Char -> Char -> Bool;
+        ne = extern "char-ne" : Char -> Char -> Bool;
+        to-string = extern "char-to-string" : Char -> String;
+    };
 
-prim-string-eq = extern "string-eq" : String -> String -> Bool;
-prim-string-ge = extern "string-ge" : String -> String -> Bool;
-prim-string-gt = extern "string-gt" : String -> String -> Bool;
-prim-string-le = extern "string-le" : String -> String -> Bool;
-prim-string-lt = extern "string-lt" : String -> String -> Bool;
-prim-string-ne = extern "string-ne" : String -> String -> Bool;
-prim-string-append = extern "string-append" : String -> String -> String;
+    string = record {
+        eq = extern "string-eq" : String -> String -> Bool;
+        ge = extern "string-ge" : String -> String -> Bool;
+        gt = extern "string-gt" : String -> String -> Bool;
+        le = extern "string-le" : String -> String -> Bool;
+        lt = extern "string-lt" : String -> String -> Bool;
+        ne = extern "string-ne" : String -> String -> Bool;
+        append = extern "string-append" : String -> String -> String;
+    };
+};
 
 ||| The polymorphic identity function
 id : (a : Type) -> a -> a;
@@ -251,19 +280,19 @@ Eq (a : Type) = Record {
 eq : (a : Type) (EQ : Eq a) -> a -> a -> Bool;
 eq _ EQ = EQ.eq;
 
-Eq-String : Eq String = record { eq = prim-string-eq };
-Eq-Char : Eq Char = record { eq = prim-char-eq };
-Eq-Bool : Eq Bool = record { eq = prim-bool-eq };
-Eq-U8 : Eq U8 = record { eq = prim-u8-eq };
-Eq-U16 : Eq U16 = record { eq = prim-u16-eq };
-Eq-U32 : Eq U32 = record { eq = prim-u32-eq };
-Eq-U64 : Eq U64 = record { eq = prim-u64-eq };
-Eq-I8 : Eq I8 = record { eq = prim-i8-eq };
-Eq-I16 : Eq I16 = record { eq = prim-i16-eq };
-Eq-I32 : Eq I32 = record { eq = prim-i32-eq };
-Eq-I64 : Eq I64 = record { eq = prim-i64-eq };
-Eq-F32 : Eq F32 = record { eq = prim-f32-eq };
-Eq-F64 : Eq F64 = record { eq = prim-f64-eq };
+Eq-String : Eq String = record { eq = prim.string.eq };
+Eq-Char : Eq Char = record { eq = prim.char.eq };
+Eq-Bool : Eq Bool = record { eq = prim.bool.eq };
+Eq-U8 : Eq U8 = record { eq = prim.u8.eq };
+Eq-U16 : Eq U16 = record { eq = prim.u16.eq };
+Eq-U32 : Eq U32 = record { eq = prim.u32.eq };
+Eq-U64 : Eq U64 = record { eq = prim.u64.eq };
+Eq-I8 : Eq I8 = record { eq = prim.i8.eq };
+Eq-I16 : Eq I16 = record { eq = prim.i16.eq };
+Eq-I32 : Eq I32 = record { eq = prim.i32.eq };
+Eq-I64 : Eq I64 = record { eq = prim.i64.eq };
+Eq-F32 : Eq F32 = record { eq = prim.f32.eq };
+Eq-F64 : Eq F64 = record { eq = prim.f64.eq };
 
 
 ||| An associative operation on `a`.
@@ -279,29 +308,29 @@ append : (a : Type) (S : Semigroup a) -> a -> a -> a;
 append _ S = S.append;
 
 
-Semigroup-String : Semigroup String = record { append = prim-string-append };
+Semigroup-String : Semigroup String = record { append = prim.string.append };
 
-Semigroup-U8-Add : Semigroup U8 = record { append = prim-u8-add };
-Semigroup-U16-Add : Semigroup U16 = record { append = prim-u16-add };
-Semigroup-U32-Add : Semigroup U32 = record { append = prim-u32-add };
-Semigroup-U64-Add : Semigroup U64 = record { append = prim-u64-add };
-Semigroup-I8-Add : Semigroup I8 = record { append = prim-i8-add };
-Semigroup-I16-Add : Semigroup I16 = record { append = prim-i16-add };
-Semigroup-I32-Add : Semigroup I32 = record { append = prim-i32-add };
-Semigroup-I64-Add : Semigroup I64 = record { append = prim-i64-add };
-Semigroup-F32-Add : Semigroup F32 = record { append = prim-f32-add };
-Semigroup-F64-Add : Semigroup F64 = record { append = prim-f64-add };
+Semigroup-U8-Add : Semigroup U8 = record { append = prim.u8.add };
+Semigroup-U16-Add : Semigroup U16 = record { append = prim.u16.add };
+Semigroup-U32-Add : Semigroup U32 = record { append = prim.u32.add };
+Semigroup-U64-Add : Semigroup U64 = record { append = prim.u64.add };
+Semigroup-I8-Add : Semigroup I8 = record { append = prim.i8.add };
+Semigroup-I16-Add : Semigroup I16 = record { append = prim.i16.add };
+Semigroup-I32-Add : Semigroup I32 = record { append = prim.i32.add };
+Semigroup-I64-Add : Semigroup I64 = record { append = prim.i64.add };
+Semigroup-F32-Add : Semigroup F32 = record { append = prim.f32.add };
+Semigroup-F64-Add : Semigroup F64 = record { append = prim.f64.add };
 
-Semigroup-U8-Mul : Semigroup U8 = record { append = prim-u8-mul };
-Semigroup-U16-Mul : Semigroup U16 = record { append = prim-u16-mul };
-Semigroup-U32-Mul : Semigroup U32 = record { append = prim-u32-mul };
-Semigroup-U64-Mul : Semigroup U64 = record { append = prim-u64-mul };
-Semigroup-I8-Mul : Semigroup I8 = record { append = prim-i8-mul };
-Semigroup-I16-Mul : Semigroup I16 = record { append = prim-i16-mul };
-Semigroup-I32-Mul : Semigroup I32 = record { append = prim-i32-mul };
-Semigroup-I64-Mul : Semigroup I64 = record { append = prim-i64-mul };
-Semigroup-F32-Mul : Semigroup F32 = record { append = prim-f32-mul };
-Semigroup-F64-Mul : Semigroup F64 = record { append = prim-f64-mul };
+Semigroup-U8-Mul : Semigroup U8 = record { append = prim.u8.mul };
+Semigroup-U16-Mul : Semigroup U16 = record { append = prim.u16.mul };
+Semigroup-U32-Mul : Semigroup U32 = record { append = prim.u32.mul };
+Semigroup-U64-Mul : Semigroup U64 = record { append = prim.u64.mul };
+Semigroup-I8-Mul : Semigroup I8 = record { append = prim.i8.mul };
+Semigroup-I16-Mul : Semigroup I16 = record { append = prim.i16.mul };
+Semigroup-I32-Mul : Semigroup I32 = record { append = prim.i32.mul };
+Semigroup-I64-Mul : Semigroup I64 = record { append = prim.i64.mul };
+Semigroup-F32-Mul : Semigroup F32 = record { append = prim.f32.mul };
+Semigroup-F64-Mul : Semigroup F64 = record { append = prim.f64.mul };
 
 
 ||| A semigroup that also has an identity element.
