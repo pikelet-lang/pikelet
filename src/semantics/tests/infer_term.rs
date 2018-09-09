@@ -574,12 +574,13 @@ fn record() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let given_expr = r#"record { x = "Hello" }"#;
+    let expected_ty = r"Record { t : Type; x : String }";
+    let given_expr = r#"record { t = String; x = "Hello" }"#;
 
-    match infer_term(&tc_env, &parse_term(&mut codemap, given_expr)) {
-        Err(TypeError::AmbiguousRecord { .. }) => {},
-        x => panic!("expected an ambiguous record error, found {:?}", x),
-    }
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &tc_env, given_expr).1,
+        parse_nf_term(&mut codemap, &tc_env, expected_ty),
+    );
 }
 
 #[test]

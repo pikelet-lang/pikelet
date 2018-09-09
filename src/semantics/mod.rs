@@ -660,16 +660,31 @@ where
             ))
         },
 
-        // I-EMPTY-RECORD
-        raw::Term::Record(span, ref raw_scope) => {
-            if raw_scope.unsafe_pattern.unsafe_patterns.is_empty() {
-                Ok((
-                    RcTerm::from(Term::Record(Scope::new(Nest::new(vec![]), ()))),
-                    RcValue::from(Value::RecordType(Scope::new(Nest::new(vec![]), ()))),
-                ))
-            } else {
-                Err(TypeError::AmbiguousRecord { span })
+        // I-RECORD, I-EMPTY-RECORD
+        raw::Term::Record(_, ref raw_scope) => {
+            let (raw_fields, ()) = raw_scope.clone().unbind();
+            let raw_fields = raw_fields.unnest();
+
+            let mut fields = Vec::with_capacity(raw_fields.len());
+            let mut ty_fields = Vec::with_capacity(raw_fields.len());
+
+            // FIXME: error on duplicate field names
+            {
+                let mut ty_mappings = Vec::with_capacity(raw_fields.len());
+                for (label, Binder(free_var), Embed(raw_term)) in raw_fields {
+                    let (term, term_ty) = infer_term(env, &raw_term)?;
+                    let term_ty = nf_term(env, &term_ty.substs(&ty_mappings))?;
+
+                    fields.push((label.clone(), Binder(free_var.clone()), Embed(term.clone())));
+                    ty_fields.push((label, Binder(free_var.clone()), Embed(term_ty)));
+                    ty_mappings.push((free_var, term));
+                }
             }
+
+            Ok((
+                RcTerm::from(Term::Record(Scope::new(Nest::new(fields), ()))),
+                RcValue::from(Value::RecordType(Scope::new(Nest::new(ty_fields), ()))),
+            ))
         },
 
         // I-PROJ

@@ -183,8 +183,6 @@ pub enum TypeError {
         found: syntax::Label,
         expected: syntax::Label,
     },
-    #[fail(display = "Ambiguous record")]
-    AmbiguousRecord { span: ByteSpan },
     #[fail(
         display = "Mismatched array length: expected {} elements but found {}",
         expected_len,
@@ -364,8 +362,6 @@ impl TypeError {
                 "expected field called `{}`, but found a field called `{}",
                 expected, found,
             )).with_label(Label::new_primary(span)),
-            TypeError::AmbiguousRecord { span } => Diagnostic::new_error("ambiguous record")
-                .with_label(Label::new_primary(span).with_message("type annotations needed here")),
             TypeError::ArrayLengthMismatch {
                 span,
                 found_len,
