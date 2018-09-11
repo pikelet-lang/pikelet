@@ -4,4 +4,4 @@ mod desugar;
 mod resugar;
 
 pub use self::desugar::{Desugar, DesugarEnv};
-pub use self::resugar::Resugar;
+pub use self::resugar::{Resugar, ResugarEnv};

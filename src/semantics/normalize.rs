@@ -43,11 +43,6 @@ where
             Head::Extern(name.clone(), nf_term(env, ty)?),
         )))),
 
-        Term::Global(ref name) => match env.get_global_definition(name.as_str()) {
-            Some(value) => Ok(value.clone()),
-            None => Ok(RcValue::from(Value::global(name.clone()))),
-        },
-
         // E-PI
         Term::Pi(ref scope) => {
             let ((name, Embed(ann)), body) = scope.clone().unbind();
@@ -98,7 +93,6 @@ where
                             }
                         },
                         Neutral::Head(Head::Var(_))
-                        | Neutral::Head(Head::Global(_))
                         | Neutral::If(_, _, _)
                         | Neutral::Proj(_, _)
                         | Neutral::Case(_, _) => spine.push(arg),

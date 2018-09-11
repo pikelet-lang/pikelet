@@ -172,8 +172,10 @@ pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
         .map(|err| err.to_diagnostic())
         .collect::<Vec<_>>();
 
-    let raw_module = concrete_module.desugar(&DesugarEnv::new());
-    semantics::check_module(&TcEnv::default(), &raw_module).map_err(|err| {
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let raw_module = concrete_module.desugar(&desugar_env);
+    semantics::check_module(&tc_env, &raw_module).map_err(|err| {
         diagnostics.push(err.to_diagnostic());
         diagnostics
     })

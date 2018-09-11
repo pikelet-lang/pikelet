@@ -165,12 +165,10 @@ pub enum TypeError {
         found: Box<concrete::Term>,
     },
     #[fail(display = "Not yet defined: `{}`", free_var)]
-    NotYetDefined {
+    UndefinedName {
         span: ByteSpan,
         free_var: FreeVar<String>,
     },
-    #[fail(display = "Undefined name `{}`", name)]
-    UndefinedName { span: ByteSpan, name: String },
     #[fail(display = "Undefined extern name `{:?}`", name)]
     UndefinedExternName { span: ByteSpan, name: String },
     #[fail(
@@ -340,12 +338,8 @@ impl TypeError {
                 Diagnostic::new_error(format!("expected type, found a value of type `{}`", found))
                     .with_label(Label::new_primary(span).with_message("the value"))
             },
-            TypeError::NotYetDefined { ref free_var, span } => {
-                Diagnostic::new_bug(format!("not yet defined `{}`", free_var))
-                    .with_label(Label::new_primary(span).with_message("not yet defined"))
-            },
-            TypeError::UndefinedName { ref name, span } => {
-                Diagnostic::new_error(format!("cannot find `{}` in scope", name))
+            TypeError::UndefinedName { ref free_var, span } => {
+                Diagnostic::new_bug(format!("cannot find `{}` in scope", free_var))
                     .with_label(Label::new_primary(span).with_message("not found in this scope"))
             },
             TypeError::UndefinedExternName { span, ref name } => {
@@ -359,7 +353,7 @@ impl TypeError {
                 ref expected,
                 ref found,
             } => Diagnostic::new_error(format!(
-                "expected field called `{}`, but found a field called `{}",
+                "expected field called `{}`, but found a field called `{}`",
                 expected, found,
             )).with_label(Label::new_primary(span)),
             TypeError::ArrayLengthMismatch {

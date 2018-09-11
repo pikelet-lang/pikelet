@@ -164,8 +164,6 @@ pub enum Term {
     Var(ByteSpan, Var<String>),
     /// An external definition
     Extern(ByteSpan, ByteSpan, String, RcTerm),
-    /// A global name
-    Global(ByteSpan, String),
     /// Dependent function types
     Pi(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
@@ -204,7 +202,6 @@ impl Term {
             | Term::Hole(span)
             | Term::Var(span, _)
             | Term::Extern(span, _, _, _)
-            | Term::Global(span, _)
             | Term::Pi(span, _)
             | Term::Lam(span, _)
             | Term::RecordType(span, _)

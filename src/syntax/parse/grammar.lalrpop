@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use syntax::concrete::{Item, LamParams, Literal, Module, Pattern, Term, ReplCommand};
+use syntax::concrete::{Item, Literal, Module, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 
 #[LALR]
@@ -238,9 +238,9 @@ AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
     "(" <names: IndexedIdent+> <ann: (":" <PiTerm>)?> ")" => (names, ann.map(Box::new)),
 };
 
-RecordTypeField: (ByteIndex, String, Term) = {
-    <_comment: "doc comment"*> <start: @L> <label: Ident> ":" <ty: Term> => {
-        (start, label, ty)
+RecordTypeField: RecordTypeField = {
+    <_comment: "doc comment"*> <label: IndexedIdent> <binder: ("as" <IndexedIdent>)?> ":" <ann: Term> => {
+        RecordTypeField { label, binder, ann }
     },
 };
 
@@ -248,9 +248,10 @@ PatternArm: (Pattern, Term) = {
     <Pattern> "=>" <Term>,
 };
 
-RecordField: (ByteIndex, String, LamParams, Option<Box<Term>>, Term) = {
-    <start: @L> <label: Ident> <params: AtomicLamParam*> <ann: (":" <Term>)?> "=" <term: Term> => {
-        (start, label, params, ann.map(Box::new), term)
+RecordField: RecordField = {
+    <start: @L> <label: IndexedIdent> <params: AtomicLamParam*> <return_ann: (":" <Term>)?> "=" <term: Term> => {
+        let return_ann = return_ann.map(Box::new);
+        RecordField { label, params, return_ann, term }
     },
 };
 

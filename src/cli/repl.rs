@@ -8,7 +8,7 @@ use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
 use term_size;
 
-use semantics::{self, DeclarationEnv, DefinitionEnv, TcEnv};
+use semantics::{self, DeclarationEnv, DefinitionEnv, GlobalEnv, TcEnv};
 use syntax::parse;
 use syntax::translation::DesugarEnv;
 
@@ -87,8 +87,8 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let interface = Interface::new("repl")?;
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
-    let mut desugar_env = DesugarEnv::new();
     let mut tc_env = TcEnv::default();
+    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);
@@ -176,7 +176,10 @@ fn eval_print(
             let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
             let evaluated = semantics::nf_term(tc_env, &term)?;
 
-            let ann_term = Term::Ann(Box::new(evaluated.resugar()), Box::new(inferred.resugar()));
+            let ann_term = Term::Ann(
+                Box::new(evaluated.resugar(tc_env.resugar_env())),
+                Box::new(inferred.resugar(tc_env.resugar_env())),
+            );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
@@ -201,7 +204,7 @@ fn eval_print(
 
             let ann_term = Term::Ann(
                 Box::new(Term::Name(ByteIndex::default(), name.clone())),
-                Box::new(inferred.resugar()),
+                Box::new(inferred.resugar(tc_env.resugar_env())),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
@@ -216,7 +219,13 @@ fn eval_print(
             let raw_term = parse_term.desugar(desugar_env);
             let (_, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
-            println!("{}", inferred.resugar().to_doc().pretty(term_width()));
+            println!(
+                "{}",
+                inferred
+                    .resugar(tc_env.resugar_env())
+                    .to_doc()
+                    .pretty(term_width())
+            );
         },
 
         ReplCommand::NoOp | ReplCommand::Error(_) => {},
