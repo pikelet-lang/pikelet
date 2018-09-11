@@ -5,12 +5,15 @@ use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
-use std::path::PathBuf;
+use moniker::Binder;
+use std::path::{PathBuf, Path};
+use std::fs::File;
 use term_size;
 
 use semantics::{self, DeclarationEnv, DefinitionEnv, GlobalEnv, TcEnv};
 use syntax::parse;
 use syntax::translation::DesugarEnv;
+use syntax::core::{Module, Item};
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -103,6 +106,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     }
 
     // TODO: Load files
+    load_module(::load_prelude(&mut codemap), &mut tc_env, &mut desugar_env);
 
     loop {
         match interface.read_line()? {
@@ -234,6 +238,31 @@ fn eval_print(
 
     Ok(ControlFlow::Continue)
 }
+
+
+fn load_module(m: Module, tc_env: &mut TcEnv, desugar_env: &mut DesugarEnv) {
+    eprintln!("Loading module...");
+    let mut errors = Vec::new();
+    for item in m.items {
+        match item {
+            Item::Declaration{label: _, binder: Binder(free_var), term} => {
+                eprintln!("Decl: {:?}", free_var);
+                match semantics::nf_term(&*tc_env, &term) {
+                    Ok(value) => tc_env.insert_declaration(free_var, value),
+                    Err(err) => errors.push(err),
+                }
+            },
+            Item::Definition{label: Label(name), binder: Binder(free_var), term} => {
+                tc_env.insert_definition(free_var, term);
+                desugar_env.locals.insert(name, free_var);
+            },
+        }
+    }
+    if errors.len() != 0 {
+        eprintln!("{:?}", errors);
+    }
+}
+
 
 #[derive(Clone)]
 enum ControlFlow {
