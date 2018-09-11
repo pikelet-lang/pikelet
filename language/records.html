@@ -145,6 +145,7 @@
 <li><a href="#record-values-and-record-types">Record values and record types</a></li>
 <li><a href="#field-lookups">Field lookups</a></li>
 <li><a href="#dependent-record-types">Dependent record types</a></li>
+<li><a href="#external-vs-internal-field-names">External vs. internal field names</a></li>
 </ul>
 <a class="header" href="#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
@@ -171,7 +172,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
 <a class="header" href="#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
-<p>You can access the value associated with a field by using the dot operator:</p>
+<p>You can access the value associated with a field name by using the dot operator:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
 &quot;Jane&quot; : String
 </code></pre>
@@ -182,6 +183,47 @@ later on to define the <code>data</code> field's annotation:</p>
 <pre><code class="language-pikelet">DArray (a : Type) = Record {
     len : I32;
     data : Box (Array len a);
+};
+</code></pre>
+<a class="header" href="#external-vs-internal-field-names" id="external-vs-internal-field-names"><h2>External vs. internal field names</h2></a>
+<p>Sometimes we'll run into rare cases where a field name might shadow a binding
+from a higher scope. In this case we can give the field a new, internal name
+using the <code>as</code> notation:</p>
+<pre><code class="language-pikelet">Foo = Record {
+  -- external name
+  --  |
+  --  |    internal name
+  --  |        |
+  --  v        v
+  String as String1 : Type;
+
+  -- refers to the built in `String` type
+  --     |
+  --     v
+  x : String;
+
+  -- refers to the local `String` field
+  --     |
+  --     v
+  y : String1;
+};
+</code></pre>
+<p>We define the following terms:</p>
+<ul>
+<li><em>external field name</em>: the name that we use when projecting on the record</li>
+<li><em>internal field name</em>: the name that we use internally, in dependent fields</li>
+</ul>
+<p>Note that most of the time the internal and external field names are the same.
+For example:</p>
+<pre><code class="language-pikelet">Point2d = Record {
+  x : F32;
+  y : F32;
+};
+</code></pre>
+<p>Is actually desugared to:</p>
+<pre><code class="language-pikelet">Point2d = Record {
+  x as x : F32;
+  y as y : F32;
 };
 </code></pre>
 

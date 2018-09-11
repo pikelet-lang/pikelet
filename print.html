@@ -282,6 +282,7 @@ also support more complex patterns (eg. for records).</p>
 <li><a href="#record-values-and-record-types">Record values and record types</a></li>
 <li><a href="#field-lookups">Field lookups</a></li>
 <li><a href="#dependent-record-types">Dependent record types</a></li>
+<li><a href="#external-vs-internal-field-names">External vs. internal field names</a></li>
 </ul>
 <a class="header" href="#record-values-and-record-types" id="record-values-and-record-types"><h2>Record values and record types</h2></a>
 <p>You can group together multiple values by using records:</p>
@@ -308,7 +309,7 @@ record { x = 3; y = 3 } : Record { x : F32; y : F32 }
 the type of each field from the type definition during type checking. You can
 read more about Pikelet's type inference on <a href="./type-inference">the type inference page</a>.</p>
 <a class="header" href="#field-lookups" id="field-lookups"><h2>Field lookups</h2></a>
-<p>You can access the value associated with a field by using the dot operator:</p>
+<p>You can access the value associated with a field name by using the dot operator:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; record { name = &quot;Jane&quot; }.name
 &quot;Jane&quot; : String
 </code></pre>
@@ -319,6 +320,47 @@ later on to define the <code>data</code> field's annotation:</p>
 <pre><code class="language-pikelet">DArray (a : Type) = Record {
     len : I32;
     data : Box (Array len a);
+};
+</code></pre>
+<a class="header" href="#external-vs-internal-field-names" id="external-vs-internal-field-names"><h2>External vs. internal field names</h2></a>
+<p>Sometimes we'll run into rare cases where a field name might shadow a binding
+from a higher scope. In this case we can give the field a new, internal name
+using the <code>as</code> notation:</p>
+<pre><code class="language-pikelet">Foo = Record {
+  -- external name
+  --  |
+  --  |    internal name
+  --  |        |
+  --  v        v
+  String as String1 : Type;
+
+  -- refers to the built in `String` type
+  --     |
+  --     v
+  x : String;
+
+  -- refers to the local `String` field
+  --     |
+  --     v
+  y : String1;
+};
+</code></pre>
+<p>We define the following terms:</p>
+<ul>
+<li><em>external field name</em>: the name that we use when projecting on the record</li>
+<li><em>internal field name</em>: the name that we use internally, in dependent fields</li>
+</ul>
+<p>Note that most of the time the internal and external field names are the same.
+For example:</p>
+<pre><code class="language-pikelet">Point2d = Record {
+  x : F32;
+  y : F32;
+};
+</code></pre>
+<p>Is actually desugared to:</p>
+<pre><code class="language-pikelet">Point2d = Record {
+  x as x : F32;
+  y as y : F32;
 };
 </code></pre>
 <a class="header" href="#functions" id="functions"><h1>Functions</h1></a>
@@ -812,7 +854,9 @@ etc. If you would like to discuss this with us, please check out
 \newcommand{\app}[2]{ #1 ~ #2 }
 \newcommand{\ifte}[3]{ \kw{if} ~ #1 ~ \kw{then} ~ #2 ~ \kw{else} ~ #3 }
 \newcommand{\case}[2]{ \kw{case} ~ #1 \left\{ #2 \right\} }
-\newcommand{\Record}[1]{ \kw{Record} \left\{ #1 \right\} }
+\newcommand{\RecordCons}[2]{ \kw{Record} \left\{ #1; #2 \right\} }
+\newcommand{\RecordEmpty}{ \kw{Record} \left\{\right\} }
+\newcommand{\as}{ ~ \kw{as} ~ }
 \newcommand{\record}[1]{ \kw{record} \left\{ #1 \right\} }
 \newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
 \
@@ -838,9 +882,8 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \ifte{\rexpr_1}{\rexpr_2}{\rexpr_3} &amp; \text{if expressions} \\
 &amp;   | &amp; \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}}
 &amp; \text{case expressions} \\
-&amp;   | &amp; \Record{\label[\var]:\rtype_1, \rtype_2}
-&amp; \text{record type extension} \\
-&amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
+&amp;   | &amp; \RecordCons{\label \as \var:\rtype_1}{\rtype_2} &amp; \text{record type extension} \\
+&amp;   | &amp; \RecordEmpty{}                      &amp; \text{empty record type} \\
 &amp;   | &amp; \record{\label=\rexpr_1, \rexpr_2}  &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
 &amp;   | &amp; \rexpr.\label                       &amp; \text{record projection} \\
@@ -872,11 +915,9 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \lam{\var:\ttype}{\texpr}           &amp; \text{functions} \\
 &amp;   | &amp; \app{\texpr_1}{\texpr_2}            &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\texpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
-&amp;   | &amp; \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
-&amp; \text{case expressions} \\
-&amp;   | &amp; \Record{\label[\var]:\ttype_1, \ttype_2}
-&amp; \text{record type extension} \\
-&amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
+&amp;   | &amp; \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} &amp; \text{case expressions} \\
+&amp;   | &amp; \RecordCons{\label \as \var:\ttype_1}{\ttype_2} &amp; \text{record type extension} \\
+&amp;   | &amp; \RecordEmpty{}                      &amp; \text{empty record type} \\
 &amp;   | &amp; \record{\label=\texpr_1, \texpr_2}  &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
 &amp;   | &amp; \texpr.\label                       &amp; \text{record projection} \\
@@ -901,8 +942,7 @@ and neutral terms (\(\nexpr\)):</p>
 \nexpr,\ntype   &amp; ::= &amp; \var                                &amp; \text{variables} \\
 &amp;   | &amp; \app{\nexpr}{\texpr}                &amp; \text{function application} \\
 &amp;   | &amp; \ifte{\nexpr_1}{\texpr_2}{\texpr_3} &amp; \text{if expressions} \\
-&amp;   | &amp; \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}
-&amp; \text{case expressions} \\
+&amp;   | &amp; \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} &amp; \text{case expressions} \\
 &amp;   | &amp; \nexpr.\label                       &amp; \text{record projection} \\
 \\
 \wexpr,\wtype   &amp; ::= &amp; \Type_i                             &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
@@ -910,9 +950,8 @@ and neutral terms (\(\nexpr\)):</p>
 &amp;   | &amp; \true ~|~ \false                    &amp; \text{boolean literals} \\
 &amp;   | &amp; \Pi{\var:\vtype_1}{\vtype_2}        &amp; \text{dependent function type} \\
 &amp;   | &amp; \lam{\var:\vtype}{\vexpr}           &amp; \text{functions} \\
-&amp;   | &amp; \Record{\label[\var]:\vtype_1, \vtype_2}
-&amp; \text{record type extension} \\
-&amp;   | &amp; \Record{}                           &amp; \text{empty record type} \\
+&amp;   | &amp; \RecordCons{\label \as \var:\vtype_1}{\vtype_2} &amp; \text{record type extension} \\
+&amp;   | &amp; \RecordEmpty{}                      &amp; \text{empty record type} \\
 &amp;   | &amp; \record{\label=\vexpr_1, \vexpr_2}  &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
 \\
@@ -994,7 +1033,7 @@ in the context.</p>
 }
 \\[2em]
 \rule{E-VAR-DEF}{
-\defnItem{\var,\texpr} \in \ctx
+\defnItem{\var}{\texpr} \in \ctx
 \qquad
 \eval{ \ctx }{ \texpr }{ \vexpr }
 }{
@@ -1069,7 +1108,7 @@ in the context.</p>
 \qquad
 \eval{ \ctx }{ \ttype_2 }{ \vtype_2 }
 }{
-\eval{ \ctx }{ \Record{\label[\var]:\ttype_1, \ttype_2} }{ \Record{\label[\var]:\vtype_1, \vtype_2} }
+\eval{ \ctx }{ \RecordCons{\label \as \var:\ttype_1}{\ttype_2} }{ \RecordCons{\label \as \var:\vtype_1}{\vtype_2} }
 }
 \\[2em]
 \rule{E-RECORD}{
@@ -1081,7 +1120,7 @@ in the context.</p>
 }
 \\[2em]
 \rule{E-EMPTY-RECORD-TYPE}{}{
-\eval{ \ctx }{ \Record{} }{ \Record{} }
+\eval{ \ctx }{ \RecordEmpty{} }{ \RecordEmpty{} }
 }
 \\[2em]
 \rule{E-EMPTY-RECORD}{}{
@@ -1156,7 +1195,7 @@ elaborated form.</p>
 \check{ \ctx }{ \rexpr_2 }{ \vtype_3 }{ \texpr_2 }
 }{
 \check{ \ctx }{ \record{\label_1=\rexpr_1, \rexpr_2} }
-{ \Record{\label_2[\var]:\vtype_1, \vtype_2} }
+{ \RecordCons{\label_2 \as \var:\vtype_1}{\vtype_2} }
 { \record{\label_1=\texpr_1, \texpr_2} }
 }
 \\[2em]
@@ -1253,13 +1292,13 @@ returns its elaborated form.</p>
 \infer{ \extendCtx{\ctx}{\declItem{\var}{\vtype_1}} }{ \rtype_2 }{ \Type_j }{ \ttype_2 }
 }{
 \infer{ \ctx }
-{ \Record{\label[\var]:\rtype_1, \rtype_2} }
+{ \RecordCons{\label \as \var:\rtype_1}{\rtype_2} }
 { \Type_{\max(i,j)} }
-{ \Record{\label[\var]:\ttype_1, \ttype_2} }
+{ \RecordCons{\label \as \var:\ttype_1}{\ttype_2} }
 }
 \\[2em]
 \rule{I-EMPTY-RECORD-TYPE}{}{
-\infer{ \ctx }{ \Record{} }{ \Type_0 }{ \Record{} }
+\infer{ \ctx }{ \RecordEmpty{} }{ \Type_0 }{ \RecordEmpty{} }
 }
 \\[2em]
 \rule{I-RECORD}{
@@ -1270,12 +1309,12 @@ returns its elaborated form.</p>
 \eval{ \ctx }{ \subst{\vtype_2}{\var}{\texpr_1} }{ \vtype_3 }
 }{
 \infer{ \ctx }{ \record{\label=\rexpr_1, \rexpr_2} }
-{ \Record{\label[\var]:\vtype_1, \vtype_3} }
+{ \RecordCons{\label \as \var:\vtype_1}{\vtype_3} }
 { \record{\label=\texpr_1, \texpr_2} }
 }
 \\[2em]
 \rule{I-EMPTY-RECORD}{}{
-\infer{ \ctx }{ \record{} }{ \Record{} }{ \record{} }
+\infer{ \ctx }{ \record{} }{ \RecordEmpty{} }{ \record{} }
 }
 \\[2em]
 \rule{I-PROJ}{
@@ -1293,8 +1332,8 @@ returns its elaborated form.</p>
 <p>We define \(\fieldty(-,-)\) and \(\fieldsubst(-,-,-)\) like so:</p>
 <p>\[
 \begin{array}{lrll}
-\fieldty(\label_1, \Record{\label_2 : \vtype_1, \vtype_2}) &amp; = &amp; \vtype_1 &amp; \text{if} ~ \label_1 \equiv \label_2 \\
-\fieldty(\label_1, \Record{\label_2 : \vtype_1, \vtype_2}) &amp; = &amp; \fieldty(\label_1, \vtype_2) \\
+\fieldty(\label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; = &amp; \vtype_1 &amp; \text{if} ~ \label_1 \equiv \label_2 \\
+\fieldty(\label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; = &amp; \fieldty(\label_1, \vtype_2) \\
 \\[2em]
 \end{array}
 \]</p>
@@ -1302,9 +1341,9 @@ returns its elaborated form.</p>
 we project on them, we define \(\fieldsubst(-,-,-)\) as:</p>
 <p>\[
 \begin{array}{lrll}
-\fieldsubst(\texpr, \label_1, \Record{\label_2 : \vtype_1, \vtype_2}) &amp; =
+\fieldsubst(\texpr, \label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; =
 &amp; [] &amp; \text{if} ~ \label_1 \equiv \label_2 \\
-\fieldsubst(\texpr, \label_1, \Record{\label_2 : \vtype_1, \vtype_2}) &amp; =
+\fieldsubst(\texpr, \label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; =
 &amp; \fieldsubst(\texpr, \label_1, \vtype_2) \doubleplus [ \label_2 \rightarrow \texpr.\label_2 ] \\
 \\[2em]
 \end{array}
