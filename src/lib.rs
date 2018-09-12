@@ -184,7 +184,7 @@ pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
 pub fn load_prelude(codemap: &mut CodeMap) -> core::Module {
     let file = codemap.add_filemap(
         FileName::real("library/prelude.pi"),
-        String::from(library::PRELUDE),
+        library::PRELUDE.to_owned(),
     );
 
     load_file(&file).unwrap_or_else(|_diagnostics| {

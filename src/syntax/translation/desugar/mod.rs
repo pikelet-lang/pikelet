@@ -35,7 +35,7 @@ impl DesugarEnv {
     }
 
     pub fn on_binding(&mut self, name: &str) -> FreeVar<String> {
-        let name = String::from(name);
+        let name = name.to_owned();
         let free_var = FreeVar::fresh_named(name.clone());
         self.locals.insert(name, free_var.clone());
         free_var
@@ -45,7 +45,7 @@ impl DesugarEnv {
         raw::RcTerm::from(raw::Term::Var(
             span,
             Var::Free(match self.locals.get(name) {
-                None => FreeVar::fresh_named(name.clone()),
+                None => FreeVar::fresh_named(name),
                 Some(free_var) => free_var.clone(),
             }),
         ))

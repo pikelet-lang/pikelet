@@ -187,9 +187,9 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
 impl<'input> From<Token<&'input str>> for Token<String> {
     fn from(src: Token<&'input str>) -> Token<String> {
         match src {
-            Token::Ident(name) => Token::Ident(String::from(name)),
-            Token::DocComment(comment) => Token::DocComment(String::from(comment)),
-            Token::ReplCommand(command) => Token::ReplCommand(String::from(command)),
+            Token::Ident(name) => Token::Ident(name.to_owned()),
+            Token::DocComment(comment) => Token::DocComment(comment.to_owned()),
+            Token::ReplCommand(command) => Token::ReplCommand(command.to_owned()),
             Token::StringLiteral(value) => Token::StringLiteral(value),
             Token::CharLiteral(value) => Token::CharLiteral(value),
             Token::DecLiteral(value) => Token::DecLiteral(value),
@@ -547,8 +547,8 @@ mod tests {
     fn string_literal() {
         test! {
             r#"  "a" "\t"  "#,
-            r#"  ~~~       "# => Token::StringLiteral(String::from("a")),
-            r#"      ~~~~  "# => Token::StringLiteral(String::from("\t")),
+            r#"  ~~~       "# => Token::StringLiteral("a".to_owned()),
+            r#"      ~~~~  "# => Token::StringLiteral("\t".to_owned()),
         };
     }
 
