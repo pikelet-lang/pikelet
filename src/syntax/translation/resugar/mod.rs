@@ -199,8 +199,8 @@ fn resugar_pattern(
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Pattern::Binder(span.start(), String::from("true")),
-                core::Literal::Bool(false) => Pattern::Binder(span.start(), String::from("false")),
+                core::Literal::Bool(true) => Pattern::Binder(span.start(), "true".to_owned()),
+                core::Literal::Bool(false) => Pattern::Binder(span.start(), "false".to_owned()),
 
                 core::Literal::String(ref value) => {
                     Pattern::Literal(Literal::String(span, value.clone()))
@@ -490,8 +490,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Term::Name(span.start(), String::from("true")),
-                core::Literal::Bool(false) => Term::Name(span.start(), String::from("false")),
+                core::Literal::Bool(true) => Term::Name(span.start(), "true".to_owned()),
+                core::Literal::Bool(false) => Term::Name(span.start(), "false".to_owned()),
 
                 core::Literal::String(ref value) => {
                     Term::Literal(Literal::String(span, value.clone()))

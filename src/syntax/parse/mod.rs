@@ -168,7 +168,7 @@ mod tests {
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(36))),
                 vec![ParseError::Lexer(LexerError::IntegerLiteralOverflow {
                     span: ByteSpan::new(ByteIndex(6), ByteIndex(36)),
-                    value: String::from("111111111111111111111111111111"),
+                    value: "111111111111111111111111111111".to_owned(),
                 })],
             )
         );
