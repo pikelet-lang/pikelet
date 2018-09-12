@@ -307,14 +307,35 @@ where
                 declarations,
             ))
         },
-        raw::Pattern::Literal(ref literal) => {
-            let (literal, ty) = infer_literal(env, literal)?;
-            Ok((RcPattern::from(Pattern::Literal(literal)), ty, vec![]))
-        },
         raw::Pattern::Binder(span, ref binder) => Err(TypeError::BinderNeedsAnnotation {
             span,
             binder: binder.clone(),
         }),
+        raw::Pattern::Var(span, Embed(ref var)) => match *var {
+            Var::Free(ref free_var) => match env.get_declaration(free_var) {
+                Some(ty) => Ok((
+                    RcPattern::from(Pattern::Var(Embed(var.clone()))),
+                    ty.clone(),
+                    vec![],
+                )),
+                None => Err(TypeError::UndefinedName {
+                    span,
+                    free_var: free_var.clone(),
+                }),
+            },
+
+            // We should always be substituting bound variables with fresh
+            // variables when entering scopes using `unbind`, so if we've
+            // encountered one here this is definitely a bug!
+            Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
+                span: Some(raw_pattern.span()),
+                var: var.clone(),
+            }.into()),
+        },
+        raw::Pattern::Literal(ref literal) => {
+            let (literal, ty) = infer_literal(env, literal)?;
+            Ok((RcPattern::from(Pattern::Literal(literal)), ty, vec![]))
+        },
     }
 }
 

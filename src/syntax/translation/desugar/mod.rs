@@ -286,12 +286,21 @@ impl Desugar<(raw::RcPattern, DesugarEnv)> for concrete::Pattern {
 
                 (ann_pattern, env)
             },
-            concrete::Pattern::Binder(_, ref name) => {
-                let mut env = env.clone();
-                let free_var = env.on_binding(name);
-                let pattern = raw::RcPattern::from(raw::Pattern::Binder(span, Binder(free_var)));
+            concrete::Pattern::Name(_, ref name) => match env.locals.get(name) {
+                Some(free_var) => {
+                    let var = Var::Free(free_var.clone());
+                    let pattern = raw::RcPattern::from(raw::Pattern::Var(span, Embed(var)));
 
-                (pattern, env)
+                    (pattern, env.clone())
+                },
+                None => {
+                    let mut env = env.clone();
+                    let free_var = env.on_binding(name);
+                    let binder = Binder(free_var);
+                    let pattern = raw::RcPattern::from(raw::Pattern::Binder(span, binder));
+
+                    (pattern, env)
+                },
             },
             concrete::Pattern::Literal(ref literal) => (
                 raw::RcPattern::from(raw::Pattern::Literal(literal.desugar(env))),

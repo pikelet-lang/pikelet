@@ -73,6 +73,8 @@ pub enum Pattern {
     Ann(RcPattern, Embed<RcTerm>),
     /// Patterns that bind variables
     Binder(Binder<String>),
+    /// Patterns to be compared structurally with a variable in scope
+    Var(Embed<Var<String>>),
     /// Literal patterns
     Literal(Literal),
 }

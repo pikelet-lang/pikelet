@@ -167,8 +167,9 @@ impl ToDoc for raw::Pattern {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             raw::Pattern::Ann(ref pattern, Embed(ref ty)) => pretty_ann(&pattern.inner, &ty.inner),
-            raw::Pattern::Literal(ref literal) => literal.to_doc(),
             raw::Pattern::Binder(_, ref binder) => pretty_binder(binder),
+            raw::Pattern::Var(_, Embed(ref var)) => pretty_var(var),
+            raw::Pattern::Literal(ref literal) => literal.to_doc(),
         }
     }
 }
@@ -267,8 +268,9 @@ impl ToDoc for Pattern {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Pattern::Ann(ref pattern, Embed(ref ty)) => pretty_ann(&pattern.inner, &ty.inner),
-            Pattern::Literal(ref literal) => literal.to_doc(),
             Pattern::Binder(ref binder) => pretty_binder(binder),
+            Pattern::Var(Embed(ref var)) => pretty_var(var),
+            Pattern::Literal(ref literal) => literal.to_doc(),
         }
     }
 }

@@ -97,6 +97,8 @@ pub enum Pattern {
     Ann(RcPattern, Embed<RcTerm>),
     /// Patterns that bind variables
     Binder(ByteSpan, Binder<String>),
+    /// Patterns to be compared structurally with a variable in scope
+    Var(ByteSpan, Embed<Var<String>>),
     /// Literal patterns
     Literal(Literal),
 }
@@ -106,7 +108,7 @@ impl Pattern {
     pub fn span(&self) -> ByteSpan {
         match *self {
             Pattern::Ann(ref pattern, Embed(ref ty)) => pattern.span().to(ty.span()),
-            Pattern::Binder(span, _) => span,
+            Pattern::Var(span, _) | Pattern::Binder(span, _) => span,
             Pattern::Literal(ref literal) => literal.span(),
         }
     }

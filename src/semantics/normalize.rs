@@ -206,7 +206,7 @@ where
             } else {
                 for clause in clauses {
                     let (pattern, body) = clause.clone().unbind();
-                    if let Some(mappings) = match_value(&pattern, &head) {
+                    if let Some(mappings) = match_value(env, &pattern, &head)? {
                         let mappings = mappings
                             .into_iter()
                             .map(|(free_var, value)| (free_var, RcTerm::from(&*value.inner)))
@@ -230,19 +230,30 @@ where
 
 /// If the pattern matches the value, this function returns the substitutions
 /// needed to apply the pattern to some body expression
-pub fn match_value(
+pub fn match_value<Env>(
+    env: &Env,
     pattern: &RcPattern,
     value: &RcValue,
-) -> Option<Vec<(FreeVar<String>, RcValue)>> {
+) -> Result<Option<Vec<(FreeVar<String>, RcValue)>>, InternalError>
+where
+    Env: DefinitionEnv,
+{
     match (&*pattern.inner, &*value.inner) {
+        (&Pattern::Binder(Binder(ref free_var)), _) => {
+            Ok(Some(vec![(free_var.clone(), value.clone())]))
+        },
+        (&Pattern::Var(Embed(Var::Free(ref free_var))), _) => {
+            match env.get_definition(free_var).map(|term| nf_term(env, term)) {
+                Some(Ok(ref term)) if term == value => Ok(Some(vec![])),
+                Some(Ok(_)) | None => Ok(None),
+                Some(Err(err)) => Err(err),
+            }
+        },
         (&Pattern::Literal(ref pattern_lit), &Value::Literal(ref value_lit))
             if pattern_lit == value_lit =>
         {
-            Some(vec![])
+            Ok(Some(vec![]))
         },
-        (&Pattern::Binder(Binder(ref free_var)), _) => {
-            Some(vec![(free_var.clone(), value.clone())])
-        },
-        (_, _) => None,
+        (_, _) => Ok(None),
     }
 }

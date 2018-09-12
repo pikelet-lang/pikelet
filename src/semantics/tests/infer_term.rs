@@ -397,7 +397,6 @@ fn case_expr_bool() {
 }
 
 #[test]
-#[ignore]
 fn case_expr_bool_bad() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
