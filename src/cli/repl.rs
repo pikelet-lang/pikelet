@@ -11,7 +11,7 @@ use std::fs::File;
 use term_size;
 
 use semantics::{self, DeclarationEnv, DefinitionEnv, GlobalEnv, TcEnv};
-use syntax::parse;
+use syntax::{parse, Label};
 use syntax::translation::DesugarEnv;
 use syntax::core::{Module, Item};
 
@@ -91,7 +91,6 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
     let mut tc_env = TcEnv::default();
-    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);
@@ -106,8 +105,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     }
 
     // TODO: Load files
-    load_module(::load_prelude(&mut codemap), &mut tc_env, &mut desugar_env);
+    load_module(::load_prelude(&mut codemap), &mut tc_env);
 
+    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
+    
     loop {
         match interface.read_line()? {
             ReadResult::Input(line) => {
@@ -240,13 +241,11 @@ fn eval_print(
 }
 
 
-fn load_module(m: Module, tc_env: &mut TcEnv, desugar_env: &mut DesugarEnv) {
-    eprintln!("Loading module...");
+fn load_module(m: Module, tc_env: &mut TcEnv) {
     let mut errors = Vec::new();
     for item in m.items {
         match item {
             Item::Declaration{label: _, binder: Binder(free_var), term} => {
-                eprintln!("Decl: {:?}", free_var);
                 match semantics::nf_term(&*tc_env, &term) {
                     Ok(value) => tc_env.insert_declaration(free_var, value),
                     Err(err) => errors.push(err),
@@ -254,7 +253,6 @@ fn load_module(m: Module, tc_env: &mut TcEnv, desugar_env: &mut DesugarEnv) {
             },
             Item::Definition{label: Label(name), binder: Binder(free_var), term} => {
                 tc_env.insert_definition(free_var, term);
-                desugar_env.locals.insert(name, free_var);
             },
         }
     }
