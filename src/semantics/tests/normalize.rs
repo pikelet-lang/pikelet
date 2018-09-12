@@ -251,7 +251,9 @@ mod nf_term {
             in
                 x
         "#;
-        let expected_expr = r#""helloo""#;
+        let expected_expr = r#"
+            "helloo"
+        "#;
 
         assert_term_eq!(
             parse_nf_term(&mut codemap, &tc_env, given_expr),
@@ -270,7 +272,74 @@ mod nf_term {
             in
                 x
         "#;
-        let expected_expr = r#""helloo""#;
+        let expected_expr = r#"
+            "helloo"
+        "#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
+
+    #[test]
+    fn if_true() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r#"
+            if true then "true" else "false"
+        "#;
+        let expected_expr = r#"
+            "true"
+        "#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
+
+    #[test]
+    fn if_false() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r#"
+            if false then "true" else "false"
+        "#;
+        let expected_expr = r#"
+            "false"
+        "#;
+
+        assert_term_eq!(
+            parse_nf_term(&mut codemap, &tc_env, given_expr),
+            parse_nf_term(&mut codemap, &tc_env, expected_expr),
+        );
+    }
+
+    #[test]
+    fn if_eval_cond() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r#"
+            let is-hi (greeting : String) = case greeting of {
+                    "hi" => true;
+                    _ => false;
+                };
+            in
+                record {
+                    test-hi = if is-hi "hi" then "true" else "false";
+                    test-bye = if is-hi "bye" then "true" else "false";
+                }
+        "#;
+        let expected_expr = r#"
+            record {
+                test-hi = "true";
+                test-bye = "false";
+            }
+        "#;
 
         assert_term_eq!(
             parse_nf_term(&mut codemap, &tc_env, given_expr),
