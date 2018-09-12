@@ -119,9 +119,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
         match ::load_file(&filemap) {
             Ok(m) => load_module(m, &mut tc_env, &codemap, &writer),
             Err(e) => {
-                writeln!(writer.lock(), "Error loading module {}:", path.display())?;
+                let mut writer = writer.lock();
+                writeln!(writer, "Error loading module {}:", path.display())?;
                 for err in e {
-                    codespan_reporting::emit(writer.lock(), &codemap, &err)?;
+                    codespan_reporting::emit(&mut writer, &codemap, &err)?;
                 }
             },
         };
@@ -145,9 +146,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => {
+                        let mut writer = writer.lock();
                         for err in errs {
                             let diagnostic = err.to_diagnostic();
-                            codespan_reporting::emit(writer.lock(), &codemap, &diagnostic)?;
+                            codespan_reporting::emit(&mut writer, &codemap, &diagnostic)?;
                         }
                     },
                     Err(EvalPrintError::Type(err)) => {
@@ -277,8 +279,9 @@ fn load_module(m: Module, tc_env: &mut TcEnv, codemap: &CodeMap, writer: &Standa
         }
     }
     if errors.len() != 0 {
+        let mut writer = writer.lock();
         for err in errors {
-            let _ = codespan_reporting::emit(writer.lock(), codemap, &err.to_diagnostic());
+            let _ = codespan_reporting::emit(&mut writer, codemap, &err.to_diagnostic());
         }
     }
 }
