@@ -6,8 +6,8 @@ use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
 use moniker::Binder;
-use std::path::{PathBuf, Path};
-use std::fs::File;
+use std::path::PathBuf;
+use std::io::Write;
 use term_size;
 
 use semantics::{self, DeclarationEnv, DefinitionEnv, GlobalEnv, TcEnv};
@@ -105,8 +105,28 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     }
 
     // TODO: Load files
-    load_module(::load_prelude(&mut codemap), &mut tc_env);
+    load_module(::load_prelude(&mut codemap), &mut tc_env, &codemap, &writer);
 
+    for path in opts.files.iter() {
+        let filemap = match codemap.add_filemap_from_disk(path) {
+            Ok(file) => file,
+            Err(err) => {
+                writeln!(writer.lock(), "Error reading module {}: {}", path.display(), err)?;
+                continue;
+            },
+        };
+
+        match ::load_file(&filemap) {
+            Ok(m) => load_module(m, &mut tc_env, &codemap, &writer),
+            Err(e) => {
+                writeln!(writer.lock(), "Error loading module {}:", path.display())?;
+                for err in e {
+                    codespan_reporting::emit(writer.lock(), &codemap, &err)?;
+                }
+            },
+        };
+    }
+    
     let mut desugar_env = DesugarEnv::new(tc_env.mappings());
     
     loop {
@@ -127,7 +147,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                     Err(EvalPrintError::Parse(errs)) => {
                         for err in errs {
                             let diagnostic = err.to_diagnostic();
-                            codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                            codespan_reporting::emit(writer.lock(), &codemap, &diagnostic)?;
                         }
                     },
                     Err(EvalPrintError::Type(err)) => {
@@ -241,7 +261,7 @@ fn eval_print(
 }
 
 
-fn load_module(m: Module, tc_env: &mut TcEnv) {
+fn load_module(m: Module, tc_env: &mut TcEnv, codemap: &CodeMap, writer: &StandardStream) {
     let mut errors = Vec::new();
     for item in m.items {
         match item {
@@ -251,13 +271,15 @@ fn load_module(m: Module, tc_env: &mut TcEnv) {
                     Err(err) => errors.push(err),
                 }
             },
-            Item::Definition{label: Label(name), binder: Binder(free_var), term} => {
+            Item::Definition{label: Label(_name), binder: Binder(free_var), term} => {
                 tc_env.insert_definition(free_var, term);
             },
         }
     }
     if errors.len() != 0 {
-        eprintln!("{:?}", errors);
+        for err in errors {
+            let _ = codespan_reporting::emit(writer.lock(), codemap, &err.to_diagnostic());
+        }
     }
 }
 
