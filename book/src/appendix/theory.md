@@ -713,7 +713,7 @@ we project on them, we define \\(\fieldsubst(-,-,-)\\) as:
 ### Universe shifting
 
 We implement explicit level shifts, giving us something like what Conor McBride
-describes in his blog post, [Universe Hierarchies][universe-hierarchies].
+describes in his blog post, [universe hierarchies][universe-hierarchies].
 
 We define \\(\shift(-,-)\\) for values:
 
@@ -740,7 +740,14 @@ We define \\(\shift(-,-)\\) for values:
 \end{array}
 \\]
 
+> **NOTE**:
+> We might want to investigate making this shifting operator more expressive and
+> 'first class', perhaps as was described in [Dependently typed lambda calculus
+> with a lifting operator][dtlc-with-lifts]. For now this seems to be expressive
+> enough for most use cases that our users might run into.
+
 [universe-hierarchies]: https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/
+[dtlc-with-lifts]: http://www-sop.inria.fr/members/Damien.Rouhling/data/internships/M1Report.pdf
 
 ### Pattern matching
 
