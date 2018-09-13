@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="../language/types-of-types.html"><strong aria-hidden="true">2.6.</strong> Types of types</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html" class="active"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="../index.html">Pikelet</a></li><li><a href="../installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="../language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="../language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="../language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="../language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="../language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="../language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="../language/universes.html"><strong aria-hidden="true">2.6.</strong> Universes</a></li></ol></li><li><a href="../appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="../appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="../appendix/theory.html" class="active"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="../appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="../appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -808,7 +808,7 @@ i \leqslant j
 \]</p>
 <a class="header" href="#universe-shifting" id="universe-shifting"><h3>Universe shifting</h3></a>
 <p>We implement explicit level shifts, giving us something like what Conor McBride
-describes in his blog post, <a href="https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/">Universe Hierarchies</a>.</p>
+describes in his blog post, <a href="https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/">universe hierarchies</a>.</p>
 <p>We define \(\shift(-,-)\) for values:</p>
 <p>\[
 \begin{array}{llrl}
@@ -832,6 +832,13 @@ describes in his blog post, <a href="https://pigworker.wordpress.com/2015/01/09/
 \\[2em]
 \end{array}
 \]</p>
+<blockquote>
+<p><strong>NOTE</strong>:
+We might want to investigate making this shifting operator more expressive and
+'first class', perhaps as was described in <a href="http://www-sop.inria.fr/members/Damien.Rouhling/data/internships/M1Report.pdf">Dependently typed lambda calculus
+with a lifting operator</a>. For now this seems to be expressive
+enough for most use cases that our users might run into.</p>
+</blockquote>
 <a class="header" href="#pattern-matching" id="pattern-matching"><h3>Pattern matching</h3></a>
 <p>This judement takes an expression \(\wexpr\) in weak head normal form, and a
 pattern \(\tpat\) and returns a substitution \(\theta\) with the matched bindings.</p>
