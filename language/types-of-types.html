@@ -144,35 +144,79 @@
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
 Type
 </code></pre>
-<p>You might then ask, “what is the type of <code>Type</code>?”</p>
+<p>Naturally, you might then wonder, “what is the type of <code>Type</code>?” That's a good
+question! If <code>Type</code> were its own type, ie. <code>Type : Type</code>, it would lead
+situations like <a href="https://en.wikipedia.org/wiki/Girard%27s_paradox">Girard's paradox</a>, (the type theory equivalent
+of the more well-known <a href="https://en.wikipedia.org/wiki/Russell%27s_paradox">Russel's paradox</a> in set theory).
+Instead we create ourselves a new <em>level</em> of types called <code>Type^1</code>:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; :t Type
-Type 1
+Type^1
 </code></pre>
-<p>Note that <code>Type</code> is actually just syntactic sugar for <code>Type 0</code>:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
-Type 1
+<p>We keep incrementing the levels, giving us a hierarchy of <em>types</em>
+(or <em>universes</em>):</p>
+<pre><code class="language-pikelet">Type : Type^1 : Type^2 : Type^3 : ...
 </code></pre>
-<p>In fact, Pikelet has an infinite number of 'universes', each one 'bigger' than the
-previous:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type 0
-Type 1
-Pikelet&gt; :t Type 1
-Type 2
-Pikelet&gt; :t Type 2
-Type 3
-...
+<p>We call the number given to each universe the <em>level</em> of that universe. You can
+think of these as larger and larger sets, with the smaller universes being
+contained within the larger universes:</p>
+<pre><code>.- Type^2 -----------------------------------------------------------------------.
+|                                                    Array n Type^1              |
+|                                                                                |
+|  .- Type^1 -----------------------------------------------------------------.  |
+|  |                                                                          |  |
+|  |  .- Type -------------------------------.                                |  |
+|  |  |                Array n String        |                                |  |
+|  |  |                                      |                                |  |
+|  |  |            Record { x : F32 }        |          Array n Type          |  |
+|  |  |                                      |                                |  |
+|  |  |  .- I32 --------------.              |                                |  |
+|  |  |  | ..., -1, 0, 1, ... |              |       Nat -&gt; Type -&gt; Type      |  |
+|  |  |  '--------------------'              |                                |  |
+|  |  |                                      |                                |  |
+|  |  |  .- Record {} -.   .- Bool -------.  |                                |  |
+|  |  |  |  record {}  |   |  true, false |  |          Type -&gt; Type          |  |
+|  |  |  '-------------'   '--------------'  |                                |  |
+|  |  |                                      |                                |  |
+|  |  |  .- String ----------------------.   |  .- Record { t : Type } ----.  |  |
+|  |  |  | &quot;hello&quot;, &quot;byee!&quot;, &quot;hoho&quot;, ... |   |  |  record { t = String },  |  |  |
+|  |  |  '-------------------------------'   |  |  record { t = U32 }, ... |  |  |
+|  |  '--------------------------------------'  '--------------------------'  |  |
+|  '--------------------------------------------------------------------------'  |
+'--------------------------------------------------------------------------------'
 </code></pre>
-<p>You can think of these as larger and larger sets, with the smaller type
-universes being contained within the larger type universes:</p>
-<blockquote>
-<p>TODO: Put a nice SVG diagram of the sets of types here</p>
-<pre><code>(Type 2
-  (Type 1
-    (Type 0
-      (I32, F32, String,
-        (1, 4.0, &quot;hello&quot;)))))
+<a class="header" href="#type0" id="type0"><h2>Type^0</h2></a>
+<p>Note that <code>Type</code> is actually just sugar for <code>Type^0</code>:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t Type^0
+Type^1
 </code></pre>
-</blockquote>
+<a class="header" href="#shifting-universes" id="shifting-universes"><h2>Shifting universes</h2></a>
+<p>Often we'll write definitions in terms of <code>Type</code>, without worrying about the
+universe levels. For example the identity function can be defined with a type
+parameter in the universe of <code>Type</code>:</p>
+<pre><code>id : (a : Type) -&gt; a -&gt; a
+id a x = x
+</code></pre>
+<p>This then allows us to use it with values:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; id String &quot;hello&quot;   -- ok!
+Pikelet&gt; id I32 1            -- ok!
+</code></pre>
+<p>Sadly because of our universe hierarchy, we can't use our identity function at
+the type level!</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; id Type String                 -- error, expected Type!
+Pikelet&gt; id ((a : Type) -&gt; a -&gt; a) id   -- error, expected Type!
+Pikelet&gt; id Type^1 Type                 -- error, expected Type!
+</code></pre>
+<p>This would be terrible for code reuse, but thankfully we have a simple solution!
+We allow identifiers to be <em>shifted</em> to the correct universe level using the <code>^</code>
+notation. This shifts the given definition to the correct universe level:</p>
+<pre><code class="language-pikelet-repl">:t id^1
+(a : Type^1) -&gt; a^1 -&gt; a^1
+</code></pre>
+<p>We can then use the shifted identity functions like so:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; id^1 Type String                    -- ok!
+Pikelet&gt; id^1 ((a : Type) -&gt; a -&gt; a) id      -- ok!
+Pikelet&gt; id^2 Type^1 Type                    -- ok!
+</code></pre>
 
                     </main>
 
