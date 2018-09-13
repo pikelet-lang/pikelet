@@ -434,7 +434,7 @@ Num-F64-Add : Num F64 = record { add = Monoid-F64-Add; mul = Monoid-F64-Mul };
 ||| - etc.
 Category = Record {
     ||| An object in the category
-    Object : Type^1; -- FIXME: universe polymorphism!
+    Object : Type;
     ||| Arrows between the objects in the category
     Arrow : Object -> Object -> Type;
     ||| The identity arrow
@@ -464,7 +464,7 @@ seq C = C.seq;
 -- compose C a b c f g = seq C a b c g f;
 
 
-Category-Function : Category = record {
+Category-Function : Category^1 = record {
     Object = Type;
     Arrow (a : Type) (b : Type) = a -> b;
     id (a : Type) (x : a) = x;
@@ -499,7 +499,7 @@ map : (F : Functor) (a b : F.Source.Object) -> F.Source.Arrow a b -> F.Target.Ar
 map F = F.map;
 
 
-Endofunctor-Function : Functor = record {
+Endofunctor-Function : Functor^1 = record {
     Source = Category-Function;
     Target = Category-Function;
     Map x = x;
