@@ -219,13 +219,9 @@ fn eval_print(
             let raw_term = parse_term.desugar(desugar_env);
             let (_, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
-            println!(
-                "{}",
-                inferred
-                    .resugar(tc_env.resugar_env())
-                    .to_doc()
-                    .pretty(term_width())
-            );
+            let inferred = inferred.resugar(tc_env.resugar_env());
+
+            println!("{}", inferred.to_doc().group().pretty(term_width()));
         },
 
         ReplCommand::NoOp | ReplCommand::Error(_) => {},
