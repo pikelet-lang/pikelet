@@ -17,6 +17,7 @@ A formalization of the semantics for type checking and normalizing Pikelet.
   - [Normalization](#normalization)
   - [Type checking](#type-checking)
   - [Type inference](#type-inference)
+  - [Subtyping](#subtyping)
   - [Universe shifting](#universe-shifting)
   - [Pattern matching](#pattern-matching)
   - [Type checking of patterns](#type-checking-of-patterns)
@@ -24,8 +25,8 @@ A formalization of the semantics for type checking and normalizing Pikelet.
 
 ## Introduction
 
-At its core, Pikelet is a dependently typed lambda calculus with a stratified
-universe hierarchy.
+At its core, Pikelet is a dependently typed lambda calculus with a cumulative
+universe hierarchy with explicit level shifts.
 
 > **Note:**
 > This document is intended for those who are interested in looking deeper into the formal foundations of Pikelet.
@@ -93,6 +94,7 @@ etc. If you would like to discuss this with us, please check out
 \\newcommand{\eval}[3]{ #1 \vdash #2 \hookrightarrow #3 }
 \\newcommand{\check}[4]{ #1 \vdash #2 \uparrow #3 \leadsto #4 }
 \\newcommand{\infer}[4]{ #1 \vdash #2 \downarrow #3 \leadsto #4 }
+\\newcommand{\subty}[3]{ #1 \vdash #2 \preccurlyeq #3 }
 \\newcommand{\match}[3]{ \Match(#1,#2) \Longrightarrow #3 }
 \\newcommand{\checkpat}[5]{ #1 \vdash #2 \uparrow #3 \leadsto #4 \Longrightarrow #5 }
 \\newcommand{\inferpat}[5]{ #1 \vdash #2 \downarrow #3 \leadsto #4 \Longrightarrow #5 }
@@ -163,7 +165,7 @@ etc. If you would like to discuss this with us, please check out
                     &   | & \case{\rexpr}{\overline{\rpat_i \rightarrow \rexpr_i}^{;}}
                                                                 & \text{case expressions} \\\\
                     &   | & \RecordCons{\label \as \binder:\rtype_1}{\rtype_2} & \text{record type extension} \\\\
-                    &   | & \RecordEmpty{}                      & \text{empty record type} \\\\
+                    &   | & \RecordEmpty                        & \text{empty record type} \\\\
                     &   | & \record{\label=\rexpr_1, \rexpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
                     &   | & \rexpr.\label                       & \text{record projection} \\\\
@@ -201,7 +203,7 @@ The core term syntax skips holes, ensuring that everything is fully elaborated:
                     &   | & \ifte{\texpr_1}{\texpr_2}{\texpr_3} & \text{if expressions} \\\\
                     &   | & \case{\texpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} & \text{case expressions} \\\\
                     &   | & \RecordCons{\label \as \binder:\ttype_1}{\ttype_2} & \text{record type extension} \\\\
-                    &   | & \RecordEmpty{}                      & \text{empty record type} \\\\
+                    &   | & \RecordEmpty                        & \text{empty record type} \\\\
                     &   | & \record{\label=\texpr_1, \texpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
                     &   | & \texpr.\label                       & \text{record projection} \\\\
@@ -238,7 +240,7 @@ and neutral terms (\\(\nexpr\\)):
                     &   | & \Pi{\binder:\vtype_1}{\vtype_2}     & \text{dependent function type} \\\\
                     &   | & \lam{\binder:\vtype}{\vexpr}        & \text{functions} \\\\
                     &   | & \RecordCons{\label \as \binder:\vtype_1}{\vtype_2} & \text{record type extension} \\\\
-                    &   | & \RecordEmpty{}                      & \text{empty record type} \\\\
+                    &   | & \RecordEmpty                        & \text{empty record type} \\\\
                     &   | & \record{\label=\vexpr_1, \vexpr_2}  & \text{record extension} \\\\
                     &   | & \record{}                           & \text{empty record} \\\\
     \\\\
@@ -276,6 +278,7 @@ With that in mind, the next sections will describe the following judgments:
 | [normalization](#normalization)                           | \\(\eval{ \ctx }{ \texpr }{ \vexpr }\\)                       | \\(\ctx\\), \\(\rexpr\\)                  | \\(\vexpr\\)                              |
 | [type checking](#type-checking)                           | \\(\check{ \ctx }{ \rexpr }{ \vtype }{ \texpr }\\)            | \\(\ctx\\), \\(\rexpr\\), \\(\vtype\\)    | \\(\texpr\\)                              |
 | [type inference](#type-inference)                         | \\(\infer{ \ctx }{ \rexpr }{ \vtype }{ \texpr }\\)            | \\(\ctx\\), \\(\rexpr\\)                  | \\(\vtype\\), \\(\texpr\\)                |
+| [subtyping](#subtyping)                                   | \\(\subty{ \ctx }{ \vtype_1 }{ \vtype_2 }\\)                  | \\(\ctx\\), \\(\vtype_1\\), \\(\vtype_2\\)|                                           |
 | [pattern matching](#pattern-matching)                     | \\(\match{ \wexpr }{ \tpat }{ \theta }\\)                     | \\(\wexpr\\), \\(\tpat\\)                 | \\(\theta\\)                              |
 | [type checking of patterns](#type-checking-of-patterns)   | \\(\checkpat{ \ctx }{ \rpat }{ \vtype }{ \tpat }{ \ctx' }\\)  | \\(\ctx\\), \\(\rpat\\), \\(\vtype\\)     | \\(\tpat\\), \\(\ctx'\\)                  |
 | [type inference of patterns](#type-inference-of-patterns) | \\(\inferpat{ \ctx }{ \rpat }{ \vtype }{ \tpat }{ \ctx' }\\)  | \\(\ctx\\), \\(\rpat\\),                  | \\(\vtype\\), \\(\tpat\\), \\(\ctx'\\)    |
@@ -423,7 +426,7 @@ in the context.
     }
     \\\\[2em]
     \rule{E-EMPTY-RECORD-TYPE}{}{
-        \eval{ \ctx }{ \RecordEmpty{} }{ \RecordEmpty{} }
+        \eval{ \ctx }{ \RecordEmpty }{ \RecordEmpty }
     }
     \\\\[2em]
     \rule{E-EMPTY-RECORD}{}{
@@ -510,20 +513,13 @@ elaborated form.
     \rule{C-CONV}{
         \infer{ \ctx }{ \rexpr }{ \vtype_2 }{ \texpr }
         \qquad
-        \vtype_1 \equiv_{\alpha} \vtype_2
+        \subty{ \ctx }{ \vtype_1 }{ \vtype_2 }
     }{
         \check{ \ctx }{ \rexpr }{ \vtype_1 }{ \texpr }
     }
     \\\\[2em]
 \end{array}
 \\]
-
-In C-CONV we flip the direction of the type checker, comparing the type of the
-expected term for [alpha equivalence] with the inferred term. Note that we could
-alternatively check for subtyping instead of alpha equivalence. This could be
-useful for implementing a cumulative universe hierarchy.
-
-[alpha equivalence]: https://en.wikipedia.org/wiki/Lambda_calculus#Alpha_equivalence
 
 ### Type inference
 
@@ -573,9 +569,10 @@ returns its elaborated form.
         \qquad
         \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \check{ \extendCtx{\ctx}{\declItem{\var{}}{\vtype_1}} }{ \rtype_2 }{ \Type{j} }{ \ttype_2 }
+        \check{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_1}} }{ \rtype_2 }{ \Type{j} }{ \ttype_2 }
     }{
-        \infer{ \ctx }{ \Pi{x:\rtype_1}{\rtype_2} }{ \Type{\max(i,j)} }{ \Pi{x:\ttype_1}{\ttype_2} }
+        \infer{ \ctx }{ \Pi{\binder:\rtype_1}{\rtype_2} }{ \Type{\max(i,j)} }
+            { \Pi{\binder:\ttype_1}{\ttype_2} }
     }
     \\\\[2em]
     \rule{I-LAM}{
@@ -585,7 +582,8 @@ returns its elaborated form.
         \qquad
         \check{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_1}} }{ \rexpr}{ \vtype_2 }{ \texpr }
     }{
-        \infer{ \ctx }{ \lam{\binder:\rtype}{\rexpr} }{ \Pi{\binder:\vtype_1}{\vtype_2} }{ \lam{\binder:\ttype}{\texpr} }
+        \infer{ \ctx }{ \lam{\binder:\rtype}{\rexpr} }
+            { \Pi{\binder:\vtype_1}{\vtype_2} }{ \lam{\binder:\ttype}{\texpr} }
     }
     \\\\[2em]
     \rule{I-APP}{
@@ -603,7 +601,7 @@ returns its elaborated form.
         \qquad
         \eval{ \ctx }{ \ttype_1 }{ \vtype_1 }
         \qquad
-        \infer{ \extendCtx{\ctx}{\declItem{\var{}}{\vtype_1}} }{ \rtype_2 }{ \Type{j} }{ \ttype_2 }
+        \infer{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_1}} }{ \rtype_2 }{ \Type{j} }{ \ttype_2 }
     }{
         \infer{ \ctx }
             { \RecordCons{\label \as \binder:\rtype_1}{\rtype_2} }
@@ -612,7 +610,7 @@ returns its elaborated form.
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD-TYPE}{}{
-        \infer{ \ctx }{ \RecordEmpty{} }{ \Type{0} }{ \RecordEmpty{} }
+        \infer{ \ctx }{ \RecordEmpty }{ \Type{0} }{ \RecordEmpty }
     }
     \\\\[2em]
     \rule{I-RECORD}{
@@ -628,7 +626,7 @@ returns its elaborated form.
     }
     \\\\[2em]
     \rule{I-EMPTY-RECORD}{}{
-        \infer{ \ctx }{ \record{} }{ \RecordEmpty{} }{ \record{} }
+        \infer{ \ctx }{ \record{} }{ \RecordEmpty }{ \record{} }
     }
     \\\\[2em]
     \rule{I-PROJ}{
@@ -667,6 +665,51 @@ we project on them, we define \\(\fieldsubst(-,-,-)\\) as:
 \end{array}
 \\]
 
+### Subtyping
+
+\\[
+\boxed{
+    \subty{ \ctx }{ \vtype_1 }{ \vtype_2 }
+}
+\\\\[2em]
+\begin{array}{cl}
+    \rule{ST-TYPE}{
+        i \leqslant j
+    }{
+        \subty{ \ctx }{ \Type{i} }{ \Type{j} }
+    }
+    \\\\[2em]
+    \rule{ST-PI}{
+        \subty{ \ctx }{ \vtype_2 }{ \vtype_1 }
+        \qquad
+        \subty{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_2}} }{ \vtype_3 }{ \vtype_4 }
+    }{
+        \subty{ \ctx }{ \Pi{\binder:\vtype_1}{\vtype_2} }
+            { \Pi{\binder:\vtype_3}{\vtype_4} }
+    }
+    \\\\[2em]
+    \rule{ST-RECORD-TYPE}{
+        \subty{ \ctx }{ \vtype_1 }{ \vtype_3 }
+        \qquad
+        \subty{ \extendCtx{\ctx}{\declItem{\binder}{\vtype_1}} }{ \vtype_2 }{ \vtype_4 }
+    }{
+        \subty{ \ctx }{ \RecordCons{\label \as \binder:\vtype_1}{\vtype_2} }
+            { \RecordCons{\label \as \binder:\vtype_3}{\vtype_4} }
+    }
+    \\\\[2em]
+    \rule{ST-EMPTY-RECORD-TYPE}{}{
+        \subty{ \ctx }{ \RecordEmpty }{ \RecordEmpty }
+    }
+    \\\\[2em]
+    \rule{ST-ALPHA-EQ}{
+        \vtype_1 \equiv_{\alpha} \vtype_2
+    }{
+        \subty{ \ctx }{ \vtype_1 }{ \vtype_2 }
+    }
+    \\\\[2em]
+\end{array}
+\\]
+
 ### Universe shifting
 
 We implement explicit level shifts, giving us something like what Conor McBride
@@ -683,7 +726,6 @@ We define \\(\shift(-,-)\\) for values:
         % FIXME: define pattern shifting
         \case{\shift(\nexpr, j)}{\overline{\shift(\tpat_i, j) \rightarrow \shift(\texpr_i, j)}^{;}} \\\\
     \shift(\nexpr.\label,                                       & j) & = & \shift(\nexpr, j).\label \\\\
-    \\\\
     \shift(\Type{i},                                            & j) & = & \Type{i + j} \\\\
     \shift(\Bool,                                               & j) & = & \Bool \\\\
     \shift(\true,                                               & j) & = & \true \\\\
@@ -691,7 +733,7 @@ We define \\(\shift(-,-)\\) for values:
     \shift(\Pi{\binder:\vtype_1}{\vtype_2},                     & j) & = & \Pi{\binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\\\
     \shift(\lam{\binder:\vtype}{\vexpr},                        & j) & = & \lam{\binder:\shift(\vtype, j)}{\shift(\vexpr, j)} \\\\
     \shift(\RecordCons{\label \as \binder:\vtype_1}{\vtype_2},  & j) & = & \RecordCons{\label \as \binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\\\
-    \shift(\RecordEmpty{},                                      & j) & = & \RecordEmpty{} \\\\
+    \shift(\RecordEmpty,                                        & j) & = & \RecordEmpty \\\\
     \shift(\record{\label=\vexpr_1, \vexpr_2},                  & j) & = & \record{\label=\shift(\vexpr_1, j), \shift(\vexpr_2, j)} \\\\
     \shift(\record{},                                           & j) & = & \record{} \\\\
     \\\\[2em]
@@ -754,7 +796,7 @@ pattern \\(\tpat\\) and returns a substitution \\(\theta\\) with the matched bin
     \rule{CP-CONV}{
         \inferpat{ \ctx }{ \rpat }{ \vtype_2 }{ \tpat }{ \ctx' }
         \qquad
-        \vtype_1 \equiv_{\alpha} \vtype_2
+        \subty{ \ctx }{ \vtype_1 }{ \vtype_2 }
     }{
         \checkpat{ \ctx }{ \rpat }{ \vtype_1 }{ \tpat }{ \ctx' }
     }

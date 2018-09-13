@@ -8,7 +8,7 @@ use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{
-    Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Type, Value,
+    Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Value,
 };
 use syntax::raw;
 use syntax::translation::Resugar;
@@ -141,6 +141,59 @@ where
     }
 
     Ok(Module { items })
+}
+
+/// Returns true if `ty1` is a subtype of `ty2`
+fn is_subtype<Env>(env: &Env, ty1: &RcType, ty2: &RcType) -> bool
+where
+    Env: DeclarationEnv,
+{
+    match (&*ty1.inner, &*ty2.inner) {
+        // ST-TYPE
+        (&Value::Universe(level1), &Value::Universe(level2)) => level1 <= level2,
+
+        // ST-PI
+        (&Value::Pi(ref scope1), &Value::Pi(ref scope2)) => {
+            let ((_, Embed(ann1)), body1, (Binder(free_var2), Embed(ann2)), body2) =
+                Scope::unbind2(scope1.clone(), scope2.clone());
+
+            is_subtype(env, &ann2, &ann1) && {
+                let mut env = env.clone();
+                env.insert_declaration(free_var2, ann2);
+                is_subtype(&env, &body1, &body2)
+            }
+        },
+
+        // ST-RECORD-TYPE, ST-EMPTY-RECORD-TYPE
+        (&Value::RecordType(ref scope1), &Value::RecordType(ref scope2)) => {
+            if scope1.unsafe_pattern.unsafe_patterns.len()
+                != scope2.unsafe_pattern.unsafe_patterns.len()
+            {
+                return false;
+            }
+
+            let (fields1, (), fields2, ()) = Scope::unbind2(scope1.clone(), scope2.clone());
+
+            let mut env = env.clone();
+            for (field1, field2) in
+                Iterator::zip(fields1.unnest().into_iter(), fields2.unnest().into_iter())
+            {
+                let (label1, Binder(free_var1), Embed(ty1)) = field1;
+                let (label2, _, Embed(ty2)) = field2;
+
+                if label1 == label2 && is_subtype(&env, &ty1, &ty2) {
+                    env.insert_declaration(free_var1, ty1);
+                } else {
+                    return false;
+                }
+            }
+
+            true
+        },
+
+        // ST-ALPHA-EQ
+        (_, _) => RcType::term_eq(ty1, ty2),
+    }
 }
 
 /// Ensures that the given term is a universe, returning the level of that
@@ -277,7 +330,7 @@ where
     }
 
     let (pattern, inferred_ty, declarations) = infer_pattern(env, raw_pattern)?;
-    if Type::term_eq(&inferred_ty, expected_ty) {
+    if is_subtype(env, &inferred_ty, expected_ty) {
         Ok((pattern, declarations))
     } else {
         Err(TypeError::Mismatch {
@@ -509,7 +562,7 @@ where
 
     // C-CONV
     let (term, inferred_ty) = infer_term(env, raw_term)?;
-    if Type::term_eq(&inferred_ty, expected_ty) {
+    if is_subtype(env, &inferred_ty, expected_ty) {
         Ok(term)
     } else {
         Err(TypeError::Mismatch {
@@ -799,6 +852,7 @@ where
 
                     match ty {
                         None => ty = Some(body_ty),
+                        // FIXME: use common subtype?
                         Some(ref ty) if RcValue::term_eq(&body_ty, ty) => {},
                         Some(ref ty) => {
                             return Err(TypeError::Mismatch {

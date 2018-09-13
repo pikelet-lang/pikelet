@@ -154,7 +154,9 @@ fn shift_universes() {
         test1 = id String "hello";
         test2 = id I32 1;
         test3 = id^1 Type String;
-        test4 = id^2 Type^1 Type;
+        test4 = id^2 Type String;
+        test5 = id^2 Type^1 String;
+        test6 = id^2 Type^1 Type;
 
         id1 : (a : Type^1) -> a -> a = id^1;
         id2 : (a : Type^2) -> a -> a = id^2;
@@ -283,9 +285,9 @@ fn shift_universes_too_much() {
     "#;
 
     let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
-    match check_module(&tc_env, &raw_module) {
-        Ok(_) => panic!("expected error"),
-        Err(TypeError::Mismatch { .. }) => {},
-        Err(err) => panic!("unexpected error: {}", err),
+    if let Err(err) = check_module(&tc_env, &raw_module) {
+        let writer = StandardStream::stdout(ColorChoice::Always);
+        codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
+        panic!("type error!")
     }
 }
