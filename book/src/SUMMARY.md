@@ -9,7 +9,7 @@
   - [Functions](./language/functions.md)
   - [Modules](./language/modules.md)
   - [Type inference](./language/type-inference.md)
-  - [Types of types](./language/types-of-types.md)
+  - [Universes](./language/universes.md)
 - [Appendix](./appendix/index.md)
   - [Design](./appendix/design.md)
   - [Theory](./appendix/theory.md)
