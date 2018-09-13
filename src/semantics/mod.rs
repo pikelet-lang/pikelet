@@ -8,11 +8,11 @@ use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{
-    Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Type, Value,
+    Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Value,
 };
 use syntax::raw;
 use syntax::translation::Resugar;
-use syntax::Level;
+use syntax::{Level, LevelShift};
 
 mod env;
 mod errors;
@@ -143,6 +143,59 @@ where
     Ok(Module { items })
 }
 
+/// Returns true if `ty1` is a subtype of `ty2`
+fn is_subtype<Env>(env: &Env, ty1: &RcType, ty2: &RcType) -> bool
+where
+    Env: DeclarationEnv,
+{
+    match (&*ty1.inner, &*ty2.inner) {
+        // ST-TYPE
+        (&Value::Universe(level1), &Value::Universe(level2)) => level1 <= level2,
+
+        // ST-PI
+        (&Value::Pi(ref scope1), &Value::Pi(ref scope2)) => {
+            let ((_, Embed(ann1)), body1, (Binder(free_var2), Embed(ann2)), body2) =
+                Scope::unbind2(scope1.clone(), scope2.clone());
+
+            is_subtype(env, &ann2, &ann1) && {
+                let mut env = env.clone();
+                env.insert_declaration(free_var2, ann2);
+                is_subtype(&env, &body1, &body2)
+            }
+        },
+
+        // ST-RECORD-TYPE, ST-EMPTY-RECORD-TYPE
+        (&Value::RecordType(ref scope1), &Value::RecordType(ref scope2)) => {
+            if scope1.unsafe_pattern.unsafe_patterns.len()
+                != scope2.unsafe_pattern.unsafe_patterns.len()
+            {
+                return false;
+            }
+
+            let (fields1, (), fields2, ()) = Scope::unbind2(scope1.clone(), scope2.clone());
+
+            let mut env = env.clone();
+            for (field1, field2) in
+                Iterator::zip(fields1.unnest().into_iter(), fields2.unnest().into_iter())
+            {
+                let (label1, Binder(free_var1), Embed(ty1)) = field1;
+                let (label2, _, Embed(ty2)) = field2;
+
+                if label1 == label2 && is_subtype(&env, &ty1, &ty2) {
+                    env.insert_declaration(free_var1, ty1);
+                } else {
+                    return false;
+                }
+            }
+
+            true
+        },
+
+        // ST-ALPHA-EQ
+        (_, _) => RcType::term_eq(ty1, ty2),
+    }
+}
+
 /// Ensures that the given term is a universe, returning the level of that
 /// universe and its elaborated form.
 fn infer_universe<Env>(env: &Env, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError>
@@ -170,7 +223,9 @@ where
     Env: GlobalEnv,
 {
     match expected_ty.free_var_app() {
-        Some((free_var, spine)) if spine.is_empty() => {
+        // Conservatively forcing the shift to be zero for now. Perhaps this
+        // could be relaxed in the future if it becomes a problem?
+        Some((free_var, LevelShift(0), spine)) if spine.is_empty() => {
             match *raw_literal {
                 raw::Literal::String(_, ref val) if *free_var == env.globals().string => {
                     return Ok(Literal::String(val.clone()));
@@ -239,11 +294,11 @@ where
     match *raw_literal {
         raw::Literal::String(_, ref value) => Ok((
             Literal::String(value.clone()),
-            RcValue::from(Value::from(Var::Free(env.globals().string.clone()))),
+            RcValue::from(Value::var(Var::Free(env.globals().string.clone()), 0)),
         )),
         raw::Literal::Char(_, value) => Ok((
             Literal::Char(value),
-            RcValue::from(Value::from(Var::Free(env.globals().char.clone()))),
+            RcValue::from(Value::var(Var::Free(env.globals().char.clone()), 0)),
         )),
         raw::Literal::Int(span, _) => Err(TypeError::AmbiguousIntLiteral { span }),
         raw::Literal::Float(span, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
@@ -275,7 +330,7 @@ where
     }
 
     let (pattern, inferred_ty, declarations) = infer_pattern(env, raw_pattern)?;
-    if Type::term_eq(&inferred_ty, expected_ty) {
+    if is_subtype(env, &inferred_ty, expected_ty) {
         Ok((pattern, declarations))
     } else {
         Err(TypeError::Mismatch {
@@ -311,13 +366,15 @@ where
             span,
             binder: binder.clone(),
         }),
-        raw::Pattern::Var(span, Embed(ref var)) => match *var {
+        raw::Pattern::Var(span, Embed(ref var), shift) => match *var {
             Var::Free(ref free_var) => match env.get_declaration(free_var) {
-                Some(ty) => Ok((
-                    RcPattern::from(Pattern::Var(Embed(var.clone()))),
-                    ty.clone(),
-                    vec![],
-                )),
+                Some(ty) => {
+                    let mut ty = ty.clone();
+                    ty.shift_universes(shift);
+                    let pattern = RcPattern::from(Pattern::Var(Embed(var.clone()), shift));
+
+                    Ok((pattern, ty, vec![]))
+                },
                 None => Err(TypeError::UndefinedName {
                     span,
                     free_var: free_var.clone(),
@@ -385,7 +442,7 @@ where
 
         // C-IF
         (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
-            let bool_ty = RcValue::from(Value::from(Var::Free(env.globals().bool.clone())));
+            let bool_ty = RcValue::from(Value::var(Var::Free(env.globals().bool.clone()), 0));
 
             let cond = check_term(env, raw_cond, &bool_ty)?;
             let if_true = check_term(env, raw_if_true, expected_ty)?;
@@ -463,7 +520,11 @@ where
         },
 
         (&raw::Term::Array(span, ref elems), ty) => match ty.free_var_app() {
-            Some((free_var, spine)) if *free_var == env.globals().array && spine.len() == 2 => {
+            // Conservatively forcing the shift to be zero for now. Perhaps this
+            // could be relaxed in the future if it becomes a problem?
+            Some((free_var, LevelShift(0), spine))
+                if *free_var == env.globals().array && spine.len() == 2 =>
+            {
                 let len = &spine[0];
                 let elem_ty = &spine[1];
                 if let Value::Literal(Literal::U64(len)) = **len {
@@ -482,7 +543,7 @@ where
                         .map(|elem| check_term(env, elem, elem_ty))
                         .collect::<Result<_, _>>()?,
                 )));
-            },
+            }
             Some(_) | None => {
                 return Err(TypeError::Internal(InternalError::Unimplemented {
                     span: Some(span),
@@ -501,7 +562,7 @@ where
 
     // C-CONV
     let (term, inferred_ty) = infer_term(env, raw_term)?;
-    if Type::term_eq(&inferred_ty, expected_ty) {
+    if is_subtype(env, &inferred_ty, expected_ty) {
         Ok(term)
     } else {
         Err(TypeError::Mismatch {
@@ -547,9 +608,14 @@ where
         },
 
         // I-VAR
-        raw::Term::Var(span, ref var) => match *var {
+        raw::Term::Var(span, ref var, shift) => match *var {
             Var::Free(ref free_var) => match env.get_declaration(free_var) {
-                Some(ty) => Ok((RcTerm::from(Term::Var(var.clone())), ty.clone())),
+                Some(ty) => {
+                    let mut ty = ty.clone();
+                    ty.shift_universes(shift);
+
+                    Ok((RcTerm::from(Term::Var(var.clone(), shift)), ty))
+                },
                 None => Err(TypeError::UndefinedName {
                     span,
                     free_var: free_var.clone(),
@@ -652,7 +718,7 @@ where
 
         // I-IF
         raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
-            let bool_ty = RcValue::from(Value::from(Var::Free(env.globals().bool.clone())));
+            let bool_ty = RcValue::from(Value::var(Var::Free(env.globals().bool.clone()), 0));
             let cond = check_term(env, raw_cond, &bool_ty)?;
             let (if_true, ty) = infer_term(env, raw_if_true)?;
             let if_false = check_term(env, raw_if_false, &ty)?;
@@ -786,6 +852,7 @@ where
 
                     match ty {
                         None => ty = Some(body_ty),
+                        // FIXME: use common subtype?
                         Some(ref ty) if RcValue::term_eq(&body_ty, ty) => {},
                         Some(ref ty) => {
                             return Err(TypeError::Mismatch {

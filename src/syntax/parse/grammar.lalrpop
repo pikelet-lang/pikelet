@@ -37,6 +37,7 @@ extern {
 
         // Symbols
         "\\" => Token::BSlash,
+        "^" => Token::Caret,
         ":" => Token::Colon,
         "," => Token::Comma,
         "." => Token::Dot,
@@ -44,6 +45,7 @@ extern {
         "=" => Token::Equal,
         "->" => Token::LArrow,
         "=>" => Token::LFatArrow,
+        "?" => Token::Question,
         ";" => Token::Semi,
 
         // Delimiters
@@ -129,7 +131,9 @@ AtomicPattern : Pattern = {
         Pattern::Parens(ByteSpan::new(start, end), Box::new(pattern))
     },
     <literal: Literal> => Pattern::Literal(literal),
-    <start: @L> <ident: Ident> => Pattern::Name(start, ident),
+    <start: @L> <ident: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
+        Pattern::Name(ByteSpan::new(start, end), ident, shift.map(|x| x as u32)) // FIXME: underflow?
+    },
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
         Pattern::Error(ByteSpan::new(start, end))
@@ -189,30 +193,23 @@ PiTerm: Term = {
 
 AppTerm: Term = {
     AtomicTerm,
-    <head: AtomicTerm> <args: AtomicTerm+> => {
-        if let (&Term::Universe(s1, None), &Term::Literal(Literal::Int(s2, value))) = (&head, &args[0]) {
-            Term::Universe(s1.to(s2), Some(value as u32)) // FIXME - overflow
-        } else {
-            Term::App(Box::new(head), args)
-        }
-    },
+    <head: AtomicTerm> <args: AtomicTerm+> => Term::App(Box::new(head), args),
 };
 
 AtomicTerm: Term = {
     <start: @L> "(" <term: Term> ")" <end: @R> => Term::Parens(ByteSpan::new(start, end), Box::new(term)),
-    <start: @L> "Type" <end: @R> => Term::Universe(ByteSpan::new(start, end), None),
+    <start: @L> "Type" <level: ("^" <"decimal literal">)?> <end: @R> => {
+        Term::Universe(ByteSpan::new(start, end), level.map(|x| x as u32)) // FIXME: underflow?
+    },
     <literal: Literal> => Term::Literal(literal),
     <start: @L> "[" <elems: (<Term> ";")*> <last: Term?> "]" <end: @R> => {
         let mut elems = elems;
         elems.extend(last);
         Term::Array(ByteSpan::new(start, end), elems)
     },
-    <start: @L> <ident: Ident> <end: @R> => {
-        if ident == "_" {
-            Term::Hole(ByteSpan::new(start, end))
-        } else {
-            Term::Name(start, ident)
-        }
+    <start: @L> "?" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
+    <start: @L> <ident: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
+        Term::Name(ByteSpan::new(start, end), ident, shift.map(|x| x as u32)) // FIXME: underflow?
     },
     <start: @L> "Record" "{" <fields: (<RecordTypeField> ";")*> <last: RecordTypeField?> "}" <end: @R> => {
         let mut fields = fields;

@@ -22,21 +22,23 @@ where
         Term::Literal(ref lit) => Ok(RcValue::from(Value::Literal(lit.clone()))),
 
         // E-VAR, E-VAR-DEF
-        Term::Var(ref var) => {
-            match *var {
-                Var::Free(ref name) => match env.get_definition(name) {
-                    Some(term) => nf_term(env, term),
-                    None => Ok(RcValue::from(Value::from(var.clone()))),
+        Term::Var(ref var, shift) => match *var {
+            Var::Free(ref name) => match env.get_definition(name) {
+                Some(term) => {
+                    let mut value = nf_term(env, term)?;
+                    value.shift_universes(shift);
+                    Ok(value)
                 },
+                None => Ok(RcValue::from(Value::var(var.clone(), shift))),
+            },
 
-                // We should always be substituting bound variables with fresh
-                // variables when entering scopes using `unbind`, so if we've
-                // encountered one here this is definitely a bug!
-                Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
-                    span: None,
-                    var: var.clone(),
-                }),
-            }
+            // We should always be substituting bound variables with fresh
+            // variables when entering scopes using `unbind`, so if we've
+            // encountered one here this is definitely a bug!
+            Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
+                span: None,
+                var: var.clone(),
+            }),
         },
 
         Term::Extern(ref name, ref ty) => Ok(RcValue::from(Value::from(Neutral::Head(
@@ -92,7 +94,7 @@ where
                                 }
                             }
                         },
-                        Neutral::Head(Head::Var(_))
+                        Neutral::Head(Head::Var(_, _))
                         | Neutral::If(_, _, _)
                         | Neutral::Proj(_, _)
                         | Neutral::Case(_, _) => spine.push(arg),
@@ -242,7 +244,7 @@ where
         (&Pattern::Binder(Binder(ref free_var)), _) => {
             Ok(Some(vec![(free_var.clone(), value.clone())]))
         },
-        (&Pattern::Var(Embed(Var::Free(ref free_var))), _) => {
+        (&Pattern::Var(Embed(Var::Free(ref free_var)), _), _) => {
             match env.get_definition(free_var).map(|term| nf_term(env, term)) {
                 Some(Ok(ref term)) if term == value => Ok(Some(vec![])),
                 Some(Ok(_)) | None => Ok(None),

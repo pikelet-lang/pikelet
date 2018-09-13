@@ -216,7 +216,7 @@ pub enum Pattern {
     /// true
     /// false
     /// ```
-    Name(ByteIndex, String),
+    Name(ByteSpan, String, Option<u32>),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -227,12 +227,9 @@ impl Pattern {
     /// Return the span of source code that this pattern originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Pattern::Parens(span, _) | Pattern::Error(span) => span,
+            Pattern::Parens(span, _) | Pattern::Name(span, _, _) | Pattern::Error(span) => span,
             Pattern::Ann(ref pattern, ref ty) => pattern.span().to(ty.span()),
             Pattern::Literal(ref literal) => literal.span(),
-            Pattern::Name(start, ref name) => {
-                ByteSpan::from_offset(start, ByteOffset::from_str(name))
-            },
         }
     }
 }
@@ -272,8 +269,9 @@ pub enum Term {
     ///
     /// ```text
     /// x
+    /// x^1
     /// ```
-    Name(ByteIndex, String),
+    Name(ByteSpan, String, Option<u32>),
     /// Extern definitions
     ///
     /// ```text
@@ -361,14 +359,14 @@ impl Term {
         match *self {
             Term::Parens(span, _)
             | Term::Universe(span, _)
-            | Term::Extern(span, _, _, _)
-            | Term::Array(span, _)
             | Term::Hole(span)
+            | Term::Name(span, _, _)
+            | Term::Extern(span, _, _, _)
             | Term::Case(span, _, _)
             | Term::RecordType(span, _)
             | Term::Record(span, _)
+            | Term::Array(span, _)
             | Term::Error(span) => span,
-            Term::Name(start, ref name) => ByteSpan::from_offset(start, ByteOffset::from_str(name)),
             Term::Literal(ref literal) => literal.span(),
             Term::Pi(start, _, ref body)
             | Term::Lam(start, _, ref body)

@@ -4,7 +4,7 @@ use moniker::{Binder, BoundTerm, Embed, FreeVar, Scope, Var};
 
 use syntax::concrete;
 use syntax::core;
-use syntax::{Label, Level};
+use syntax::{Label, Level, LevelShift};
 
 #[cfg(test)]
 mod tests;
@@ -194,13 +194,18 @@ fn resugar_pattern(
         ),
         core::Pattern::Binder(ref binder) => {
             let name = env.on_binder(binder);
-            concrete::Pattern::Name(ByteIndex::default(), name)
+            concrete::Pattern::Name(ByteSpan::default(), name, None)
         },
-        core::Pattern::Var(Embed(Var::Free(ref free_var))) => {
+        core::Pattern::Var(Embed(Var::Free(ref free_var)), shift) => {
+            let shift = match shift {
+                LevelShift(0) => None,
+                LevelShift(shift) => Some(shift),
+            };
+
             let name = env.on_free_var(free_var);
-            concrete::Pattern::Name(ByteIndex::default(), name)
+            concrete::Pattern::Name(ByteSpan::default(), name, shift)
         },
-        core::Pattern::Var(Embed(Var::Bound(_))) => {
+        core::Pattern::Var(Embed(Var::Bound(_)), _) => {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },
@@ -211,8 +216,8 @@ fn resugar_pattern(
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Pattern::Name(span.start(), "true".to_owned()),
-                core::Literal::Bool(false) => Pattern::Name(span.start(), "false".to_owned()),
+                core::Literal::Bool(true) => Pattern::Name(span, "true".to_owned(), None),
+                core::Literal::Bool(false) => Pattern::Name(span, "false".to_owned(), None),
 
                 core::Literal::String(ref value) => {
                     Pattern::Literal(Literal::String(span, value.clone()))
@@ -498,8 +503,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Term::Name(span.start(), "true".to_owned()),
-                core::Literal::Bool(false) => Term::Name(span.start(), "false".to_owned()),
+                core::Literal::Bool(true) => Term::Name(span, "true".to_owned(), None),
+                core::Literal::Bool(false) => Term::Name(span, "false".to_owned(), None),
 
                 core::Literal::String(ref value) => {
                     Term::Literal(Literal::String(span, value.clone()))
@@ -521,11 +526,16 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 core::Literal::F64(value) => Term::Literal(Literal::Float(span, value)),
             }
         },
-        core::Term::Var(Var::Free(ref free_var)) => {
+        core::Term::Var(Var::Free(ref free_var), shift) => {
+            let shift = match shift {
+                LevelShift(0) => None,
+                LevelShift(shift) => Some(shift),
+            };
+
             let name = env.on_free_var(free_var);
-            concrete::Term::Name(ByteIndex::default(), name)
+            concrete::Term::Name(ByteSpan::default(), name, shift)
         },
-        core::Term::Var(Var::Bound(_)) => {
+        core::Term::Var(Var::Bound(_), _) => {
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },

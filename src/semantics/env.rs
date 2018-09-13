@@ -398,12 +398,12 @@ impl Default for TcEnv {
         let var_array = tc_env.globals.array.clone();
 
         let universe0 = RcValue::from(Value::universe(0));
-        let bool_ty = RcValue::from(Value::from(Var::Free(var_bool.clone())));
+        let bool_ty = RcValue::from(Value::var(Var::Free(var_bool.clone()), 0));
         let bool_lit = |value| RcTerm::from(Term::Literal(Literal::Bool(value)));
         let array_ty = RcValue::from(Value::Pi(Scope::new(
             (
                 Binder(FreeVar::fresh_unnamed()),
-                Embed(RcValue::from(Value::from(Var::Free(var_u64.clone())))),
+                Embed(RcValue::from(Value::var(Var::Free(var_u64.clone()), 0))),
             ),
             RcValue::from(Value::Pi(Scope::new(
                 (Binder(FreeVar::fresh_unnamed()), Embed(universe0.clone())),

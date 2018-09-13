@@ -4,7 +4,7 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::concrete;
 use syntax::raw;
-use syntax::{Label, Level};
+use syntax::{Label, Level, LevelShift};
 
 #[cfg(test)]
 mod tests;
@@ -41,14 +41,13 @@ impl DesugarEnv {
         free_var
     }
 
-    pub fn on_name(&self, span: ByteSpan, name: &str) -> raw::RcTerm {
-        raw::RcTerm::from(raw::Term::Var(
-            span,
-            Var::Free(match self.locals.get(name) {
-                None => FreeVar::fresh_named(name),
-                Some(free_var) => free_var.clone(),
-            }),
-        ))
+    pub fn on_name(&self, span: ByteSpan, name: &str, shift: u32) -> raw::RcTerm {
+        let free_var = match self.locals.get(name) {
+            None => FreeVar::fresh_named(name),
+            Some(free_var) => free_var.clone(),
+        };
+
+        raw::RcTerm::from(raw::Term::Var(span, Var::Free(free_var), LevelShift(shift)))
     }
 }
 
@@ -286,14 +285,22 @@ impl Desugar<(raw::RcPattern, DesugarEnv)> for concrete::Pattern {
 
                 (ann_pattern, env)
             },
-            concrete::Pattern::Name(_, ref name) => match env.locals.get(name) {
-                Some(free_var) => {
+            concrete::Pattern::Name(_, ref name, shift) => match (env.locals.get(name), shift) {
+                (Some(free_var), shift) => {
                     let var = Var::Free(free_var.clone());
-                    let pattern = raw::RcPattern::from(raw::Pattern::Var(span, Embed(var)));
+                    let shift = LevelShift(shift.unwrap_or(0));
+                    let pattern = raw::RcPattern::from(raw::Pattern::Var(span, Embed(var), shift));
 
                     (pattern, env.clone())
                 },
-                None => {
+                (None, Some(shift)) => {
+                    let var = Var::Free(FreeVar::fresh_named(name.clone()));
+                    let shift = LevelShift(shift);
+                    let pattern = raw::RcPattern::from(raw::Pattern::Var(span, Embed(var), shift));
+
+                    (pattern, env.clone())
+                },
+                (None, None) => {
                     let mut env = env.clone();
                     let free_var = env.on_binding(name);
                     let binder = Binder(free_var);
@@ -330,7 +337,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                 elems.iter().map(|elem| elem.desugar(env)).collect(),
             )),
             concrete::Term::Hole(_) => raw::RcTerm::from(raw::Term::Hole(span)),
-            concrete::Term::Name(_, ref name) => env.on_name(span, name),
+            concrete::Term::Name(_, ref name, shift) => env.on_name(span, name, shift.unwrap_or(0)),
             concrete::Term::Extern(_, name_span, ref name, ref ty) => raw::RcTerm::from(
                 raw::Term::Extern(span, name_span, name.clone(), ty.desugar(env)),
             ),

@@ -6,7 +6,7 @@ use std::iter;
 
 use syntax::core::{Head, Literal, Neutral, Pattern, Term, Value};
 use syntax::raw;
-use syntax::{Label, Level};
+use syntax::{Label, Level, LevelShift};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
@@ -25,8 +25,8 @@ fn pretty_binder(binder: &Binder<String>) -> StaticDoc {
     sexpr("binder", Doc::text(format!("{:#}", binder)))
 }
 
-fn pretty_var(var: &Var<String>) -> StaticDoc {
-    sexpr("var", Doc::text(format!("{:#}", var)))
+fn pretty_var(var: &Var<String>, shift: LevelShift) -> StaticDoc {
+    sexpr("var", Doc::text(format!("{:#}^{}", var, shift)))
 }
 
 fn pretty_extern(name: &str, ty: &impl ToDoc) -> StaticDoc {
@@ -168,7 +168,7 @@ impl ToDoc for raw::Pattern {
         match *self {
             raw::Pattern::Ann(ref pattern, Embed(ref ty)) => pretty_ann(&pattern.inner, &ty.inner),
             raw::Pattern::Binder(_, ref binder) => pretty_binder(binder),
-            raw::Pattern::Var(_, Embed(ref var)) => pretty_var(var),
+            raw::Pattern::Var(_, Embed(ref var), shift) => pretty_var(var, shift),
             raw::Pattern::Literal(ref literal) => literal.to_doc(),
         }
     }
@@ -181,7 +181,7 @@ impl ToDoc for raw::Term {
             raw::Term::Universe(_, level) => pretty_universe(level),
             raw::Term::Hole(_) => parens(Doc::text("hole")),
             raw::Term::Literal(ref literal) => literal.to_doc(),
-            raw::Term::Var(_, ref var) => pretty_var(var),
+            raw::Term::Var(_, ref var, shift) => pretty_var(var, shift),
             raw::Term::Extern(_, _, ref name, ref ty) => pretty_extern(name, &ty.inner),
             raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
@@ -269,7 +269,7 @@ impl ToDoc for Pattern {
         match *self {
             Pattern::Ann(ref pattern, Embed(ref ty)) => pretty_ann(&pattern.inner, &ty.inner),
             Pattern::Binder(ref binder) => pretty_binder(binder),
-            Pattern::Var(Embed(ref var)) => pretty_var(var),
+            Pattern::Var(Embed(ref var), shift) => pretty_var(var, shift),
             Pattern::Literal(ref literal) => literal.to_doc(),
         }
     }
@@ -281,7 +281,7 @@ impl ToDoc for Term {
             Term::Ann(ref expr, ref ty) => pretty_ann(&expr.inner, &ty.inner),
             Term::Universe(level) => pretty_universe(level),
             Term::Literal(ref literal) => literal.to_doc(),
-            Term::Var(ref var) => pretty_var(var),
+            Term::Var(ref var, shift) => pretty_var(var, shift),
             Term::Extern(ref name, ref ty) => pretty_extern(name, &ty.inner),
             Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
@@ -415,7 +415,7 @@ impl ToDoc for Neutral {
 impl ToDoc for Head {
     fn to_doc(&self) -> StaticDoc {
         match *self {
-            Head::Var(ref var) => pretty_var(var),
+            Head::Var(ref var, shift) => pretty_var(var, shift),
             Head::Extern(ref name, ref ty) => pretty_extern(name, &ty.inner),
         }
     }

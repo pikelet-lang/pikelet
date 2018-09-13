@@ -8,7 +8,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::{Label, Level};
+use syntax::{Label, Level, LevelShift};
 
 /// A module definition
 pub struct Module {
@@ -98,7 +98,7 @@ pub enum Pattern {
     /// Patterns that bind variables
     Binder(ByteSpan, Binder<String>),
     /// Patterns to be compared structurally with a variable in scope
-    Var(ByteSpan, Embed<Var<String>>),
+    Var(ByteSpan, Embed<Var<String>>, LevelShift),
     /// Literal patterns
     Literal(Literal),
 }
@@ -108,7 +108,7 @@ impl Pattern {
     pub fn span(&self) -> ByteSpan {
         match *self {
             Pattern::Ann(ref pattern, Embed(ref ty)) => pattern.span().to(ty.span()),
-            Pattern::Var(span, _) | Pattern::Binder(span, _) => span,
+            Pattern::Var(span, _, _) | Pattern::Binder(span, _) => span,
             Pattern::Literal(ref literal) => literal.span(),
         }
     }
@@ -163,7 +163,7 @@ pub enum Term {
     /// A hole
     Hole(ByteSpan),
     /// A variable
-    Var(ByteSpan, Var<String>),
+    Var(ByteSpan, Var<String>, LevelShift),
     /// An external definition
     Extern(ByteSpan, ByteSpan, String, RcTerm),
     /// Dependent function types
@@ -202,7 +202,7 @@ impl Term {
         match *self {
             Term::Universe(span, _)
             | Term::Hole(span)
-            | Term::Var(span, _)
+            | Term::Var(span, _, _)
             | Term::Extern(span, _, _, _)
             | Term::Pi(span, _)
             | Term::Lam(span, _)

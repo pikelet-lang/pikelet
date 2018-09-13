@@ -41,7 +41,7 @@ Pikelet> "1"
 Pikelet> 'a'
 Pikelet> Bool
 Pikelet> Type
-Pikelet> Type 2
+Pikelet> Type^2
 Pikelet> record { name = "Jane" }
 Pikelet> Record { name : String }
 Pikelet> record { x = 3.0 : F32; y = 3.0 : F32 }
