@@ -5,7 +5,11 @@ use syntax::concrete::{Item, Literal, Module, Pattern, Term, RecordTypeField, Re
 use syntax::parse::{LalrpopError, ParseError, Token};
 
 #[LALR]
-grammar<'err, 'input>(errors: &'err mut Vec<ParseError>, filemap: &'input FileMap);
+grammar<'err, 'input>(
+    import_paths: &mut Vec<String>,
+    errors: &'err mut Vec<ParseError>,
+    filemap: &'input FileMap,
+);
 
 extern {
     type Location = ByteIndex;
@@ -27,6 +31,7 @@ extern {
         "else" => Token::Else,
         "extern" => Token::Extern,
         "if" => Token::If,
+        "import" => Token::Import,
         "in" => Token::In,
         "let" => Token::Let,
         "of" => Token::Of,
@@ -210,6 +215,10 @@ AtomicTerm: Term = {
     <start: @L> "?" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
     <start: @L> <ident: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
         Term::Name(ByteSpan::new(start, end), ident, shift.map(|x| x as u32)) // FIXME: underflow?
+    },
+    <start: @L> "import" <path_start: @L> <path: "string literal"> <end: @R> => {
+        import_paths.push(path.clone());
+        Term::Import(ByteSpan::new(start, end), ByteSpan::new(path_start, end), path)
     },
     <start: @L> "Record" "{" <fields: (<RecordTypeField> ";")*> <last: RecordTypeField?> "}" <end: @R> => {
         let mut fields = fields;

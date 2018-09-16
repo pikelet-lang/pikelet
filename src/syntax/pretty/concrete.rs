@@ -111,6 +111,9 @@ impl ToDoc for Term {
                 .append(":")
                 .append(Doc::space())
                 .append(ty.to_doc()),
+            Term::Import(_, _, ref path) => Doc::text("import")
+                .append(Doc::space())
+                .append(format!("{:?}", path)),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
                 .append(pretty_lam_params(params))
                 .append(Doc::space())

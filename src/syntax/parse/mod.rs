@@ -14,17 +14,20 @@ pub use self::lexer::{LexerError, Token};
 
 macro_rules! parser {
     ($name:ident, $output:ident, $parser_name:ident) => {
-        pub fn $name<'input>(filemap: &'input FileMap) -> (concrete::$output, Vec<ParseError>) {
+        pub fn $name<'input>(
+            filemap: &'input FileMap,
+        ) -> (concrete::$output, Vec<String>, Vec<ParseError>) {
+            let mut import_paths = Vec::new();
             let mut errors = Vec::new();
             let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
             let value = grammar::$parser_name::new()
-                .parse(&mut errors, filemap, lexer)
+                .parse(&mut import_paths, &mut errors, filemap, lexer)
                 .unwrap_or_else(|err| {
                     errors.push(errors::from_lalrpop(filemap, err));
                     concrete::$output::Error(filemap.span())
                 });
 
-            (value, errors)
+            (value, import_paths, errors)
         }
     };
 }
@@ -128,6 +131,7 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(28))),
+                vec![],
                 vec![ParseError::IdentifierExpectedInPiType {
                     span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
                 }],
@@ -147,6 +151,7 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(39))),
+                vec![],
                 vec![ParseError::IdentifierExpectedInPiType {
                     span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
                 }],
@@ -166,6 +171,7 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(36))),
+                vec![],
                 vec![ParseError::Lexer(LexerError::IntegerLiteralOverflow {
                     span: ByteSpan::new(ByteIndex(6), ByteIndex(36)),
                     value: "111111111111111111111111111111".to_owned(),

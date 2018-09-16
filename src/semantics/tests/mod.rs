@@ -10,7 +10,7 @@ use super::*;
 
 fn parse_module(codemap: &mut CodeMap, src: &str) -> concrete::Module {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
-    let (concrete_module, errors) = parse::module(&filemap);
+    let (concrete_module, _import_paths, errors) = parse::module(&filemap);
 
     if !errors.is_empty() {
         let writer = StandardStream::stdout(ColorChoice::Always);
@@ -25,7 +25,7 @@ fn parse_module(codemap: &mut CodeMap, src: &str) -> concrete::Module {
 
 fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
-    let (concrete_term, errors) = parse::term(&filemap);
+    let (concrete_term, _import_paths, errors) = parse::term(&filemap);
 
     if !errors.is_empty() {
         let writer = StandardStream::stdout(ColorChoice::Always);

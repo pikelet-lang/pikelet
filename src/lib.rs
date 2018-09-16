@@ -166,7 +166,7 @@ pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
     use semantics::TcEnv;
     use syntax::translation::{Desugar, DesugarEnv};
 
-    let (concrete_module, errors) = syntax::parse::module(&file);
+    let (concrete_module, _import_paths, errors) = syntax::parse::module(&file);
     let mut diagnostics = errors
         .iter()
         .map(|err| err.to_diagnostic())
