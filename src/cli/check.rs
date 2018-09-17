@@ -27,7 +27,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     let mut is_error = false;
     for path in opts.files {
         let file = codemap.add_filemap_from_disk(path)?;
-        let (module, parse_errors) = parse::module(&file);
+        let (module, _import_paths, parse_errors) = parse::module(&file);
 
         let mut is_parse_error = false;
         for error in parse_errors {

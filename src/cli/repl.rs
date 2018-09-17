@@ -163,7 +163,7 @@ fn eval_print(
             .unwrap_or(pretty::FALLBACK_WIDTH)
     }
 
-    let (repl_command, parse_errors) = parse::repl_command(filemap);
+    let (repl_command, _import_paths, parse_errors) = parse::repl_command(filemap);
     if !parse_errors.is_empty() {
         return Err(EvalPrintError::Parse(parse_errors));
     }

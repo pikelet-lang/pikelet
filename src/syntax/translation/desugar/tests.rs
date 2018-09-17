@@ -22,7 +22,7 @@ fn parse(env: &DesugarEnv, src: &str) -> raw::RcTerm {
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
 
-    let (concrete_term, errors) = parse::term(&filemap);
+    let (concrete_term, _import_paths, errors) = parse::term(&filemap);
     assert!(errors.is_empty());
 
     concrete_term.desugar(env)

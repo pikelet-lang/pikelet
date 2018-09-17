@@ -8,7 +8,7 @@ fn prelude() {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
     let writer = StandardStream::stdout(ColorChoice::Always);
 
-    let (concrete_module, errors) = parse::module(&filemap);
+    let (concrete_module, _import_paths, errors) = parse::module(&filemap);
     if !errors.is_empty() {
         for error in errors {
             codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();

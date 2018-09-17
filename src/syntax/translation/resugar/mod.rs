@@ -17,7 +17,8 @@ pub struct ResugarEnv {
 }
 
 const KEYWORDS: &[&str] = &[
-    "as", "case", "else", "extern", "if", "in", "let", "of", "record", "Record", "then", "Type",
+    "as", "case", "else", "extern", "if", "import", "in", "let", "of", "record", "Record", "then",
+    "Type",
 ];
 
 impl ResugarEnv {

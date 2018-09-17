@@ -116,6 +116,7 @@ pub enum Token<S> {
     Else,       // else
     Extern,     // extern
     If,         // if
+    Import,     // import
     In,         // in
     Let,        // let
     Of,         // of
@@ -161,6 +162,7 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Else => write!(f, "else"),
             Token::Extern => write!(f, "extern"),
             Token::If => write!(f, "if"),
+            Token::Import => write!(f, "import"),
             Token::In => write!(f, "in"),
             Token::Let => write!(f, "let"),
             Token::Of => write!(f, "of"),
@@ -204,6 +206,7 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::Else => Token::Else,
             Token::Extern => Token::Extern,
             Token::If => Token::If,
+            Token::Import => Token::Import,
             Token::In => Token::In,
             Token::Let => Token::Let,
             Token::Of => Token::Of,
@@ -352,6 +355,7 @@ impl<'input> Lexer<'input> {
             "else" => Token::Else,
             "extern" => Token::Extern,
             "if" => Token::If,
+            "import" => Token::Import,
             "in" => Token::In,
             "let" => Token::Let,
             "of" => Token::Of,
@@ -589,19 +593,20 @@ mod tests {
     #[test]
     fn keywords() {
         test! {
-            "  as case else extern if in let of record Record then Type  ",
-            "  ~~                                                        " => Token::As,
-            "     ~~~~                                                   " => Token::Case,
-            "          ~~~~                                              " => Token::Else,
-            "               ~~~~~~                                       " => Token::Extern,
-            "                      ~~                                    " => Token::If,
-            "                         ~~                                 " => Token::In,
-            "                            ~~~                             " => Token::Let,
-            "                                ~~                          " => Token::Of,
-            "                                   ~~~~~~                   " => Token::Record,
-            "                                          ~~~~~~            " => Token::RecordType,
-            "                                                 ~~~~       " => Token::Then,
-            "                                                      ~~~~  " => Token::Type,
+            "  as case else extern if import in let of record Record then Type  ",
+            "  ~~                                                               " => Token::As,
+            "     ~~~~                                                          " => Token::Case,
+            "          ~~~~                                                     " => Token::Else,
+            "               ~~~~~~                                              " => Token::Extern,
+            "                      ~~                                           " => Token::If,
+            "                         ~~~~~~                                    " => Token::Import,
+            "                                ~~                                 " => Token::In,
+            "                                   ~~~                             " => Token::Let,
+            "                                       ~~                          " => Token::Of,
+            "                                          ~~~~~~                   " => Token::Record,
+            "                                                 ~~~~~~            " => Token::RecordType,
+            "                                                        ~~~~       " => Token::Then,
+            "                                                             ~~~~  " => Token::Type,
         };
     }
 

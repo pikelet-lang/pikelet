@@ -14,17 +14,20 @@ pub use self::lexer::{LexerError, Token};
 
 macro_rules! parser {
     ($name:ident, $output:ident, $parser_name:ident) => {
-        pub fn $name<'input>(filemap: &'input FileMap) -> (concrete::$output, Vec<ParseError>) {
+        pub fn $name<'input>(
+            filemap: &'input FileMap,
+        ) -> (concrete::$output, Vec<String>, Vec<ParseError>) {
+            let mut import_paths = Vec::new();
             let mut errors = Vec::new();
             let lexer = Lexer::new(filemap).map(|x| x.map_err(ParseError::from));
             let value = grammar::$parser_name::new()
-                .parse(&mut errors, filemap, lexer)
+                .parse(&mut import_paths, &mut errors, filemap, lexer)
                 .unwrap_or_else(|err| {
                     errors.push(errors::from_lalrpop(filemap, err));
                     concrete::$output::Error(filemap.span())
                 });
 
-            (value, errors)
+            (value, import_paths, errors)
         }
     };
 }
@@ -117,6 +120,50 @@ mod tests {
     use super::*;
 
     #[test]
+    fn imports() {
+        let src = r#"
+            prims = import "prims.pi";
+            prelude = import "prelude.pi";
+        "#;
+        let mut codemap = CodeMap::new();
+        let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
+
+        let parse_result = module(&filemap);
+
+        assert_eq!(
+            parse_result,
+            (
+                concrete::Module::Valid {
+                    items: vec![
+                        concrete::Item::Definition {
+                            name: (ByteIndex(14), "prims".to_owned()),
+                            params: vec![],
+                            return_ann: None,
+                            body: concrete::Term::Import(
+                                ByteSpan::new(ByteIndex(22), ByteIndex(39)),
+                                ByteSpan::new(ByteIndex(29), ByteIndex(39)),
+                                "prims.pi".to_owned(),
+                            ),
+                        },
+                        concrete::Item::Definition {
+                            name: (ByteIndex(53), "prelude".to_owned()),
+                            params: vec![],
+                            return_ann: None,
+                            body: concrete::Term::Import(
+                                ByteSpan::new(ByteIndex(63), ByteIndex(82)),
+                                ByteSpan::new(ByteIndex(70), ByteIndex(82)),
+                                "prelude.pi".to_owned(),
+                            ),
+                        }
+                    ],
+                },
+                vec!["prims.pi".to_owned(), "prelude.pi".to_owned()],
+                vec![],
+            )
+        );
+    }
+
+    #[test]
     fn pi_bad_ident() {
         let src = "((x : Type) : Type) -> Type";
         let mut codemap = CodeMap::new();
@@ -128,6 +175,7 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(28))),
+                vec![],
                 vec![ParseError::IdentifierExpectedInPiType {
                     span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
                 }],
@@ -147,6 +195,7 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(39))),
+                vec![],
                 vec![ParseError::IdentifierExpectedInPiType {
                     span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
                 }],
@@ -166,6 +215,7 @@ mod tests {
             parse_result,
             (
                 concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(36))),
+                vec![],
                 vec![ParseError::Lexer(LexerError::IntegerLiteralOverflow {
                     span: ByteSpan::new(ByteIndex(6), ByteIndex(36)),
                     value: "111111111111111111111111111111".to_owned(),
