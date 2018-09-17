@@ -1,7 +1,7 @@
 //! The syntax of the language, unchecked and with implicit parts that need to
 //! be elaborated in a type-directed way during type checking and inference
 
-use codespan::{ByteIndex, ByteSpan};
+use codespan::ByteSpan;
 use moniker::{Binder, Embed, Nest, Scope, Var};
 use std::fmt;
 use std::ops;
@@ -172,8 +172,6 @@ pub enum Term {
     Lam(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Term application
     App(RcTerm, RcTerm),
-    /// If expression
-    If(ByteIndex, RcTerm, RcTerm, RcTerm),
     /// Dependent record types
     RecordType(
         ByteSpan,
@@ -215,7 +213,6 @@ impl Term {
             Term::Literal(ref literal) => literal.span(),
             Term::Ann(ref expr, ref ty) => expr.span().to(ty.span()),
             Term::App(ref head, ref arg) => head.span().to(arg.span()),
-            Term::If(start, _, _, ref if_false) => ByteSpan::new(start, if_false.span().end()),
         }
     }
 }

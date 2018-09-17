@@ -440,17 +440,6 @@ where
             });
         },
 
-        // C-IF
-        (&raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false), _) => {
-            let bool_ty = RcValue::from(Value::var(Var::Free(env.globals().bool.clone()), 0));
-
-            let cond = check_term(env, raw_cond, &bool_ty)?;
-            let if_true = check_term(env, raw_if_true, expected_ty)?;
-            let if_false = check_term(env, raw_if_false, expected_ty)?;
-
-            return Ok(RcTerm::from(Term::If(cond, if_true, if_false)));
-        },
-
         // C-RECORD
         (&raw::Term::Record(span, ref raw_scope), &Value::RecordType(ref raw_ty_scope)) => {
             let (raw_fields, (), raw_ty_fields, ()) = {
@@ -714,16 +703,6 @@ where
             let bind = (Binder(free_var), Embed(bind_term));
 
             Ok((RcTerm::from(Term::Let(Scope::new(bind, body))), ty))
-        },
-
-        // I-IF
-        raw::Term::If(_, ref raw_cond, ref raw_if_true, ref raw_if_false) => {
-            let bool_ty = RcValue::from(Value::var(Var::Free(env.globals().bool.clone()), 0));
-            let cond = check_term(env, raw_cond, &bool_ty)?;
-            let (if_true, ty) = infer_term(env, raw_if_true)?;
-            let if_false = check_term(env, raw_if_false, &ty)?;
-
-            Ok((RcTerm::from(Term::If(cond, if_true, if_false)), ty))
         },
 
         // I-APP

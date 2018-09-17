@@ -555,15 +555,6 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             ),
         ),
         core::Term::Let(ref scope) => resugar_let(env, scope, prec),
-        core::Term::If(ref cond, ref if_true, ref if_false) => parens_if(
-            Prec::LAM < prec,
-            concrete::Term::If(
-                ByteIndex::default(),
-                Box::new(resugar_term(env, cond, Prec::APP)),
-                Box::new(resugar_term(env, if_true, Prec::APP)),
-                Box::new(resugar_term(env, if_false, Prec::APP)),
-            ),
-        ),
         core::Term::RecordType(ref scope) => {
             let mut env = env.clone();
             let (scope, ()) = scope.clone().unbind();
@@ -618,6 +609,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             ByteIndex::default(),
             label.clone(),
         ),
+        // TODO: Resugar boolean patterns into if-then-else expressions?
         core::Term::Case(ref head, ref clauses) => concrete::Term::Case(
             ByteSpan::default(),
             Box::new(resugar_term(env, head, Prec::NO_WRAP)),
