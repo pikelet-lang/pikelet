@@ -132,8 +132,6 @@ pub enum Term {
     Lam(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Term application
     App(RcTerm, RcTerm),
-    /// If expression
-    If(RcTerm, RcTerm, RcTerm),
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
     /// Dependent record
@@ -208,11 +206,6 @@ impl RcTerm {
             Term::App(ref head, ref arg) => {
                 RcTerm::from(Term::App(head.substs(mappings), arg.substs(mappings)))
             },
-            Term::If(ref cond, ref if_true, ref if_false) => RcTerm::from(Term::If(
-                cond.substs(mappings),
-                if_true.substs(mappings),
-                if_false.substs(mappings),
-            )),
             Term::RecordType(ref scope) | Term::Record(ref scope)
                 if scope.unsafe_pattern.unsafe_patterns.is_empty() =>
             {
@@ -463,8 +456,6 @@ pub type Spine = Vec<RcValue>;
 pub enum Neutral {
     /// Head of an application
     Head(Head),
-    /// If expression
-    If(RcNeutral, RcValue, RcValue),
     /// Field projection
     Proj(RcNeutral, Label),
     /// Case expressions
@@ -497,11 +488,6 @@ impl RcNeutral {
             // },
             Neutral::Head(Head::Var(_, _)) => {},
             Neutral::Head(Head::Extern(_, ref mut ty)) => ty.shift_universes(shift),
-            Neutral::If(ref mut cond, ref mut if_true, ref mut if_false) => {
-                cond.shift_universes(shift);
-                if_true.shift_universes(shift);
-                if_false.shift_universes(shift);
-            },
             Neutral::Proj(ref mut expr, _) => expr.shift_universes(shift),
             Neutral::Case(ref mut expr, ref mut clauses) => {
                 expr.shift_universes(shift);
@@ -615,11 +601,6 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         match *src {
             Neutral::Head(ref head) => Term::from(head),
-            Neutral::If(ref cond, ref if_true, ref if_false) => Term::If(
-                RcTerm::from(&**cond),
-                RcTerm::from(&**if_true),
-                RcTerm::from(&**if_false),
-            ),
             Neutral::Proj(ref expr, ref name) => Term::Proj(RcTerm::from(&**expr), name.clone()),
             Neutral::Case(ref head, ref clauses) => Term::Case(
                 RcTerm::from(&**head),

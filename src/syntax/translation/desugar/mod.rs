@@ -275,7 +275,6 @@ impl Desugar<raw::Literal> for concrete::Literal {
 
 impl Desugar<(raw::RcPattern, DesugarEnv)> for concrete::Pattern {
     fn desugar(&self, env: &DesugarEnv) -> (raw::RcPattern, DesugarEnv) {
-        let span = self.span();
         match *self {
             concrete::Pattern::Parens(_, ref pattern) => pattern.desugar(env),
             concrete::Pattern::Ann(ref pattern, ref ty) => {
@@ -285,7 +284,7 @@ impl Desugar<(raw::RcPattern, DesugarEnv)> for concrete::Pattern {
 
                 (ann_pattern, env)
             },
-            concrete::Pattern::Name(_, ref name, shift) => match (env.locals.get(name), shift) {
+            concrete::Pattern::Name(span, ref name, shift) => match (env.locals.get(name), shift) {
                 (Some(free_var), shift) => {
                     let var = Var::Free(free_var.clone());
                     let shift = LevelShift(shift.unwrap_or(0));
@@ -356,12 +355,25 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                 })
             },
             concrete::Term::Let(_, ref items, ref body) => desugar_let(env, items, body),
-            concrete::Term::If(start, ref cond, ref if_true, ref if_false) => {
-                raw::RcTerm::from(raw::Term::If(
-                    start,
+            concrete::Term::If(_, ref cond, ref if_true, ref if_false) => {
+                let bool_pattern = |name: &str| {
+                    raw::RcPattern::from(raw::Pattern::Var(
+                        ByteSpan::default(),
+                        Embed(Var::Free(match env.locals.get(name) {
+                            Some(free_var) => free_var.clone(),
+                            None => FreeVar::fresh_named("oops"),
+                        })),
+                        LevelShift(0),
+                    ))
+                };
+
+                raw::RcTerm::from(raw::Term::Case(
+                    span,
                     cond.desugar(env),
-                    if_true.desugar(env),
-                    if_false.desugar(env),
+                    vec![
+                        Scope::new(bool_pattern("true"), if_true.desugar(&env)),
+                        Scope::new(bool_pattern("false"), if_false.desugar(&env)),
+                    ],
                 ))
             },
             concrete::Term::Case(span, ref head, ref clauses) => {
