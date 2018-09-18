@@ -1,7 +1,8 @@
 use codespan::{ByteSpan, FileMap};
 use codespan_reporting::{Diagnostic, Label};
+
+use std::fmt;
 use std::str::{CharIndices, FromStr};
-use std::{fmt, u64};
 
 use codespan::{ByteIndex, ByteOffset, RawOffset};
 use unicode_xid::UnicodeXID;
@@ -22,8 +23,20 @@ fn is_ident_continue(ch: char) -> bool {
     UnicodeXID::is_xid_continue(ch) || ch == '_' || ch == '-'
 }
 
+fn is_bin_digit(ch: char) -> bool {
+    ch.is_digit(2)
+}
+
+fn is_oct_digit(ch: char) -> bool {
+    ch.is_digit(8)
+}
+
 fn is_dec_digit(ch: char) -> bool {
     ch.is_digit(10)
+}
+
+fn is_hex_digit(ch: char) -> bool {
+    ch.is_digit(16)
 }
 
 /// An error that occurred while lexing the source file
@@ -37,6 +50,12 @@ pub enum LexerError {
     UnterminatedStringLiteral { span: ByteSpan },
     #[fail(display = "Unterminated character literal.")]
     UnterminatedCharLiteral { span: ByteSpan },
+    #[fail(display = "Unterminated a binary literal.")]
+    UnterminatedBinLiteral { span: ByteSpan },
+    #[fail(display = "Unterminated a octal literal.")]
+    UnterminatedOctLiteral { span: ByteSpan },
+    #[fail(display = "Unterminated a hexidecimal literal.")]
+    UnterminatedHexLiteral { span: ByteSpan },
     #[fail(display = "Empty character literal.")]
     EmptyCharLiteral { span: ByteSpan },
     #[fail(display = "An unknown escape code \\{} was found.", found)]
@@ -59,6 +78,9 @@ impl LexerError {
             LexerError::UnexpectedEof { end } => ByteSpan::new(end, end),
             LexerError::UnterminatedStringLiteral { span }
             | LexerError::UnterminatedCharLiteral { span }
+            | LexerError::UnterminatedBinLiteral { span }
+            | LexerError::UnterminatedOctLiteral { span }
+            | LexerError::UnterminatedHexLiteral { span }
             | LexerError::EmptyCharLiteral { span }
             | LexerError::IntegerLiteralOverflow { span, .. } => span,
         }
@@ -79,6 +101,18 @@ impl LexerError {
             },
             LexerError::UnterminatedCharLiteral { span } => {
                 Diagnostic::new_error("unterminated character literal")
+                    .with_label(Label::new_primary(span))
+            },
+            LexerError::UnterminatedBinLiteral { span } => {
+                Diagnostic::new_error("unterminated binary literal")
+                    .with_label(Label::new_primary(span))
+            },
+            LexerError::UnterminatedOctLiteral { span } => {
+                Diagnostic::new_error("unterminated octal literal")
+                    .with_label(Label::new_primary(span))
+            },
+            LexerError::UnterminatedHexLiteral { span } => {
+                Diagnostic::new_error("unterminated hexadecimal literal")
                     .with_label(Label::new_primary(span))
             },
             LexerError::EmptyCharLiteral { span } => {
@@ -107,7 +141,10 @@ pub enum Token<S> {
     ReplCommand(S),
     StringLiteral(String),
     CharLiteral(char),
+    BinLiteral(u64),
+    OctLiteral(u64),
     DecLiteral(u64),
+    HexLiteral(u64),
     FloatLiteral(f64),
 
     // Keywords
@@ -153,9 +190,12 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::Ident(ref name) => write!(f, "{}", name),
             Token::DocComment(ref comment) => write!(f, "||| {}", comment),
             Token::ReplCommand(ref command) => write!(f, ":{}", command),
-            Token::StringLiteral(ref value) => write!(f, "\"{}\"", value),
-            Token::CharLiteral(ref value) => write!(f, "'{}'", value),
+            Token::StringLiteral(ref value) => write!(f, "{:?}", value),
+            Token::CharLiteral(ref value) => write!(f, "'{:?}'", value),
+            Token::BinLiteral(ref value) => write!(f, "{:b}", value),
+            Token::OctLiteral(ref value) => write!(f, "{:o}", value),
             Token::DecLiteral(ref value) => write!(f, "{}", value),
+            Token::HexLiteral(ref value) => write!(f, "{:x}", value),
             Token::FloatLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
             Token::Case => write!(f, "case"),
@@ -199,7 +239,10 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::ReplCommand(command) => Token::ReplCommand(command.to_owned()),
             Token::StringLiteral(value) => Token::StringLiteral(value),
             Token::CharLiteral(value) => Token::CharLiteral(value),
+            Token::BinLiteral(value) => Token::BinLiteral(value),
+            Token::OctLiteral(value) => Token::OctLiteral(value),
             Token::DecLiteral(value) => Token::DecLiteral(value),
+            Token::HexLiteral(value) => Token::HexLiteral(value),
             Token::FloatLiteral(value) => Token::FloatLiteral(value),
             Token::As => Token::As,
             Token::Case => Token::Case,
@@ -282,13 +325,13 @@ impl<'input> Lexer<'input> {
         &self.filemap.src_slice(ByteSpan::new(start, end)).unwrap()
     }
 
-    // /// Test a predicate against the next character in the source
-    // fn test_lookahead<F>(&self, mut pred: F) -> bool
-    // where
-    //     F: FnMut(char) -> bool,
-    // {
-    //     self.lookahead.map_or(false, |(_, ch)| pred(ch))
-    // }
+    /// Test a predicate against the next character in the source
+    fn test_lookahead<F>(&self, mut pred: F) -> bool
+    where
+        F: FnMut(char) -> bool,
+    {
+        self.lookahead.map_or(false, |(_, ch)| pred(ch))
+    }
 
     /// Consume characters while the predicate matches for the current
     /// character, then return the consumed slice and the end byte
@@ -430,6 +473,40 @@ impl<'input> Lexer<'input> {
         }
     }
 
+    /// Consume a binary literal token
+    fn bin_literal(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+        self.bump(); // skip 'b'
+        let (end, src) = self.take_while(start + ByteOffset(2), is_bin_digit);
+        if src.is_empty() {
+            Err(LexerError::UnterminatedBinLiteral {
+                span: ByteSpan::new(start, end),
+            })
+        } else {
+            let int = u64::from_str_radix(src, 2).unwrap();
+            Ok((start, Token::BinLiteral(int), end))
+        }
+    }
+
+    /// Consume a octal literal token
+    fn oct_literal(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+        self.bump(); // skip 'o'
+        let (end, src) = self.take_while(start + ByteOffset(2), is_oct_digit);
+        if src.is_empty() {
+            Err(LexerError::UnterminatedOctLiteral {
+                span: ByteSpan::new(start, end),
+            })
+        } else {
+            let int = u64::from_str_radix(src, 8).unwrap();
+            Ok((start, Token::OctLiteral(int), end))
+        }
+    }
+
     /// Consume a decimal literal
     fn dec_literal(&mut self, start: ByteIndex) -> Result<SpannedToken<'input>, LexerError> {
         let (end, src) = self.take_while(start, is_dec_digit);
@@ -450,6 +527,23 @@ impl<'input> Lexer<'input> {
                     value: src.to_string(),
                 }),
             }
+        }
+    }
+
+    /// Consume a hexadecimal literal token
+    fn hex_literal(
+        &mut self,
+        start: ByteIndex,
+    ) -> Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError> {
+        self.bump(); // skip 'x'
+        let (end, src) = self.take_while(start + ByteOffset(2), is_hex_digit);
+        if src.is_empty() {
+            Err(LexerError::UnterminatedHexLiteral {
+                span: ByteSpan::new(start, end),
+            })
+        } else {
+            let int = u64::from_str_radix(src, 16).unwrap();
+            Ok((start, Token::HexLiteral(int), end))
         }
     }
 }
@@ -496,6 +590,9 @@ impl<'input> Iterator for Lexer<'input> {
                 ']' => Ok((start, Token::RBracket, end)),
                 '"' => self.string_literal(start),
                 '\'' => self.char_literal(start),
+                '0' if self.test_lookahead(|x| x == 'b') => self.bin_literal(start),
+                '0' if self.test_lookahead(|x| x == 'o') => self.oct_literal(start),
+                '0' if self.test_lookahead(|x| x == 'x') => self.hex_literal(start),
                 ch if is_ident_start(ch) => Ok(self.ident(start)),
                 ch if is_dec_digit(ch) => self.dec_literal(start),
                 ch if ch.is_whitespace() => continue,
@@ -575,10 +672,34 @@ mod tests {
     }
 
     #[test]
+    fn bin_literal() {
+        test! {
+            "  0b010110  ",
+            "  ~~~~~~~~  " => Token::BinLiteral(0b010110),
+        };
+    }
+
+    #[test]
+    fn oct_literal() {
+        test! {
+            "  0o12371  ",
+            "  ~~~~~~~  " => Token::OctLiteral(0o12371),
+        };
+    }
+
+    #[test]
     fn dec_literal() {
         test! {
             "  123  ",
             "  ~~~  " => Token::DecLiteral(123),
+        };
+    }
+
+    #[test]
+    fn hex_literal() {
+        test! {
+            "  0x123AF  ",
+            "  ~~~~~~~  " => Token::HexLiteral(0x123AF),
         };
     }
 

@@ -225,16 +225,16 @@ fn resugar_pattern(
                 },
                 core::Literal::Char(value) => Pattern::Literal(Literal::Char(span, value)),
 
-                core::Literal::U8(value) => Pattern::Literal(Literal::Int(span, u64::from(value))),
-                core::Literal::U16(value) => Pattern::Literal(Literal::Int(span, u64::from(value))),
-                core::Literal::U32(value) => Pattern::Literal(Literal::Int(span, u64::from(value))),
-                core::Literal::U64(value) => Pattern::Literal(Literal::Int(span, value)),
+                core::Literal::U8(value) => Pattern::Literal(Literal::Dec(span, u64::from(value))),
+                core::Literal::U16(value) => Pattern::Literal(Literal::Dec(span, u64::from(value))),
+                core::Literal::U32(value) => Pattern::Literal(Literal::Dec(span, u64::from(value))),
+                core::Literal::U64(value) => Pattern::Literal(Literal::Dec(span, value)),
 
                 // FIXME: Underflow for negative numbers
-                core::Literal::I8(value) => Pattern::Literal(Literal::Int(span, value as u64)),
-                core::Literal::I16(value) => Pattern::Literal(Literal::Int(span, value as u64)),
-                core::Literal::I32(value) => Pattern::Literal(Literal::Int(span, value as u64)),
-                core::Literal::I64(value) => Pattern::Literal(Literal::Int(span, value as u64)),
+                core::Literal::I8(value) => Pattern::Literal(Literal::Dec(span, value as u64)),
+                core::Literal::I16(value) => Pattern::Literal(Literal::Dec(span, value as u64)),
+                core::Literal::I32(value) => Pattern::Literal(Literal::Dec(span, value as u64)),
+                core::Literal::I64(value) => Pattern::Literal(Literal::Dec(span, value as u64)),
 
                 core::Literal::F32(value) => {
                     Pattern::Literal(Literal::Float(span, f64::from(value)))
@@ -512,16 +512,16 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 },
                 core::Literal::Char(value) => Term::Literal(Literal::Char(span, value)),
 
-                core::Literal::U8(value) => Term::Literal(Literal::Int(span, u64::from(value))),
-                core::Literal::U16(value) => Term::Literal(Literal::Int(span, u64::from(value))),
-                core::Literal::U32(value) => Term::Literal(Literal::Int(span, u64::from(value))),
-                core::Literal::U64(value) => Term::Literal(Literal::Int(span, value)),
+                core::Literal::U8(value) => Term::Literal(Literal::Dec(span, u64::from(value))),
+                core::Literal::U16(value) => Term::Literal(Literal::Dec(span, u64::from(value))),
+                core::Literal::U32(value) => Term::Literal(Literal::Dec(span, u64::from(value))),
+                core::Literal::U64(value) => Term::Literal(Literal::Dec(span, value)),
 
                 // FIXME: Underflow for negative numbers
-                core::Literal::I8(value) => Term::Literal(Literal::Int(span, value as u64)),
-                core::Literal::I16(value) => Term::Literal(Literal::Int(span, value as u64)),
-                core::Literal::I32(value) => Term::Literal(Literal::Int(span, value as u64)),
-                core::Literal::I64(value) => Term::Literal(Literal::Int(span, value as u64)),
+                core::Literal::I8(value) => Term::Literal(Literal::Dec(span, value as u64)),
+                core::Literal::I16(value) => Term::Literal(Literal::Dec(span, value as u64)),
+                core::Literal::I32(value) => Term::Literal(Literal::Dec(span, value as u64)),
+                core::Literal::I64(value) => Term::Literal(Literal::Dec(span, value as u64)),
 
                 core::Literal::F32(value) => Term::Literal(Literal::Float(span, f64::from(value))),
                 core::Literal::F64(value) => Term::Literal(Literal::Float(span, value)),
