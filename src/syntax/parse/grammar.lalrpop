@@ -22,7 +22,10 @@ extern {
         "REPL command" => Token::ReplCommand(<&'input str>),
         "string literal" => Token::StringLiteral(<String>),
         "character literal" => Token::CharLiteral(<char>),
+        "binary literal" => Token::BinLiteral(<u64>),
+        "octal literal" => Token::OctLiteral(<u64>),
         "decimal literal" => Token::DecLiteral(<u64>),
+        "hex literal" => Token::HexLiteral(<u64>),
         "float literal" => Token::FloatLiteral(<f64>),
 
         // Keywords
@@ -120,7 +123,10 @@ Item: Item = {
 Literal: Literal = {
     <start: @L> <value: "string literal"> <end: @R> => Literal::String(ByteSpan::new(start, end), value),
     <start: @L> <value: "character literal"> <end: @R> => Literal::Char(ByteSpan::new(start, end), value),
-    <start: @L> <value: "decimal literal"> <end: @R> => Literal::Int(ByteSpan::new(start, end), value),
+    <start: @L> <value: "binary literal"> <end: @R> => Literal::Bin(ByteSpan::new(start, end), value),
+    <start: @L> <value: "octal literal"> <end: @R> => Literal::Oct(ByteSpan::new(start, end), value),
+    <start: @L> <value: "decimal literal"> <end: @R> => Literal::Dec(ByteSpan::new(start, end), value),
+    <start: @L> <value: "hex literal"> <end: @R> => Literal::Hex(ByteSpan::new(start, end), value),
     <start: @L> <value: "float literal"> <end: @R> => Literal::Float(ByteSpan::new(start, end), value),
 };
 
