@@ -364,9 +364,9 @@ impl Value {
         None
     }
 
-    pub fn free_var_app(&self) -> Option<(&FreeVar<String>, LevelShift, &Spine)> {
+    pub fn free_var_app(&self) -> Option<(&FreeVar<String>, LevelShift, &[RcValue])> {
         self.head_app().and_then(|(head, spine)| match *head {
-            Head::Var(Var::Free(ref free_var), shift) => Some((free_var, shift, spine)),
+            Head::Var(Var::Free(ref free_var), shift) => Some((free_var, shift, &spine[..])),
             Head::Extern(_, _) | Head::Var(Var::Bound(_), _) => None,
         })
     }

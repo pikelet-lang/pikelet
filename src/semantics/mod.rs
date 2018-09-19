@@ -12,7 +12,7 @@ use syntax::core::{
 };
 use syntax::raw;
 use syntax::translation::Resugar;
-use syntax::{Level, LevelShift};
+use syntax::Level;
 
 mod env;
 mod errors;
@@ -222,67 +222,31 @@ fn check_literal<Env>(
 where
     Env: GlobalEnv,
 {
-    match expected_ty.free_var_app() {
-        // Conservatively forcing the shift to be zero for now. Perhaps this
-        // could be relaxed in the future if it becomes a problem?
-        Some((free_var, LevelShift(0), spine)) if spine.is_empty() => {
-            match *raw_literal {
-                raw::Literal::String(_, ref val) if *free_var == env.globals().string => {
-                    return Ok(Literal::String(val.clone()));
-                },
-                raw::Literal::Char(_, val) if *free_var == env.globals().char => {
-                    return Ok(Literal::Char(val))
-                },
+    let ty = expected_ty;
+    match *raw_literal {
+        raw::Literal::String(_, ref val) if env.string() == ty => Ok(Literal::String(val.clone())),
+        raw::Literal::Char(_, val) if env.char() == ty => Ok(Literal::Char(val)),
 
-                // FIXME: overflow?
-                raw::Literal::Int(_, val) if *free_var == env.globals().u8 => {
-                    return Ok(Literal::U8(val as u8))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().u16 => {
-                    return Ok(Literal::U16(val as u16))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().u32 => {
-                    return Ok(Literal::U32(val as u32))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().u64 => {
-                    return Ok(Literal::U64(val))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().i8 => {
-                    return Ok(Literal::I8(val as i8))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().i16 => {
-                    return Ok(Literal::I16(val as i16))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().i32 => {
-                    return Ok(Literal::I32(val as i32))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().i64 => {
-                    return Ok(Literal::I64(val as i64))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().f32 => {
-                    return Ok(Literal::F32(val as f32))
-                },
-                raw::Literal::Int(_, val) if *free_var == env.globals().f64 => {
-                    return Ok(Literal::F64(val as f64))
-                },
-                raw::Literal::Float(_, val) if *free_var == env.globals().f32 => {
-                    return Ok(Literal::F32(val as f32))
-                },
-                raw::Literal::Float(_, val) if *free_var == env.globals().f64 => {
-                    return Ok(Literal::F64(val))
-                },
+        // FIXME: overflow?
+        raw::Literal::Int(_, val) if env.u8() == ty => Ok(Literal::U8(val as u8)),
+        raw::Literal::Int(_, val) if env.u16() == ty => Ok(Literal::U16(val as u16)),
+        raw::Literal::Int(_, val) if env.u32() == ty => Ok(Literal::U32(val as u32)),
+        raw::Literal::Int(_, val) if env.u64() == ty => Ok(Literal::U64(val)),
+        raw::Literal::Int(_, val) if env.i8() == ty => Ok(Literal::I8(val as i8)),
+        raw::Literal::Int(_, val) if env.i16() == ty => Ok(Literal::I16(val as i16)),
+        raw::Literal::Int(_, val) if env.i32() == ty => Ok(Literal::I32(val as i32)),
+        raw::Literal::Int(_, val) if env.i64() == ty => Ok(Literal::I64(val as i64)),
+        raw::Literal::Int(_, val) if env.f32() == ty => Ok(Literal::F32(val as f32)),
+        raw::Literal::Int(_, val) if env.f64() == ty => Ok(Literal::F64(val as f64)),
+        raw::Literal::Float(_, val) if env.f32() == ty => Ok(Literal::F32(val as f32)),
+        raw::Literal::Float(_, val) if env.f64() == ty => Ok(Literal::F64(val)),
 
-                _ => {},
-            }
-        },
-        Some(_) | None => {},
+        _ => Err(TypeError::LiteralMismatch {
+            literal_span: raw_literal.span(),
+            found: raw_literal.clone(),
+            expected: Box::new(expected_ty.resugar(env.resugar_env())),
+        }),
     }
-
-    Err(TypeError::LiteralMismatch {
-        literal_span: raw_literal.span(),
-        found: raw_literal.clone(),
-        expected: Box::new(expected_ty.resugar(env.resugar_env())),
-    })
 }
 
 /// Synthesize the type of a literal, returning the elaborated literal and the
@@ -292,14 +256,10 @@ where
     Env: GlobalEnv,
 {
     match *raw_literal {
-        raw::Literal::String(_, ref value) => Ok((
-            Literal::String(value.clone()),
-            RcValue::from(Value::var(Var::Free(env.globals().string.clone()), 0)),
-        )),
-        raw::Literal::Char(_, value) => Ok((
-            Literal::Char(value),
-            RcValue::from(Value::var(Var::Free(env.globals().char.clone()), 0)),
-        )),
+        raw::Literal::String(_, ref value) => {
+            Ok((Literal::String(value.clone()), env.string().clone()))
+        },
+        raw::Literal::Char(_, value) => Ok((Literal::Char(value), env.char().clone())),
         raw::Literal::Int(span, _) => Err(TypeError::AmbiguousIntLiteral { span }),
         raw::Literal::Float(span, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
     }
@@ -508,37 +468,26 @@ where
             return Ok(RcTerm::from(Term::Case(head, clauses)));
         },
 
-        (&raw::Term::Array(span, ref elems), ty) => match ty.free_var_app() {
-            // Conservatively forcing the shift to be zero for now. Perhaps this
-            // could be relaxed in the future if it becomes a problem?
-            Some((free_var, LevelShift(0), spine))
-                if *free_var == env.globals().array && spine.len() == 2 =>
-            {
-                let len = &spine[0];
-                let elem_ty = &spine[1];
-                if let Value::Literal(Literal::U64(len)) = **len {
-                    if len != elems.len() as u64 {
-                        return Err(TypeError::ArrayLengthMismatch {
-                            span,
-                            found_len: elems.len() as u64,
-                            expected_len: len,
-                        });
-                    }
-                }
-
-                return Ok(RcTerm::from(Term::Array(
-                    elems
+        (&raw::Term::Array(span, ref elems), _) => {
+            return match env.array(expected_ty) {
+                Some((len, elem_ty)) if len == elems.len() as u64 => {
+                    let elems = elems
                         .iter()
                         .map(|elem| check_term(env, elem, elem_ty))
-                        .collect::<Result<_, _>>()?,
-                )));
-            }
-            Some(_) | None => {
-                return Err(TypeError::Internal(InternalError::Unimplemented {
+                        .collect::<Result<_, _>>()?;
+
+                    Ok(RcTerm::from(Term::Array(elems)))
+                },
+                Some((len, _)) => Err(TypeError::ArrayLengthMismatch {
+                    span,
+                    found_len: elems.len() as u64,
+                    expected_len: len,
+                }),
+                None => Err(TypeError::Internal(InternalError::Unimplemented {
                     span: Some(span),
                     message: "unexpected arguments to `Array`".to_owned(),
-                }));
-            },
+                })),
+            }
         },
 
         (&raw::Term::Hole(span), _) => {
