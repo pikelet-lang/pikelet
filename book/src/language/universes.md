@@ -12,7 +12,7 @@
 Types also have types!
 
 ```pikelet-repl
-Pikelet> :t I32
+Pikelet> :t S32
 Type
 ```
 
@@ -55,7 +55,7 @@ smaller universes being contained within the larger universes:
 |  |  |                                      |                                |  |
 |  |  |            Record { x : F32 }        |          Array n Type          |  |
 |  |  |                                      |                                |  |
-|  |  |  .- I32 --------------.              |                                |  |
+|  |  |  .- S32 --------------.              |                                |  |
 |  |  |  | ..., -1, 0, 1, ... |              |       Nat -> Type -> Type      |  |
 |  |  |  '--------------------'              |                                |  |
 |  |  |                                      |                                |  |
@@ -113,7 +113,7 @@ This then allows us to use it with values:
 
 ```pikelet-repl
 Pikelet> id String "hello"   -- ok
-Pikelet> id I32 1            -- ok
+Pikelet> id S32 1            -- ok
 ```
 
 Sadly because of our universe hierarchy, we can't use our identity function at

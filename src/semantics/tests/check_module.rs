@@ -111,7 +111,7 @@ fn duplicate_declarations() {
 
     let src = "
         foo : Bool;
-        foo : I32;
+        foo : S32;
     ";
 
     let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
@@ -130,7 +130,7 @@ fn duplicate_definitions() {
 
     let src = "
         foo = Bool;
-        foo = I32;
+        foo = S32;
     ";
 
     let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
@@ -152,7 +152,7 @@ fn shift_universes() {
         id a x = x;
 
         test1 = id String "hello";
-        test2 = id I32 1;
+        test2 = id S32 1;
         test3 = id^1 Type String;
         test4 = id^2 Type String;
         test5 = id^2 Type^1 String;
