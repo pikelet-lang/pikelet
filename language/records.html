@@ -181,7 +181,7 @@ read more about Pikelet's type inference on <a href="./type-inference">the type 
 fixed-length array into a dynamically sized array, by using the <code>len</code> field
 later on to define the <code>data</code> field's annotation:</p>
 <pre><code class="language-pikelet">DArray (a : Type) = Record {
-    len : I32;
+    len : S32;
     data : Box (Array len a);
 };
 </code></pre>

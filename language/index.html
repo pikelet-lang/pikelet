@@ -161,10 +161,10 @@
 <tr><td> <code>U16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
 <tr><td> <code>U32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
 <tr><td> <code>U64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
 <tr><td> <code>F32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
 <tr><td> <code>F64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
 </tbody></table>
@@ -179,8 +179,8 @@ infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1
 error: ambiguous integer literal
-Pikelet&gt; 1 : I32
-1 : I32
+Pikelet&gt; 1 : S32
+1 : S32
 Pikelet&gt; 1 : F32
 1 : F32
 Pikelet&gt; 1.0 : F32

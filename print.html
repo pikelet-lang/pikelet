@@ -169,8 +169,8 @@ Pikelet&gt; (\(a : Type) (x : a) =&gt; x) String &quot;hello&quot;
 &quot;hello&quot; : String
 Pikelet&gt; :t Type
 Type^1
-Pikelet&gt; 1 : I16
-1 : I16
+Pikelet&gt; 1 : S16
+1 : S16
 Pikelet&gt;
 </code></pre>
 <a class="header" href="#what-is-a-pikelet" id="what-is-a-pikelet"><h2>What is a Pikelet?</h2></a>
@@ -215,10 +215,10 @@ sooner or later the REPL will be ready for you to interact with!</p>
 <tr><td> <code>U16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
 <tr><td> <code>U32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
 <tr><td> <code>U64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
-<tr><td> <code>I64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S8</code>     </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S16</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
+<tr><td> <code>S64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ...                     </td></tr>
 <tr><td> <code>F32</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
 <tr><td> <code>F64</code>    </td><td> <code>1</code>, <code>2</code>, <code>3</code>, ..., <code>0.0</code>, <code>1.0</code>, ...  </td></tr>
 </tbody></table>
@@ -233,8 +233,8 @@ infer the types, but if it fails to do so you will get an error. In that case
 you can use the type annotation operator, <code>(:)</code>, to specify the intended type:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; 1
 error: ambiguous integer literal
-Pikelet&gt; 1 : I32
-1 : I32
+Pikelet&gt; 1 : S32
+1 : S32
 Pikelet&gt; 1 : F32
 1 : F32
 Pikelet&gt; 1.0 : F32
@@ -318,7 +318,7 @@ read more about Pikelet's type inference on <a href="./type-inference">the type 
 fixed-length array into a dynamically sized array, by using the <code>len</code> field
 later on to define the <code>data</code> field's annotation:</p>
 <pre><code class="language-pikelet">DArray (a : Type) = Record {
-    len : I32;
+    len : S32;
     data : Box (Array len a);
 };
 </code></pre>
@@ -372,8 +372,8 @@ For example:</p>
 </ul>
 <a class="header" href="#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
 <p>Here are some simple functions and their types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : I32 =&gt; x
-I32 -&gt; I32
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : S32 =&gt; x
+S32 -&gt; S32
 Pikelet&gt; :t \x : String =&gt; x
 String -&gt; String
 Pikelet&gt; :t \x : Char =&gt; x
@@ -382,8 +382,8 @@ Char -&gt; Char
 <p>Note that all of these types follow the same pattern - they are the identity
 function! This means that if you pass a value to them, they'll return the same
 thing without alteration!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 42
-42 : I32
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : S32 =&gt; x) 42
+42 : S32
 Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
 &quot;hi&quot; : String
 Pikelet&gt; (\x : Char =&gt; x) 'b'
@@ -392,10 +392,10 @@ Pikelet&gt; (\x : Char =&gt; x) 'b'
 <a class="header" href="#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
 <p>Alas, we can't reuse one of these identity functions with other, incompatible
 types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : I32 =&gt; x) 4.0
-error: found a floating point literal, but expected a type `I32`
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : S32 =&gt; x) 4.0
+error: found a floating point literal, but expected a type `S32`
 - &lt;repl&gt;:1:17
-1 | (\x : I32 =&gt; x) 4.0
+1 | (\x : S32 =&gt; x) 4.0
   |                 ^^^ the literal
 </code></pre>
 <p>Let's make this identity function polymorphic by adding a parameter for the type
@@ -407,8 +407,8 @@ of the argument:</p>
 applying a type to it:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
 &quot;hello&quot; : String
-Pikelet&gt; (\(x : Type) (x : a) =&gt; x) I32 1
-1 : I32
+Pikelet&gt; (\(x : Type) (x : a) =&gt; x) S32 1
+1 : S32
 </code></pre>
 <a class="header" href="#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
 <p>In Pikelet, all functions take a single argument - in order to pass multiple
@@ -440,8 +440,8 @@ greeting = &quot;hello there!&quot;;      -- definition
 </code></pre>
 <p>We can make supply a number of forward declarations before providing their
 associated definitions:</p>
-<pre><code class="language-pikelet">one : I32;
-two : I32;
+<pre><code class="language-pikelet">one : S32;
+two : S32;
 
 one = 1;
 two = 1;
@@ -536,10 +536,10 @@ Pikelet&gt; 2.0
 Pikelet&gt; record { x = 3.0; y = 3.0 }
 Pikelet&gt; \x =&gt; x
 </code></pre>
-<pre><code class="language-pikelet-repl">Pikelet&gt; 1 : I32
+<pre><code class="language-pikelet-repl">Pikelet&gt; 1 : S32
 Pikelet&gt; 2.0 : F32
 Pikelet&gt; record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
-Pikelet&gt; \x =&gt; x : I32 -&gt; I32
+Pikelet&gt; \x =&gt; x : S32 -&gt; S32
 </code></pre>
 <a class="header" href="#further-reading" id="further-reading"><h2>Further reading</h2></a>
 <p>We describe Pikelet's type checking algorithm more formally
@@ -557,7 +557,7 @@ level intuition of type inference in Pikelet.</p>
 </ul>
 <a class="header" href="#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
 <p>Types also have types!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t S32
 Type
 </code></pre>
 <p>We call this special 'type of types' a <em>universe</em>.</p>
@@ -587,7 +587,7 @@ smaller universes being contained within the larger universes:</p>
 |  |  |                                      |                                |  |
 |  |  |            Record { x : F32 }        |          Array n Type          |  |
 |  |  |                                      |                                |  |
-|  |  |  .- I32 --------------.              |                                |  |
+|  |  |  .- S32 --------------.              |                                |  |
 |  |  |  | ..., -1, 0, 1, ... |              |       Nat -&gt; Type -&gt; Type      |  |
 |  |  |  '--------------------'              |                                |  |
 |  |  |                                      |                                |  |
@@ -629,7 +629,7 @@ id a x = x
 </code></pre>
 <p>This then allows us to use it with values:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; id String &quot;hello&quot;   -- ok
-Pikelet&gt; id I32 1            -- ok
+Pikelet&gt; id S32 1            -- ok
 </code></pre>
 <p>Sadly because of our universe hierarchy, we can't use our identity function at
 the type level!</p>

@@ -149,7 +149,7 @@
 </ul>
 <a class="header" href="#types-of-types" id="types-of-types"><h2>Types of types</h2></a>
 <p>Types also have types!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t I32
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t S32
 Type
 </code></pre>
 <p>We call this special 'type of types' a <em>universe</em>.</p>
@@ -179,7 +179,7 @@ smaller universes being contained within the larger universes:</p>
 |  |  |                                      |                                |  |
 |  |  |            Record { x : F32 }        |          Array n Type          |  |
 |  |  |                                      |                                |  |
-|  |  |  .- I32 --------------.              |                                |  |
+|  |  |  .- S32 --------------.              |                                |  |
 |  |  |  | ..., -1, 0, 1, ... |              |       Nat -&gt; Type -&gt; Type      |  |
 |  |  |  '--------------------'              |                                |  |
 |  |  |                                      |                                |  |
@@ -221,7 +221,7 @@ id a x = x
 </code></pre>
 <p>This then allows us to use it with values:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; id String &quot;hello&quot;   -- ok
-Pikelet&gt; id I32 1            -- ok
+Pikelet&gt; id S32 1            -- ok
 </code></pre>
 <p>Sadly because of our universe hierarchy, we can't use our identity function at
 the type level!</p>
