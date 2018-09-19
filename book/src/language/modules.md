@@ -24,8 +24,8 @@ We can make supply a number of forward declarations before providing their
 associated definitions:
 
 ```pikelet
-one : I32;
-two : I32;
+one : S32;
+two : S32;
 
 one = 1;
 two = 1;
