@@ -68,7 +68,7 @@ fn dependent_record_propagate_types() {
     let tc_env = TcEnv::default();
 
     let expected_ty = r"Record { t : Type; x : t }";
-    let given_expr = r#"record { t = I32; x = 1 }"#;
+    let given_expr = r#"record { t = S32; x = 1 }"#;
 
     let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);
     parse_check_term(&mut codemap, &tc_env, given_expr, &expected_ty);
@@ -117,7 +117,7 @@ fn case_expr_wildcard() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
 
-    let expected_ty = r"I32";
+    let expected_ty = r"S32";
     let given_expr = r#"case "helloo" of {
         _ => 123;
     }"#;

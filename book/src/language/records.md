@@ -59,7 +59,7 @@ later on to define the `data` field's annotation:
 
 ```pikelet
 DArray (a : Type) = Record {
-    len : I32;
+    len : S32;
     data : Box (Array len a);
 };
 ```

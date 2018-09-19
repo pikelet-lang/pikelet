@@ -35,10 +35,10 @@ impl_into_value!(u8, U8);
 impl_into_value!(u16, U16);
 impl_into_value!(u32, U32);
 impl_into_value!(u64, U64);
-impl_into_value!(i8, I8);
-impl_into_value!(i16, I16);
-impl_into_value!(i32, I32);
-impl_into_value!(i64, I64);
+impl_into_value!(i8, S8);
+impl_into_value!(i16, S16);
+impl_into_value!(i32, S32);
+impl_into_value!(i64, S64);
 impl_into_value!(f32, F32);
 impl_into_value!(f64, F64);
 
@@ -62,10 +62,10 @@ impl_try_from_value_ref!(u8, U8);
 impl_try_from_value_ref!(u16, U16);
 impl_try_from_value_ref!(u32, U32);
 impl_try_from_value_ref!(u64, U64);
-impl_try_from_value_ref!(i8, I8);
-impl_try_from_value_ref!(i16, I16);
-impl_try_from_value_ref!(i32, I32);
-impl_try_from_value_ref!(i64, I64);
+impl_try_from_value_ref!(i8, S8);
+impl_try_from_value_ref!(i16, S16);
+impl_try_from_value_ref!(i32, S32);
+impl_try_from_value_ref!(i64, S64);
 impl_try_from_value_ref!(f32, F32);
 impl_try_from_value_ref!(f64, F64);
 
@@ -272,10 +272,10 @@ pub struct Globals {
     ty_u16: RcType,
     ty_u32: RcType,
     ty_u64: RcType,
-    ty_i8: RcType,
-    ty_i16: RcType,
-    ty_i32: RcType,
-    ty_i64: RcType,
+    ty_s8: RcType,
+    ty_s16: RcType,
+    ty_s32: RcType,
+    ty_s64: RcType,
     ty_f32: RcType,
     ty_f64: RcType,
     var_array: FreeVar<String>,
@@ -292,10 +292,10 @@ pub trait GlobalEnv: Clone {
     fn u16(&self) -> &RcType;
     fn u32(&self) -> &RcType;
     fn u64(&self) -> &RcType;
-    fn i8(&self) -> &RcType;
-    fn i16(&self) -> &RcType;
-    fn i32(&self) -> &RcType;
-    fn i64(&self) -> &RcType;
+    fn s8(&self) -> &RcType;
+    fn s16(&self) -> &RcType;
+    fn s32(&self) -> &RcType;
+    fn s64(&self) -> &RcType;
     fn f32(&self) -> &RcType;
     fn f64(&self) -> &RcType;
     fn array<'a>(&self, ty: &'a RcType) -> Option<(u64, &'a RcType)>;
@@ -371,10 +371,10 @@ impl Default for TcEnv {
         let var_u16 = FreeVar::fresh_named("U16");
         let var_u32 = FreeVar::fresh_named("U32");
         let var_u64 = FreeVar::fresh_named("U64");
-        let var_i8 = FreeVar::fresh_named("I8");
-        let var_i16 = FreeVar::fresh_named("I16");
-        let var_i32 = FreeVar::fresh_named("I32");
-        let var_i64 = FreeVar::fresh_named("I64");
+        let var_i8 = FreeVar::fresh_named("S8");
+        let var_i16 = FreeVar::fresh_named("S16");
+        let var_i32 = FreeVar::fresh_named("S32");
+        let var_i64 = FreeVar::fresh_named("S64");
         let var_f32 = FreeVar::fresh_named("F32");
         let var_f64 = FreeVar::fresh_named("F64");
         let var_array = FreeVar::fresh_named("Array");
@@ -389,10 +389,10 @@ impl Default for TcEnv {
                 ty_u16: RcValue::from(Value::var(Var::Free(var_u16.clone()), 0)),
                 ty_u32: RcValue::from(Value::var(Var::Free(var_u32.clone()), 0)),
                 ty_u64: RcValue::from(Value::var(Var::Free(var_u64.clone()), 0)),
-                ty_i8: RcValue::from(Value::var(Var::Free(var_i8.clone()), 0)),
-                ty_i16: RcValue::from(Value::var(Var::Free(var_i16.clone()), 0)),
-                ty_i32: RcValue::from(Value::var(Var::Free(var_i32.clone()), 0)),
-                ty_i64: RcValue::from(Value::var(Var::Free(var_i64.clone()), 0)),
+                ty_s8: RcValue::from(Value::var(Var::Free(var_i8.clone()), 0)),
+                ty_s16: RcValue::from(Value::var(Var::Free(var_i16.clone()), 0)),
+                ty_s32: RcValue::from(Value::var(Var::Free(var_i32.clone()), 0)),
+                ty_s64: RcValue::from(Value::var(Var::Free(var_i64.clone()), 0)),
                 ty_f32: RcValue::from(Value::var(Var::Free(var_f32.clone()), 0)),
                 ty_f64: RcValue::from(Value::var(Var::Free(var_f64.clone()), 0)),
                 var_array: var_array.clone(),
@@ -473,20 +473,20 @@ impl GlobalEnv for TcEnv {
         &self.globals.ty_u64
     }
 
-    fn i8(&self) -> &RcType {
-        &self.globals.ty_i8
+    fn s8(&self) -> &RcType {
+        &self.globals.ty_s8
     }
 
-    fn i16(&self) -> &RcType {
-        &self.globals.ty_i16
+    fn s16(&self) -> &RcType {
+        &self.globals.ty_s16
     }
 
-    fn i32(&self) -> &RcType {
-        &self.globals.ty_i32
+    fn s32(&self) -> &RcType {
+        &self.globals.ty_s32
     }
 
-    fn i64(&self) -> &RcType {
-        &self.globals.ty_i64
+    fn s64(&self) -> &RcType {
+        &self.globals.ty_s64
     }
 
     fn f32(&self) -> &RcType {

@@ -325,7 +325,7 @@ pub enum Term {
     /// Let binding
     ///
     /// ```text
-    /// let x : I32
+    /// let x : S32
     ///     x = 1
     /// in
     ///     x

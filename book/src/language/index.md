@@ -28,10 +28,10 @@ Pikelet has a number of primitive types:
 | `U16`    | `1`, `2`, `3`, ...                     |
 | `U32`    | `1`, `2`, `3`, ...                     |
 | `U64`    | `1`, `2`, `3`, ...                     |
-| `I8`     | `1`, `2`, `3`, ...                     |
-| `I16`    | `1`, `2`, `3`, ...                     |
-| `I32`    | `1`, `2`, `3`, ...                     |
-| `I64`    | `1`, `2`, `3`, ...                     |
+| `S8`     | `1`, `2`, `3`, ...                     |
+| `S16`    | `1`, `2`, `3`, ...                     |
+| `S32`    | `1`, `2`, `3`, ...                     |
+| `S64`    | `1`, `2`, `3`, ...                     |
 | `F32`    | `1`, `2`, `3`, ..., `0.0`, `1.0`, ...  |
 | `F64`    | `1`, `2`, `3`, ..., `0.0`, `1.0`, ...  |
 
@@ -48,8 +48,8 @@ you can use the type annotation operator, `(:)`, to specify the intended type:
 ```pikelet-repl
 Pikelet> 1
 error: ambiguous integer literal
-Pikelet> 1 : I32
-1 : I32
+Pikelet> 1 : S32
+1 : S32
 Pikelet> 1 : F32
 1 : F32
 Pikelet> 1.0 : F32

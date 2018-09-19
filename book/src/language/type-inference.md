@@ -64,10 +64,10 @@ Pikelet> \x => x
 ```
 
 ```pikelet-repl
-Pikelet> 1 : I32
+Pikelet> 1 : S32
 Pikelet> 2.0 : F32
 Pikelet> record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
-Pikelet> \x => x : I32 -> I32
+Pikelet> \x => x : S32 -> S32
 ```
 
 ## Further reading
