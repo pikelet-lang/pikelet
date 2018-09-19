@@ -59,11 +59,11 @@ impl ToDoc for Literal {
         match *self {
             Literal::String(_, ref value) => Doc::text(format!("{:?}", value)),
             Literal::Char(_, value) => Doc::text(format!("{:?}", value)),
-            Literal::Bin(_, value) => Doc::text(format!("{:b}", value)),
-            Literal::Oct(_, value) => Doc::text(format!("{:o}", value)),
-            Literal::Dec(_, value) => Doc::as_string(&value),
-            Literal::Hex(_, value) => Doc::text(format!("{:x}", value)),
-            Literal::Float(_, value) => Doc::as_string(&value),
+            Literal::BinInt(_, value) => Doc::text(format!("{:b}", value)),
+            Literal::OctInt(_, value) => Doc::text(format!("{:o}", value)),
+            Literal::DecInt(_, value) => Doc::as_string(&value),
+            Literal::HexInt(_, value) => Doc::text(format!("{:x}", value)),
+            Literal::DecFloat(_, value) => Doc::as_string(&value),
         }
     }
 }
