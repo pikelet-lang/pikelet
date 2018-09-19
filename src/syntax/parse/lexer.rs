@@ -141,11 +141,11 @@ pub enum Token<S> {
     ReplCommand(S),
     StringLiteral(String),
     CharLiteral(char),
-    BinLiteral(u64),
-    OctLiteral(u64),
-    DecLiteral(u64),
-    HexLiteral(u64),
-    FloatLiteral(f64),
+    BinIntLiteral(u64),
+    OctIntLiteral(u64),
+    DecIntLiteral(u64),
+    HexIntLiteral(u64),
+    DecFloatLiteral(f64),
 
     // Keywords
     As,         // as
@@ -192,11 +192,11 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::ReplCommand(ref command) => write!(f, ":{}", command),
             Token::StringLiteral(ref value) => write!(f, "{:?}", value),
             Token::CharLiteral(ref value) => write!(f, "'{:?}'", value),
-            Token::BinLiteral(ref value) => write!(f, "{:b}", value),
-            Token::OctLiteral(ref value) => write!(f, "{:o}", value),
-            Token::DecLiteral(ref value) => write!(f, "{}", value),
-            Token::HexLiteral(ref value) => write!(f, "{:x}", value),
-            Token::FloatLiteral(ref value) => write!(f, "{}", value),
+            Token::BinIntLiteral(ref value) => write!(f, "{:b}", value),
+            Token::OctIntLiteral(ref value) => write!(f, "{:o}", value),
+            Token::DecIntLiteral(ref value) => write!(f, "{}", value),
+            Token::HexIntLiteral(ref value) => write!(f, "{:x}", value),
+            Token::DecFloatLiteral(ref value) => write!(f, "{}", value),
             Token::As => write!(f, "as"),
             Token::Case => write!(f, "case"),
             Token::Else => write!(f, "else"),
@@ -239,11 +239,11 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::ReplCommand(command) => Token::ReplCommand(command.to_owned()),
             Token::StringLiteral(value) => Token::StringLiteral(value),
             Token::CharLiteral(value) => Token::CharLiteral(value),
-            Token::BinLiteral(value) => Token::BinLiteral(value),
-            Token::OctLiteral(value) => Token::OctLiteral(value),
-            Token::DecLiteral(value) => Token::DecLiteral(value),
-            Token::HexLiteral(value) => Token::HexLiteral(value),
-            Token::FloatLiteral(value) => Token::FloatLiteral(value),
+            Token::BinIntLiteral(value) => Token::BinIntLiteral(value),
+            Token::OctIntLiteral(value) => Token::OctIntLiteral(value),
+            Token::DecIntLiteral(value) => Token::DecIntLiteral(value),
+            Token::HexIntLiteral(value) => Token::HexIntLiteral(value),
+            Token::DecFloatLiteral(value) => Token::DecFloatLiteral(value),
             Token::As => Token::As,
             Token::Case => Token::Case,
             Token::Else => Token::Else,
@@ -486,7 +486,7 @@ impl<'input> Lexer<'input> {
             })
         } else {
             let int = u64::from_str_radix(src, 2).unwrap();
-            Ok((start, Token::BinLiteral(int), end))
+            Ok((start, Token::BinIntLiteral(int), end))
         }
     }
 
@@ -503,7 +503,7 @@ impl<'input> Lexer<'input> {
             })
         } else {
             let int = u64::from_str_radix(src, 8).unwrap();
-            Ok((start, Token::OctLiteral(int), end))
+            Ok((start, Token::OctIntLiteral(int), end))
         }
     }
 
@@ -516,12 +516,12 @@ impl<'input> Lexer<'input> {
             let (end, src) = self.take_while(start, is_dec_digit);
 
             match f64::from_str(src) {
-                Ok(value) => Ok((start, Token::FloatLiteral(value), end)),
+                Ok(value) => Ok((start, Token::DecFloatLiteral(value), end)),
                 Err(_) => unimplemented!(),
             }
         } else {
             match u64::from_str_radix(src, 10) {
-                Ok(value) => Ok((start, Token::DecLiteral(value), end)),
+                Ok(value) => Ok((start, Token::DecIntLiteral(value), end)),
                 Err(_) => Err(LexerError::IntegerLiteralOverflow {
                     span: ByteSpan::new(start, end),
                     value: src.to_string(),
@@ -543,7 +543,7 @@ impl<'input> Lexer<'input> {
             })
         } else {
             let int = u64::from_str_radix(src, 16).unwrap();
-            Ok((start, Token::HexLiteral(int), end))
+            Ok((start, Token::HexIntLiteral(int), end))
         }
     }
 }
@@ -675,7 +675,7 @@ mod tests {
     fn bin_literal() {
         test! {
             "  0b010110  ",
-            "  ~~~~~~~~  " => Token::BinLiteral(0b010110),
+            "  ~~~~~~~~  " => Token::BinIntLiteral(0b010110),
         };
     }
 
@@ -683,7 +683,7 @@ mod tests {
     fn oct_literal() {
         test! {
             "  0o12371  ",
-            "  ~~~~~~~  " => Token::OctLiteral(0o12371),
+            "  ~~~~~~~  " => Token::OctIntLiteral(0o12371),
         };
     }
 
@@ -691,7 +691,7 @@ mod tests {
     fn dec_literal() {
         test! {
             "  123  ",
-            "  ~~~  " => Token::DecLiteral(123),
+            "  ~~~  " => Token::DecIntLiteral(123),
         };
     }
 
@@ -699,7 +699,7 @@ mod tests {
     fn hex_literal() {
         test! {
             "  0x123AF  ",
-            "  ~~~~~~~  " => Token::HexLiteral(0x123AF),
+            "  ~~~~~~~  " => Token::HexIntLiteral(0x123AF),
         };
     }
 
@@ -707,7 +707,7 @@ mod tests {
     fn float_literal() {
         test! {
             "  122.345  ",
-            "  ~~~~~~~  " => Token::FloatLiteral(122.345),
+            "  ~~~~~~~  " => Token::DecFloatLiteral(122.345),
         };
     }
 

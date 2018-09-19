@@ -1,5 +1,5 @@
 use im::HashMap;
-use moniker::{Binder, FreeVar};
+use moniker::{Binder, FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
 
@@ -265,50 +265,40 @@ fn default_extern_definitions() -> HashMap<&'static str, Extern> {
 
 #[derive(Clone, Debug)]
 pub struct Globals {
-    pub bool: FreeVar<String>,
-    pub true_: FreeVar<String>,
-    pub false_: FreeVar<String>,
-    pub string: FreeVar<String>,
-    pub char: FreeVar<String>,
-    pub u8: FreeVar<String>,
-    pub u16: FreeVar<String>,
-    pub u32: FreeVar<String>,
-    pub u64: FreeVar<String>,
-    pub i8: FreeVar<String>,
-    pub i16: FreeVar<String>,
-    pub i32: FreeVar<String>,
-    pub i64: FreeVar<String>,
-    pub f32: FreeVar<String>,
-    pub f64: FreeVar<String>,
-    pub array: FreeVar<String>,
-}
-
-impl Default for Globals {
-    fn default() -> Globals {
-        Globals {
-            bool: FreeVar::fresh_named("Bool"),
-            true_: FreeVar::fresh_named("true"),
-            false_: FreeVar::fresh_named("false"),
-            string: FreeVar::fresh_named("String"),
-            char: FreeVar::fresh_named("Char"),
-            u8: FreeVar::fresh_named("U8"),
-            u16: FreeVar::fresh_named("U16"),
-            u32: FreeVar::fresh_named("U32"),
-            u64: FreeVar::fresh_named("U64"),
-            i8: FreeVar::fresh_named("I8"),
-            i16: FreeVar::fresh_named("I16"),
-            i32: FreeVar::fresh_named("I32"),
-            i64: FreeVar::fresh_named("I64"),
-            f32: FreeVar::fresh_named("F32"),
-            f64: FreeVar::fresh_named("F64"),
-            array: FreeVar::fresh_named("Array"),
-        }
-    }
+    ty_bool: RcType,
+    ty_string: RcType,
+    ty_char: RcType,
+    ty_u8: RcType,
+    ty_u16: RcType,
+    ty_u32: RcType,
+    ty_u64: RcType,
+    ty_i8: RcType,
+    ty_i16: RcType,
+    ty_i32: RcType,
+    ty_i64: RcType,
+    ty_f32: RcType,
+    ty_f64: RcType,
+    var_array: FreeVar<String>,
 }
 
 pub trait GlobalEnv: Clone {
     fn resugar_env(&self) -> &ResugarEnv;
-    fn globals(&self) -> &Globals;
+
+    // Not the happiest with this stuff, but eh...
+    fn bool(&self) -> &RcType;
+    fn string(&self) -> &RcType;
+    fn char(&self) -> &RcType;
+    fn u8(&self) -> &RcType;
+    fn u16(&self) -> &RcType;
+    fn u32(&self) -> &RcType;
+    fn u64(&self) -> &RcType;
+    fn i8(&self) -> &RcType;
+    fn i16(&self) -> &RcType;
+    fn i32(&self) -> &RcType;
+    fn i64(&self) -> &RcType;
+    fn f32(&self) -> &RcType;
+    fn f64(&self) -> &RcType;
+    fn array<'a>(&self, ty: &'a RcType) -> Option<(u64, &'a RcType)>;
 }
 
 /// An environment that contains declarations
@@ -368,42 +358,57 @@ impl TcEnv {
 
 impl Default for TcEnv {
     fn default() -> TcEnv {
-        use moniker::{Embed, Scope, Var};
+        use moniker::{Embed, Scope};
 
         use syntax::core::Term;
 
+        let var_bool = FreeVar::fresh_named("Bool");
+        let var_true = FreeVar::fresh_named("true");
+        let var_false = FreeVar::fresh_named("false");
+        let var_string = FreeVar::fresh_named("String");
+        let var_char = FreeVar::fresh_named("Char");
+        let var_u8 = FreeVar::fresh_named("U8");
+        let var_u16 = FreeVar::fresh_named("U16");
+        let var_u32 = FreeVar::fresh_named("U32");
+        let var_u64 = FreeVar::fresh_named("U64");
+        let var_i8 = FreeVar::fresh_named("I8");
+        let var_i16 = FreeVar::fresh_named("I16");
+        let var_i32 = FreeVar::fresh_named("I32");
+        let var_i64 = FreeVar::fresh_named("I64");
+        let var_f32 = FreeVar::fresh_named("F32");
+        let var_f64 = FreeVar::fresh_named("F64");
+        let var_array = FreeVar::fresh_named("Array");
+
         let mut tc_env = TcEnv {
             resugar_env: ResugarEnv::new(),
-            globals: Rc::new(Globals::default()),
+            globals: Rc::new(Globals {
+                ty_bool: RcValue::from(Value::var(Var::Free(var_bool.clone()), 0)),
+                ty_string: RcValue::from(Value::var(Var::Free(var_string.clone()), 0)),
+                ty_char: RcValue::from(Value::var(Var::Free(var_char.clone()), 0)),
+                ty_u8: RcValue::from(Value::var(Var::Free(var_u8.clone()), 0)),
+                ty_u16: RcValue::from(Value::var(Var::Free(var_u16.clone()), 0)),
+                ty_u32: RcValue::from(Value::var(Var::Free(var_u32.clone()), 0)),
+                ty_u64: RcValue::from(Value::var(Var::Free(var_u64.clone()), 0)),
+                ty_i8: RcValue::from(Value::var(Var::Free(var_i8.clone()), 0)),
+                ty_i16: RcValue::from(Value::var(Var::Free(var_i16.clone()), 0)),
+                ty_i32: RcValue::from(Value::var(Var::Free(var_i32.clone()), 0)),
+                ty_i64: RcValue::from(Value::var(Var::Free(var_i64.clone()), 0)),
+                ty_f32: RcValue::from(Value::var(Var::Free(var_f32.clone()), 0)),
+                ty_f64: RcValue::from(Value::var(Var::Free(var_f64.clone()), 0)),
+                var_array: var_array.clone(),
+            }),
             extern_definitions: default_extern_definitions(),
             declarations: HashMap::new(),
             definitions: HashMap::new(),
         };
 
-        let var_bool = tc_env.globals.bool.clone();
-        let var_true_ = tc_env.globals.true_.clone();
-        let var_false_ = tc_env.globals.false_.clone();
-        let var_string = tc_env.globals.string.clone();
-        let var_char = tc_env.globals.char.clone();
-        let var_u8 = tc_env.globals.u8.clone();
-        let var_u16 = tc_env.globals.u16.clone();
-        let var_u32 = tc_env.globals.u32.clone();
-        let var_u64 = tc_env.globals.u64.clone();
-        let var_i8 = tc_env.globals.i8.clone();
-        let var_i16 = tc_env.globals.i16.clone();
-        let var_i32 = tc_env.globals.i32.clone();
-        let var_i64 = tc_env.globals.i64.clone();
-        let var_f32 = tc_env.globals.f32.clone();
-        let var_f64 = tc_env.globals.f64.clone();
-        let var_array = tc_env.globals.array.clone();
-
         let universe0 = RcValue::from(Value::universe(0));
-        let bool_ty = RcValue::from(Value::var(Var::Free(var_bool.clone()), 0));
+        let bool_ty = tc_env.globals.ty_bool.clone();
         let bool_lit = |value| RcTerm::from(Term::Literal(Literal::Bool(value)));
         let array_ty = RcValue::from(Value::Pi(Scope::new(
             (
                 Binder(FreeVar::fresh_unnamed()),
-                Embed(RcValue::from(Value::var(Var::Free(var_u64.clone()), 0))),
+                Embed(tc_env.globals.ty_u64.clone()),
             ),
             RcValue::from(Value::Pi(Scope::new(
                 (Binder(FreeVar::fresh_unnamed()), Embed(universe0.clone())),
@@ -412,8 +417,6 @@ impl Default for TcEnv {
         )));
 
         tc_env.insert_declaration(var_bool, universe0.clone());
-        tc_env.insert_declaration(var_true_.clone(), bool_ty.clone());
-        tc_env.insert_declaration(var_false_.clone(), bool_ty.clone());
         tc_env.insert_declaration(var_string, universe0.clone());
         tc_env.insert_declaration(var_char, universe0.clone());
         tc_env.insert_declaration(var_u8, universe0.clone());
@@ -426,10 +429,12 @@ impl Default for TcEnv {
         tc_env.insert_declaration(var_i64, universe0.clone());
         tc_env.insert_declaration(var_f32, universe0.clone());
         tc_env.insert_declaration(var_f64, universe0.clone());
-        tc_env.insert_declaration(var_array.clone(), array_ty);
+        tc_env.insert_declaration(var_array, array_ty);
 
-        tc_env.insert_definition(var_true_, bool_lit(true));
-        tc_env.insert_definition(var_false_, bool_lit(false));
+        tc_env.insert_declaration(var_true.clone(), bool_ty.clone());
+        tc_env.insert_declaration(var_false.clone(), bool_ty.clone());
+        tc_env.insert_definition(var_true, bool_lit(true));
+        tc_env.insert_definition(var_false, bool_lit(false));
 
         tc_env
     }
@@ -440,8 +445,72 @@ impl GlobalEnv for TcEnv {
         &self.resugar_env
     }
 
-    fn globals(&self) -> &Globals {
-        &self.globals
+    fn bool(&self) -> &RcType {
+        &self.globals.ty_bool
+    }
+
+    fn string(&self) -> &RcType {
+        &self.globals.ty_string
+    }
+
+    fn char(&self) -> &RcType {
+        &self.globals.ty_char
+    }
+
+    fn u8(&self) -> &RcType {
+        &self.globals.ty_u8
+    }
+
+    fn u16(&self) -> &RcType {
+        &self.globals.ty_u16
+    }
+
+    fn u32(&self) -> &RcType {
+        &self.globals.ty_u32
+    }
+
+    fn u64(&self) -> &RcType {
+        &self.globals.ty_u64
+    }
+
+    fn i8(&self) -> &RcType {
+        &self.globals.ty_i8
+    }
+
+    fn i16(&self) -> &RcType {
+        &self.globals.ty_i16
+    }
+
+    fn i32(&self) -> &RcType {
+        &self.globals.ty_i32
+    }
+
+    fn i64(&self) -> &RcType {
+        &self.globals.ty_i64
+    }
+
+    fn f32(&self) -> &RcType {
+        &self.globals.ty_f32
+    }
+
+    fn f64(&self) -> &RcType {
+        &self.globals.ty_f64
+    }
+
+    fn array<'a>(&self, ty: &'a RcType) -> Option<(u64, &'a RcType)> {
+        use syntax::LevelShift;
+
+        match ty.free_var_app() {
+            // Conservatively forcing the shift to be zero for now. Perhaps this
+            // could be relaxed in the future if it becomes a problem?
+            Some((fv, LevelShift(0), &[ref len, ref elem_ty])) if *fv == self.globals.var_array => {
+                match **len {
+                    Value::Literal(Literal::U64(len)) => Some((len, elem_ty)),
+                    _ => None,
+                }
+            },
+            Some(_) | None => None,
+        }
     }
 }
 

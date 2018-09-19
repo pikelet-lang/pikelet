@@ -2,6 +2,8 @@ use super::*;
 
 #[test]
 fn undefined_name() {
+    use syntax::LevelShift;
+
     let tc_env = TcEnv::default();
 
     let x = FreeVar::fresh_named("x");
