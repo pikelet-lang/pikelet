@@ -222,24 +222,26 @@ fn check_literal<Env>(
 where
     Env: GlobalEnv,
 {
+    use syntax::FloatFormat::Dec as FloatDec;
+
     let ty = expected_ty;
     match *raw_literal {
         raw::Literal::String(_, ref val) if env.string() == ty => Ok(Literal::String(val.clone())),
         raw::Literal::Char(_, val) if env.char() == ty => Ok(Literal::Char(val)),
 
         // FIXME: overflow?
-        raw::Literal::Int(_, val) if env.u8() == ty => Ok(Literal::U8(val as u8)),
-        raw::Literal::Int(_, val) if env.u16() == ty => Ok(Literal::U16(val as u16)),
-        raw::Literal::Int(_, val) if env.u32() == ty => Ok(Literal::U32(val as u32)),
-        raw::Literal::Int(_, val) if env.u64() == ty => Ok(Literal::U64(val)),
-        raw::Literal::Int(_, val) if env.s8() == ty => Ok(Literal::S8(val as i8)),
-        raw::Literal::Int(_, val) if env.s16() == ty => Ok(Literal::S16(val as i16)),
-        raw::Literal::Int(_, val) if env.s32() == ty => Ok(Literal::S32(val as i32)),
-        raw::Literal::Int(_, val) if env.s64() == ty => Ok(Literal::S64(val as i64)),
-        raw::Literal::Int(_, val) if env.f32() == ty => Ok(Literal::F32(val as f32)),
-        raw::Literal::Int(_, val) if env.f64() == ty => Ok(Literal::F64(val as f64)),
-        raw::Literal::Float(_, val) if env.f32() == ty => Ok(Literal::F32(val as f32)),
-        raw::Literal::Float(_, val) if env.f64() == ty => Ok(Literal::F64(val)),
+        raw::Literal::Int(_, v, format) if env.u8() == ty => Ok(Literal::U8(v as u8, format)),
+        raw::Literal::Int(_, v, format) if env.u16() == ty => Ok(Literal::U16(v as u16, format)),
+        raw::Literal::Int(_, v, format) if env.u32() == ty => Ok(Literal::U32(v as u32, format)),
+        raw::Literal::Int(_, v, format) if env.u64() == ty => Ok(Literal::U64(v, format)),
+        raw::Literal::Int(_, v, format) if env.s8() == ty => Ok(Literal::S8(v as i8, format)),
+        raw::Literal::Int(_, v, format) if env.s16() == ty => Ok(Literal::S16(v as i16, format)),
+        raw::Literal::Int(_, v, format) if env.s32() == ty => Ok(Literal::S32(v as i32, format)),
+        raw::Literal::Int(_, v, format) if env.s64() == ty => Ok(Literal::S64(v as i64, format)),
+        raw::Literal::Int(_, v, _) if env.f32() == ty => Ok(Literal::F32(v as f32, FloatDec)),
+        raw::Literal::Int(_, v, _) if env.f64() == ty => Ok(Literal::F64(v as f64, FloatDec)),
+        raw::Literal::Float(_, v, format) if env.f32() == ty => Ok(Literal::F32(v as f32, format)),
+        raw::Literal::Float(_, v, format) if env.f64() == ty => Ok(Literal::F64(v, format)),
 
         _ => Err(TypeError::LiteralMismatch {
             literal_span: raw_literal.span(),
@@ -260,8 +262,8 @@ where
             Ok((Literal::String(value.clone()), env.string().clone()))
         },
         raw::Literal::Char(_, value) => Ok((Literal::Char(value), env.char().clone())),
-        raw::Literal::Int(span, _) => Err(TypeError::AmbiguousIntLiteral { span }),
-        raw::Literal::Float(span, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
+        raw::Literal::Int(span, _, _) => Err(TypeError::AmbiguousIntLiteral { span }),
+        raw::Literal::Float(span, _, _) => Err(TypeError::AmbiguousFloatLiteral { span }),
     }
 }
 

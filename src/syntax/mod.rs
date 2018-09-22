@@ -1,5 +1,6 @@
 //! The syntax of the language
 
+use moniker::{Binder, BoundPattern, BoundTerm, ScopeState, Var};
 use std::fmt;
 use std::ops::{Add, AddAssign};
 
@@ -74,6 +75,64 @@ impl AddAssign<LevelShift> for Level {
     fn add_assign(&mut self, other: LevelShift) {
         self.0 += other.0;
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum IntFormat {
+    Bin,
+    Oct,
+    Dec,
+    Hex,
+}
+
+impl<N> BoundTerm<N> for IntFormat {
+    fn term_eq(&self, _: &IntFormat) -> bool {
+        true
+    }
+
+    fn close_term(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn open_term(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn visit_vars(&self, _: &mut impl FnMut(&Var<N>)) {}
+    fn visit_mut_vars(&mut self, _: &mut impl FnMut(&mut Var<N>)) {}
+}
+
+impl<N> BoundPattern<N> for IntFormat {
+    fn pattern_eq(&self, _: &IntFormat) -> bool {
+        true
+    }
+
+    fn close_pattern(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn open_pattern(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn visit_binders(&self, _: &mut impl FnMut(&Binder<N>)) {}
+    fn visit_mut_binders(&mut self, _: &mut impl FnMut(&mut Binder<N>)) {}
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FloatFormat {
+    Dec,
+    // TODO: Binary and Hex floats?
+}
+
+impl<N> BoundTerm<N> for FloatFormat {
+    fn term_eq(&self, _: &FloatFormat) -> bool {
+        true
+    }
+
+    fn close_term(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn open_term(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn visit_vars(&self, _: &mut impl FnMut(&Var<N>)) {}
+    fn visit_mut_vars(&mut self, _: &mut impl FnMut(&mut Var<N>)) {}
+}
+
+impl<N> BoundPattern<N> for FloatFormat {
+    fn pattern_eq(&self, _: &FloatFormat) -> bool {
+        true
+    }
+
+    fn close_pattern(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn open_pattern(&mut self, _: ScopeState, _: &[Binder<N>]) {}
+    fn visit_binders(&self, _: &mut impl FnMut(&Binder<N>)) {}
+    fn visit_mut_binders(&mut self, _: &mut impl FnMut(&mut Binder<N>)) {}
 }
 
 /// A label that describes the name of a field in a record

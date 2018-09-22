@@ -6,7 +6,7 @@ use std::iter;
 
 use syntax::core::{Head, Literal, Neutral, Pattern, Term, Value};
 use syntax::raw;
-use syntax::{Label, Level, LevelShift};
+use syntax::{FloatFormat, IntFormat, Label, Level, LevelShift};
 
 use super::{parens, sexpr, StaticDoc, ToDoc};
 
@@ -146,8 +146,11 @@ impl ToDoc for raw::Literal {
         match *self {
             raw::Literal::String(_, ref value) => Doc::text(format!("{:?}", value)),
             raw::Literal::Char(_, value) => Doc::text(format!("{:?}", value)),
-            raw::Literal::Int(_, value) => Doc::as_string(&value),
-            raw::Literal::Float(_, value) => Doc::as_string(&value),
+            raw::Literal::Int(_, value, IntFormat::Bin) => Doc::text(format!("0b{:b}", value)),
+            raw::Literal::Int(_, value, IntFormat::Oct) => Doc::text(format!("0o{:o}", value)),
+            raw::Literal::Int(_, value, IntFormat::Dec) => Doc::text(format!("{}", value)),
+            raw::Literal::Int(_, value, IntFormat::Hex) => Doc::text(format!("0x{:x}", value)),
+            raw::Literal::Float(_, value, FloatFormat::Dec) => Doc::text(format!("{}", value)),
         }
     }
 }
@@ -236,16 +239,16 @@ impl ToDoc for Literal {
             Literal::Bool(false) => Doc::text("false"),
             Literal::String(ref value) => Doc::text(format!("{:?}", value)),
             Literal::Char(value) => Doc::text(format!("{:?}", value)),
-            Literal::U8(value) => Doc::as_string(&value),
-            Literal::U16(value) => Doc::as_string(&value),
-            Literal::U32(value) => Doc::as_string(&value),
-            Literal::U64(value) => Doc::as_string(&value),
-            Literal::S8(value) => Doc::as_string(&value),
-            Literal::S16(value) => Doc::as_string(&value),
-            Literal::S32(value) => Doc::as_string(&value),
-            Literal::S64(value) => Doc::as_string(&value),
-            Literal::F32(value) => Doc::as_string(&value),
-            Literal::F64(value) => Doc::as_string(&value),
+            Literal::U8(value, _) => Doc::as_string(&value),
+            Literal::U16(value, _) => Doc::as_string(&value),
+            Literal::U32(value, _) => Doc::as_string(&value),
+            Literal::U64(value, _) => Doc::as_string(&value),
+            Literal::S8(value, _) => Doc::as_string(&value),
+            Literal::S16(value, _) => Doc::as_string(&value),
+            Literal::S32(value, _) => Doc::as_string(&value),
+            Literal::S64(value, _) => Doc::as_string(&value),
+            Literal::F32(value, _) => Doc::as_string(&value),
+            Literal::F64(value, _) => Doc::as_string(&value),
         }
     }
 }

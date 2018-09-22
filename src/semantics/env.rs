@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use syntax::core::{Literal, RcTerm, RcType, RcValue, Spine, Value};
 use syntax::translation::ResugarEnv;
+use syntax::{FloatFormat, IntFormat};
 
 // Some helper traits for marshalling between Rust and Pikelet values
 //
@@ -12,10 +13,6 @@ use syntax::translation::ResugarEnv;
 
 trait IntoValue {
     fn into_value(self) -> RcValue;
-}
-
-trait TryFromValueRef {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()>;
 }
 
 macro_rules! impl_into_value {
@@ -26,48 +23,149 @@ macro_rules! impl_into_value {
             }
         }
     };
-}
-
-impl_into_value!(String, String);
-impl_into_value!(char, Char);
-impl_into_value!(bool, Bool);
-impl_into_value!(u8, U8);
-impl_into_value!(u16, U16);
-impl_into_value!(u32, U32);
-impl_into_value!(u64, U64);
-impl_into_value!(i8, S8);
-impl_into_value!(i16, S16);
-impl_into_value!(i32, S32);
-impl_into_value!(i64, S64);
-impl_into_value!(f32, F32);
-impl_into_value!(f64, F64);
-
-macro_rules! impl_try_from_value_ref {
-    ($T:ty, $Variant:ident) => {
-        impl TryFromValueRef for $T {
-            fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
-                match *src {
-                    Value::Literal(Literal::$Variant(ref x)) => Ok(x),
-                    _ => Err(()),
-                }
+    ($T:ty, $Variant:ident, $format:expr) => {
+        impl IntoValue for $T {
+            fn into_value(self) -> RcValue {
+                RcValue::from(Value::Literal(Literal::$Variant(self, $format)))
             }
         }
     };
 }
 
-impl_try_from_value_ref!(String, String);
-impl_try_from_value_ref!(char, Char);
-impl_try_from_value_ref!(bool, Bool);
-impl_try_from_value_ref!(u8, U8);
-impl_try_from_value_ref!(u16, U16);
-impl_try_from_value_ref!(u32, U32);
-impl_try_from_value_ref!(u64, U64);
-impl_try_from_value_ref!(i8, S8);
-impl_try_from_value_ref!(i16, S16);
-impl_try_from_value_ref!(i32, S32);
-impl_try_from_value_ref!(i64, S64);
-impl_try_from_value_ref!(f32, F32);
-impl_try_from_value_ref!(f64, F64);
+impl_into_value!(String, String);
+impl_into_value!(char, Char);
+impl_into_value!(bool, Bool);
+impl_into_value!(u8, U8, IntFormat::Dec);
+impl_into_value!(u16, U16, IntFormat::Dec);
+impl_into_value!(u32, U32, IntFormat::Dec);
+impl_into_value!(u64, U64, IntFormat::Dec);
+impl_into_value!(i8, S8, IntFormat::Dec);
+impl_into_value!(i16, S16, IntFormat::Dec);
+impl_into_value!(i32, S32, IntFormat::Dec);
+impl_into_value!(i64, S64, IntFormat::Dec);
+impl_into_value!(f32, F32, FloatFormat::Dec);
+impl_into_value!(f64, F64, FloatFormat::Dec);
+
+trait TryFromValueRef {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()>;
+}
+
+impl TryFromValueRef for String {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::String(ref val)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for char {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::Char(ref val)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for bool {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::Bool(ref val)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for u8 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::U8(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for u16 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::U16(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for u32 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::U32(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for u64 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::U64(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for i8 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::S8(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for i16 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::S16(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for i32 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::S32(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for i64 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::S64(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for f32 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::F32(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFromValueRef for f64 {
+    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+        match *src {
+            Value::Literal(Literal::F64(ref val, _)) => Ok(val),
+            _ => Err(()),
+        }
+    }
+}
 
 /// External functions
 #[derive(Clone)]
@@ -505,7 +603,7 @@ impl GlobalEnv for TcEnv {
             // could be relaxed in the future if it becomes a problem?
             Some((fv, LevelShift(0), &[ref len, ref elem_ty])) if *fv == self.globals.var_array => {
                 match **len {
-                    Value::Literal(Literal::U64(len)) => Some((len, elem_ty)),
+                    Value::Literal(Literal::U64(len, _)) => Some((len, elem_ty)),
                     _ => None,
                 }
             },

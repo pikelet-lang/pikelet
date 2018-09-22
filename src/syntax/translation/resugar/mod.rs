@@ -213,6 +213,7 @@ fn resugar_pattern(
         core::Pattern::Literal(ref literal) => {
             use syntax::concrete::Literal::*;
             use syntax::concrete::Pattern;
+            use syntax::concrete::Pattern::Literal;
 
             let span = ByteSpan::default();
 
@@ -221,23 +222,22 @@ fn resugar_pattern(
                 core::Literal::Bool(true) => Pattern::Name(span, "true".to_owned(), None),
                 core::Literal::Bool(false) => Pattern::Name(span, "false".to_owned(), None),
 
-                core::Literal::String(ref value) => Pattern::Literal(String(span, value.clone())),
-                core::Literal::Char(value) => Pattern::Literal(Char(span, value)),
+                core::Literal::String(ref val) => Literal(String(span, val.clone())),
+                core::Literal::Char(val) => Literal(Char(span, val)),
 
-                // FIXME: remember how to format these from before desugaring
-                core::Literal::U8(value) => Pattern::Literal(DecInt(span, u64::from(value))),
-                core::Literal::U16(value) => Pattern::Literal(DecInt(span, u64::from(value))),
-                core::Literal::U32(value) => Pattern::Literal(DecInt(span, u64::from(value))),
-                core::Literal::U64(value) => Pattern::Literal(DecInt(span, value)),
+                core::Literal::U8(val, format) => Literal(Int(span, u64::from(val), format)),
+                core::Literal::U16(val, format) => Literal(Int(span, u64::from(val), format)),
+                core::Literal::U32(val, format) => Literal(Int(span, u64::from(val), format)),
+                core::Literal::U64(val, format) => Literal(Int(span, val, format)),
 
                 // FIXME: Underflow for negative numbers
-                core::Literal::S8(value) => Pattern::Literal(DecInt(span, value as u64)),
-                core::Literal::S16(value) => Pattern::Literal(DecInt(span, value as u64)),
-                core::Literal::S32(value) => Pattern::Literal(DecInt(span, value as u64)),
-                core::Literal::S64(value) => Pattern::Literal(DecInt(span, value as u64)),
+                core::Literal::S8(val, format) => Literal(Int(span, val as u64, format)),
+                core::Literal::S16(val, format) => Literal(Int(span, val as u64, format)),
+                core::Literal::S32(val, format) => Literal(Int(span, val as u64, format)),
+                core::Literal::S64(val, format) => Literal(Int(span, val as u64, format)),
 
-                core::Literal::F32(value) => Pattern::Literal(DecFloat(span, f64::from(value))),
-                core::Literal::F64(value) => Pattern::Literal(DecFloat(span, value)),
+                core::Literal::F32(val, format) => Literal(Float(span, f64::from(val), format)),
+                core::Literal::F64(val, format) => Literal(Float(span, val, format)),
             }
         },
     }
@@ -498,6 +498,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
         core::Term::Literal(ref literal) => {
             use syntax::concrete::Literal::*;
             use syntax::concrete::Term;
+            use syntax::concrete::Term::Literal;
 
             let span = ByteSpan::default();
 
@@ -506,23 +507,22 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 core::Literal::Bool(true) => Term::Name(span, "true".to_owned(), None),
                 core::Literal::Bool(false) => Term::Name(span, "false".to_owned(), None),
 
-                core::Literal::String(ref value) => Term::Literal(String(span, value.clone())),
-                core::Literal::Char(value) => Term::Literal(Char(span, value)),
+                core::Literal::String(ref val) => Literal(String(span, val.clone())),
+                core::Literal::Char(val) => Literal(Char(span, val)),
 
-                // FIXME: remember how to format these from before desugaring
-                core::Literal::U8(value) => Term::Literal(DecInt(span, u64::from(value))),
-                core::Literal::U16(value) => Term::Literal(DecInt(span, u64::from(value))),
-                core::Literal::U32(value) => Term::Literal(DecInt(span, u64::from(value))),
-                core::Literal::U64(value) => Term::Literal(DecInt(span, value)),
+                core::Literal::U8(val, format) => Literal(Int(span, u64::from(val), format)),
+                core::Literal::U16(val, format) => Literal(Int(span, u64::from(val), format)),
+                core::Literal::U32(val, format) => Literal(Int(span, u64::from(val), format)),
+                core::Literal::U64(val, format) => Literal(Int(span, val, format)),
 
                 // FIXME: Underflow for negative numbers
-                core::Literal::S8(value) => Term::Literal(DecInt(span, value as u64)),
-                core::Literal::S16(value) => Term::Literal(DecInt(span, value as u64)),
-                core::Literal::S32(value) => Term::Literal(DecInt(span, value as u64)),
-                core::Literal::S64(value) => Term::Literal(DecInt(span, value as u64)),
+                core::Literal::S8(val, format) => Literal(Int(span, val as u64, format)),
+                core::Literal::S16(val, format) => Literal(Int(span, val as u64, format)),
+                core::Literal::S32(val, format) => Literal(Int(span, val as u64, format)),
+                core::Literal::S64(val, format) => Literal(Int(span, val as u64, format)),
 
-                core::Literal::F32(value) => Term::Literal(DecFloat(span, f64::from(value))),
-                core::Literal::F64(value) => Term::Literal(DecFloat(span, value)),
+                core::Literal::F32(val, format) => Literal(Float(span, f64::from(val), format)),
+                core::Literal::F64(val, format) => Literal(Float(span, val, format)),
             }
         },
         core::Term::Var(Var::Free(ref free_var), shift) => {

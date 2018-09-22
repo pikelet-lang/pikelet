@@ -288,8 +288,8 @@ impl TypeError {
                 let found_text = match *found {
                     raw::Literal::String(_, _) => "string",
                     raw::Literal::Char(_, _) => "character",
-                    raw::Literal::Int(_, _) => "numeric",
-                    raw::Literal::Float(_, _) => "floating point",
+                    raw::Literal::Int(_, _, _) => "numeric",
+                    raw::Literal::Float(_, _, _) => "floating point",
                 };
 
                 Diagnostic::new_error(format!(
