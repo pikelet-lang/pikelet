@@ -5,12 +5,15 @@ use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
+use moniker::Binder;
 use std::path::PathBuf;
+use std::io::Write;
 use term_size;
 
 use semantics::{self, DeclarationEnv, DefinitionEnv, GlobalEnv, TcEnv};
-use syntax::parse;
+use syntax::{parse, Label};
 use syntax::translation::DesugarEnv;
+use syntax::core::{Module, Item};
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -88,7 +91,6 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
     let mut tc_env = TcEnv::default();
-    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);
@@ -103,7 +105,31 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     }
 
     // TODO: Load files
+    load_module(::load_prelude(&mut codemap), &mut tc_env, &codemap, &writer);
 
+    for path in opts.files.iter() {
+        let filemap = match codemap.add_filemap_from_disk(path) {
+            Ok(file) => file,
+            Err(err) => {
+                writeln!(writer.lock(), "Error reading module {}: {}", path.display(), err)?;
+                continue;
+            },
+        };
+
+        match ::load_file(&filemap) {
+            Ok(m) => load_module(m, &mut tc_env, &codemap, &writer),
+            Err(e) => {
+                let mut writer = writer.lock();
+                writeln!(writer, "Error loading module {}:", path.display())?;
+                for err in e {
+                    codespan_reporting::emit(&mut writer, &codemap, &err)?;
+                }
+            },
+        };
+    }
+    
+    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
+    
     loop {
         match interface.read_line()? {
             ReadResult::Input(line) => {
@@ -120,9 +146,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
                     Err(EvalPrintError::Parse(errs)) => {
+                        let mut writer = writer.lock();
                         for err in errs {
                             let diagnostic = err.to_diagnostic();
-                            codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                            codespan_reporting::emit(&mut writer, &codemap, &diagnostic)?;
                         }
                     },
                     Err(EvalPrintError::Type(err)) => {
@@ -230,6 +257,31 @@ fn eval_print(
 
     Ok(ControlFlow::Continue)
 }
+
+
+fn load_module(m: Module, tc_env: &mut TcEnv, codemap: &CodeMap, writer: &StandardStream) {
+    let mut errors = Vec::new();
+    for item in m.items {
+        match item {
+            Item::Declaration{label: _, binder: Binder(free_var), term} => {
+                match semantics::nf_term(&*tc_env, &term) {
+                    Ok(value) => tc_env.insert_declaration(free_var, value),
+                    Err(err) => errors.push(err),
+                }
+            },
+            Item::Definition{label: Label(_name), binder: Binder(free_var), term} => {
+                tc_env.insert_definition(free_var, term);
+            },
+        }
+    }
+    if errors.len() != 0 {
+        let mut writer = writer.lock();
+        for err in errors {
+            let _ = codespan_reporting::emit(&mut writer, codemap, &err.to_diagnostic());
+        }
+    }
+}
+
 
 #[derive(Clone)]
 enum ControlFlow {
