@@ -138,16 +138,28 @@ impl ToDoc for Term {
             Term::App(ref head, ref args) => head.to_doc().append(Doc::space()).append(
                 Doc::intersperse(args.iter().map(|arg| arg.to_doc()), Doc::space()),
             ),
-            Term::Let(_, ref decls, ref body) => {
+            Term::Let(_, ref items, ref body) => {
                 Doc::text("let")
                     .append(Doc::space())
                     .append(Doc::intersperse(
                         // FIXME: Indentation
-                        decls.iter().map(|decl| decl.to_doc()),
+                        items.iter().map(|item| item.to_doc()),
                         Doc::newline(),
                     )).append("in")
                     .append(body.to_doc())
             },
+            Term::Where(ref expr, ref items, _) => expr
+                .to_doc()
+                .append(Doc::newline())
+                .append("where {")
+                .append(Doc::newline())
+                .append(
+                    Doc::concat(
+                        items
+                            .iter()
+                            .map(|item| item.to_doc().append(Doc::newline())),
+                    ).nest(INDENT_WIDTH),
+                ).append("}"),
             Term::If(_, ref cond, ref if_true, ref if_false) => Doc::text("if")
                 .append(Doc::space())
                 .append(cond.to_doc())

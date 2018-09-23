@@ -206,6 +206,34 @@ fn desugar_let(
     ))
 }
 
+fn desugar_where(
+    env: &DesugarEnv,
+    body: &concrete::Term,
+    items: &[concrete::Item],
+    end: ByteIndex,
+) -> raw::RcTerm {
+    let mut env = env.clone();
+    let items = desugar_bindings(&mut env, items);
+    let body = body.desugar(&env);
+
+    let hole = raw::RcTerm::from(raw::Term::Hole(ByteSpan::default()));
+
+    let items = items
+        .into_iter()
+        .filter_map(|item| match item {
+            raw::Item::Declaration { .. } => None, // TODO: Let declarations (maybe not necessary?)
+            raw::Item::Definition { binder, term, .. } => {
+                Some((binder, Embed((hole.clone(), term))))
+            },
+        }).collect();
+
+    // TODO: Remember formatting
+    raw::RcTerm::from(raw::Term::Let(
+        ByteSpan::new(body.span().start(), end),
+        Scope::new(Nest::new(items), body),
+    ))
+}
+
 fn desugar_record_ty(
     env: &DesugarEnv,
     span: ByteSpan,
@@ -362,6 +390,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                 })
             },
             concrete::Term::Let(start, ref items, ref body) => desugar_let(env, start, items, body),
+            concrete::Term::Where(ref expr, ref items, end) => desugar_where(env, expr, items, end),
             concrete::Term::If(_, ref cond, ref if_true, ref if_false) => {
                 let bool_pattern = |name: &str| {
                     raw::RcPattern::from(raw::Pattern::Var(

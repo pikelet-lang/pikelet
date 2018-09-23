@@ -327,6 +327,16 @@ pub enum Term {
     ///     x
     /// ```
     Let(ByteIndex, Vec<Item>, Box<Term>),
+    /// Where expressions
+    ///
+    /// ```text
+    /// id "hello"
+    /// where {
+    ///     id : (A : Type) -> A -> A;
+    ///     id A x = x;
+    /// }
+    /// ```
+    Where(Box<Term>, Vec<Item>, ByteIndex),
     /// If expression
     ///
     /// ```text
@@ -384,6 +394,7 @@ impl Term {
             | Term::Lam(start, _, ref body)
             | Term::Let(start, _, ref body)
             | Term::If(start, _, _, ref body) => ByteSpan::new(start, body.span().end()),
+            Term::Where(ref expr, _, end) => ByteSpan::new(expr.span().start(), end),
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref head, ref arg) => head.span().to(arg.last().unwrap().span()),

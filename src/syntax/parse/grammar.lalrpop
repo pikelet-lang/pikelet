@@ -43,6 +43,7 @@ extern {
         "Record" => Token::RecordType,
         "then" => Token::Then,
         "Type" => Token::Type,
+        "where" => Token::Where,
 
         // Symbols
         "\\" => Token::BSlash,
@@ -160,6 +161,9 @@ pub Term: Term = {
     <start: @L> "extern" <name_start: @L> <name: "string literal"> <name_end: @R> ":" <ty: Term> <end: @R> => {
         Term::Extern(ByteSpan::new(start, end), ByteSpan::new(name_start, name_end), name, Box::new(ty))
     },
+    <expr: LamTerm> "where" "{" <items: Item+> "}" <end: @R> => {
+        Term::Where(Box::new(expr), items, end)
+    }
 };
 
 LamTerm: Term = {
