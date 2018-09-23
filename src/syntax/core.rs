@@ -6,7 +6,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::pretty::{self, ToDoc};
-use syntax::{Label, Level, LevelShift};
+use syntax::{FloatFormat, IntFormat, Label, Level, LevelShift};
 
 /// A module definition
 pub struct Module {
@@ -49,16 +49,16 @@ pub enum Literal {
     Bool(bool),
     String(String),
     Char(char),
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    S8(i8),
-    S16(i16),
-    S32(i32),
-    S64(i64),
-    F32(f32),
-    F64(f64),
+    U8(u8, IntFormat),
+    U16(u16, IntFormat),
+    U32(u32, IntFormat),
+    U64(u64, IntFormat),
+    S8(i8, IntFormat),
+    S16(i16, IntFormat),
+    S32(i32, IntFormat),
+    S64(i64, IntFormat),
+    F32(f32, FloatFormat),
+    F64(f64, FloatFormat),
 }
 
 impl fmt::Display for Literal {

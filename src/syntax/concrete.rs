@@ -4,6 +4,7 @@ use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use std::fmt;
 
 use syntax::pretty::{self, ToDoc};
+use syntax::{FloatFormat, IntFormat};
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]
@@ -170,19 +171,17 @@ impl fmt::Display for Item {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
     /// String literals
+    // TODO: Preserve escapes?
     String(ByteSpan, String),
     /// Character literals
+    // TODO: Preserve escapes?
     Char(ByteSpan, char),
-    /// Binary integer literals
-    BinInt(ByteSpan, u64),
-    /// Octal integer literals
-    OctInt(ByteSpan, u64),
-    /// Decimal integer literals
-    DecInt(ByteSpan, u64),
-    /// Hexadecimal integer literals
-    HexInt(ByteSpan, u64),
-    /// Decimal Floating point literals
-    DecFloat(ByteSpan, f64),
+    /// Integer literals
+    // TODO: Preserve digit separators?
+    Int(ByteSpan, u64, IntFormat),
+    /// Floating point literals
+    // TODO: Preserve digit separators?
+    Float(ByteSpan, f64, FloatFormat),
 }
 
 impl Literal {
@@ -191,11 +190,8 @@ impl Literal {
         match *self {
             Literal::String(span, _)
             | Literal::Char(span, _)
-            | Literal::BinInt(span, _)
-            | Literal::OctInt(span, _)
-            | Literal::DecInt(span, _)
-            | Literal::HexInt(span, _)
-            | Literal::DecFloat(span, _) => span,
+            | Literal::Int(span, _, _)
+            | Literal::Float(span, _, _) => span,
         }
     }
 }

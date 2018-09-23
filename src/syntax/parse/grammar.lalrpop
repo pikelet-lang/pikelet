@@ -3,6 +3,7 @@ use codespan::{ByteIndex, ByteSpan};
 
 use syntax::concrete::{Item, Literal, Module, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
+use syntax::{FloatFormat, IntFormat};
 
 #[LALR]
 grammar<'err, 'input>(
@@ -123,11 +124,11 @@ Item: Item = {
 Literal: Literal = {
     <start: @L> <value: "string literal"> <end: @R> => Literal::String(ByteSpan::new(start, end), value),
     <start: @L> <value: "character literal"> <end: @R> => Literal::Char(ByteSpan::new(start, end), value),
-    <start: @L> <value: "binary literal"> <end: @R> => Literal::BinInt(ByteSpan::new(start, end), value),
-    <start: @L> <value: "octal literal"> <end: @R> => Literal::OctInt(ByteSpan::new(start, end), value),
-    <start: @L> <value: "decimal literal"> <end: @R> => Literal::DecInt(ByteSpan::new(start, end), value),
-    <start: @L> <value: "hex literal"> <end: @R> => Literal::HexInt(ByteSpan::new(start, end), value),
-    <start: @L> <value: "float literal"> <end: @R> => Literal::DecFloat(ByteSpan::new(start, end), value),
+    <start: @L> <value: "binary literal"> <end: @R> => Literal::Int(ByteSpan::new(start, end), value, IntFormat::Bin),
+    <start: @L> <value: "octal literal"> <end: @R> => Literal::Int(ByteSpan::new(start, end), value, IntFormat::Oct),
+    <start: @L> <value: "decimal literal"> <end: @R> => Literal::Int(ByteSpan::new(start, end), value, IntFormat::Dec),
+    <start: @L> <value: "hex literal"> <end: @R> => Literal::Int(ByteSpan::new(start, end), value, IntFormat::Hex),
+    <start: @L> <value: "float literal"> <end: @R> => Literal::Float(ByteSpan::new(start, end), value, FloatFormat::Dec),
 };
 
 pub Pattern: Pattern = {

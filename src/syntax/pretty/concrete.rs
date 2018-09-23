@@ -3,6 +3,7 @@
 use pretty::Doc;
 
 use syntax::concrete::{Item, LamParamGroup, Literal, Module, Pattern, PiParamGroup, Term};
+use syntax::{FloatFormat, IntFormat};
 
 use super::{StaticDoc, ToDoc};
 
@@ -59,11 +60,11 @@ impl ToDoc for Literal {
         match *self {
             Literal::String(_, ref value) => Doc::text(format!("{:?}", value)),
             Literal::Char(_, value) => Doc::text(format!("{:?}", value)),
-            Literal::BinInt(_, value) => Doc::text(format!("{:b}", value)),
-            Literal::OctInt(_, value) => Doc::text(format!("{:o}", value)),
-            Literal::DecInt(_, value) => Doc::as_string(&value),
-            Literal::HexInt(_, value) => Doc::text(format!("{:x}", value)),
-            Literal::DecFloat(_, value) => Doc::as_string(&value),
+            Literal::Int(_, value, IntFormat::Bin) => Doc::text(format!("0b{:b}", value)),
+            Literal::Int(_, value, IntFormat::Oct) => Doc::text(format!("0o{:o}", value)),
+            Literal::Int(_, value, IntFormat::Dec) => Doc::text(format!("{}", value)),
+            Literal::Int(_, value, IntFormat::Hex) => Doc::text(format!("0x{:x}", value)),
+            Literal::Float(_, value, FloatFormat::Dec) => Doc::text(format!("{}", value)),
         }
     }
 }
