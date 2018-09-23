@@ -1,4 +1,4 @@
-use codespan::{ByteOffset, ByteSpan};
+use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use im::HashMap;
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
@@ -179,25 +179,31 @@ fn desugar_bindings(env: &mut DesugarEnv, items: &[concrete::Item]) -> Vec<raw::
         }).collect()
 }
 
-fn desugar_let(env: &DesugarEnv, items: &[concrete::Item], body: &concrete::Term) -> raw::RcTerm {
+fn desugar_let(
+    env: &DesugarEnv,
+    start: ByteIndex,
+    items: &[concrete::Item],
+    body: &concrete::Term,
+) -> raw::RcTerm {
     let mut env = env.clone();
     let items = desugar_bindings(&mut env, items);
     let body = body.desugar(&env);
 
     let hole = raw::RcTerm::from(raw::Term::Hole(ByteSpan::default()));
 
-    items.into_iter().rev().fold(body, |acc, item| match item {
-        raw::Item::Declaration { .. } => acc, // TODO: Let declarations (maybe not necessary?)
-        raw::Item::Definition {
-            label_span,
-            label: _,
-            binder,
-            term,
-        } => raw::RcTerm::from(raw::Term::Let(
-            label_span.with_end(term.span().end()),
-            Scope::new((binder, Embed((hole.clone(), term))), acc),
-        )),
-    })
+    let items = items
+        .into_iter()
+        .filter_map(|item| match item {
+            raw::Item::Declaration { .. } => None, // TODO: Let declarations (maybe not necessary?)
+            raw::Item::Definition { binder, term, .. } => {
+                Some((binder, Embed((hole.clone(), term))))
+            },
+        }).collect();
+
+    raw::RcTerm::from(raw::Term::Let(
+        ByteSpan::new(start, body.span().end()),
+        Scope::new(Nest::new(items), body),
+    ))
 }
 
 fn desugar_record_ty(
@@ -355,7 +361,7 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                     raw::RcTerm::from(raw::Term::App(acc, arg.desugar(env)))
                 })
             },
-            concrete::Term::Let(_, ref items, ref body) => desugar_let(env, items, body),
+            concrete::Term::Let(start, ref items, ref body) => desugar_let(env, start, items, body),
             concrete::Term::If(_, ref cond, ref if_true, ref if_false) => {
                 let bool_pattern = |name: &str| {
                     raw::RcPattern::from(raw::Pattern::Var(

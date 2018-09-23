@@ -191,7 +191,7 @@ pub enum Term {
     /// Let bindings
     Let(
         ByteSpan,
-        Scope<(Binder<String>, Embed<(RcTerm, RcTerm)>), RcTerm>,
+        Scope<Nest<(Binder<String>, Embed<(RcTerm, RcTerm)>)>, RcTerm>,
     ),
 }
 

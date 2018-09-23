@@ -636,24 +636,36 @@ where
 
         // I-LET
         raw::Term::Let(_, ref raw_scope) => {
-            let ((Binder(free_var), Embed((raw_ann, raw_bind))), raw_body) =
-                raw_scope.clone().unbind();
+            let (raw_fields, raw_body) = raw_scope.clone().unbind();
 
-            let (bind_term, bind_type) = if let raw::Term::Hole(_) = *raw_ann {
-                infer_term(env, &raw_bind)?
-            } else {
-                let (bind_ann, _) = infer_universe(env, &raw_ann)?;
-                let ann = nf_term(env, &bind_ann)?;
-                (check_term(env, &raw_bind, &ann)?, ann)
+            let (term, ty) = {
+                let mut env = env.clone();
+                let bindings = raw_fields
+                    .unnest()
+                    .into_iter()
+                    .map(|(Binder(free_var), Embed((raw_ann, raw_term)))| {
+                        let (term, ann, ann_value) = if let raw::Term::Hole(_) = *raw_ann {
+                            let (term, ann_value) = infer_term(&env, &raw_term)?;
+                            (term, RcTerm::from(&*ann_value.inner), ann_value)
+                        } else {
+                            let (ann, _) = infer_universe(&env, &raw_ann)?;
+                            let ann_value = nf_term(&env, &ann)?;
+                            (check_term(&env, &raw_term, &ann_value)?, ann, ann_value)
+                        };
+
+                        env.insert_definition(free_var.clone(), term.clone());
+                        env.insert_declaration(free_var.clone(), ann_value);
+
+                        Ok((Binder(free_var), Embed((ann, term))))
+                    }).collect::<Result<_, TypeError>>()?;
+
+                let (body, ty) = infer_term(&env, &raw_body)?;
+                let term = RcTerm::from(Term::Let(Scope::new(Nest::new(bindings), body)));
+
+                (term, ty)
             };
-            let mut inner_env = env.clone();
-            inner_env.insert_definition(free_var.clone(), bind_term.clone());
-            inner_env.insert_declaration(free_var.clone(), bind_type);
 
-            let (body, ty) = infer_term(&inner_env, &raw_body)?;
-            let bind = (Binder(free_var), Embed(bind_term));
-
-            Ok((RcTerm::from(Term::Let(Scope::new(bind, body))), ty))
+            Ok((term, ty))
         },
 
         // I-APP

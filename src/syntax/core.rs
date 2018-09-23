@@ -143,7 +143,7 @@ pub enum Term {
     /// Array literals
     Array(Vec<RcTerm>),
     /// Let bindings
-    Let(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
+    Let(Scope<Nest<(Binder<String>, Embed<(RcTerm, RcTerm)>)>, RcTerm>),
 }
 
 impl Term {
@@ -197,9 +197,19 @@ impl RcTerm {
                 }))
             },
             Term::Let(ref scope) => {
-                let (ref name, Embed(ref bind)) = scope.unsafe_pattern;
+                let unsafe_patterns = scope
+                    .unsafe_pattern
+                    .unsafe_patterns
+                    .iter()
+                    .map(|&(ref binder, Embed((ref ann, ref term)))| {
+                        (
+                            binder.clone(),
+                            Embed((ann.substs(mappings), term.substs(mappings))),
+                        )
+                    }).collect();
+
                 RcTerm::from(Term::Let(Scope {
-                    unsafe_pattern: (name.clone(), Embed(bind.substs(mappings))),
+                    unsafe_pattern: Nest { unsafe_patterns },
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
