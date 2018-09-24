@@ -10,71 +10,6 @@ fn index() -> ByteIndex {
     ByteIndex::default()
 }
 
-mod module {
-    use super::*;
-
-    #[test]
-    fn shadow_keyword() {
-        let var_else1 = FreeVar::fresh_named("else");
-        let var_else2 = FreeVar::fresh_named("else");
-
-        let core_module = core::Module {
-            items: vec![
-                core::Item::Declaration {
-                    label: Label("else".to_owned()),
-                    binder: Binder(var_else1.clone()),
-                    term: core::RcTerm::from(core::Term::universe(1)),
-                },
-                core::Item::Definition {
-                    label: Label("else".to_owned()),
-                    binder: Binder(var_else1.clone()),
-                    term: core::RcTerm::from(core::Term::universe(0)),
-                },
-                // This shouldn't happen, but let's test what happens anyway!
-                core::Item::Declaration {
-                    label: Label("else".to_owned()),
-                    binder: Binder(var_else2.clone()),
-                    term: core::RcTerm::from(core::Term::universe(1)),
-                },
-                core::Item::Definition {
-                    label: Label("else".to_owned()),
-                    binder: Binder(var_else2.clone()),
-                    term: core::RcTerm::from(core::Term::universe(0)),
-                },
-            ],
-        };
-
-        let concrete_module = concrete::Module::Valid {
-            items: vec![
-                concrete::Item::Declaration {
-                    name: (index(), "else1".to_owned()),
-                    ann: concrete::Term::Universe(span(), Some(1)),
-                },
-                concrete::Item::Definition {
-                    name: (index(), "else1".to_owned()),
-                    params: vec![],
-                    return_ann: None,
-                    body: concrete::Term::Universe(span(), None),
-                },
-                concrete::Item::Declaration {
-                    name: (index(), "else2".to_owned()),
-                    ann: concrete::Term::Universe(span(), Some(1)),
-                },
-                concrete::Item::Definition {
-                    name: (index(), "else2".to_owned()),
-                    params: vec![],
-                    return_ann: None,
-                    body: concrete::Term::Universe(span(), None),
-                },
-            ],
-        };
-
-        assert_eq!(core_module.resugar(&ResugarEnv::new()), concrete_module);
-    }
-
-    // TODO: moare tests
-}
-
 mod term {
     use super::*;
 
@@ -233,6 +168,61 @@ mod term {
 
     // TODO: core::Term::Lam
     // TODO: core::Term::App
+
+    #[test]
+    fn let_shadow_keyword() {
+        let var_else1 = FreeVar::fresh_named("else");
+        let var_else2 = FreeVar::fresh_named("else");
+
+        let core_module = core::Term::Let(Scope::new(
+            Nest::new(vec![
+                (
+                    Binder(var_else1.clone()),
+                    Embed((
+                        core::RcTerm::from(core::Term::universe(1)),
+                        core::RcTerm::from(core::Term::universe(0)),
+                    )),
+                ),
+                (
+                    Binder(var_else2.clone()),
+                    Embed((
+                        core::RcTerm::from(core::Term::universe(1)),
+                        core::RcTerm::from(core::Term::universe(0)),
+                    )),
+                ),
+            ]),
+            core::RcTerm::from(core::Term::Record(Scope::new(Nest::new(vec![]), ()))),
+        ));
+
+        let concrete_module = concrete::Term::Let(
+            index(),
+            vec![
+                concrete::Item::Declaration {
+                    name: (index(), "else1".to_owned()),
+                    ann: concrete::Term::Universe(span(), Some(1)),
+                },
+                concrete::Item::Definition {
+                    name: (index(), "else1".to_owned()),
+                    params: vec![],
+                    return_ann: None,
+                    body: concrete::Term::Universe(span(), None),
+                },
+                concrete::Item::Declaration {
+                    name: (index(), "else2".to_owned()),
+                    ann: concrete::Term::Universe(span(), Some(1)),
+                },
+                concrete::Item::Definition {
+                    name: (index(), "else2".to_owned()),
+                    params: vec![],
+                    return_ann: None,
+                    body: concrete::Term::Universe(span(), None),
+                },
+            ],
+            Box::new(concrete::Term::Record(span(), vec![])),
+        );
+
+        assert_eq!(core_module.resugar(&ResugarEnv::new()), concrete_module);
+    }
 
     #[test]
     fn record_ty_empty() {

@@ -7,9 +7,7 @@
 use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
-use syntax::core::{
-    Item, Literal, Module, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Value,
-};
+use syntax::core::{Literal, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Value};
 use syntax::raw;
 use syntax::translation::Resugar;
 use syntax::Level;
@@ -23,125 +21,6 @@ mod tests;
 pub use self::env::{DeclarationEnv, DefinitionEnv, Extern, GlobalEnv, Globals, TcEnv};
 pub use self::errors::{InternalError, TypeError};
 pub use self::normalize::{match_value, nf_term};
-
-/// Type check and elaborate a module
-pub fn check_module<Env>(env: &Env, raw_module: &raw::Module) -> Result<Module, TypeError>
-where
-    Env: DeclarationEnv + DefinitionEnv,
-{
-    use im::HashMap;
-
-    #[derive(Clone)]
-    pub enum ForwardDecl {
-        Pending(ByteSpan, RcTerm),
-        Defined(ByteSpan),
-    }
-
-    // Declarations that may be waiting to be defined
-    let mut forward_declarations = HashMap::new();
-    let mut env = env.clone();
-    // The elaborated items, pre-allocated to improve performance
-    let mut items = Vec::with_capacity(raw_module.items.len());
-
-    // Iterate through the items in the module, checking each in turn
-    for raw_item in &raw_module.items {
-        match *raw_item {
-            raw::Item::Declaration {
-                label_span,
-                ref label,
-                ref binder,
-                term: ref raw_term,
-            } => {
-                // Ensure that this declaration has not already been seen
-                match forward_declarations.get(binder) {
-                    // There's already a definition associated with this name -
-                    // we can't add a new declaration for it!
-                    Some(&ForwardDecl::Defined(definition_span)) => {
-                        return Err(TypeError::DeclarationFollowedDefinition {
-                            definition_span,
-                            declaration_span: label_span,
-                            binder: binder.clone(),
-                        });
-                    },
-                    // There's a declaration  for this name already pending - we
-                    // can't add a new one!
-                    Some(&ForwardDecl::Pending(original_span, _)) => {
-                        return Err(TypeError::DuplicateDeclarations {
-                            original_span,
-                            duplicate_span: label_span,
-                            binder: binder.clone(),
-                        });
-                    },
-                    // No previous declaration for this name was seen, so we can
-                    // go-ahead and type check, elaborate, and then add it to
-                    // the context
-                    None => {},
-                }
-
-                // Ensure that the declaration's type annotation is actually a type
-                let (term, _) = infer_universe(&env, raw_term)?;
-                // Remember the declaration for when we get to a subsequent definition
-                let declaration = ForwardDecl::Pending(label_span, term.clone());
-                forward_declarations.insert(binder.clone(), declaration);
-                // Add the declaration to the elaborated items
-                items.push(Item::Declaration {
-                    label: label.clone(),
-                    binder: binder.clone(),
-                    term,
-                });
-            },
-
-            raw::Item::Definition {
-                label_span,
-                ref label,
-                ref binder,
-                term: ref raw_term,
-            } => {
-                let (term, ty) = match forward_declarations.get(binder).cloned() {
-                    // This declaration was already given a definition, so this
-                    // is an error!
-                    //
-                    // NOTE: Some languages (eg. Haskell, Agda, Idris, and
-                    // Erlang) turn duplicate definitions into case matches.
-                    // Languages like Elm don't. What should we do here?
-                    Some(ForwardDecl::Defined(original_span)) => {
-                        return Err(TypeError::DuplicateDefinitions {
-                            original_span,
-                            duplicate_span: label_span,
-                            binder: binder.clone(),
-                        });
-                    },
-                    // We found a prior declaration, so we'll use it as a basis
-                    // for checking the definition
-                    Some(ForwardDecl::Pending(_, ty)) => {
-                        let ty = nf_term(&env, &ty)?;
-                        (check_term(&env, &raw_term, &ty)?, ty)
-                    },
-                    // No prior declaration was found, so try to infer the type
-                    // from the given definition alone
-                    None => infer_term(&env, &raw_term)?,
-                };
-
-                // We must not remove this from the list of pending
-                // declarations, lest we encounter another declaration or
-                // definition of the same name later on!
-                forward_declarations.insert(binder.clone(), ForwardDecl::Defined(label_span));
-                // Add the declaration and definition to the environment,
-                // allowing them to be used in later type checking
-                env.insert_declaration(binder.0.clone(), ty);
-                env.insert_definition(binder.0.clone(), term.clone());
-                // Add the definition to the elaborated items
-                items.push(Item::Definition {
-                    label: label.clone(),
-                    binder: binder.clone(),
-                    term,
-                });
-            },
-        }
-    }
-
-    Ok(Module { items })
-}
 
 /// Returns true if `ty1` is a subtype of `ty2`
 fn is_subtype<Env>(env: &Env, ty1: &RcType, ty2: &RcType) -> bool

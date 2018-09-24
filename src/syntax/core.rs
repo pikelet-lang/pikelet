@@ -8,39 +8,6 @@ use std::rc::Rc;
 use syntax::pretty::{self, ToDoc};
 use syntax::{FloatFormat, IntFormat, Label, Level, LevelShift};
 
-/// A module definition
-pub struct Module {
-    /// The items contained in the module
-    pub items: Vec<Item>,
-}
-
-/// Top-level items within a module
-#[derive(Debug, Clone, PartialEq)]
-pub enum Item {
-    /// Declares the type associated with a label, prior to its definition
-    Declaration {
-        /// The external name for this declaration, to be used when referring
-        /// to this item from other modules
-        label: Label,
-        /// The internal name for this declaration., to be used when binding
-        /// this name to variables
-        binder: Binder<String>,
-        /// The type annotation for associated with the label
-        term: RcTerm,
-    },
-    /// Defines the term that should be associated with a label
-    Definition {
-        /// The external name for this definition, to be used when referring
-        /// to this item from other modules
-        label: Label,
-        /// The internal name for this definition., to be used when binding
-        /// this name to variables
-        binder: Binder<String>,
-        /// The term for associated with the label
-        term: RcTerm,
-    },
-}
-
 /// Literals
 ///
 /// We could church encode all the things, but that would be prohibitively expensive!

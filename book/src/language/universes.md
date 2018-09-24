@@ -104,9 +104,9 @@ Often we'll write definitions in terms of `Type`, without worrying about the
 universe levels. For example the identity function can be defined with a type
 parameter in the universe of `Type`:
 
-```pikelet
-id : (a : Type) -> a -> a
-id a x = x
+```pikelet-repl
+Pikelet> :let id = \(a : Type) (x : a) => x
+id : (a : Type) (x : a) -> a
 ```
 
 This then allows us to use it with values:

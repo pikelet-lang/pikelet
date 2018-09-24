@@ -14,13 +14,17 @@ doesn't do many interesting things yet, but hopefully that will change in the fu
 Definitions:
 
 ```pikelet
-module prelude;
+let
+    id : (a : Type) -> a -> a;
+    id a x = x;
 
-id : (a : Type) -> a -> a;
-id a x = x;
-
-const : (a b : Type) -> a -> b -> a;
-const a b x y = x;
+    const : (a b : Type) -> a -> b -> a;
+    const a b x y = x;
+in
+    record {
+        id = id;
+        const = const;
+    }
 ```
 
 Interactive REPL:

@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use syntax::concrete::{Item, Literal, Module, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
+use syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 use syntax::{FloatFormat, IntFormat};
 
@@ -97,13 +97,6 @@ pub ReplCommand: ReplCommand = {
             let command = command.to_owned();
             Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
         },
-    },
-};
-
-pub Module: Module = {
-    // FIXME: module doc comments
-    <items: Item*> => {
-        Module::Valid { items }
     },
 };
 

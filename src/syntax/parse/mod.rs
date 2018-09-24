@@ -33,7 +33,6 @@ macro_rules! parser {
 }
 
 parser!(repl_command, ReplCommand, ReplCommandParser);
-parser!(module, Module, ModuleParser);
 parser!(pattern, Pattern, PatternParser);
 parser!(term, Term, TermParser);
 
@@ -122,44 +121,19 @@ mod tests {
     #[test]
     fn imports() {
         let src = r#"
-            prims = import "prims.pi";
-            prelude = import "prelude.pi";
+            record {
+                prims = import "prims.pi";
+                prelude = import "prelude.pi";
+            }
         "#;
         let mut codemap = CodeMap::new();
         let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
 
-        let parse_result = module(&filemap);
+        let parse_result = term(&filemap);
 
         assert_eq!(
-            parse_result,
-            (
-                concrete::Module::Valid {
-                    items: vec![
-                        concrete::Item::Definition {
-                            name: (ByteIndex(14), "prims".to_owned()),
-                            params: vec![],
-                            return_ann: None,
-                            body: concrete::Term::Import(
-                                ByteSpan::new(ByteIndex(22), ByteIndex(39)),
-                                ByteSpan::new(ByteIndex(29), ByteIndex(39)),
-                                "prims.pi".to_owned(),
-                            ),
-                        },
-                        concrete::Item::Definition {
-                            name: (ByteIndex(53), "prelude".to_owned()),
-                            params: vec![],
-                            return_ann: None,
-                            body: concrete::Term::Import(
-                                ByteSpan::new(ByteIndex(63), ByteIndex(82)),
-                                ByteSpan::new(ByteIndex(70), ByteIndex(82)),
-                                "prelude.pi".to_owned(),
-                            ),
-                        }
-                    ],
-                },
-                vec!["prims.pi".to_owned(), "prelude.pi".to_owned()],
-                vec![],
-            )
+            parse_result.1,
+            vec!["prims.pi".to_owned(), "prelude.pi".to_owned()],
         );
     }
 

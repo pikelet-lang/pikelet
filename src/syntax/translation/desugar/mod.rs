@@ -401,53 +401,6 @@ fn desugar_record(
     )))
 }
 
-impl Desugar<raw::Module> for concrete::Module {
-    fn desugar(&self, env: &DesugarEnv) -> Result<raw::Module, DesugarError> {
-        let mut env = env.clone();
-        let concrete_items = match *self {
-            concrete::Module::Valid { ref items } => items,
-            concrete::Module::Error(_) => unimplemented!("error recovery"),
-        };
-
-        Ok(raw::Module {
-            items: concrete_items
-                .iter()
-                .map(|concrete_item| match *concrete_item {
-                    concrete::Item::Declaration {
-                        name: (start, ref name),
-                        ref ann,
-                    } => {
-                        let term = ann.desugar(&env)?;
-
-                        Ok(raw::Item::Declaration {
-                            label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
-                            label: Label(name.clone()),
-                            binder: env.on_item(name),
-                            term,
-                        })
-                    },
-                    concrete::Item::Definition {
-                        name: (start, ref name),
-                        ref params,
-                        ref return_ann,
-                        ref body,
-                    } => {
-                        let return_ann = return_ann.as_ref().map(<_>::as_ref);
-                        let term = desugar_lam(&env, params, return_ann, body)?;
-
-                        Ok(raw::Item::Definition {
-                            label_span: ByteSpan::from_offset(start, ByteOffset::from_str(name)),
-                            label: Label(name.clone()),
-                            binder: env.on_item(name),
-                            term,
-                        })
-                    },
-                    concrete::Item::Error(_) => unimplemented!("error recovery"),
-                }).collect::<Result<_, _>>()?,
-        })
-    }
-}
-
 impl Desugar<raw::Literal> for concrete::Literal {
     fn desugar(&self, _: &DesugarEnv) -> Result<raw::Literal, DesugarError> {
         Ok(match *self {

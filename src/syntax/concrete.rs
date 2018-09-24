@@ -63,29 +63,6 @@ pub enum ReplCommand {
     Error(ByteSpan),
 }
 
-/// Modules
-#[derive(Debug, Clone, PartialEq)]
-pub enum Module {
-    /// A module definition:
-    ///
-    /// ```text
-    /// module my-module;
-    ///
-    /// <items>
-    /// ```
-    Valid { items: Vec<Item> },
-    /// Modules commands that could not be parsed correctly
-    ///
-    /// This is used for error recovery
-    Error(ByteSpan),
-}
-
-impl fmt::Display for Module {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
-    }
-}
-
 /// A group of lambda parameters that share an annotation
 pub type LamParamGroup = (Vec<(ByteIndex, String)>, Option<Box<Term>>);
 

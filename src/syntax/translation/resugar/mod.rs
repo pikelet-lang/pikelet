@@ -101,58 +101,6 @@ pub trait Resugar<T> {
     fn resugar(&self, env: &ResugarEnv) -> T;
 }
 
-impl Resugar<concrete::Module> for core::Module {
-    fn resugar(&self, env: &ResugarEnv) -> concrete::Module {
-        let mut env = env.clone();
-        let mut local_decls = HashMap::new();
-        let mut items = Vec::with_capacity(self.items.len() * 2);
-
-        for item in &self.items {
-            match item {
-                core::Item::Declaration {
-                    ref label,
-                    ref binder,
-                    ref term,
-                } => {
-                    let name = env.on_item(label, binder);
-                    local_decls.insert(binder, name.clone());
-
-                    items.push(concrete::Item::Declaration {
-                        name: (ByteIndex::default(), name),
-                        ann: resugar_term(&env, term, Prec::ANN),
-                    });
-                },
-                core::Item::Definition {
-                    ref label,
-                    ref binder,
-                    ref term,
-                } => {
-                    let name = local_decls.get(binder).cloned().unwrap_or_else(|| {
-                        let name = env.on_item(label, binder);
-                        local_decls.insert(binder, name.clone());
-                        name
-                    });
-
-                    // pull lambda arguments from the body into the definition
-                    let (params, body) = match resugar_term(&env, term, Prec::ANN) {
-                        concrete::Term::Lam(_, params, body) => (params, *body),
-                        body => (vec![], body),
-                    };
-
-                    items.push(concrete::Item::Definition {
-                        name: (ByteIndex::default(), name),
-                        return_ann: None,
-                        params,
-                        body,
-                    });
-                },
-            };
-        }
-
-        concrete::Module::Valid { items }
-    }
-}
-
 /// The precedence of a term
 ///
 /// This is used to reconstruct the parentheses needed to reconstruct a valid

@@ -2,24 +2,12 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Item, LamParamGroup, Literal, Module, Pattern, PiParamGroup, Term};
+use syntax::concrete::{Item, LamParamGroup, Literal, Pattern, PiParamGroup, Term};
 use syntax::{FloatFormat, IntFormat};
 
 use super::{StaticDoc, ToDoc};
 
 const INDENT_WIDTH: usize = 4;
-
-impl ToDoc for Module {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Module::Valid { ref items } => Doc::intersperse(
-                items.iter().map(|item| item.to_doc()),
-                Doc::newline().append(Doc::newline()),
-            ),
-            Module::Error(_) => Doc::text("<error>"),
-        }
-    }
-}
 
 impl ToDoc for Item {
     fn to_doc(&self) -> StaticDoc {
