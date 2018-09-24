@@ -27,7 +27,7 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     let mut is_error = false;
     for path in opts.files {
         let file = codemap.add_filemap_from_disk(path)?;
-        let (module, _import_paths, parse_errors) = parse::module(&file);
+        let (concrete_module, _import_paths, parse_errors) = parse::module(&file);
 
         let mut is_parse_error = false;
         for error in parse_errors {
@@ -39,7 +39,16 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
             continue;
         }
 
-        match semantics::check_module(&tc_env, &module.desugar(&desugar_env)) {
+        let raw_module = match concrete_module.desugar(&desugar_env) {
+            Ok(raw_module) => raw_module,
+            Err(err) => {
+                codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;
+                is_error = true;
+                continue;
+            },
+        };
+
+        match semantics::check_module(&tc_env, &raw_module) {
             Ok(_) => {},
             Err(err) => {
                 codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;

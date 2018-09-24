@@ -8,7 +8,7 @@ fn prelude() {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
     let writer = StandardStream::stdout(ColorChoice::Always);
 
-    let (concrete_module, _import_paths, errors) = parse::module(&filemap);
+    let (concrete_term, _import_paths, errors) = parse::term(&filemap);
     if !errors.is_empty() {
         for error in errors {
             codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
@@ -18,7 +18,7 @@ fn prelude() {
 
     let tc_env = TcEnv::default();
     let desugar_env = DesugarEnv::new(tc_env.mappings());
-    if let Err(err) = check_module(&tc_env, &concrete_module.desugar(&desugar_env)) {
+    if let Err(err) = infer_term(&tc_env, &concrete_term.desugar(&desugar_env).unwrap()) {
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
         panic!("type error!")
     }
@@ -34,7 +34,9 @@ fn infer_bare_definition() {
         foo = true;
     ";
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
@@ -55,7 +57,9 @@ fn forward_declarations() {
         foo = false;
     ";
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
@@ -76,7 +80,9 @@ fn forward_declarations_forward_ref() {
         foo = false;
     ";
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::UndefinedName { .. }) => {},
@@ -95,7 +101,9 @@ fn declaration_after_definition() {
         foo : Bool;
     ";
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::DeclarationFollowedDefinition { .. }) => {},
@@ -114,7 +122,9 @@ fn duplicate_declarations() {
         foo : S32;
     ";
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::DuplicateDeclarations { .. }) => {},
@@ -133,7 +143,9 @@ fn duplicate_definitions() {
         foo = S32;
     ";
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::DuplicateDefinitions { .. }) => {},
@@ -164,7 +176,9 @@ fn shift_universes() {
         id22 : (a : Type^4) -> a -> a = id2^2;
     "#;
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
@@ -200,7 +214,9 @@ fn shift_universes_id_self_application() {
         id-id = id^1 ((a : Type) -> a -> a) id;
     "#;
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
@@ -221,7 +237,9 @@ fn shift_universes_literals() {
         test2 = "hello" : id^1 Type String;
     "#;
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
@@ -242,7 +260,9 @@ fn shift_universes_literals_bad() {
         test2 = "hello" : id^2 Type^1 String^1;
     "#;
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::LiteralMismatch { .. }) => {},
@@ -263,7 +283,9 @@ fn shift_universes_too_little() {
         test1 = id^1 Type^1 Type;
     "#;
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     match check_module(&tc_env, &raw_module) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::Mismatch { .. }) => {},
@@ -284,7 +306,9 @@ fn shift_universes_too_much() {
         test1 = id^2 Type String;
     "#;
 
-    let raw_module = parse_module(&mut codemap, src).desugar(&desugar_env);
+    let raw_module = parse_module(&mut codemap, src)
+        .desugar(&desugar_env)
+        .unwrap();
     if let Err(err) = check_module(&tc_env, &raw_module) {
         let writer = StandardStream::stdout(ColorChoice::Always);
         codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();

@@ -30,7 +30,9 @@ fn extern_not_found() {
 
     let given_expr = r#"extern "does-not-exist" : Record {}"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::UndefinedExternName { .. }) => {},
@@ -103,7 +105,9 @@ fn ann_id_as_ty() {
 
     let given_expr = r"(\a => a) : Type";
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::UnexpectedFunction { .. }) => {},
@@ -133,7 +137,9 @@ fn app_ty() {
 
     let given_expr = r"Type Type";
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     assert_eq!(
         infer_term(&tc_env, &raw_term),
@@ -413,7 +419,9 @@ fn case_expr_bool_bad() {
         false => "hi";
     }"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::Mismatch { .. }) => {},
@@ -446,7 +454,9 @@ fn case_expr_empty() {
 
     let given_expr = r#"case "helloo" of {}"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::AmbiguousEmptyCase { .. }) => {},
@@ -609,7 +619,9 @@ fn proj_missing() {
 
     let given_expr = r#"(record { x = "hello" } : Record { x : String }).bloop"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::NoFieldInType { .. }) => {},
@@ -668,7 +680,9 @@ fn array_ambiguous() {
 
     let given_expr = r#"[1; 2 : S32]"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::AmbiguousArrayLiteral { .. }) => {},

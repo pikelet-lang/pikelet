@@ -39,7 +39,9 @@ fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
 }
 
 fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm, RcType) {
-    let raw_term = parse_term(codemap, src).desugar(&DesugarEnv::new(tc_env.mappings()));
+    let raw_term = parse_term(codemap, src)
+        .desugar(&DesugarEnv::new(tc_env.mappings()))
+        .unwrap();
     match infer_term(tc_env, &raw_term) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
@@ -63,7 +65,9 @@ fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
 }
 
 fn parse_check_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str, expected: &RcType) {
-    let raw_term = parse_term(codemap, src).desugar(&DesugarEnv::new(tc_env.mappings()));
+    let raw_term = parse_term(codemap, src)
+        .desugar(&DesugarEnv::new(tc_env.mappings()))
+        .unwrap();
     match check_term(tc_env, &raw_term, expected) {
         Ok(_) => {},
         Err(error) => {
