@@ -75,7 +75,7 @@
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.2.</strong> Records</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.3.</strong> Functions</a></li><li><a href="language/modules.html"><strong aria-hidden="true">2.4.</strong> Modules</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="language/universes.html"><strong aria-hidden="true">2.6.</strong> Universes</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
+            <ol class="chapter"><li class="affix"><a href="index.html">Pikelet</a></li><li><a href="installation/index.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><a href="language/index.html"><strong aria-hidden="true">2.</strong> Language</a></li><li><ol class="section"><li><a href="language/conditionals.html"><strong aria-hidden="true">2.1.</strong> Conditionals</a></li><li><a href="language/functions.html"><strong aria-hidden="true">2.2.</strong> Functions</a></li><li><a href="language/records.html"><strong aria-hidden="true">2.3.</strong> Records</a></li><li><a href="language/bindings.html"><strong aria-hidden="true">2.4.</strong> Bindings</a></li><li><a href="language/type-inference.html"><strong aria-hidden="true">2.5.</strong> Type inference</a></li><li><a href="language/universes.html"><strong aria-hidden="true">2.6.</strong> Universes</a></li></ol></li><li><a href="appendix/index.html"><strong aria-hidden="true">3.</strong> Appendix</a></li><li><ol class="section"><li><a href="appendix/design.html"><strong aria-hidden="true">3.1.</strong> Design</a></li><li><a href="appendix/theory.html"><strong aria-hidden="true">3.2.</strong> Theory</a></li><li><a href="appendix/influences.html"><strong aria-hidden="true">3.3.</strong> Influences</a></li><li><a href="appendix/references.html"><strong aria-hidden="true">3.4.</strong> References</a></li></ol></li></ol>
         </nav>
 
         <div id="page-wrapper" class="page-wrapper">
@@ -149,13 +149,17 @@ doesn't do many interesting things yet, but hopefully that will change in the fu
 </ul>
 <a class="header" href="#a-small-taste" id="a-small-taste"><h2>A small taste</h2></a>
 <p>Definitions:</p>
-<pre><code class="language-pikelet">module prelude;
+<pre><code class="language-pikelet">let
+    id : (a : Type) -&gt; a -&gt; a;
+    id a x = x;
 
-id : (a : Type) -&gt; a -&gt; a;
-id a x = x;
-
-const : (a b : Type) -&gt; a -&gt; b -&gt; a;
-const a b x y = x;
+    const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+    const a b x y = x;
+in
+    record {
+        id = id;
+        const = const;
+    }
 </code></pre>
 <p>Interactive REPL:</p>
 <pre><code class="language-pikelet-repl">$ cargo run repl
@@ -276,8 +280,67 @@ error: internal compiler error: no patterns matched the given expression
 </code></pre>
 <p>In the future we' plan to fix this, add support for matching on booleans, and
 also support more complex patterns (eg. for records).</p>
-<a class="header" href="#records" id="records"><h1>Records</h1></a>
+<a class="header" href="#functions" id="functions"><h1>Functions</h1></a>
 <a class="header" href="#contents-1" id="contents-1"><h2>Contents</h2></a>
+<ul>
+<li><a href="#simply-typed-functions">Simply typed functions</a></li>
+<li><a href="#polymorphic-functions">Polymorphic functions</a></li>
+<li><a href="#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
+</ul>
+<a class="header" href="#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
+<p>Here are some simple functions and their types:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : S32 =&gt; x
+S32 -&gt; S32
+Pikelet&gt; :t \x : String =&gt; x
+String -&gt; String
+Pikelet&gt; :t \x : Char =&gt; x
+Char -&gt; Char
+</code></pre>
+<p>Note that all of these types follow the same pattern - they are the identity
+function! This means that if you pass a value to them, they'll return the same
+thing without alteration!</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : S32 =&gt; x) 42
+42 : S32
+Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
+&quot;hi&quot; : String
+Pikelet&gt; (\x : Char =&gt; x) 'b'
+'b' : Char
+</code></pre>
+<a class="header" href="#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
+<p>Alas, we can't reuse one of these identity functions with other, incompatible
+types:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : S32 =&gt; x) 4.0
+error: found a floating point literal, but expected a type `S32`
+- &lt;repl&gt;:1:17
+1 | (\x : S32 =&gt; x) 4.0
+  |                 ^^^ the literal
+</code></pre>
+<p>Let's make this identity function polymorphic by adding a parameter for the type
+of the argument:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
+(a : Type) -&gt; a -&gt; a
+</code></pre>
+<p>We now have a polymorphic identity function! We can specialize this function by
+applying a type to it:</p>
+<pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
+&quot;hello&quot; : String
+Pikelet&gt; (\(x : Type) (x : a) =&gt; x) S32 1
+1 : S32
+</code></pre>
+<a class="header" href="#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
+<p>In Pikelet, all functions take a single argument - in order to pass multiple
+arguments we use currying. The following functions are equivalent:</p>
+<pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
+\(x : Type) =&gt; \(x : a) =&gt; x
+</code></pre>
+<p>Non-dependent functions can be expressed without explicit parameter names. For
+example the following function types are equivalent:</p>
+<pre><code class="language-pikelet">(a : Type) (x : a) -&gt; a
+(a : Type) -&gt; (x : a) -&gt; a
+(a : Type) -&gt; a -&gt; a
+</code></pre>
+<a class="header" href="#records" id="records"><h1>Records</h1></a>
+<a class="header" href="#contents-2" id="contents-2"><h2>Contents</h2></a>
 <ul>
 <li><a href="#record-values-and-record-types">Record values and record types</a></li>
 <li><a href="#field-lookups">Field lookups</a></li>
@@ -363,66 +426,7 @@ For example:</p>
   y as y : F32;
 };
 </code></pre>
-<a class="header" href="#functions" id="functions"><h1>Functions</h1></a>
-<a class="header" href="#contents-2" id="contents-2"><h2>Contents</h2></a>
-<ul>
-<li><a href="#simply-typed-functions">Simply typed functions</a></li>
-<li><a href="#polymorphic-functions">Polymorphic functions</a></li>
-<li><a href="#syntactic-sugar-for-functions">Syntactic sugar for functions</a></li>
-</ul>
-<a class="header" href="#simply-typed-functions" id="simply-typed-functions"><h2>Simply typed functions</h2></a>
-<p>Here are some simple functions and their types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \x : S32 =&gt; x
-S32 -&gt; S32
-Pikelet&gt; :t \x : String =&gt; x
-String -&gt; String
-Pikelet&gt; :t \x : Char =&gt; x
-Char -&gt; Char
-</code></pre>
-<p>Note that all of these types follow the same pattern - they are the identity
-function! This means that if you pass a value to them, they'll return the same
-thing without alteration!</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : S32 =&gt; x) 42
-42 : S32
-Pikelet&gt; (\x : String =&gt; x) &quot;hi&quot;
-&quot;hi&quot; : String
-Pikelet&gt; (\x : Char =&gt; x) 'b'
-'b' : Char
-</code></pre>
-<a class="header" href="#polymorphic-functions" id="polymorphic-functions"><h2>Polymorphic functions</h2></a>
-<p>Alas, we can't reuse one of these identity functions with other, incompatible
-types:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\x : S32 =&gt; x) 4.0
-error: found a floating point literal, but expected a type `S32`
-- &lt;repl&gt;:1:17
-1 | (\x : S32 =&gt; x) 4.0
-  |                 ^^^ the literal
-</code></pre>
-<p>Let's make this identity function polymorphic by adding a parameter for the type
-of the argument:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; :t \(a : Type) (x : a) =&gt; x
-(a : Type) -&gt; a -&gt; a
-</code></pre>
-<p>We now have a polymorphic identity function! We can specialize this function by
-applying a type to it:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; (\(x : Type) (x : a) =&gt; x) String &quot;hello&quot;
-&quot;hello&quot; : String
-Pikelet&gt; (\(x : Type) (x : a) =&gt; x) S32 1
-1 : S32
-</code></pre>
-<a class="header" href="#syntactic-sugar-for-functions" id="syntactic-sugar-for-functions"><h2>Syntactic sugar for functions</h2></a>
-<p>In Pikelet, all functions take a single argument - in order to pass multiple
-arguments we use currying. The following functions are equivalent:</p>
-<pre><code class="language-pikelet">\(x : Type) (x : a) =&gt; x
-\(x : Type) =&gt; \(x : a) =&gt; x
-</code></pre>
-<p>Non-dependent functions can be expressed without explicit parameter names. For
-example the following function types are equivalent:</p>
-<pre><code class="language-pikelet">(a : Type) (x : a) -&gt; a
-(a : Type) -&gt; (x : a) -&gt; a
-(a : Type) -&gt; a -&gt; a
-</code></pre>
-<a class="header" href="#modules" id="modules"><h1>Modules</h1></a>
+<a class="header" href="#bindings" id="bindings"><h1>Bindings</h1></a>
 <a class="header" href="#contents-3" id="contents-3"><h2>Contents</h2></a>
 <ul>
 <li><a href="#items">Items</a></li>
@@ -431,54 +435,78 @@ example the following function types are equivalent:</p>
 <li><a href="#doc-comments">Doc comments</a></li>
 </ul>
 <a class="header" href="#items" id="items"><h2>Items</h2></a>
-<p>Modules are made up of items. At the moment these can either be <em>declarations</em>
+<p>Let bindings are made up of items. At the moment these can either be <em>declarations</em>
 or <em>definitions</em>.</p>
 <p>A <em>declaration</em> states the type for of an identifier that we should
 expect to see in a subsequent <em>definition</em> for that identifier. For example:</p>
-<pre><code class="language-pikelet">greeting : String;              -- declaration
-greeting = &quot;hello there!&quot;;      -- definition
+<pre><code class="language-pikelet">let
+    greeting : String;              -- declaration
+    greeting = &quot;hello there!&quot;;      -- definition
+in
+    ...
 </code></pre>
 <p>We can make supply a number of forward declarations before providing their
 associated definitions:</p>
-<pre><code class="language-pikelet">one : S32;
-two : S32;
+<pre><code class="language-pikelet">let
+    one : S32;
+    two : S32;
 
-one = 1;
-two = 1;
+    one = 1;
+    two = 2;
+in
+    ...
 </code></pre>
 <p>Values that can be inferred do not require a declaration, although sometimes a
 declaration may be useful for documentations purposes!</p>
-<pre><code class="language-pikelet">string = &quot;hello&quot;  -- ok!
-one = 1 : U16     -- ok!
-two = 2           -- error: is this an U8, U16, etc?
+<pre><code class="language-pikelet">let
+    string = &quot;hello&quot;  -- ok!
+    one = 1 : U16     -- ok!
+    two = 2           -- error: is this an U8, U16, S64, etc?
+in
+    ...
 </code></pre>
 <a class="header" href="#function-definitions" id="function-definitions"><h2>Function definitions</h2></a>
 <p>We have some nice syntactic sugar for defining functions. For example:</p>
-<pre><code class="language-pikelet">const : (a b : Type) -&gt; a -&gt; b -&gt; a;
-const = \a b x y =&gt; x;
+<pre><code class="language-pikelet">let
+    const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+    const = \a b x y =&gt; x;
+in
+    const String I32 &quot;hello&quot; 1
 </code></pre>
 <p>Could be expressed more cleanly as:</p>
-<pre><code class="language-pikelet">const : (a b : Type) -&gt; a -&gt; b -&gt; a;
-const a b x y = x;
+<pre><code class="language-pikelet">let
+    const : (a b : Type) -&gt; a -&gt; b -&gt; a;
+    const a b x y = x;
+in
+    const String I32 &quot;hello&quot; 1
 </code></pre>
 <a class="header" href="#type-aliases" id="type-aliases"><h2>Type aliases</h2></a>
 <p>Because Pikelet is dependently typed, we need no other mechanism for making
 type aliases. Instead we just use definitions!</p>
-<pre><code class="language-pikelet">name : Type;
-name = String;
+<pre><code class="language-pikelet">let
+    Name : Type;
+    Name = String;
+
+    bobs-name : Name
+    bobs-name = &quot;bob&quot;
+in
+    ...
 </code></pre>
 <a class="header" href="#doc-comments" id="doc-comments"><h2>Doc comments</h2></a>
 <p>Documentation can be provided for above declarations, by using doc comments:</p>
-<pre><code class="language-pikelet">||| This is a documented definition
-|||
-||| # Example
-|||
-||| ```pikelet-repl
-||| Pikelet&gt; self-aware-string
-||| &quot;I am a string!&quot; : String
-||| ```
-self-aware-string : String;
-self-aware-string = &quot;I am a string!&quot;;
+<pre><code class="language-pikelet">let
+    ||| This is a documented definition
+    |||
+    ||| # Example
+    |||
+    ||| ```pikelet-repl
+    ||| Pikelet&gt; self-aware-string
+    ||| &quot;I am a string!&quot; : String
+    ||| ```
+    self-aware-string : String;
+    self-aware-string = &quot;I am a string!&quot;;
+in
+    ...
 </code></pre>
 <a class="header" href="#type-inference" id="type-inference"><h1>Type inference</h1></a>
 <p>Many statically typed languages perform type inference to varying degrees, and
@@ -624,8 +652,8 @@ Type^1
 <p>Often we'll write definitions in terms of <code>Type</code>, without worrying about the
 universe levels. For example the identity function can be defined with a type
 parameter in the universe of <code>Type</code>:</p>
-<pre><code class="language-pikelet">id : (a : Type) -&gt; a -&gt; a
-id a x = x
+<pre><code class="language-pikelet-repl">Pikelet&gt; :let id = \(a : Type) (x : a) =&gt; x
+id : (a : Type) (x : a) -&gt; a
 </code></pre>
 <p>This then allows us to use it with values:</p>
 <pre><code class="language-pikelet-repl">Pikelet&gt; id String &quot;hello&quot;   -- ok
