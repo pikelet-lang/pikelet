@@ -10,60 +10,6 @@ use std::rc::Rc;
 use syntax::pretty::{self, ToDoc};
 use syntax::{FloatFormat, IntFormat, Label, Level, LevelShift};
 
-/// A module definition
-pub struct Module {
-    /// The items contained in the module
-    pub items: Vec<Item>,
-}
-
-/// Top-level items within a module
-#[derive(Debug, Clone, PartialEq)]
-pub enum Item {
-    /// Declares the type associated with a label, prior to its definition
-    Declaration {
-        /// The span of source code where the label was introduced
-        label_span: ByteSpan,
-        /// The external name for this declaration, to be used when referring
-        /// to this item from other modules
-        label: Label,
-        /// The internal name for this declaration., to be used when binding
-        /// this name to variables
-        binder: Binder<String>,
-        /// The type annotation for associated with the label
-        term: RcTerm,
-    },
-    /// Defines the term that should be associated with a label
-    Definition {
-        /// The span of source code where the label was introduced
-        label_span: ByteSpan,
-        /// The external name for this definition, to be used when referring
-        /// to this item from other modules
-        label: Label,
-        /// The internal name for this definition., to be used when binding
-        /// this name to variables
-        binder: Binder<String>,
-        /// The term for associated with the label
-        term: RcTerm,
-    },
-}
-
-impl Item {
-    pub fn span(&self) -> ByteSpan {
-        match *self {
-            Item::Declaration {
-                label_span,
-                ref term,
-                ..
-            }
-            | Item::Definition {
-                label_span,
-                ref term,
-                ..
-            } => label_span.to(term.span()),
-        }
-    }
-}
-
 /// Literals
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]
 pub enum Literal {
@@ -191,7 +137,7 @@ pub enum Term {
     /// Let bindings
     Let(
         ByteSpan,
-        Scope<(Binder<String>, Embed<(RcTerm, RcTerm)>), RcTerm>,
+        Scope<Nest<(Binder<String>, Embed<(RcTerm, RcTerm)>)>, RcTerm>,
     ),
 }
 

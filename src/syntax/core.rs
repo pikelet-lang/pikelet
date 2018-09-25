@@ -8,39 +8,6 @@ use std::rc::Rc;
 use syntax::pretty::{self, ToDoc};
 use syntax::{FloatFormat, IntFormat, Label, Level, LevelShift};
 
-/// A module definition
-pub struct Module {
-    /// The items contained in the module
-    pub items: Vec<Item>,
-}
-
-/// Top-level items within a module
-#[derive(Debug, Clone, PartialEq)]
-pub enum Item {
-    /// Declares the type associated with a label, prior to its definition
-    Declaration {
-        /// The external name for this declaration, to be used when referring
-        /// to this item from other modules
-        label: Label,
-        /// The internal name for this declaration., to be used when binding
-        /// this name to variables
-        binder: Binder<String>,
-        /// The type annotation for associated with the label
-        term: RcTerm,
-    },
-    /// Defines the term that should be associated with a label
-    Definition {
-        /// The external name for this definition, to be used when referring
-        /// to this item from other modules
-        label: Label,
-        /// The internal name for this definition., to be used when binding
-        /// this name to variables
-        binder: Binder<String>,
-        /// The term for associated with the label
-        term: RcTerm,
-    },
-}
-
 /// Literals
 ///
 /// We could church encode all the things, but that would be prohibitively expensive!
@@ -143,7 +110,7 @@ pub enum Term {
     /// Array literals
     Array(Vec<RcTerm>),
     /// Let bindings
-    Let(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
+    Let(Scope<Nest<(Binder<String>, Embed<(RcTerm, RcTerm)>)>, RcTerm>),
 }
 
 impl Term {
@@ -197,9 +164,19 @@ impl RcTerm {
                 }))
             },
             Term::Let(ref scope) => {
-                let (ref name, Embed(ref bind)) = scope.unsafe_pattern;
+                let unsafe_patterns = scope
+                    .unsafe_pattern
+                    .unsafe_patterns
+                    .iter()
+                    .map(|&(ref binder, Embed((ref ann, ref term)))| {
+                        (
+                            binder.clone(),
+                            Embed((ann.substs(mappings), term.substs(mappings))),
+                        )
+                    }).collect();
+
                 RcTerm::from(Term::Let(Scope {
-                    unsafe_pattern: (name.clone(), Embed(bind.substs(mappings))),
+                    unsafe_pattern: Nest { unsafe_patterns },
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },

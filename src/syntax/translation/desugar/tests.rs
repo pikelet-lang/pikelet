@@ -1,4 +1,6 @@
 use codespan::{CodeMap, FileName};
+use codespan_reporting;
+use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use goldenfile::Mint;
 
 use std::io::Write;
@@ -13,19 +15,37 @@ fn golden(filename: &str, literal: &str) {
     let mut file = mint.new_goldenfile(filename).unwrap();
     let env = DesugarEnv::new(HashMap::new());
 
-    let term = parse(&env, literal);
+    let term = parse_desugar_term(&env, literal);
 
     write!(file, "{:#?}", term).unwrap();
 }
 
-fn parse(env: &DesugarEnv, src: &str) -> raw::RcTerm {
-    let mut codemap = CodeMap::new();
+fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
-
     let (concrete_term, _import_paths, errors) = parse::term(&filemap);
-    assert!(errors.is_empty());
 
-    concrete_term.desugar(env)
+    if !errors.is_empty() {
+        let writer = StandardStream::stdout(ColorChoice::Always);
+        for error in errors {
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
+        }
+        panic!("parse error!")
+    }
+
+    concrete_term
+}
+
+fn parse_desugar_term(env: &DesugarEnv, src: &str) -> raw::RcTerm {
+    let mut codemap = CodeMap::new();
+
+    match parse_term(&mut codemap, src).desugar(env) {
+        Ok(raw_term) => raw_term,
+        Err(error) => {
+            let writer = StandardStream::stdout(ColorChoice::Always);
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
+            panic!("type error!");
+        },
+    }
 }
 
 mod term {
@@ -50,7 +70,7 @@ mod term {
     fn free_var() {
         let env = DesugarEnv::new(HashMap::new());
 
-        match *parse(&env, r"or-elim").inner {
+        match *parse_desugar_term(&env, r"or-elim").inner {
             raw::Term::Var(_, Var::Free(ref free_var), LevelShift(0)) => {
                 assert_eq!(free_var.pretty_name, Some("or-elim".to_owned()));
             },
@@ -95,7 +115,7 @@ mod term {
         let x = FreeVar::fresh_named("x");
 
         assert_term_eq!(
-            parse(&env, r"\x : Type -> Type => x"),
+            parse_desugar_term(&env, r"\x : Type -> Type => x"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
@@ -121,7 +141,7 @@ mod term {
         let hole = || RcTerm::from(Term::Hole(ByteSpan::default()));
 
         assert_term_eq!(
-            parse(&env, r"\x : (\y => y) => x"),
+            parse_desugar_term(&env, r"\x : (\y => y) => x"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
@@ -146,7 +166,7 @@ mod term {
         let y = FreeVar::fresh_named("y");
 
         assert_term_eq!(
-            parse(&env, r"\(x y : Type) => x"),
+            parse_desugar_term(&env, r"\(x y : Type) => x"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
@@ -165,7 +185,7 @@ mod term {
         let env = DesugarEnv::new(HashMap::new());
 
         assert_term_eq!(
-            parse(&env, r"Type -> Type"),
+            parse_desugar_term(&env, r"Type -> Type"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
@@ -180,7 +200,7 @@ mod term {
         let x = FreeVar::fresh_named("x");
 
         assert_term_eq!(
-            parse(&env, r"(x : Type -> Type) -> x"),
+            parse_desugar_term(&env, r"(x : Type -> Type) -> x"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new(
@@ -205,7 +225,7 @@ mod term {
         let y = FreeVar::fresh_named("y");
 
         assert_term_eq!(
-            parse(&env, r"(x y : Type) -> x"),
+            parse_desugar_term(&env, r"(x y : Type) -> x"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new(
@@ -226,7 +246,7 @@ mod term {
         let x = FreeVar::fresh_named("x");
 
         assert_term_eq!(
-            parse(&env, r"(x : Type) -> x -> x"),
+            parse_desugar_term(&env, r"(x : Type) -> x -> x"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new(
@@ -248,7 +268,7 @@ mod term {
         let y = FreeVar::fresh_named("y");
 
         assert_term_eq!(
-            parse(&env, r"\(x : Type -> Type) (y : Type) => x y"),
+            parse_desugar_term(&env, r"\(x : Type -> Type) (y : Type) => x y"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
@@ -279,7 +299,7 @@ mod term {
         let a = FreeVar::fresh_named("a");
 
         assert_term_eq!(
-            parse(&env, r"\(a : Type) (x : a) => x"),
+            parse_desugar_term(&env, r"\(a : Type) (x : a) => x"),
             RcTerm::from(Term::Lam(
                 ByteSpan::default(),
                 Scope::new(
@@ -300,7 +320,7 @@ mod term {
         let a = FreeVar::fresh_named("a");
 
         assert_term_eq!(
-            parse(&env, r"(a : Type) -> a -> a"),
+            parse_desugar_term(&env, r"(a : Type) -> a -> a"),
             RcTerm::from(Term::Pi(
                 ByteSpan::default(),
                 Scope::new(
@@ -314,6 +334,110 @@ mod term {
         );
     }
 
+    #[test]
+    fn let_forward_declarations() {
+        let mut codemap = CodeMap::new();
+        let desugar_env = DesugarEnv::new(HashMap::new());
+
+        let src = "
+            let
+                foo : Type;
+                bar : Type;
+                bar = Record {};
+                foo = Record {};
+            in
+                record {}
+        ";
+
+        if let Err(err) = parse_term(&mut codemap, src).desugar(&desugar_env) {
+            let writer = StandardStream::stdout(ColorChoice::Always);
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
+            panic!("type error!")
+        }
+    }
+
+    // #[test]
+    // fn let_forward_declarations_forward_ref() {
+    //     let mut codemap = CodeMap::new();
+    //     let desugar_env = DesugarEnv::new(HashMap::new());
+
+    //     let src = "
+    //         let
+    //             foo : Type;
+    //             bar : Type;
+    //             bar = foo;
+    //             foo = Record {};
+    //         in
+    //             record {}
+    //     ";
+
+    //     match parse_term(&mut codemap, src).desugar(&desugar_env) {
+    //         Ok(_) => panic!("expected error"),
+    //         Err(DesugarError::UndefinedName { .. }) => {},
+    //         Err(err) => panic!("unexpected error: {}", err),
+    //     }
+    // }
+
+    #[test]
+    fn let_declaration_after_definition() {
+        let mut codemap = CodeMap::new();
+        let desugar_env = DesugarEnv::new(HashMap::new());
+
+        let src = "
+            let
+                foo = Record {};
+                foo : Type;
+            in
+                record {}
+        ";
+
+        match parse_term(&mut codemap, src).desugar(&desugar_env) {
+            Ok(_) => panic!("expected error"),
+            Err(DesugarError::DeclarationFollowedDefinition { .. }) => {},
+            Err(err) => panic!("unexpected error: {}", err),
+        }
+    }
+
+    #[test]
+    fn let_duplicate_declarations() {
+        let mut codemap = CodeMap::new();
+        let desugar_env = DesugarEnv::new(HashMap::new());
+
+        let src = "
+            let
+                foo : Type;
+                foo : Type;
+            in
+                record {}
+        ";
+
+        match parse_term(&mut codemap, src).desugar(&desugar_env) {
+            Ok(_) => panic!("expected error"),
+            Err(DesugarError::DuplicateDeclarations { .. }) => {},
+            Err(err) => panic!("unexpected error: {}", err),
+        }
+    }
+
+    #[test]
+    fn let_duplicate_definitions() {
+        let mut codemap = CodeMap::new();
+        let desugar_env = DesugarEnv::new(HashMap::new());
+
+        let src = "
+            let
+                foo = Type;
+                foo = Type;
+            in
+                record {}
+        ";
+
+        match parse_term(&mut codemap, src).desugar(&desugar_env) {
+            Ok(_) => panic!("expected error"),
+            Err(DesugarError::DuplicateDefinitions { .. }) => {},
+            Err(err) => panic!("unexpected error: {}", err),
+        }
+    }
+
     mod sugar {
         use super::*;
 
@@ -322,8 +446,8 @@ mod term {
             let env = DesugarEnv::new(HashMap::new());
 
             assert_term_eq!(
-                parse(&env, r"\x (y : Type) z => x"),
-                parse(&env, r"\x => \y : Type => \z => x"),
+                parse_desugar_term(&env, r"\x (y : Type) z => x"),
+                parse_desugar_term(&env, r"\x => \y : Type => \z => x"),
             );
         }
 
@@ -332,8 +456,8 @@ mod term {
             let env = DesugarEnv::new(HashMap::new());
 
             assert_term_eq!(
-                parse(&env, r"\(x : Type) (y : Type) z => x"),
-                parse(&env, r"\(x y : Type) z => x"),
+                parse_desugar_term(&env, r"\(x : Type) (y : Type) z => x"),
+                parse_desugar_term(&env, r"\(x y : Type) z => x"),
             );
         }
 
@@ -342,8 +466,8 @@ mod term {
             let env = DesugarEnv::new(HashMap::new());
 
             assert_term_eq!(
-                parse(&env, r"(a : Type) -> (x y z : a) -> x"),
-                parse(&env, r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
+                parse_desugar_term(&env, r"(a : Type) -> (x y z : a) -> x"),
+                parse_desugar_term(&env, r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
             );
         }
 
@@ -352,8 +476,8 @@ mod term {
             let env = DesugarEnv::new(HashMap::new());
 
             assert_term_eq!(
-                parse(&env, r"(a : Type) (x y z : a) (w : x) -> x"),
-                parse(
+                parse_desugar_term(&env, r"(a : Type) (x y z : a) (w : x) -> x"),
+                parse_desugar_term(
                     &env,
                     r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> (w : x) -> x"
                 ),
@@ -365,8 +489,8 @@ mod term {
             let env = DesugarEnv::new(HashMap::new());
 
             assert_term_eq!(
-                parse(&env, r"(a : Type) -> a -> a"),
-                parse(&env, r"(a : Type) -> (x : a) -> a"),
+                parse_desugar_term(&env, r"(a : Type) -> a -> a"),
+                parse_desugar_term(&env, r"(a : Type) -> (x : a) -> a"),
             )
         }
 
@@ -378,8 +502,8 @@ mod term {
             });
 
             assert_term_eq!(
-                parse(&env, r#"if true then "true" else "false""#),
-                parse(&env, r#"case true of { true => "true"; false => "false" }"#),
+                parse_desugar_term(&env, r#"if true then "true" else "false""#),
+                parse_desugar_term(&env, r#"case true of { true => "true"; false => "false" }"#),
             )
         }
     }

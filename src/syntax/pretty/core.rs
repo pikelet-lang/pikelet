@@ -50,35 +50,8 @@ fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> S
     )
 }
 
-fn pretty_let_ann(
-    binder: &Binder<String>,
-    ann: &impl ToDoc,
-    bind: &impl ToDoc,
-    body: &impl ToDoc,
-) -> StaticDoc {
-    sexpr(
-        "let",
-        Doc::group(parens(
-            pretty_binder(binder)
-                .append(Doc::space())
-                .append(ann.to_doc().group())
-                .append(Doc::space())
-                .append(bind.to_doc().group()),
-        )).append(Doc::space())
-        .append(body.to_doc()),
-    )
-}
-
-fn pretty_let(binder: &Binder<String>, bind: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
-    sexpr(
-        "let",
-        Doc::group(parens(
-            pretty_binder(binder)
-                .append(Doc::space())
-                .append(bind.to_doc().group()),
-        )).append(Doc::space())
-        .append(body.to_doc()),
-    )
+fn pretty_let(binders: StaticDoc, body: &impl ToDoc) -> StaticDoc {
+    sexpr("let", binders.append(Doc::space()).append(body.to_doc()))
 }
 
 fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
@@ -186,15 +159,28 @@ impl ToDoc for raw::Term {
                 &scope.unsafe_body.inner,
             ),
             raw::Term::App(ref head, ref arg) => pretty_app(head.to_doc(), iter::once(&arg.inner)),
+            raw::Term::Let(_, ref scope) => pretty_let(
+                Doc::concat(scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref binder, Embed((ref ann, ref term)))| {
+                        parens(
+                            pretty_binder(binder)
+                                .append(Doc::space())
+                                .append(ann.to_doc().group())
+                                .append(Doc::space())
+                                .append(term.to_doc().group()),
+                        ).append(Doc::newline())
+                    },
+                )),
+                &scope.unsafe_body.inner,
+            ),
             raw::Term::RecordType(_, ref scope) => pretty_record_ty(Doc::concat(
                 scope.unsafe_pattern.unsafe_patterns.iter().map(
                     |&(ref label, _, Embed(ref ann))| {
                         parens(
                             Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(ann.to_doc())
-                                .append(Doc::newline()),
-                        )
+                                .append(ann.to_doc().group()),
+                        ).append(Doc::newline())
                     },
                 ),
             )),
@@ -204,9 +190,8 @@ impl ToDoc for raw::Term {
                         parens(
                             Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(term.to_doc())
-                                .append(Doc::newline()),
-                        )
+                                .append(term.to_doc().group()),
+                        ).append(Doc::newline())
                     },
                 ),
             )),
@@ -222,12 +207,6 @@ impl ToDoc for raw::Term {
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
                 )).append("]"),
-            raw::Term::Let(_, ref scope) => pretty_let_ann(
-                &scope.unsafe_pattern.0,
-                &((scope.unsafe_pattern.1).0).0.inner,
-                &((scope.unsafe_pattern.1).0).1.inner,
-                &scope.unsafe_body.inner,
-            ),
         }
     }
 }
@@ -283,8 +262,17 @@ impl ToDoc for Term {
                 &scope.unsafe_body.inner,
             ),
             Term::Let(ref scope) => pretty_let(
-                &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0.inner,
+                Doc::concat(scope.unsafe_pattern.unsafe_patterns.iter().map(
+                    |&(ref binder, Embed((ref ann, ref term)))| {
+                        parens(
+                            pretty_binder(binder)
+                                .append(Doc::space())
+                                .append(ann.to_doc().group())
+                                .append(Doc::space())
+                                .append(term.to_doc().group()),
+                        ).append(Doc::newline())
+                    },
+                )),
                 &scope.unsafe_body.inner,
             ),
             Term::App(ref head, ref arg) => pretty_app(head.to_doc(), iter::once(&arg.inner)),
@@ -294,9 +282,8 @@ impl ToDoc for Term {
                         parens(
                             Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(ann.to_doc())
-                                .append(Doc::newline()),
-                        )
+                                .append(ann.to_doc().group()),
+                        ).append(Doc::newline())
                     },
                 ),
             )),
@@ -306,9 +293,8 @@ impl ToDoc for Term {
                         parens(
                             Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(term.to_doc())
-                                .append(Doc::newline()),
-                        )
+                                .append(term.to_doc().group()),
+                        ).append(Doc::newline())
                     },
                 ),
             )),
@@ -349,9 +335,8 @@ impl ToDoc for Value {
                         parens(
                             Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(ann.to_doc())
-                                .append(Doc::newline()),
-                        )
+                                .append(ann.to_doc().group()),
+                        ).append(Doc::newline())
                     },
                 ),
             )),
@@ -361,9 +346,8 @@ impl ToDoc for Value {
                         parens(
                             Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(term.to_doc())
-                                .append(Doc::newline()),
-                        )
+                                .append(term.to_doc().group()),
+                        ).append(Doc::newline())
                     },
                 ),
             )),

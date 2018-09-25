@@ -1,6 +1,38 @@
 use super::*;
 
 #[test]
+fn prelude() {
+    use library;
+
+    let mut codemap = CodeMap::new();
+    let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
+    let writer = StandardStream::stdout(ColorChoice::Always);
+
+    let (concrete_term, _import_paths, errors) = parse::term(&filemap);
+    if !errors.is_empty() {
+        for error in errors {
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
+        }
+        panic!("parse error!")
+    }
+
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let raw_term = match concrete_term.desugar(&desugar_env) {
+        Ok(raw_term) => raw_term,
+        Err(err) => {
+            codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
+            panic!("desugar error!")
+        },
+    };
+
+    if let Err(err) = infer_term(&tc_env, &raw_term) {
+        codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
+        panic!("type error!")
+    }
+}
+
+#[test]
 fn undefined_name() {
     use syntax::LevelShift;
 
@@ -30,7 +62,9 @@ fn extern_not_found() {
 
     let given_expr = r#"extern "does-not-exist" : Record {}"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::UndefinedExternName { .. }) => {},
@@ -103,7 +137,9 @@ fn ann_id_as_ty() {
 
     let given_expr = r"(\a => a) : Type";
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::UnexpectedFunction { .. }) => {},
@@ -133,7 +169,9 @@ fn app_ty() {
 
     let given_expr = r"Type Type";
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     assert_eq!(
         infer_term(&tc_env, &raw_term),
@@ -368,6 +406,157 @@ fn let_expr_2() {
 }
 
 #[test]
+fn let_shift_universes() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let given_expr = r#"
+        let
+            id : (a : Type) -> a -> a;
+            id a x = x;
+
+            test1 = id String "hello";
+            test2 = id S32 1;
+            test3 = id^1 Type String;
+            test4 = id^2 Type String;
+            test5 = id^2 Type^1 String;
+            test6 = id^2 Type^1 Type;
+
+            id1 : (a : Type^1) -> a -> a = id^1;
+            id2 : (a : Type^2) -> a -> a = id^2;
+            id11 : (a : Type^2) -> a -> a = id1^1;
+            id22 : (a : Type^4) -> a -> a = id2^2;
+        in
+            record {}
+    "#;
+
+    parse_infer_term(&mut codemap, &tc_env, given_expr);
+}
+
+#[test]
+fn let_shift_universes_id_self_application() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    // Here is a curious example from the Idris docs:
+    // http://docs.idris-lang.org/en/v1.3.0/tutorial/miscellany.html#cumulativity
+    //
+    // ```idris
+    // myid : (a : Type) -> a -> a
+    // myid _ x = x
+    //
+    // idid : (a : Type) -> a -> a
+    // idid = myid _ myid
+    // ```
+    //
+    // This would cause a cycle in the universe hierarchy in Idris, but is
+    // perfectly ok when implemented using explicit universe shifting.
+
+    let given_expr = r#"
+        let
+            id : (a : Type) -> a -> a;
+            id a x = x;
+
+            id-id : (a : Type) -> a -> a;
+            id-id = id^1 ((a : Type) -> a -> a) id;
+        in
+            record {}
+    "#;
+
+    parse_infer_term(&mut codemap, &tc_env, given_expr);
+}
+
+#[test]
+fn let_shift_universes_literals() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let given_expr = r#"
+        let
+            id : (a : Type) -> a -> a;
+            id a x = x;
+
+            test2 = "hello" : id^1 Type String;
+        in
+            record {}
+    "#;
+
+    parse_infer_term(&mut codemap, &tc_env, given_expr);
+}
+
+#[test]
+fn let_shift_universes_literals_bad() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
+
+    let given_expr = r#"
+        let
+            id : (a : Type) -> a -> a;
+            id a x = x;
+
+            test2 = "hello" : id^2 Type^1 String^1;
+        in
+            record {}
+    "#;
+
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
+
+    match infer_term(&tc_env, &raw_term) {
+        Ok(_) => panic!("expected error"),
+        Err(TypeError::LiteralMismatch { .. }) => {},
+        Err(err) => panic!("unexpected error: {}", err),
+    }
+}
+
+#[test]
+fn let_shift_universes_too_little() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+    let desugar_env = DesugarEnv::new(tc_env.mappings());
+
+    let given_expr = r#"
+        let
+            id : (a : Type) -> a -> a;
+            id a x = x;
+
+            test1 = id^1 Type^1 Type;
+        in
+            record {}
+    "#;
+
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
+
+    match infer_term(&tc_env, &raw_term) {
+        Ok(_) => panic!("expected error"),
+        Err(TypeError::Mismatch { .. }) => {},
+        Err(err) => panic!("unexpected error: {}", err),
+    }
+}
+
+#[test]
+fn let_shift_universes_too_much() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let given_expr = r#"
+        let
+            id : (a : Type) -> a -> a;
+            id a x = x;
+
+            test1 = id^2 Type String;
+        in
+            record {}
+    "#;
+
+    parse_infer_term(&mut codemap, &tc_env, given_expr);
+}
+
+#[test]
 fn case_expr() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
@@ -413,7 +602,9 @@ fn case_expr_bool_bad() {
         false => "hi";
     }"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::Mismatch { .. }) => {},
@@ -446,7 +637,9 @@ fn case_expr_empty() {
 
     let given_expr = r#"case "helloo" of {}"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::AmbiguousEmptyCase { .. }) => {},
@@ -609,7 +802,9 @@ fn proj_missing() {
 
     let given_expr = r#"(record { x = "hello" } : Record { x : String }).bloop"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::NoFieldInType { .. }) => {},
@@ -668,7 +863,9 @@ fn array_ambiguous() {
 
     let given_expr = r#"[1; 2 : S32]"#;
 
-    let raw_term = parse_term(&mut codemap, given_expr).desugar(&desugar_env);
+    let raw_term = parse_term(&mut codemap, given_expr)
+        .desugar(&desugar_env)
+        .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
         Err(TypeError::AmbiguousArrayLiteral { .. }) => {},

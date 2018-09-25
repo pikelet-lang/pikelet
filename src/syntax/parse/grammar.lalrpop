@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use syntax::concrete::{Item, Literal, Module, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
+use syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
 use syntax::parse::{LalrpopError, ParseError, Token};
 use syntax::{FloatFormat, IntFormat};
 
@@ -43,6 +43,7 @@ extern {
         "Record" => Token::RecordType,
         "then" => Token::Then,
         "Type" => Token::Type,
+        "where" => Token::Where,
 
         // Symbols
         "\\" => Token::BSlash,
@@ -96,13 +97,6 @@ pub ReplCommand: ReplCommand = {
             let command = command.to_owned();
             Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
         },
-    },
-};
-
-pub Module: Module = {
-    // FIXME: module doc comments
-    <items: Item*> => {
-        Module::Valid { items }
     },
 };
 
@@ -160,6 +154,9 @@ pub Term: Term = {
     <start: @L> "extern" <name_start: @L> <name: "string literal"> <name_end: @R> ":" <ty: Term> <end: @R> => {
         Term::Extern(ByteSpan::new(start, end), ByteSpan::new(name_start, name_end), name, Box::new(ty))
     },
+    <expr: LamTerm> "where" "{" <items: Item+> "}" <end: @R> => {
+        Term::Where(Box::new(expr), items, end)
+    }
 };
 
 LamTerm: Term = {

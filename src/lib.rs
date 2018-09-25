@@ -162,35 +162,41 @@ use codespan_reporting::Diagnostic;
 
 use syntax::core;
 
-pub fn load_file(file: &FileMap) -> Result<core::Module, Vec<Diagnostic>> {
+pub fn load_file(file: &FileMap) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
     use semantics::TcEnv;
     use syntax::translation::{Desugar, DesugarEnv};
 
-    let (concrete_module, _import_paths, errors) = syntax::parse::module(&file);
+    let (concrete_term, _import_paths, errors) = syntax::parse::term(&file);
     let mut diagnostics = errors
         .iter()
         .map(|err| err.to_diagnostic())
         .collect::<Vec<_>>();
 
     let tc_env = TcEnv::default();
+
     let desugar_env = DesugarEnv::new(tc_env.mappings());
-    let raw_module = concrete_module.desugar(&desugar_env);
-    semantics::check_module(&tc_env, &raw_module).map_err(|err| {
+    let raw_term = match concrete_term.desugar(&desugar_env) {
+        Ok(raw_term) => raw_term,
+        Err(err) => return Err(vec![err.to_diagnostic()]),
+    };
+
+    semantics::infer_term(&tc_env, &raw_term).map_err(|err| {
         diagnostics.push(err.to_diagnostic());
         diagnostics
     })
 }
 
-pub fn load_prelude(codemap: &mut CodeMap) -> core::Module {
+pub fn load_prelude(codemap: &mut CodeMap) -> core::RcTerm {
     let file = codemap.add_filemap(
         FileName::real("library/prelude.pi"),
         library::PRELUDE.to_owned(),
     );
 
-    load_file(&file).unwrap_or_else(|_diagnostics| {
-        // for diagnostic in diagnostics {
-        //     codespan_reporting::emit(codemap, &diagnostic);
-        // }
-        panic!("unexpected errors in prelude");
-    })
+    load_file(&file)
+        .unwrap_or_else(|_diagnostics| {
+            // for diagnostic in diagnostics {
+            //     codespan_reporting::emit(codemap, &diagnostic);
+            // }
+            panic!("unexpected errors in prelude");
+        }).0
 }
