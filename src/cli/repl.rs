@@ -102,6 +102,14 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
         print_welcome_banner();
     }
 
+    {
+        // Load prelude
+        let prelude_var = desugar_env.on_binding("prelude");
+        let (prelude_val, prelude_ty) = ::load_prelude(&mut codemap, &tc_env);
+        tc_env.insert_declaration(prelude_var.clone(), prelude_ty);
+        tc_env.insert_definition(prelude_var.clone(), prelude_val);
+    }
+
     // TODO: Load files
 
     loop {
