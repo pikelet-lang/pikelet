@@ -491,12 +491,9 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },
-        core::Term::Extern(ref name, ref ty) => concrete::Term::Extern(
-            ByteSpan::default(),
-            ByteSpan::default(),
-            name.clone(),
-            Box::new(resugar_term(env, ty, Prec::NO_WRAP)),
-        ),
+        core::Term::Extern(ref name) => {
+            concrete::Term::Extern(ByteSpan::default(), ByteSpan::default(), name.clone())
+        },
         core::Term::Pi(ref scope) => resugar_pi(env, scope, prec),
         core::Term::Lam(ref scope) => resugar_lam(env, scope, prec),
         core::Term::App(ref head, ref arg) => parens_if(

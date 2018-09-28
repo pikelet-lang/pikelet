@@ -485,8 +485,8 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             concrete::Term::Name(_, ref name, shift) => {
                 Ok(env.on_name(span, name, shift.unwrap_or(0)))
             },
-            concrete::Term::Extern(_, name_span, ref name, ref ty) => Ok(raw::RcTerm::from(
-                raw::Term::Extern(span, name_span, name.clone(), ty.desugar(env)?),
+            concrete::Term::Extern(_, name_span, ref name) => Ok(raw::RcTerm::from(
+                raw::Term::Extern(span, name_span, name.clone()),
             )),
             concrete::Term::Import(_, _, ref _name) => unimplemented!("imports"),
             concrete::Term::Pi(_, ref params, ref body) => desugar_pi(env, params, body),

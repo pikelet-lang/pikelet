@@ -253,6 +253,16 @@ where
             return Ok(RcTerm::from(Term::Literal(literal)));
         },
 
+        (&raw::Term::Extern(_, name_span, ref name), _) => match env.get_extern_definition(name) {
+            Some(_) => return Ok(RcTerm::from(Term::Extern(name.clone()))),
+            None => {
+                return Err(TypeError::UndefinedExternName {
+                    span: name_span,
+                    name: name.clone(),
+                });
+            },
+        },
+
         // C-LAM
         (&raw::Term::Lam(_, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (Binder(pi_name), Embed(pi_ann)), pi_body) =
@@ -450,19 +460,12 @@ where
             }.into()),
         },
 
-        raw::Term::Extern(_, name_span, ref name, _)
-            if env.get_extern_definition(name).is_none() =>
-        {
-            Err(TypeError::UndefinedExternName {
+        raw::Term::Extern(span, name_span, ref name) => match env.get_extern_definition(name) {
+            Some(_) => Err(TypeError::AmbiguousExtern { span }),
+            None => Err(TypeError::UndefinedExternName {
                 span: name_span,
                 name: name.clone(),
-            })
-        },
-
-        raw::Term::Extern(_, _, ref name, ref raw_ty) => {
-            let (ty, _) = infer_universe(env, raw_ty)?;
-            let value_ty = nf_term(env, &ty)?;
-            Ok((RcTerm::from(Term::Extern(name.clone(), ty)), value_ty))
+            }),
         },
 
         // I-PI

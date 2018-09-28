@@ -257,9 +257,9 @@ pub enum Term {
     /// Extern definitions
     ///
     /// ```text
-    /// extern "extern-name" : t
+    /// extern "extern-name"
     /// ```
-    Extern(ByteSpan, ByteSpan, String, Box<Term>),
+    Extern(ByteSpan, ByteSpan, String),
     /// An imported term
     ///
     /// ```text
@@ -359,7 +359,7 @@ impl Term {
             | Term::Universe(span, _)
             | Term::Hole(span)
             | Term::Name(span, _, _)
-            | Term::Extern(span, _, _, _)
+            | Term::Extern(span, _, _)
             | Term::Import(span, _, _)
             | Term::Case(span, _, _)
             | Term::RecordType(span, _)
