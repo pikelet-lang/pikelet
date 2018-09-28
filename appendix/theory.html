@@ -257,10 +257,8 @@ etc. If you would like to discuss this with us, please check out
 % Term and Type constructors
 \newcommand{\label}{l}
 \newcommand{\binder}{x}
-\newcommand{\var}[1]{x^{#1}}
-\newcommand{\Type}[1]{\kw{Type}^{#1}}
-% \newcommand{\var}[1]{x^\wedge#1}
-% \newcommand{\Type}[1]{\kw{Type}^\wedge#1}
+\newcommand{\var}[1]{x^\wedge{#1}}
+\newcommand{\Type}[1]{\kw{Type}^\wedge{#1}}
 \newcommand{\Arrow}[2]{ #1 \rightarrow #2 }
 \newcommand{\Pi}[2]{ \Arrow{(#1)}{#2} }
 \newcommand{\lam}[2]{ \kw{\lambda} #1 . #2 }
@@ -270,6 +268,7 @@ etc. If you would like to discuss this with us, please check out
 \newcommand{\RecordEmpty}{ \kw{Record} \left\{\right\} }
 \newcommand{\as}{ ~ \kw{as} ~ }
 \newcommand{\record}[1]{ \kw{record} \left\{ #1 \right\} }
+\newcommand{\proj}[3]{ #1.#2^\wedge{#3} }
 \newcommand{\subst}[3]{ #1 ~ [#2 \rightarrow #3] }
 \
 % Items
@@ -294,7 +293,7 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \RecordEmpty                        &amp; \text{empty record type} \\
 &amp;   | &amp; \record{\label=\rexpr_1, \rexpr_2}  &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
-&amp;   | &amp; \rexpr.\label                       &amp; \text{record projection} \\
+&amp;   | &amp; \proj{\rexpr}{\label}{i}            &amp; \text{record projection ($i \in \mathbb{N}$)} \\
 \\
 \rpat           &amp; ::= &amp; \binder                             &amp; \text{binder pattern} \\
 &amp;   | &amp; \rpat : \rtype                      &amp; \text{pattern annotated with a type} \\
@@ -324,7 +323,7 @@ etc. If you would like to discuss this with us, please check out
 &amp;   | &amp; \RecordEmpty                        &amp; \text{empty record type} \\
 &amp;   | &amp; \record{\label=\texpr_1, \texpr_2}  &amp; \text{record extension} \\
 &amp;   | &amp; \record{}                           &amp; \text{empty record} \\
-&amp;   | &amp; \texpr.\label                       &amp; \text{record projection} \\
+&amp;   | &amp; \proj{\texpr}{\label}{i}            &amp; \text{record projection ($i \in \mathbb{N}$)} \\
 \\
 \tpat           &amp; ::= &amp; \binder                             &amp; \text{binder pattern} \\
 &amp;   | &amp; \tpat : \ttype                      &amp; \text{pattern annotated with a type} \\
@@ -345,7 +344,7 @@ and neutral terms (\(\nexpr\)):</p>
 \nexpr,\ntype   &amp; ::= &amp; \var{i}                             &amp; \text{variables ($i \in \mathbb{N}$)} \\
 &amp;   | &amp; \app{\nexpr}{\texpr}                &amp; \text{function application} \\
 &amp;   | &amp; \case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}} &amp; \text{case expressions} \\
-&amp;   | &amp; \nexpr.\label                       &amp; \text{record projection} \\
+&amp;   | &amp; \proj{\nexpr}{\label}{i}            &amp; \text{record projection ($i \in \mathbb{N}$)} \\
 \\
 \wexpr,\wtype   &amp; ::= &amp; \Type{i}                            &amp; \text{universe of types ($i \in \mathbb{N}$)} \\
 &amp;   | &amp; \Pi{\binder:\vtype_1}{\vtype_2}     &amp; \text{dependent function type} \\
@@ -499,7 +498,7 @@ in the context.</p>
 \qquad
 \vexpr_2 = \field(\label, \vexpr_1)
 }{
-\eval{ \ctx }{ \texpr_1.\label }{ \vexpr_2 }
+\eval{ \ctx }{ \proj{\texpr_1}{\label}{i} }{ \vexpr_2 }
 }
 \\[2em]
 \end{array}
@@ -586,7 +585,7 @@ returns its elaborated form.</p>
 }
 \\[2em]
 \rule{I-TYPE}{}{
-\infer{ \ctx }{ \Type{i} }{ \Type{i+1} }{ \Type{i} }
+\infer{ \ctx }{ \Type{i} }{ \Type{(i+1)} }{ \Type{i} }
 }
 \\[2em]
 \rule{I-VAR}{
@@ -665,14 +664,14 @@ returns its elaborated form.</p>
 \qquad
 \vtype_2 = \fieldty(\label, \vtype_1)
 \qquad
-\theta = \fieldsubst(\texpr, \label, \vtype_1)
+\theta = \fieldsubst(\texpr, \label, i, \vtype_1)
 }{
-\infer{ \ctx }{ \rexpr.\label }{ \vtype_2 ~ \theta }{ \texpr.\label }
+\infer{ \ctx }{ \proj{\rexpr}{\label}{i} }{ \vtype_2 ~ \theta }{ \proj{\texpr}{\label}{i} }
 }
 \\[2em]
 \end{array}
 \]</p>
-<p>We define \(\fieldty(-,-)\) and \(\fieldsubst(-,-,-)\) like so:</p>
+<p>We define \(\fieldty(-,-)\) like so:</p>
 <p>\[
 \begin{array}{lrll}
 \fieldty(\label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; = &amp; \vtype_1 &amp; \text{if} ~ \label_1 \equiv \label_2 \\
@@ -681,13 +680,13 @@ returns its elaborated form.</p>
 \end{array}
 \]</p>
 <p>In order to ensure that we maintain maintain the proper paths to variables when
-we project on them, we define \(\fieldsubst(-,-,-)\) as:</p>
+we project on them, we define \(\fieldsubst(-,-,-,-)\) as:</p>
 <p>\[
 \begin{array}{lrll}
-\fieldsubst(\texpr, \label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; =
+\fieldsubst(\texpr, \label_1, i, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; =
 &amp; [] &amp; \text{if} ~ \label_1 \equiv \label_2 \\
-\fieldsubst(\texpr, \label_1, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; =
-&amp; \fieldsubst(\texpr, \label_1, \vtype_2) \doubleplus [ \label_2 \rightarrow \texpr.\label_2 ] \\
+\fieldsubst(\texpr, \label_1, i, \RecordCons{\label_2 : \vtype_1}{\vtype_2}) &amp; =
+&amp; \fieldsubst(\texpr, \label_1, \vtype_2) \doubleplus [ \label_2 \rightarrow \proj{\texpr}{\label_2}{i} ] \\
 \\[2em]
 \end{array}
 \]</p>
@@ -745,8 +744,8 @@ describes in his blog post, <a href="https://pigworker.wordpress.com/2015/01/09/
 \shift(\case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}, &amp; j) &amp; = &amp;
 % FIXME: define pattern shifting
 \case{\shift(\nexpr, j)}{\overline{\shift(\tpat_i, j) \rightarrow \shift(\texpr_i, j)}^{;}} \\
-\shift(\nexpr.\label,                                       &amp; j) &amp; = &amp; \shift(\nexpr, j).\label \\
-\shift(\Type{i},                                            &amp; j) &amp; = &amp; \Type{i + j} \\
+\shift(\proj{\nexpr}{\label}{i},                            &amp; j) &amp; = &amp; \proj{\shift(\nexpr, j)}{\label}{i} \\
+\shift(\Type{i},                                            &amp; j) &amp; = &amp; \Type{(i + j)} \\
 \shift(\Pi{\binder:\vtype_1}{\vtype_2},                     &amp; j) &amp; = &amp; \Pi{\binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\
 \shift(\lam{\binder:\vtype}{\vexpr},                        &amp; j) &amp; = &amp; \lam{\binder:\shift(\vtype, j)}{\shift(\vexpr, j)} \\
 \shift(\RecordCons{\label \as \binder:\vtype_1}{\vtype_2},  &amp; j) &amp; = &amp; \RecordCons{\label \as \binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\
