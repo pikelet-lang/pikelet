@@ -553,11 +553,20 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             // TODO: Add let to rename shadowed globals?
             concrete::Term::Record(ByteSpan::default(), fields)
         },
-        core::Term::Proj(ref expr, Label(ref label)) => concrete::Term::Proj(
-            Box::new(resugar_term(env, expr, Prec::ATOMIC)),
-            ByteIndex::default(),
-            label.clone(),
-        ),
+        core::Term::Proj(ref expr, Label(ref label), shift) => {
+            let shift = match shift {
+                LevelShift(0) => None,
+                LevelShift(shift) => Some(shift),
+            };
+
+            concrete::Term::Proj(
+                ByteSpan::default(),
+                Box::new(resugar_term(env, expr, Prec::ATOMIC)),
+                ByteIndex::default(),
+                label.clone(),
+                shift,
+            )
+        },
         // TODO: Resugar boolean patterns into if-then-else expressions?
         core::Term::Case(ref head, ref clauses) => concrete::Term::Case(
             ByteSpan::default(),

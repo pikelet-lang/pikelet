@@ -627,7 +627,7 @@ where
         },
 
         // I-PROJ
-        raw::Term::Proj(_, ref expr, label_span, ref label) => {
+        raw::Term::Proj(_, ref expr, label_span, ref label, shift) => {
             let (expr, ty) = infer_term(env, expr)?;
 
             if let Value::RecordType(ref scope) = *ty.inner {
@@ -636,14 +636,15 @@ where
 
                 for (current_label, Binder(free_var), Embed(current_ann)) in fields.unnest() {
                     if current_label == *label {
-                        return Ok((
-                            RcTerm::from(Term::Proj(expr, current_label)),
-                            nf_term(env, &current_ann.substs(&mappings))?,
-                        ));
+                        let mut ty = nf_term(env, &current_ann.substs(&mappings))?;
+                        ty.shift_universes(shift);
+
+                        return Ok((RcTerm::from(Term::Proj(expr, current_label, shift)), ty));
                     } else {
                         mappings.push((
                             free_var,
-                            RcTerm::from(Term::Proj(expr.clone(), current_label)),
+                            // NOTE: Not sure if we should be shifting here...
+                            RcTerm::from(Term::Proj(expr.clone(), current_label, shift)),
                         ));
                     }
                 }

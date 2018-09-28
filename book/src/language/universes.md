@@ -143,3 +143,9 @@ Pikelet> id^1 Type String                    -- ok
 Pikelet> id^1 ((a : Type) -> a -> a) id      -- ok
 Pikelet> id^2 Type^1 Type                    -- ok
 ```
+
+Field projections can also have shifts applied to them:
+
+```pikelet-repl
+Pikelet> prelude.id^1 Type String
+```

@@ -856,6 +856,22 @@ fn proj_weird2() {
 }
 
 #[test]
+fn proj_shift() {
+    let mut codemap = CodeMap::new();
+    let tc_env = TcEnv::default();
+
+    let expected_ty = r"(a : Type^1) -> a -> a";
+    let given_expr = r"record {
+        id = \(a : Type) (x : a) => x;
+    }.id^1";
+
+    assert_term_eq!(
+        parse_infer_term(&mut codemap, &tc_env, given_expr).1,
+        parse_nf_term(&mut codemap, &tc_env, expected_ty),
+    );
+}
+
+#[test]
 fn array_ambiguous() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();

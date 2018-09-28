@@ -100,12 +100,12 @@ where
     )
 }
 
-fn pretty_proj(expr: &impl ToDoc, label: &Label) -> StaticDoc {
+fn pretty_proj(expr: &impl ToDoc, label: &Label, shift: LevelShift) -> StaticDoc {
     sexpr(
         "proj",
         expr.to_doc()
             .append(Doc::space())
-            .append(Doc::as_string(label)),
+            .append(Doc::text(format!("{:#}^{}", label, shift))),
     )
 }
 
@@ -190,7 +190,9 @@ impl ToDoc for raw::Term {
                     },
                 ),
             )),
-            raw::Term::Proj(_, ref expr, _, ref label) => pretty_proj(&expr.inner, label),
+            raw::Term::Proj(_, ref expr, _, ref label, shift) => {
+                pretty_proj(&expr.inner, label, shift)
+            },
             raw::Term::Case(_, ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses
@@ -293,7 +295,7 @@ impl ToDoc for Term {
                     },
                 ),
             )),
-            Term::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
+            Term::Proj(ref expr, ref label, shift) => pretty_proj(&expr.inner, label, shift),
             Term::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses
@@ -363,7 +365,7 @@ impl ToDoc for Neutral {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Neutral::Head(ref head) => head.to_doc(),
-            Neutral::Proj(ref expr, ref label) => pretty_proj(&expr.inner, label),
+            Neutral::Proj(ref expr, ref label, shift) => pretty_proj(&expr.inner, label, shift),
             Neutral::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses

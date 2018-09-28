@@ -23,10 +23,10 @@ impl Literal {
     /// Return the span of source code that the literal originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Literal::String(span, _)
-            | Literal::Char(span, _)
-            | Literal::Int(span, _, _)
-            | Literal::Float(span, _, _) => span,
+            Literal::String(span, ..)
+            | Literal::Char(span, ..)
+            | Literal::Int(span, ..)
+            | Literal::Float(span, ..) => span,
         }
     }
 }
@@ -129,7 +129,7 @@ pub enum Term {
         Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
     /// Field projection
-    Proj(ByteSpan, RcTerm, ByteSpan, Label),
+    Proj(ByteSpan, RcTerm, ByteSpan, Label, LevelShift),
     /// Case expressions
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -144,18 +144,18 @@ pub enum Term {
 impl Term {
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Term::Universe(span, _)
+            Term::Universe(span, ..)
             | Term::Hole(span)
-            | Term::Var(span, _, _)
-            | Term::Extern(span, _, _)
-            | Term::Pi(span, _)
-            | Term::Lam(span, _)
-            | Term::RecordType(span, _)
-            | Term::Record(span, _)
-            | Term::Proj(span, _, _, _)
-            | Term::Case(span, _, _)
-            | Term::Array(span, _)
-            | Term::Let(span, _) => span,
+            | Term::Var(span, ..)
+            | Term::Extern(span, ..)
+            | Term::Pi(span, ..)
+            | Term::Lam(span, ..)
+            | Term::RecordType(span, ..)
+            | Term::Record(span, ..)
+            | Term::Proj(span, ..)
+            | Term::Case(span, ..)
+            | Term::Array(span, ..)
+            | Term::Let(span, ..) => span,
             Term::Literal(ref literal) => literal.span(),
             Term::Ann(ref expr, ref ty) => expr.span().to(ty.span()),
             Term::App(ref head, ref arg) => head.span().to(arg.span()),

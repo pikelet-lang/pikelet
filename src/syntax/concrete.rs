@@ -1,6 +1,6 @@
 //! The concrete syntax of the language
 
-use codespan::{ByteIndex, ByteOffset, ByteSpan};
+use codespan::{ByteIndex, ByteSpan};
 use std::fmt;
 
 use syntax::pretty::{self, ToDoc};
@@ -343,8 +343,9 @@ pub enum Term {
     ///
     /// ```text
     /// e.l
+    /// e.l^1
     /// ```
-    Proj(Box<Term>, ByteIndex, String),
+    Proj(ByteSpan, Box<Term>, ByteIndex, String, Option<u32>),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -355,16 +356,17 @@ impl Term {
     /// Return the span of source code that this term originated from
     pub fn span(&self) -> ByteSpan {
         match *self {
-            Term::Parens(span, _)
-            | Term::Universe(span, _)
+            Term::Parens(span, ..)
+            | Term::Universe(span, ..)
             | Term::Hole(span)
-            | Term::Name(span, _, _)
-            | Term::Extern(span, _, _)
-            | Term::Import(span, _, _)
-            | Term::Case(span, _, _)
-            | Term::RecordType(span, _)
-            | Term::Record(span, _)
-            | Term::Array(span, _)
+            | Term::Name(span, ..)
+            | Term::Extern(span, ..)
+            | Term::Import(span, ..)
+            | Term::Case(span, ..)
+            | Term::RecordType(span, ..)
+            | Term::Record(span, ..)
+            | Term::Proj(span, ..)
+            | Term::Array(span, ..)
             | Term::Error(span) => span,
             Term::Literal(ref literal) => literal.span(),
             Term::Pi(start, _, ref body)
@@ -375,9 +377,6 @@ impl Term {
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
             Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
             Term::App(ref head, ref arg) => head.span().to(arg.last().unwrap().span()),
-            Term::Proj(ref term, label_start, ref label) => term
-                .span()
-                .with_end(label_start + ByteOffset::from_str(label)),
         }
     }
 }

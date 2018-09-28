@@ -540,12 +540,13 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             },
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(env, span, fields),
             concrete::Term::Record(span, ref fields) => desugar_record(env, span, fields),
-            concrete::Term::Proj(ref tm, label_start, ref label) => {
+            concrete::Term::Proj(_, ref tm, label_start, ref label, shift) => {
                 Ok(raw::RcTerm::from(raw::Term::Proj(
                     span,
                     tm.desugar(env)?,
                     ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),
                     Label(label.clone()),
+                    LevelShift(shift.unwrap_or(0)),
                 )))
             },
             concrete::Term::Error(_) => unimplemented!("error recovery"),
