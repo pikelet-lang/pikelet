@@ -288,12 +288,15 @@ mod term {
         let core_term = core::Term::Proj(
             core::RcTerm::from(core::RcTerm::from(core::Term::universe(0))),
             Label("hello".to_owned()),
+            LevelShift(0),
         );
 
         let concrete_term = concrete::Term::Proj(
+            span(),
             Box::new(concrete::Term::Universe(span(), None)),
             index(),
             "hello".to_owned(),
+            None,
         );
 
         assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
@@ -304,15 +307,18 @@ mod term {
         let core_term = core::Term::Proj(
             core::RcTerm::from(core::RcTerm::from(core::Term::universe(1))),
             Label("hello".to_owned()),
+            LevelShift(0),
         );
 
         let concrete_term = concrete::Term::Proj(
+            span(),
             Box::new(concrete::Term::Parens(
                 span(),
                 Box::new(concrete::Term::Universe(span(), Some(1))),
             )),
             index(),
             "hello".to_owned(),
+            None,
         );
 
         assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);

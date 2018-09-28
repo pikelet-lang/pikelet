@@ -104,7 +104,7 @@ pub enum Term {
     /// Dependent record
     Record(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
     /// Field projection
-    Proj(RcTerm, Label),
+    Proj(RcTerm, Label, LevelShift),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -214,8 +214,8 @@ impl RcTerm {
                     unsafe_body: (),
                 }))
             },
-            Term::Proj(ref expr, ref label) => {
-                RcTerm::from(Term::Proj(expr.substs(mappings), label.clone()))
+            Term::Proj(ref expr, ref label, shift) => {
+                RcTerm::from(Term::Proj(expr.substs(mappings), label.clone(), shift))
             },
             Term::Case(ref head, ref clauses) => RcTerm::from(Term::Case(
                 head.substs(mappings),
@@ -432,7 +432,7 @@ pub enum Neutral {
     /// Head of an application
     Head(Head),
     /// Field projection
-    Proj(RcNeutral, Label),
+    Proj(RcNeutral, Label, LevelShift),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }
@@ -462,7 +462,7 @@ impl RcNeutral {
             //     *head_shift += shift; // NOTE: Not sure if this is correct!
             // },
             Neutral::Head(Head::Var(_, _)) | Neutral::Head(Head::Extern(_)) => {},
-            Neutral::Proj(ref mut expr, _) => expr.shift_universes(shift),
+            Neutral::Proj(ref mut expr, _, _) => expr.shift_universes(shift),
             Neutral::Case(ref mut expr, ref mut clauses) => {
                 expr.shift_universes(shift);
                 for clause in clauses {
@@ -575,7 +575,9 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         match *src {
             Neutral::Head(ref head) => Term::from(head),
-            Neutral::Proj(ref expr, ref name) => Term::Proj(RcTerm::from(&**expr), name.clone()),
+            Neutral::Proj(ref expr, ref name, shift) => {
+                Term::Proj(RcTerm::from(&**expr), name.clone(), shift)
+            },
             Neutral::Case(ref head, ref clauses) => Term::Case(
                 RcTerm::from(&**head),
                 clauses

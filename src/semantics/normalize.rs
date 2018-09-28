@@ -92,9 +92,9 @@ where
                                 }
                             }
                         },
-                        Neutral::Head(Head::Var(_, _))
-                        | Neutral::Proj(_, _)
-                        | Neutral::Case(_, _) => spine.push(arg),
+                        Neutral::Head(Head::Var(..)) | Neutral::Proj(..) | Neutral::Case(..) => {
+                            spine.push(arg)
+                        },
                     }
 
                     Ok(RcValue::from(Value::Neutral(neutral.clone(), spine)))
@@ -147,11 +147,11 @@ where
         },
 
         // E-PROJ
-        Term::Proj(ref expr, ref label) => {
+        Term::Proj(ref expr, ref label, shift) => {
             match *nf_term(env, expr)? {
                 Value::Neutral(ref neutral, ref spine) => {
                     return Ok(RcValue::from(Value::Neutral(
-                        RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone())),
+                        RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone(), shift)),
                         spine.clone(),
                     )));
                 },

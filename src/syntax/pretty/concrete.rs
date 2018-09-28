@@ -223,9 +223,13 @@ impl ToDoc for Term {
                     ).nest(INDENT_WIDTH),
                 ).append(Doc::space())
                 .append("}"),
-            Term::Proj(ref expr, _, ref label) => {
-                expr.to_doc().append(".").append(Doc::as_string(label))
+            Term::Proj(_, ref expr, _, ref label, None) => {
+                expr.to_doc().append(".").append(format!("{}", label))
             },
+            Term::Proj(_, ref expr, _, ref label, Some(shift)) => expr
+                .to_doc()
+                .append(".")
+                .append(format!("{}^{}", label, shift)),
             Term::Error(_) => Doc::text("<error>"),
         }
     }

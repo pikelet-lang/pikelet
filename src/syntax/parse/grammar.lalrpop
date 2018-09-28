@@ -234,8 +234,8 @@ AtomicTerm: Term = {
         fields.extend(last);
         Term::Record(ByteSpan::new(start, end), fields)
     },
-    <term: AtomicTerm> "." <label_start: @L> <label: Ident> => {
-        Term::Proj(Box::new(term), label_start, label)
+    <start: @L> <term: AtomicTerm> "." <label_start: @L> <label: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
+        Term::Proj(ByteSpan::new(start, end), Box::new(term), label_start, label, shift.map(|x| x as u32))
     },
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
