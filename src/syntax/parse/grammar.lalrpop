@@ -259,9 +259,12 @@ PatternArm: (Pattern, Term) = {
 };
 
 RecordField: RecordField = {
-    <start: @L> <label: IndexedIdent> <params: AtomicLamParam*> <return_ann: (":" <Term>)?> "=" <term: Term> => {
+    <label: IndexedIdent> <shift: ("^" <"decimal literal">)?> => {
+        RecordField::Punned { label, shift: shift.map(|x| x as u32) }
+    },
+    <label: IndexedIdent> <params: AtomicLamParam*> <return_ann: (":" <Term>)?> "=" <term: Term> => {
         let return_ann = return_ann.map(Box::new);
-        RecordField { label, params, return_ann, term }
+        RecordField::Explicit { label, params, return_ann, term }
     },
 };
 

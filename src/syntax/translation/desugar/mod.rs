@@ -384,15 +384,31 @@ fn desugar_record(
     span: ByteSpan,
     fields: &[concrete::RecordField],
 ) -> Result<raw::RcTerm, DesugarError> {
+    use syntax::concrete::RecordField;
+
     let mut env = env.clone();
 
     let fields = fields
         .iter()
-        .map(|field| {
-            let return_ann = field.return_ann.as_ref().map(<_>::as_ref);
-            let expr = desugar_lam(&env, &field.params, return_ann, &field.term)?;
-            let free_var = env.on_binding(&field.label.1);
-            Ok((Label(field.label.1.clone()), Binder(free_var), Embed(expr)))
+        .map(|field| match field {
+            RecordField::Punned {
+                label: (_, ref name),
+                shift,
+            } => {
+                let var = env.on_name(span, name, shift.unwrap_or(0));
+                let free_var = env.on_binding(name);
+                Ok((Label(name.clone()), Binder(free_var), Embed(var)))
+            },
+            RecordField::Explicit {
+                label: (_, ref name),
+                ref params,
+                ref return_ann,
+                ref term,
+            } => {
+                let expr = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), term)?;
+                let free_var = env.on_binding(name);
+                Ok((Label(name.clone()), Binder(free_var), Embed(expr)))
+            },
         }).collect::<Result<Vec<_>, _>>()?;
 
     Ok(raw::RcTerm::from(raw::Term::Record(

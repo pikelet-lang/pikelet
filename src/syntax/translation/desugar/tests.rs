@@ -506,5 +506,18 @@ mod term {
                 parse_desugar_term(&env, r#"case true of { true => "true"; false => "false" }"#),
             )
         }
+
+        #[test]
+        fn record_field_puns() {
+            let env = DesugarEnv::new(hashmap!{
+                "x".to_owned() => FreeVar::fresh_named("x"),
+                "y".to_owned() => FreeVar::fresh_named("y"),
+            });
+
+            assert_term_eq!(
+                parse_desugar_term(&env, r#"record { x; y }"#),
+                parse_desugar_term(&env, r#"record { x = x; y = y }"#),
+            )
+        }
     }
 }
