@@ -83,11 +83,17 @@ pub struct RecordTypeField {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct RecordField {
-    pub label: (ByteIndex, String),
-    pub params: LamParams,
-    pub return_ann: Option<Box<Term>>,
-    pub term: Term,
+pub enum RecordField {
+    Punned {
+        label: (ByteIndex, String),
+        shift: Option<u32>,
+    },
+    Explicit {
+        label: (ByteIndex, String),
+        params: LamParams,
+        return_ann: Option<Box<Term>>,
+        term: Term,
+    },
 }
 
 /// Top-level items within a module

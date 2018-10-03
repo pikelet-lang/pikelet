@@ -2,7 +2,7 @@
 
 use pretty::Doc;
 
-use syntax::concrete::{Item, LamParamGroup, Literal, Pattern, PiParamGroup, Term};
+use syntax::concrete::{Item, LamParamGroup, Literal, Pattern, PiParamGroup, RecordField, Term};
 use syntax::{FloatFormat, IntFormat};
 
 use super::{StaticDoc, ToDoc};
@@ -202,22 +202,31 @@ impl ToDoc for Term {
                 .append(Doc::space())
                 .append(
                     Doc::intersperse(
-                        fields.iter().map(|field| {
-                            Doc::as_string(&field.label.1)
+                        fields.iter().map(|field| match field {
+                            RecordField::Punned {
+                                label: (_, ref label),
+                                shift,
+                            } => match shift {
+                                None => Doc::text(format!("{}", label)),
+                                Some(shift) => Doc::text(format!("{}^{}", label, shift)),
+                            },
+                            RecordField::Explicit {
+                                label: (_, ref label),
+                                ref params,
+                                ref return_ann,
+                                ref term,
+                            } => Doc::as_string(label)
                                 .append(Doc::space())
-                                .append(match field.params[..] {
+                                .append(match params[..] {
                                     [] => Doc::nil(),
-                                    _ => pretty_lam_params(&field.params).append(Doc::space()),
-                                }).append(field.return_ann.as_ref().map_or(
-                                    Doc::nil(),
-                                    |return_ann| {
-                                        Doc::text(":")
-                                            .append(return_ann.to_doc())
-                                            .append(Doc::space())
-                                    },
-                                )).append("=")
+                                    _ => pretty_lam_params(params).append(Doc::space()),
+                                }).append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
+                                    Doc::text(":")
+                                        .append(return_ann.to_doc())
+                                        .append(Doc::space())
+                                })).append("=")
                                 .append(Doc::space())
-                                .append(field.term.to_doc())
+                                .append(term.to_doc()),
                         }),
                         Doc::text(";").append(Doc::space()),
                     ).nest(INDENT_WIDTH),

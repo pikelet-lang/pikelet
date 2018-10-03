@@ -525,7 +525,6 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                     }
                 }).collect();
 
-            // TODO: Add let to rename shadowed globals?
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
         core::Term::Record(ref scope) => {
@@ -542,7 +541,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                     };
                     let name = env.on_item(&label, &binder);
 
-                    concrete::RecordField {
+                    // TODO: use a punned label if possible?
+                    concrete::RecordField::Explicit {
                         label: (ByteIndex::default(), name),
                         params: term_params,
                         return_ann: None,
