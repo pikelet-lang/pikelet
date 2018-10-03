@@ -204,59 +204,16 @@ let
     flip a b c f x y = f y x;
 
 
-    ||| Logical absurdity
+    ||| The unit type
     |||
-    ||| This type should have no inhabitants - if it does, it's a bug in our
-    ||| type checker!
-    void : Type^1;
-    void = (a : Type) -> a;
+    ||| This is a synonym for the empty record, and can be constructed using the
+    ||| `unit` function.
+    Unit : Type;
+    Unit = Record {};
 
-
-    ||| Logical negation
-    not : Type -> Type^1;
-    not a = a -> void;
-
-
-    unit : Type^1;
-    unit = (a : Type) -> a -> a;
-
-    unit-intro : unit;
-    unit-intro = id;
-
-    unit-elim : (a : Type) -> unit -> a -> a;
-    unit-elim a f x = f a x;
-
-
-    ||| Logical conjunction (Church encoded)
-    |||
-    ||| You could also interpret this as a product type
-    and : Type -> Type -> Type^1;
-    and p q = (c : Type) -> (p -> q -> c) -> c;
-
-    ||| Introduce a logical conjunction between two types
-    and-intro : (p q : Type) -> p -> q -> and p q;
-    and-intro p q x y c f = f x y;
-
-    and-elim-left : (p q : Type) -> and p q -> p;
-    and-elim-left p q (pq : and p q) = pq p (const p q);
-
-    and-elim-right : (p q : Type) -> and p q -> q;
-    and-elim-right p q (pq : and p q) = pq q (flip q p q (const q p));
-
-
-    ||| Logical disjunction (Church encoded)
-    |||
-    ||| You could also interpret this as a sum type
-    or : Type -> Type -> Type^1;
-    or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
-
-    or-intro-left : (p q : Type) -> p -> or p q;
-    or-intro-left p q x =
-        \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-p x;
-
-    or-intro-right : (p q : Type) -> q -> or p q;
-    or-intro-right p q y =
-        \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-q y;
+    ||| Create an element of the `Unit` type
+    unit : Unit;
+    unit = record {};
 
 
     ||| Dependent products
@@ -284,6 +241,11 @@ let
     Eq-String : Eq String = record { eq = prim.string.eq };
     Eq-Char : Eq Char = record { eq = prim.char.eq };
     Eq-Bool : Eq Bool = record { eq = prim.bool.eq };
+
+    Eq-Unit : Eq Unit = record {
+        eq x y = true;
+    };
+
     Eq-U8 : Eq U8 = record { eq = prim.u8.eq };
     Eq-U16 : Eq U16 = record { eq = prim.u16.eq };
     Eq-U32 : Eq U32 = record { eq = prim.u32.eq };
@@ -310,6 +272,10 @@ let
 
 
     Semigroup-String : Semigroup String = record { append = prim.string.append };
+
+    Semigroup-Unit : Semigroup Unit = record {
+        append x y = unit;
+    };
 
     Semigroup-U8-Add : Semigroup U8 = record { append = prim.u8.add };
     Semigroup-U16-Add : Semigroup U16 = record { append = prim.u16.add };
@@ -351,6 +317,11 @@ let
 
 
     Monoid-String : Monoid String = record { semigroup = Semigroup-String; empty = "" };
+
+    Monoid-Unit : Monoid Unit = record {
+        semigroup = Semigroup-Unit;
+        empty = unit;
+    };
 
     Monoid-U8-Add : Monoid U8 = record { semigroup = Semigroup-U8-Add; empty = 0 };
     Monoid-U16-Add : Monoid U16 = record { semigroup = Semigroup-U16-Add; empty = 0 };
@@ -510,21 +481,18 @@ in
     record {
         prim; id; const; compose; flip;
 
-        void;
-        not;
-        unit; unit-intro; unit-elim;
-        and; and-intro; and-elim-left; and-elim-right;
-        or; or-intro-left; or-intro-right;
+        Unit; unit;
 
         Prod; Sum;
 
         Eq; eq;
-        Eq-String; Eq-Char; Eq-Bool;
+        Eq-String; Eq-Char; Eq-Bool; Eq-Unit;
         Eq-U8; Eq-U16; Eq-U32; Eq-U64;
         Eq-S8; Eq-S16; Eq-S32; Eq-S64;
         Eq-F32; Eq-F64;
 
-        Semigroup; append; Semigroup-String;
+        Semigroup; append;
+        Semigroup-String; Semigroup-Unit;
         Semigroup-U8-Add; Semigroup-U16-Add; Semigroup-U32-Add; Semigroup-U64-Add;
         Semigroup-S8-Add; Semigroup-S16-Add; Semigroup-S32-Add; Semigroup-S64-Add;
         Semigroup-F32-Add; Semigroup-F64-Add;
@@ -533,7 +501,7 @@ in
         Semigroup-F32-Mul; Semigroup-F64-Mul;
 
         Monoid; empty;
-        Monoid-String;
+        Monoid-String; Monoid-Unit;
         Monoid-U8-Add; Monoid-U16-Add; Monoid-U32-Add; Monoid-U64-Add;
         Monoid-S8-Add; Monoid-S16-Add; Monoid-S32-Add; Monoid-S64-Add;
         Monoid-F32-Add; Monoid-F64-Add;

@@ -651,76 +651,107 @@ mod church_encodings {
     use super::*;
 
     #[test]
+    fn void() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r"
+        record {
+            void; not;
+        } where {
+            ||| Logical absurdity
+            void : Type^1;
+            void = (a : Type) -> a;
+
+
+            ||| Logical negation
+            not : Type -> Type^1;
+            not a = a -> void;
+        }
+    ";
+
+        parse_infer_term(&mut codemap, &tc_env, given_expr);
+    }
+
+    #[test]
+    fn unit() {
+        let mut codemap = CodeMap::new();
+        let tc_env = TcEnv::default();
+
+        let given_expr = r"
+        record {
+            unit; unit-intro; unit-elim;
+        } where {
+            unit : Type^1;
+            unit = (a : Type) -> a -> a;
+
+            unit-intro : unit;
+            unit-intro a x = x;
+
+            unit-elim : (a : Type) -> unit -> a -> a;
+            unit-elim a f x = f a x;
+        }
+    ";
+
+        parse_infer_term(&mut codemap, &tc_env, given_expr);
+    }
+
+    #[test]
     fn and() {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
 
-        let expected_ty = r"Type -> Type -> Type^1";
-        let given_expr = r"\(p q : Type) => (c : Type) -> (p -> q -> c) -> c";
+        let given_expr = r"
+            record {
+                and; and-elim-left; and-elim-right;
+            } where {
+                ||| Logical conjunction (Church encoded)
+                |||
+                ||| You could also interpret this as a product type
+                and : Type -> Type -> Type^1;
+                and p q = (c : Type) -> (p -> q -> c) -> c;
 
-        assert_term_eq!(
-            parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-            parse_nf_term(&mut codemap, &tc_env, expected_ty),
-        );
+                ||| Introduce a logical conjunction between two types
+                and-intro : (p q : Type) -> p -> q -> and p q;
+                and-intro p q x y c f = f x y;
+
+                and-elim-left : (p q : Type) -> and p q -> p;
+                and-elim-left p q (pq : and p q) = pq p (\x y => x);
+
+                and-elim-right : (p q : Type) -> and p q -> q;
+                and-elim-right p q (pq : and p q) = pq q (\x y => y);
+            }
+        ";
+
+        parse_infer_term(&mut codemap, &tc_env, given_expr);
     }
 
     #[test]
-    fn and_intro() {
+    fn or() {
         let mut codemap = CodeMap::new();
         let tc_env = TcEnv::default();
 
-        let expected_ty = r"
-            (p q : Type) -> p -> q ->
-                ((c : Type) -> (p -> q -> c) -> c)
-        ";
         let given_expr = r"
-            \(p q : Type) (x : p) (y : q) =>
-                \c : Type => \f : (p -> q -> c) => f x y
+            record {
+                or; or-intro-left; or-intro-right;
+            } where {
+                ||| Logical disjunction (Church encoded)
+                |||
+                ||| You could also interpret this as a sum type
+                or : Type -> Type -> Type^1;
+                or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
+
+                or-intro-left : (p q : Type) -> p -> or p q;
+                or-intro-left p q x =
+                    \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-p x;
+
+                or-intro-right : (p q : Type) -> q -> or p q;
+                or-intro-right p q y =
+                    \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-q y;
+            }
         ";
 
-        assert_term_eq!(
-            parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-            parse_nf_term(&mut codemap, &tc_env, expected_ty),
-        );
-    }
-
-    #[test]
-    fn and_proj_left() {
-        let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
-
-        let expected_ty = r"
-            (p q : Type) ->
-                ((c : Type) -> (p -> q -> c) -> c) -> p
-        ";
-        let given_expr = r"
-            \(p q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
-                pq p (\x y => x)
-        ";
-
-        assert_term_eq!(
-            parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-            parse_nf_term(&mut codemap, &tc_env, expected_ty),
-        );
-    }
-
-    #[test]
-    fn and_proj_right() {
-        let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
-
-        let expected_ty = r"
-            (p q : Type) -> ((c : Type) -> (p -> q -> c) -> c) -> q
-        ";
-        let given_expr = r"
-            \(p q : Type) (pq : (c : Type) -> (p -> q -> c) -> c) =>
-                pq q (\x y => y)
-        ";
-
-        assert_term_eq!(
-            parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-            parse_nf_term(&mut codemap, &tc_env, expected_ty),
-        );
+        parse_infer_term(&mut codemap, &tc_env, given_expr);
     }
 }
 
