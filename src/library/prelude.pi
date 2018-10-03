@@ -13,7 +13,53 @@
 -- "hello" : String
 -- ```
 
-let
+record {
+    prim; id; const; compose; flip;
+
+    Unit; unit;
+
+    Prod; Sum;
+
+    Eq; eq;
+    Eq-String; Eq-Char; Eq-Bool; Eq-Unit;
+    Eq-U8; Eq-U16; Eq-U32; Eq-U64;
+    Eq-S8; Eq-S16; Eq-S32; Eq-S64;
+    Eq-F32; Eq-F64;
+
+    Semigroup; append;
+    Semigroup-String; Semigroup-Unit;
+    Semigroup-U8-Add; Semigroup-U16-Add; Semigroup-U32-Add; Semigroup-U64-Add;
+    Semigroup-S8-Add; Semigroup-S16-Add; Semigroup-S32-Add; Semigroup-S64-Add;
+    Semigroup-F32-Add; Semigroup-F64-Add;
+    Semigroup-U8-Mul; Semigroup-U16-Mul; Semigroup-U32-Mul; Semigroup-U64-Mul;
+    Semigroup-S8-Mul; Semigroup-S16-Mul; Semigroup-S32-Mul; Semigroup-S64-Mul;
+    Semigroup-F32-Mul; Semigroup-F64-Mul;
+
+    Monoid; empty;
+    Monoid-String; Monoid-Unit;
+    Monoid-U8-Add; Monoid-U16-Add; Monoid-U32-Add; Monoid-U64-Add;
+    Monoid-S8-Add; Monoid-S16-Add; Monoid-S32-Add; Monoid-S64-Add;
+    Monoid-F32-Add; Monoid-F64-Add;
+    Monoid-U8-Mul; Monoid-U16-Mul; Monoid-U32-Mul; Monoid-U64-Mul;
+    Monoid-S8-Mul; Monoid-S16-Mul; Monoid-S32-Mul; Monoid-S64-Mul;
+    Monoid-F32-Mul; Monoid-F64-Mul;
+
+    Group;
+
+    Num; add; zero; mul; one;
+    Num-U8; Num-U16; Num-U32; Num-U64;
+    Num-S8; Num-S16; Num-S32; Num-S64;
+    Num-F32; Num-F64;
+
+    Category;
+    -- id;
+    seq;
+    -- compose;
+    Category-Function;
+
+    Functor; map;
+    Endofunctor-Function;
+} where {
     -- TODO: move this to another file (requires imports)
     ||| Primitive definitions
     prim = record {
@@ -477,51 +523,4 @@ let
         Map x = x;
         map (a b : Type) (f : a -> b) (x : a) = f x;
     };
-in
-    record {
-        prim; id; const; compose; flip;
-
-        Unit; unit;
-
-        Prod; Sum;
-
-        Eq; eq;
-        Eq-String; Eq-Char; Eq-Bool; Eq-Unit;
-        Eq-U8; Eq-U16; Eq-U32; Eq-U64;
-        Eq-S8; Eq-S16; Eq-S32; Eq-S64;
-        Eq-F32; Eq-F64;
-
-        Semigroup; append;
-        Semigroup-String; Semigroup-Unit;
-        Semigroup-U8-Add; Semigroup-U16-Add; Semigroup-U32-Add; Semigroup-U64-Add;
-        Semigroup-S8-Add; Semigroup-S16-Add; Semigroup-S32-Add; Semigroup-S64-Add;
-        Semigroup-F32-Add; Semigroup-F64-Add;
-        Semigroup-U8-Mul; Semigroup-U16-Mul; Semigroup-U32-Mul; Semigroup-U64-Mul;
-        Semigroup-S8-Mul; Semigroup-S16-Mul; Semigroup-S32-Mul; Semigroup-S64-Mul;
-        Semigroup-F32-Mul; Semigroup-F64-Mul;
-
-        Monoid; empty;
-        Monoid-String; Monoid-Unit;
-        Monoid-U8-Add; Monoid-U16-Add; Monoid-U32-Add; Monoid-U64-Add;
-        Monoid-S8-Add; Monoid-S16-Add; Monoid-S32-Add; Monoid-S64-Add;
-        Monoid-F32-Add; Monoid-F64-Add;
-        Monoid-U8-Mul; Monoid-U16-Mul; Monoid-U32-Mul; Monoid-U64-Mul;
-        Monoid-S8-Mul; Monoid-S16-Mul; Monoid-S32-Mul; Monoid-S64-Mul;
-        Monoid-F32-Mul; Monoid-F64-Mul;
-
-        Group;
-
-        Num; add; zero; mul; one;
-        Num-U8; Num-U16; Num-U32; Num-U64;
-        Num-S8; Num-S16; Num-S32; Num-S64;
-        Num-F32; Num-F64;
-
-        Category;
-        -- id;
-        seq;
-        -- compose;
-        Category-Function;
-
-        Functor; map;
-        Endofunctor-Function;
-    }
+}
