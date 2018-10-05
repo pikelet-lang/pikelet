@@ -8,7 +8,7 @@ use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
 use term_size;
 
-use semantics::{self, DeclarationEnv, DefinitionEnv, GlobalEnv, TcEnv};
+use semantics::{self, TcEnv};
 use syntax::parse;
 use syntax::translation::{self, DesugarEnv};
 

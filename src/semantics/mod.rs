@@ -18,15 +18,12 @@ mod normalize;
 #[cfg(test)]
 mod tests;
 
-pub use self::env::{DeclarationEnv, DefinitionEnv, Extern, GlobalEnv, Globals, TcEnv};
+pub use self::env::{Extern, Globals, TcEnv};
 pub use self::errors::{InternalError, TypeError};
 pub use self::normalize::{match_value, nf_term};
 
 /// Returns true if `ty1` is a subtype of `ty2`
-fn is_subtype<Env>(env: &Env, ty1: &RcType, ty2: &RcType) -> bool
-where
-    Env: DeclarationEnv,
-{
+fn is_subtype(env: &TcEnv, ty1: &RcType, ty2: &RcType) -> bool {
     match (&*ty1.inner, &*ty2.inner) {
         // ST-TYPE
         (&Value::Universe(level1), &Value::Universe(level2)) => level1 <= level2,
@@ -77,10 +74,7 @@ where
 
 /// Ensures that the given term is a universe, returning the level of that
 /// universe and its elaborated form.
-fn infer_universe<Env>(env: &Env, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError>
-where
-    Env: DeclarationEnv + DefinitionEnv,
-{
+fn infer_universe(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level), TypeError> {
     let (term, ty) = infer_term(env, raw_term)?;
     match *ty {
         Value::Universe(level) => Ok((term, level)),
@@ -93,14 +87,11 @@ where
 
 /// Checks that a literal is compatible with the given type, returning the
 /// elaborated literal if successful
-fn check_literal<Env>(
-    env: &Env,
+fn check_literal(
+    env: &TcEnv,
     raw_literal: &raw::Literal,
     expected_ty: &RcType,
-) -> Result<Literal, TypeError>
-where
-    Env: GlobalEnv,
-{
+) -> Result<Literal, TypeError> {
     use syntax::FloatFormat::Dec as FloatDec;
 
     let ty = expected_ty;
@@ -132,10 +123,7 @@ where
 
 /// Synthesize the type of a literal, returning the elaborated literal and the
 /// inferred type if successful
-fn infer_literal<Env>(env: &Env, raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeError>
-where
-    Env: GlobalEnv,
-{
+fn infer_literal(env: &TcEnv, raw_literal: &raw::Literal) -> Result<(Literal, RcType), TypeError> {
     match *raw_literal {
         raw::Literal::String(_, ref value) => {
             Ok((Literal::String(value.clone()), env.string().clone()))
@@ -148,14 +136,11 @@ where
 
 /// Checks that a pattern is compatible with the given type, returning the
 /// elaborated pattern and a vector of the declarations it introduced if successful
-pub fn check_pattern<Env>(
-    env: &Env,
+pub fn check_pattern(
+    env: &TcEnv,
     raw_pattern: &raw::RcPattern,
     expected_ty: &RcType,
-) -> Result<(RcPattern, Vec<(FreeVar<String>, RcType)>), TypeError>
-where
-    Env: DeclarationEnv + DefinitionEnv,
-{
+) -> Result<(RcPattern, Vec<(FreeVar<String>, RcType)>), TypeError> {
     match (&*raw_pattern.inner, &*expected_ty.inner) {
         (&raw::Pattern::Binder(_, Binder(ref free_var)), _) => {
             return Ok((
@@ -184,13 +169,10 @@ where
 
 /// Synthesize the type of a pattern, returning the elaborated pattern, the
 /// inferred type, and a vector of the declarations it introduced if successful
-pub fn infer_pattern<Env>(
-    env: &Env,
+pub fn infer_pattern(
+    env: &TcEnv,
     raw_pattern: &raw::RcPattern,
-) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError>
-where
-    Env: DeclarationEnv + DefinitionEnv,
-{
+) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError> {
     match *raw_pattern.inner {
         raw::Pattern::Ann(ref raw_pattern, Embed(ref raw_ty)) => {
             let (ty, _) = infer_universe(env, raw_ty)?;
@@ -239,14 +221,11 @@ where
 
 /// Checks that a term is compatible with the given type, returning the
 /// elaborated term if successful
-pub fn check_term<Env>(
-    env: &Env,
+pub fn check_term(
+    env: &TcEnv,
     raw_term: &raw::RcTerm,
     expected_ty: &RcType,
-) -> Result<RcTerm, TypeError>
-where
-    Env: DeclarationEnv + DefinitionEnv,
-{
+) -> Result<RcTerm, TypeError> {
     match (&*raw_term.inner, &*expected_ty.inner) {
         (&raw::Term::Literal(ref raw_literal), _) => {
             let literal = check_literal(env, raw_literal, expected_ty)?;
@@ -404,10 +383,7 @@ where
 
 /// Synthesize the type of a term, returning the elaborated term and the
 /// inferred type if successful
-pub fn infer_term<Env>(env: &Env, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType), TypeError>
-where
-    Env: DeclarationEnv + DefinitionEnv,
-{
+pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType), TypeError> {
     use std::cmp;
 
     match *raw_term.inner {

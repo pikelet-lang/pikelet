@@ -379,45 +379,6 @@ pub struct Globals {
     var_array: FreeVar<String>,
 }
 
-pub trait GlobalEnv: Clone {
-    fn resugar_env(&self) -> &ResugarEnv;
-
-    // Not the happiest with this stuff, but eh...
-    fn bool(&self) -> &RcType;
-    fn string(&self) -> &RcType;
-    fn char(&self) -> &RcType;
-    fn u8(&self) -> &RcType;
-    fn u16(&self) -> &RcType;
-    fn u32(&self) -> &RcType;
-    fn u64(&self) -> &RcType;
-    fn s8(&self) -> &RcType;
-    fn s16(&self) -> &RcType;
-    fn s32(&self) -> &RcType;
-    fn s64(&self) -> &RcType;
-    fn f32(&self) -> &RcType;
-    fn f64(&self) -> &RcType;
-    fn array<'a>(&self, ty: &'a RcType) -> Option<(u64, &'a RcType)>;
-}
-
-/// An environment that contains declarations
-pub trait DeclarationEnv: GlobalEnv {
-    fn get_declaration(&self, free_var: &FreeVar<String>) -> Option<&RcType>;
-    fn insert_declaration(&mut self, free_var: FreeVar<String>, ty: RcType);
-    fn extend_declarations<T>(&mut self, iter: T)
-    where
-        T: IntoIterator<Item = (FreeVar<String>, RcType)>;
-}
-
-/// An environment that contains definitions
-pub trait DefinitionEnv: GlobalEnv {
-    fn get_extern_definition(&self, name: &str) -> Option<&Extern>;
-    fn get_definition(&self, free_var: &FreeVar<String>) -> Option<&RcTerm>;
-    fn insert_definition(&mut self, free_var: FreeVar<String>, RcTerm);
-    fn extend_definitions<T>(&mut self, iter: T)
-    where
-        T: IntoIterator<Item = (FreeVar<String>, RcTerm)>;
-}
-
 /// The type checking environment
 ///
 /// A default environment with entries for built-in types is provided via the
@@ -538,64 +499,64 @@ impl Default for TcEnv {
     }
 }
 
-impl GlobalEnv for TcEnv {
-    fn resugar_env(&self) -> &ResugarEnv {
+impl TcEnv {
+    pub fn resugar_env(&self) -> &ResugarEnv {
         &self.resugar_env
     }
 
-    fn bool(&self) -> &RcType {
+    pub fn bool(&self) -> &RcType {
         &self.globals.ty_bool
     }
 
-    fn string(&self) -> &RcType {
+    pub fn string(&self) -> &RcType {
         &self.globals.ty_string
     }
 
-    fn char(&self) -> &RcType {
+    pub fn char(&self) -> &RcType {
         &self.globals.ty_char
     }
 
-    fn u8(&self) -> &RcType {
+    pub fn u8(&self) -> &RcType {
         &self.globals.ty_u8
     }
 
-    fn u16(&self) -> &RcType {
+    pub fn u16(&self) -> &RcType {
         &self.globals.ty_u16
     }
 
-    fn u32(&self) -> &RcType {
+    pub fn u32(&self) -> &RcType {
         &self.globals.ty_u32
     }
 
-    fn u64(&self) -> &RcType {
+    pub fn u64(&self) -> &RcType {
         &self.globals.ty_u64
     }
 
-    fn s8(&self) -> &RcType {
+    pub fn s8(&self) -> &RcType {
         &self.globals.ty_s8
     }
 
-    fn s16(&self) -> &RcType {
+    pub fn s16(&self) -> &RcType {
         &self.globals.ty_s16
     }
 
-    fn s32(&self) -> &RcType {
+    pub fn s32(&self) -> &RcType {
         &self.globals.ty_s32
     }
 
-    fn s64(&self) -> &RcType {
+    pub fn s64(&self) -> &RcType {
         &self.globals.ty_s64
     }
 
-    fn f32(&self) -> &RcType {
+    pub fn f32(&self) -> &RcType {
         &self.globals.ty_f32
     }
 
-    fn f64(&self) -> &RcType {
+    pub fn f64(&self) -> &RcType {
         &self.globals.ty_f64
     }
 
-    fn array<'a>(&self, ty: &'a RcType) -> Option<(u64, &'a RcType)> {
+    pub fn array<'a>(&self, ty: &'a RcType) -> Option<(u64, &'a RcType)> {
         use syntax::LevelShift;
 
         match ty.free_var_app() {
@@ -610,44 +571,40 @@ impl GlobalEnv for TcEnv {
             Some(_) | None => None,
         }
     }
-}
 
-impl DeclarationEnv for TcEnv {
-    fn get_declaration(&self, free_var: &FreeVar<String>) -> Option<&RcType> {
+    pub fn get_declaration(&self, free_var: &FreeVar<String>) -> Option<&RcType> {
         self.declarations.get(free_var)
     }
 
-    fn insert_declaration(&mut self, free_var: FreeVar<String>, ty: RcType) {
+    pub fn insert_declaration(&mut self, free_var: FreeVar<String>, ty: RcType) {
         self.resugar_env.on_binder(&Binder(free_var.clone()));
         self.declarations.insert(free_var, ty);
     }
 
-    fn extend_declarations<T>(&mut self, iter: T)
-    where
-        T: IntoIterator<Item = (FreeVar<String>, RcType)>,
-    {
+    pub fn extend_declarations(
+        &mut self,
+        iter: impl IntoIterator<Item = (FreeVar<String>, RcType)>,
+    ) {
         self.declarations.extend(iter)
     }
-}
 
-impl DefinitionEnv for TcEnv {
-    fn get_extern_definition(&self, name: &str) -> Option<&Extern> {
+    pub fn get_extern_definition(&self, name: &str) -> Option<&Extern> {
         self.extern_definitions.get(name)
     }
 
-    fn get_definition(&self, free_var: &FreeVar<String>) -> Option<&RcTerm> {
+    pub fn get_definition(&self, free_var: &FreeVar<String>) -> Option<&RcTerm> {
         self.definitions.get(free_var)
     }
 
-    fn insert_definition(&mut self, free_var: FreeVar<String>, term: RcTerm) {
+    pub fn insert_definition(&mut self, free_var: FreeVar<String>, term: RcTerm) {
         self.resugar_env.on_binder(&Binder(free_var.clone()));
         self.definitions.insert(free_var, term);
     }
 
-    fn extend_definitions<T>(&mut self, iter: T)
-    where
-        T: IntoIterator<Item = (FreeVar<String>, RcTerm)>,
-    {
+    pub fn extend_definitions<T>(
+        &mut self,
+        iter: impl IntoIterator<Item = (FreeVar<String>, RcTerm)>,
+    ) {
         self.definitions.extend(iter)
     }
 }
