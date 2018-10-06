@@ -9,7 +9,6 @@ use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var}
 
 use syntax::core::{Literal, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Value};
 use syntax::raw;
-use syntax::translation::Resugar;
 use syntax::Level;
 
 mod env;
@@ -80,7 +79,7 @@ fn infer_universe(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, Level)
         Value::Universe(level) => Ok((term, level)),
         _ => Err(TypeError::ExpectedUniverse {
             span: raw_term.span(),
-            found: Box::new(ty.resugar(env.resugar_env())),
+            found: Box::new(env.resugar(&ty)),
         }),
     }
 }
@@ -116,7 +115,7 @@ fn check_literal(
         _ => Err(TypeError::LiteralMismatch {
             literal_span: raw_literal.span(),
             found: raw_literal.clone(),
-            expected: Box::new(expected_ty.resugar(env.resugar_env())),
+            expected: Box::new(env.resugar(expected_ty)),
         }),
     }
 }
@@ -161,8 +160,8 @@ pub fn check_pattern(
     } else {
         Err(TypeError::Mismatch {
             span: raw_pattern.span(),
-            found: Box::new(inferred_ty.resugar(env.resugar_env())),
-            expected: Box::new(expected_ty.resugar(env.resugar_env())),
+            found: Box::new(env.resugar(&inferred_ty)),
+            expected: Box::new(env.resugar(expected_ty)),
         })
     }
 }
@@ -266,7 +265,7 @@ pub fn check_term(
         (&raw::Term::Lam(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
-                expected: Box::new(expected_ty.resugar(env.resugar_env())),
+                expected: Box::new(env.resugar(expected_ty)),
             });
         },
 
@@ -361,7 +360,7 @@ pub fn check_term(
         },
 
         (&raw::Term::Hole(span), _) => {
-            let expected = Some(Box::new(expected_ty.resugar(env.resugar_env())));
+            let expected = Some(Box::new(env.resugar(expected_ty)));
             return Err(TypeError::UnableToElaborateHole { span, expected });
         },
 
@@ -375,8 +374,8 @@ pub fn check_term(
     } else {
         Err(TypeError::Mismatch {
             span: raw_term.span(),
-            found: Box::new(inferred_ty.resugar(env.resugar_env())),
-            expected: Box::new(expected_ty.resugar(env.resugar_env())),
+            found: Box::new(env.resugar(&inferred_ty)),
+            expected: Box::new(env.resugar(expected_ty)),
         })
     }
 }
@@ -542,7 +541,7 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_head.span(),
                     arg_span: raw_arg.span(),
-                    found: Box::new(head_ty.resugar(env.resugar_env())),
+                    found: Box::new(env.resugar(&head_ty)),
                 }),
             }
         },
@@ -629,7 +628,7 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
             Err(TypeError::NoFieldInType {
                 label_span,
                 expected_label: label.clone(),
-                found: Box::new(ty.resugar(env.resugar_env())),
+                found: Box::new(env.resugar(&ty)),
             })
         },
 
@@ -658,8 +657,8 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
                         Some(ref ty) => {
                             return Err(TypeError::Mismatch {
                                 span: raw_body.span(),
-                                found: Box::new(body_ty.resugar(env.resugar_env())),
-                                expected: Box::new(ty.resugar(env.resugar_env())),
+                                found: Box::new(env.resugar(&body_ty)),
+                                expected: Box::new(env.resugar(ty)),
                             });
                         },
                     }

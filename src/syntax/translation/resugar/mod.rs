@@ -611,3 +611,21 @@ impl Resugar<concrete::Term> for core::Neutral {
         resugar_term(env, &core::Term::from(self), Prec::NO_WRAP)
     }
 }
+
+impl Resugar<concrete::Term> for core::RcTerm {
+    fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
+        self.inner.resugar(env)
+    }
+}
+
+impl Resugar<concrete::Term> for core::RcValue {
+    fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
+        self.inner.resugar(env)
+    }
+}
+
+impl Resugar<concrete::Term> for core::RcNeutral {
+    fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
+        self.inner.resugar(env)
+    }
+}

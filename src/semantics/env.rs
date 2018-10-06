@@ -4,7 +4,7 @@ use std::fmt;
 use std::rc::Rc;
 
 use syntax::core::{Literal, RcTerm, RcType, RcValue, Value};
-use syntax::translation::ResugarEnv;
+use syntax::translation::{Resugar, ResugarEnv};
 use syntax::{FloatFormat, IntFormat};
 
 // Some helper traits for marshalling between Rust and Pikelet values
@@ -496,8 +496,8 @@ impl Default for TcEnv {
 }
 
 impl TcEnv {
-    pub fn resugar_env(&self) -> &ResugarEnv {
-        &self.resugar_env
+    pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
+        src.resugar(&self.resugar_env)
     }
 
     pub fn bool(&self) -> &RcType {

@@ -167,7 +167,7 @@ fn eval_print(
 
     use syntax::concrete::{ReplCommand, Term};
     use syntax::pretty::{self, ToDoc};
-    use syntax::translation::{Desugar, Resugar};
+    use syntax::translation::Desugar;
 
     fn term_width() -> usize {
         term_size::dimensions()
@@ -189,8 +189,8 @@ fn eval_print(
             let evaluated = semantics::nf_term(tc_env, &term)?;
 
             let ann_term = Term::Ann(
-                Box::new(evaluated.resugar(tc_env.resugar_env())),
-                Box::new(inferred.resugar(tc_env.resugar_env())),
+                Box::new(tc_env.resugar(&evaluated)),
+                Box::new(tc_env.resugar(&inferred)),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
@@ -216,7 +216,7 @@ fn eval_print(
 
             let ann_term = Term::Ann(
                 Box::new(Term::Name(ByteSpan::default(), name.clone(), None)),
-                Box::new(inferred.resugar(tc_env.resugar_env())),
+                Box::new(tc_env.resugar(&inferred)),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
@@ -231,7 +231,7 @@ fn eval_print(
             let raw_term = parse_term.desugar(desugar_env)?;
             let (_, inferred) = semantics::infer_term(tc_env, &raw_term)?;
 
-            let inferred = inferred.resugar(tc_env.resugar_env());
+            let inferred = tc_env.resugar(&inferred);
 
             println!("{}", inferred.to_doc().group().pretty(term_width()));
         },
