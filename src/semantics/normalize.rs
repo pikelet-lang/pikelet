@@ -35,9 +35,15 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
             }),
         },
 
-        Term::Extern(ref name) => Ok(RcValue::from(Value::from(Neutral::Head(Head::Extern(
-            name.clone(),
-        ))))),
+        Term::Extern(ref name) => match env
+            .get_extern_definition(name)
+            .and_then(|prim| (prim.interpretation)(&[]))
+        {
+            Some(value) => Ok(value),
+            None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Extern(
+                name.clone(),
+            ))))),
+        },
 
         // E-PI
         Term::Pi(ref scope) => {
@@ -75,17 +81,11 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
                         Neutral::Head(Head::Extern(ref name)) => {
                             spine.push(arg);
 
-                            // Apply the arguments to primitive definitions if the number of
-                            // arguments matches the arity of the primitive, all aof the arguments
-                            // are fully nfd
-                            if let Some(prim) = env.get_extern_definition(name) {
-                                if prim.arity == spine.len() && spine.iter().all(|arg| arg.is_nf())
-                                {
-                                    match (prim.interpretation)(spine) {
-                                        Ok(value) => return Ok(value),
-                                        Err(()) => unimplemented!("proper error"),
-                                    }
-                                }
+                            if let Some(value) = env
+                                .get_extern_definition(name)
+                                .and_then(|prim| (prim.interpretation)(&spine))
+                            {
+                                return Ok(value);
                             }
                         },
                         Neutral::Head(Head::Var(..)) | Neutral::Proj(..) | Neutral::Case(..) => {

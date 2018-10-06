@@ -3,7 +3,7 @@ use moniker::{Binder, FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
 
-use syntax::core::{Literal, RcTerm, RcType, RcValue, Spine, Value};
+use syntax::core::{Literal, RcTerm, RcType, RcValue, Value};
 use syntax::translation::ResugarEnv;
 use syntax::{FloatFormat, IntFormat};
 
@@ -47,122 +47,122 @@ impl_into_value!(f32, F32, FloatFormat::Dec);
 impl_into_value!(f64, F64, FloatFormat::Dec);
 
 trait TryFromValueRef {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()>;
+    fn try_from_value_ref(src: &Value) -> Option<&Self>;
 }
 
 impl TryFromValueRef for String {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::String(ref val)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::String(ref val)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for char {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::Char(ref val)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::Char(ref val)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for bool {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::Bool(ref val)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::Bool(ref val)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for u8 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U8(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::U8(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for u16 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U16(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::U16(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for u32 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U32(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::U32(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for u64 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U64(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::U64(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for i8 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S8(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::S8(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for i16 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S16(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::S16(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for i32 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S32(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::S32(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for i64 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S64(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::S64(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for f32 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::F32(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::F32(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
 
 impl TryFromValueRef for f64 {
-    fn try_from_value_ref(src: &Value) -> Result<&Self, ()> {
+    fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::F64(ref val, _)) => Ok(val),
-            _ => Err(()),
+            Value::Literal(Literal::F64(ref val, _)) => Some(val),
+            _ => None,
         }
     }
 }
@@ -173,8 +173,7 @@ pub struct Extern {
     /// The number of arguments to pass to the primitive during normalization
     pub arity: usize,
     /// The primitive definition to be used during normalization
-    // TODO: Return a `Result` with better errors
-    pub interpretation: fn(Spine) -> Result<RcValue, ()>,
+    pub interpretation: for<'a> fn(&'a [RcValue]) -> Option<RcValue>,
 }
 
 impl fmt::Debug for Extern {
@@ -196,16 +195,13 @@ fn default_extern_definitions() -> HashMap<&'static str, Extern> {
     /// Define a primitive function
     macro_rules! prim {
         (fn($($param_name:ident : $PType:ty),*) -> $RType:ty $body:block) => {{
-            fn interpretation(params: Spine) -> Result<RcValue, ()> {
-                if params.len() == count!($($param_name)*) {
-                    let mut arg_index = 0;
-                    $(
-                        arg_index += 1;
-                        let $param_name = <$PType>::try_from_value_ref(&params[arg_index - 1])?;
-                    )*
-                    Ok(<$RType>::into_value($body))
-                } else {
-                    Err(()) // TODO: Better errors
+            fn interpretation<'a>(params: &'a [RcValue]) -> Option<RcValue> {
+                match params {
+                    [$(ref $param_name),*] if $($param_name.is_nf())&&* => {
+                        $(let $param_name = <$PType>::try_from_value_ref($param_name)?;)*
+                        Some(<$RType>::into_value($body))
+                    }
+                    _ => None,
                 }
             }
 
