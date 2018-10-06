@@ -469,10 +469,10 @@ impl Default for TcEnv {
         let var_u16 = FreeVar::fresh_named("U16");
         let var_u32 = FreeVar::fresh_named("U32");
         let var_u64 = FreeVar::fresh_named("U64");
-        let var_i8 = FreeVar::fresh_named("S8");
-        let var_i16 = FreeVar::fresh_named("S16");
-        let var_i32 = FreeVar::fresh_named("S32");
-        let var_i64 = FreeVar::fresh_named("S64");
+        let var_s8 = FreeVar::fresh_named("S8");
+        let var_s16 = FreeVar::fresh_named("S16");
+        let var_s32 = FreeVar::fresh_named("S32");
+        let var_s64 = FreeVar::fresh_named("S64");
         let var_f32 = FreeVar::fresh_named("F32");
         let var_f64 = FreeVar::fresh_named("F64");
         let var_array = FreeVar::fresh_named("Array");
@@ -487,10 +487,10 @@ impl Default for TcEnv {
                 ty_u16: RcValue::from(Value::var(Var::Free(var_u16.clone()), 0)),
                 ty_u32: RcValue::from(Value::var(Var::Free(var_u32.clone()), 0)),
                 ty_u64: RcValue::from(Value::var(Var::Free(var_u64.clone()), 0)),
-                ty_s8: RcValue::from(Value::var(Var::Free(var_i8.clone()), 0)),
-                ty_s16: RcValue::from(Value::var(Var::Free(var_i16.clone()), 0)),
-                ty_s32: RcValue::from(Value::var(Var::Free(var_i32.clone()), 0)),
-                ty_s64: RcValue::from(Value::var(Var::Free(var_i64.clone()), 0)),
+                ty_s8: RcValue::from(Value::var(Var::Free(var_s8.clone()), 0)),
+                ty_s16: RcValue::from(Value::var(Var::Free(var_s16.clone()), 0)),
+                ty_s32: RcValue::from(Value::var(Var::Free(var_s32.clone()), 0)),
+                ty_s64: RcValue::from(Value::var(Var::Free(var_s64.clone()), 0)),
                 ty_f32: RcValue::from(Value::var(Var::Free(var_f32.clone()), 0)),
                 ty_f64: RcValue::from(Value::var(Var::Free(var_f64.clone()), 0)),
                 var_array: var_array.clone(),
@@ -521,10 +521,10 @@ impl Default for TcEnv {
         tc_env.insert_declaration(var_u16, universe0.clone());
         tc_env.insert_declaration(var_u32, universe0.clone());
         tc_env.insert_declaration(var_u64, universe0.clone());
-        tc_env.insert_declaration(var_i8, universe0.clone());
-        tc_env.insert_declaration(var_i16, universe0.clone());
-        tc_env.insert_declaration(var_i32, universe0.clone());
-        tc_env.insert_declaration(var_i64, universe0.clone());
+        tc_env.insert_declaration(var_s8, universe0.clone());
+        tc_env.insert_declaration(var_s16, universe0.clone());
+        tc_env.insert_declaration(var_s32, universe0.clone());
+        tc_env.insert_declaration(var_s64, universe0.clone());
         tc_env.insert_declaration(var_f32, universe0.clone());
         tc_env.insert_declaration(var_f64, universe0.clone());
         tc_env.insert_declaration(var_array, array_ty);
