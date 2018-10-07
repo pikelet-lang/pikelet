@@ -79,6 +79,7 @@ error: found a floating point literal, but expected a type `U64`
 | `let`    | [bindings]                                |
 | `record` | [record] values                           |
 | `Record` | [Record] types                            |
+| `then`   | [if-then-else-expressions]                |
 | `Type`   | [polymorphic functions], [types of types] |
 | `where`  |                                           |
 
