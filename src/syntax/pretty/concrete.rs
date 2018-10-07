@@ -134,13 +134,12 @@ impl ToDoc for Term {
                 .append(Doc::newline())
                 .append("where {")
                 .append(Doc::newline())
-                .append(
-                    Doc::concat(
-                        items
-                            .iter()
-                            .map(|item| item.to_doc().append(Doc::newline())),
-                    ).nest(INDENT_WIDTH),
-                ).append("}"),
+                .append(Doc::intersperse(
+                    items.iter().map(|item| item.to_doc().group()),
+                    Doc::newline(),
+                )).append(Doc::newline())
+                .nest(INDENT_WIDTH)
+                .append("}"),
             Term::If(_, ref cond, ref if_true, ref if_false) => Doc::text("if")
                 .append(Doc::space())
                 .append(cond.to_doc())
@@ -160,8 +159,8 @@ impl ToDoc for Term {
                 .append(Doc::space())
                 .append("{")
                 .append(Doc::newline())
-                .append(
-                    Doc::concat(clauses.iter().map(|&(ref pattern, ref body)| {
+                .append(Doc::intersperse(
+                    clauses.iter().map(|&(ref pattern, ref body)| {
                         pattern
                             .to_doc()
                             .append(Doc::space())
@@ -169,16 +168,18 @@ impl ToDoc for Term {
                             .append(Doc::space())
                             .append(body.to_doc())
                             .append(";")
-                            .append(Doc::newline())
-                    })).nest(INDENT_WIDTH),
-                ).append("}"),
+                    }),
+                    Doc::newline(),
+                )).append(Doc::newline())
+                .nest(INDENT_WIDTH)
+                .append("}"),
             Term::RecordType(_, ref fields) if fields.is_empty() => Doc::text("Record {}"),
             Term::Record(_, ref fields) if fields.is_empty() => Doc::text("record {}"),
             Term::RecordType(_, ref fields) => Doc::text("Record {")
                 .append(Doc::space())
-                .append(
-                    Doc::intersperse(
-                        fields.iter().map(|field| {
+                .append(Doc::intersperse(
+                    fields.iter().map(|field| {
+                        Doc::group(
                             Doc::as_string(&field.label.1)
                                 .append(match field.binder {
                                     Some((_, ref binder)) => Doc::space()
@@ -189,30 +190,31 @@ impl ToDoc for Term {
                                 }).append(Doc::space())
                                 .append(":")
                                 .append(Doc::space())
-                                .append(field.ann.to_doc())
-                        }),
-                        Doc::text(";").append(Doc::space()),
-                    ).nest(INDENT_WIDTH),
-                ).append(Doc::space())
+                                .append(field.ann.to_doc()),
+                        )
+                    }),
+                    Doc::text(";").append(Doc::space()),
+                )).nest(INDENT_WIDTH)
+                .append(Doc::space())
                 .append("}"),
             Term::Record(_, ref fields) => Doc::text("record {")
                 .append(Doc::space())
-                .append(
-                    Doc::intersperse(
-                        fields.iter().map(|field| match field {
-                            RecordField::Punned {
-                                label: (_, ref label),
-                                shift,
-                            } => match shift {
-                                None => Doc::text(format!("{}", label)),
-                                Some(shift) => Doc::text(format!("{}^{}", label, shift)),
-                            },
-                            RecordField::Explicit {
-                                label: (_, ref label),
-                                ref params,
-                                ref return_ann,
-                                ref term,
-                            } => Doc::as_string(label)
+                .append(Doc::intersperse(
+                    fields.iter().map(|field| match field {
+                        RecordField::Punned {
+                            label: (_, ref label),
+                            shift,
+                        } => match shift {
+                            None => Doc::text(format!("{}", label)),
+                            Some(shift) => Doc::text(format!("{}^{}", label, shift)),
+                        },
+                        RecordField::Explicit {
+                            label: (_, ref label),
+                            ref params,
+                            ref return_ann,
+                            ref term,
+                        } => Doc::group(
+                            Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(match params[..] {
                                     [] => Doc::nil(),
@@ -224,10 +226,11 @@ impl ToDoc for Term {
                                 })).append("=")
                                 .append(Doc::space())
                                 .append(term.to_doc()),
-                        }),
-                        Doc::text(";").append(Doc::space()),
-                    ).nest(INDENT_WIDTH),
-                ).append(Doc::space())
+                        ),
+                    }),
+                    Doc::text(";").append(Doc::space()),
+                )).nest(INDENT_WIDTH)
+                .append(Doc::space())
                 .append("}"),
             Term::Proj(_, ref expr, _, ref label, None) => {
                 expr.to_doc().append(".").append(format!("{}", label))
