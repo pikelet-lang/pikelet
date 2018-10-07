@@ -324,7 +324,7 @@ mod nf_term {
         let tc_env = TcEnv::default();
 
         let given_expr = r#"
-            let is-hi (greeting : String) = case greeting of {
+            let is-hi (greeting : String) = case greeting {
                     "hi" => true;
                     _ => false;
                 };
@@ -354,11 +354,11 @@ mod nf_term {
 
         let given_expr = r#"
             record {
-                test-true = case true of {
+                test-true = case true {
                     true => "true";
                     false => "false";
                 };
-                test-false = case false of {
+                test-false = case false {
                     true => "true";
                     false => "false";
                 };

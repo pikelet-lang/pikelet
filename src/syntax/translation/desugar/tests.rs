@@ -503,7 +503,7 @@ mod term {
 
             assert_term_eq!(
                 parse_desugar_term(&env, r#"if true then "true" else "false""#),
-                parse_desugar_term(&env, r#"case true of { true => "true"; false => "false" }"#),
+                parse_desugar_term(&env, r#"case true { true => "true"; false => "false" }"#),
             )
         }
 

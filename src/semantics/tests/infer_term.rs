@@ -562,7 +562,7 @@ fn case_expr() {
     let tc_env = TcEnv::default();
 
     let expected_ty = r"String";
-    let given_expr = r#"case "helloo" of {
+    let given_expr = r#"case "helloo" {
         "hi" => "haha";
         "hello" => "byee";
         greeting => (extern "string-append" : String -> String -> String) greeting "!!";
@@ -580,7 +580,7 @@ fn case_expr_bool() {
     let tc_env = TcEnv::default();
 
     let expected_ty = r"String";
-    let given_expr = r#"case true of {
+    let given_expr = r#"case true {
         true => "hello";
         false => "hi";
     }"#;
@@ -597,7 +597,7 @@ fn case_expr_bool_bad() {
     let tc_env = TcEnv::default();
     let desugar_env = DesugarEnv::new(tc_env.mappings());
 
-    let given_expr = r#"case "hello" of {
+    let given_expr = r#"case "hello" {
         true => "hello";
         false => "hi";
     }"#;
@@ -619,7 +619,7 @@ fn case_expr_wildcard() {
     let tc_env = TcEnv::default();
 
     let expected_ty = r"String";
-    let given_expr = r#"case "helloo" of {
+    let given_expr = r#"case "helloo" {
         test => test;
     }"#;
 
@@ -635,7 +635,7 @@ fn case_expr_empty() {
     let tc_env = TcEnv::default();
     let desugar_env = DesugarEnv::new(tc_env.mappings());
 
-    let given_expr = r#"case "helloo" of {}"#;
+    let given_expr = r#"case "helloo" {}"#;
 
     let raw_term = parse_term(&mut codemap, given_expr)
         .desugar(&desugar_env)
