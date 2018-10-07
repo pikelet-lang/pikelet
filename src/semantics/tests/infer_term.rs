@@ -1,52 +1,6 @@
 use super::*;
 
 #[test]
-fn prelude() {
-    use library;
-
-    fn load(codemap: &mut CodeMap, tc_env: &mut TcEnv, name: &str, src: &str) {
-        let desugar_env = DesugarEnv::new(tc_env.mappings());
-        let writer = StandardStream::stdout(ColorChoice::Always);
-        let filemap = codemap.add_filemap(FileName::from(name.to_owned()), src.into());
-
-        let (concrete_term, _import_paths, errors) = parse::term(&filemap);
-        if !errors.is_empty() {
-            for error in errors {
-                codespan_reporting::emit(&mut writer.lock(), codemap, &error.to_diagnostic())
-                    .unwrap();
-            }
-            panic!("parse error!")
-        }
-
-        let raw_term = match concrete_term.desugar(&desugar_env) {
-            Ok(raw_term) => raw_term,
-            Err(err) => {
-                codespan_reporting::emit(&mut writer.lock(), codemap, &err.to_diagnostic())
-                    .unwrap();
-                panic!("desugar error!")
-            },
-        };
-
-        match infer_term(tc_env, &raw_term) {
-            Ok((term, ty)) => {
-                tc_env.insert_import(name.to_owned(), Import::Term(term), ty);
-            },
-            Err(err) => {
-                codespan_reporting::emit(&mut writer.lock(), codemap, &err.to_diagnostic())
-                    .unwrap();
-                panic!("type error!")
-            },
-        }
-    }
-
-    let mut codemap = CodeMap::new();
-    let mut tc_env = TcEnv::default();
-
-    load(&mut codemap, &mut tc_env, "prim", library::PRIM);
-    load(&mut codemap, &mut tc_env, "prelude", library::PRELUDE);
-}
-
-#[test]
 fn undefined_name() {
     use syntax::LevelShift;
 

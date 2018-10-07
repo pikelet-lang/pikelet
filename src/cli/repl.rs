@@ -1,16 +1,15 @@
 //! The REPL (Read-Eval-Print-Loop)
 
 use codespan::{CodeMap, FileMap, FileName};
-use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
+use codespan_reporting::{self, Diagnostic};
 use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
 use term_size;
 
-use semantics::{self, TcEnv};
 use syntax::parse;
-use syntax::translation::{self, DesugarEnv};
+use Pikelet;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -87,8 +86,7 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     let interface = Interface::new("repl")?;
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(color);
-    let mut tc_env = TcEnv::default();
-    let mut desugar_env = DesugarEnv::new(tc_env.mappings());
+    let mut pikelet = Pikelet::with_prelude();
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);
@@ -102,15 +100,28 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
         print_welcome_banner();
     }
 
+    // preload specified files
     {
-        // Load prelude
-        let prelude_var = desugar_env.on_binding("prelude");
-        let (prelude_val, prelude_ty) = ::load_prelude(&mut codemap, &tc_env);
-        tc_env.insert_declaration(prelude_var.clone(), prelude_ty);
-        tc_env.insert_definition(prelude_var.clone(), prelude_val);
-    }
+        let mut is_error = false;
 
-    // TODO: Load files
+        for path in &opts.files {
+            // FIXME: allow for customization of internal path
+            let internal_path = path.to_str().unwrap().to_owned();
+            let file_map = codemap.add_filemap_from_disk(path)?;
+
+            if let Err(diagnostics) = pikelet.load_file(internal_path, file_map) {
+                for diagnostic in diagnostics {
+                    codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                }
+                is_error = true;
+                continue;
+            }
+        }
+
+        if is_error {
+            return Err(format_err!("encountered an error!"));
+        }
+    }
 
     loop {
         match interface.read_line()? {
@@ -120,25 +131,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                 }
 
                 let filename = FileName::virtual_("repl");
-                match eval_print(
-                    &mut desugar_env,
-                    &mut tc_env,
-                    &codemap.add_filemap(filename, line),
-                ) {
+                match eval_print(&mut pikelet, &codemap.add_filemap(filename, line)) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
-                    Err(EvalPrintError::Parse(errs)) => {
-                        for err in errs {
-                            let diagnostic = err.to_diagnostic();
-                            codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
-                        }
-                    },
-                    Err(EvalPrintError::Desugar(err)) => {
-                        let diagnostic = err.to_diagnostic();
-                        codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
-                    },
-                    Err(EvalPrintError::Type(err)) => {
-                        let diagnostic = err.to_diagnostic();
+                    Err(diagnostics) => for diagnostic in diagnostics {
                         codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
                     },
                 }
@@ -158,16 +154,11 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(
-    desugar_env: &mut DesugarEnv,
-    tc_env: &mut TcEnv,
-    filemap: &FileMap,
-) -> Result<ControlFlow, EvalPrintError> {
+fn eval_print(pikelet: &mut Pikelet, filemap: &FileMap) -> Result<ControlFlow, Vec<Diagnostic>> {
     use codespan::ByteSpan;
 
     use syntax::concrete::{ReplCommand, Term};
     use syntax::pretty::{self, ToDoc};
-    use syntax::translation::Desugar;
 
     fn term_width() -> usize {
         term_size::dimensions()
@@ -177,61 +168,60 @@ fn eval_print(
 
     let (repl_command, _import_paths, parse_errors) = parse::repl_command(filemap);
     if !parse_errors.is_empty() {
-        return Err(EvalPrintError::Parse(parse_errors));
+        return Err(parse_errors
+            .iter()
+            .map(|error| error.to_diagnostic())
+            .collect());
     }
 
     match repl_command {
         ReplCommand::Help => print_help_text(),
 
-        ReplCommand::Eval(parse_term) => {
-            let raw_term = parse_term.desugar(desugar_env)?;
-            let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
-            let evaluated = semantics::nf_term(tc_env, &term)?;
+        ReplCommand::Eval(concrete_term) => {
+            let raw_term = pikelet.desugar(&*concrete_term)?;
+            let (term, inferred) = pikelet.infer_term(&raw_term)?;
+            let evaluated = pikelet.nf_term(&term)?;
 
             let ann_term = Term::Ann(
-                Box::new(tc_env.resugar(&evaluated)),
-                Box::new(tc_env.resugar(&inferred)),
+                Box::new(pikelet.resugar(&evaluated)),
+                Box::new(pikelet.resugar(&inferred)),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
-        ReplCommand::Core(parse_term) => {
+        ReplCommand::Core(concrete_term) => {
             use syntax::core::{RcTerm, Term};
 
-            let raw_term = parse_term.desugar(desugar_env)?;
-            let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
+            let raw_term = pikelet.desugar(&*concrete_term)?;
+            let (term, inferred) = pikelet.infer_term(&raw_term)?;
 
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
-        ReplCommand::Raw(parse_term) => {
-            let raw_term = parse_term.desugar(desugar_env)?;
+        ReplCommand::Raw(concrete_term) => {
+            let raw_term = pikelet.desugar(&*concrete_term)?;
 
             println!("{}", raw_term.to_doc().group().pretty(term_width()));
         },
-        ReplCommand::Let(name, parse_term) => {
-            let raw_term = parse_term.desugar(desugar_env)?;
-            let (term, inferred) = semantics::infer_term(tc_env, &raw_term)?;
+        ReplCommand::Let(name, concrete_term) => {
+            let raw_term = pikelet.desugar(&*concrete_term)?;
+            let (_, inferred) = pikelet.infer_bind_term(&name, &raw_term)?;
 
             let ann_term = Term::Ann(
                 Box::new(Term::Name(ByteSpan::default(), name.clone(), None)),
-                Box::new(tc_env.resugar(&inferred)),
+                Box::new(pikelet.resugar(&inferred)),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
-            let free_var = desugar_env.on_binding(&name);
-            tc_env.insert_declaration(free_var.clone(), inferred);
-            tc_env.insert_definition(free_var.clone(), term);
-
             return Ok(ControlFlow::Continue);
         },
-        ReplCommand::TypeOf(parse_term) => {
-            let raw_term = parse_term.desugar(desugar_env)?;
-            let (_, inferred) = semantics::infer_term(tc_env, &raw_term)?;
+        ReplCommand::TypeOf(concrete_term) => {
+            let raw_term = pikelet.desugar(&*concrete_term)?;
+            let (_, inferred) = pikelet.infer_term(&raw_term)?;
 
-            let inferred = tc_env.resugar(&inferred);
+            let inferred = pikelet.resugar(&inferred);
 
             println!("{}", inferred.to_doc().group().pretty(term_width()));
         },
@@ -247,44 +237,4 @@ fn eval_print(
 enum ControlFlow {
     Break,
     Continue,
-}
-
-#[derive(Debug, Fail)]
-enum EvalPrintError {
-    #[fail(display = "Parse error")]
-    Parse(Vec<parse::ParseError>),
-    #[fail(display = "Desugar error: {}", _0)]
-    Desugar(#[cause] translation::DesugarError),
-    #[fail(display = "Type error: {}", _0)]
-    Type(#[cause] semantics::TypeError),
-}
-
-impl From<parse::ParseError> for EvalPrintError {
-    fn from(src: parse::ParseError) -> EvalPrintError {
-        EvalPrintError::Parse(vec![src])
-    }
-}
-
-impl From<Vec<parse::ParseError>> for EvalPrintError {
-    fn from(src: Vec<parse::ParseError>) -> EvalPrintError {
-        EvalPrintError::Parse(src)
-    }
-}
-
-impl From<translation::DesugarError> for EvalPrintError {
-    fn from(src: translation::DesugarError) -> EvalPrintError {
-        EvalPrintError::Desugar(src)
-    }
-}
-
-impl From<semantics::TypeError> for EvalPrintError {
-    fn from(src: semantics::TypeError) -> EvalPrintError {
-        EvalPrintError::Type(src)
-    }
-}
-
-impl From<semantics::InternalError> for EvalPrintError {
-    fn from(src: semantics::InternalError) -> EvalPrintError {
-        EvalPrintError::Type(src.into())
-    }
 }

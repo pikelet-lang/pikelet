@@ -15,47 +15,28 @@ pub fn run(color: ColorChoice, opts: Opts) -> Result<(), Error> {
     use codespan::CodeMap;
     use codespan_reporting;
 
-    use semantics::{self, TcEnv};
-    use syntax::parse;
-    use syntax::translation::{Desugar, DesugarEnv};
+    use Pikelet;
 
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let mut pikelet = Pikelet::with_prelude();
     let writer = StandardStream::stderr(color);
 
     let mut is_error = false;
-    for path in opts.files {
-        let file = codemap.add_filemap_from_disk(path)?;
-        let (concrete_term, _import_paths, parse_errors) = parse::term(&file);
 
-        let mut is_parse_error = false;
-        for error in parse_errors {
-            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic())?;
+    for path in opts.files {
+        // FIXME: allow for customization of internal path
+        let internal_path = path.to_str().unwrap().to_owned();
+        let file_map = codemap.add_filemap_from_disk(path)?;
+
+        if let Err(diagnostics) = pikelet.load_file(internal_path, file_map) {
+            for diagnostic in diagnostics {
+                codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+            }
             is_error = true;
-            is_parse_error = true;
-        }
-        if is_parse_error {
             continue;
         }
-
-        let raw_term = match concrete_term.desugar(&desugar_env) {
-            Ok(raw_term) => raw_term,
-            Err(err) => {
-                codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;
-                is_error = true;
-                continue;
-            },
-        };
-
-        match semantics::infer_term(&tc_env, &raw_term) {
-            Ok(_) => {},
-            Err(err) => {
-                codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic())?;
-                is_error = true;
-            },
-        }
     }
+
     if is_error {
         Err(format_err!("encountered an error!"))
     } else {

@@ -85,7 +85,7 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
                             spine.push(arg);
 
                             match env.get_import_definition(name) {
-                                Some(Import::Term(ref term)) => {
+                                Some(Import::Term(ref _term)) => {
                                     // nf_term(env, term)
                                     unimplemented!("import applications")
                                 },

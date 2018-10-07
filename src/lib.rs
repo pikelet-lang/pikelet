@@ -159,44 +159,145 @@ pub mod cli;
 
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting::Diagnostic;
+use std::sync::Arc;
 
-use semantics::TcEnv;
-use syntax::core;
+use semantics::{Import, TcEnv};
+use syntax::translation::{Desugar, DesugarEnv, Resugar};
+use syntax::{core, raw};
 
-pub fn load_file(
-    file: &FileMap,
-    tc_env: &TcEnv,
-) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
-    use syntax::translation::{Desugar, DesugarEnv};
-
-    let (concrete_term, _import_paths, errors) = syntax::parse::term(&file);
-    let mut diagnostics = errors
-        .iter()
-        .map(|err| err.to_diagnostic())
-        .collect::<Vec<_>>();
-
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
-    let raw_term = match concrete_term.desugar(&desugar_env) {
-        Ok(raw_term) => raw_term,
-        Err(err) => return Err(vec![err.to_diagnostic()]),
-    };
-
-    semantics::infer_term(tc_env, &raw_term).map_err(|err| {
-        diagnostics.push(err.to_diagnostic());
-        diagnostics
-    })
+/// An environment that keeps track of the state of a Pikelet program during
+/// compilation or interactive sessions
+#[derive(Debug, Clone)]
+pub struct Pikelet {
+    /// The base type checking environment, containing the built-in definitions
+    tc_env: TcEnv,
+    /// The base desugar environment, using the definitions from the `tc_env`
+    desugar_env: DesugarEnv,
+    /// A codemap that owns the source code for any terms that are currently loaded
+    code_map: CodeMap,
 }
 
-pub fn load_prelude(codemap: &mut CodeMap, tc_env: &TcEnv) -> (core::RcTerm, core::RcType) {
-    let file = codemap.add_filemap(
-        FileName::real("library/prelude.pi"),
-        library::PRELUDE.to_owned(),
-    );
+impl Pikelet {
+    /// Create a new Pikelet environment, containing only the built-in definitions
+    pub fn new() -> Pikelet {
+        let tc_env = TcEnv::default();
+        let desugar_env = DesugarEnv::new(tc_env.mappings());
 
-    load_file(&file, tc_env).unwrap_or_else(|_diagnostics| {
-        // for diagnostic in diagnostics {
-        //     codespan_reporting::emit(codemap, &diagnostic);
-        // }
-        panic!("unexpected errors in prelude");
-    })
+        Pikelet {
+            tc_env,
+            desugar_env,
+            code_map: CodeMap::new(),
+        }
+    }
+
+    /// Create a new Pikelet environment, with the prelude loaded as well
+    pub fn with_prelude() -> Pikelet {
+        let mut pikelet = Pikelet::new();
+
+        let prim_path = "prim".to_owned();
+        let prim_name = FileName::virtual_("prim");
+        let prim_src = library::PRIM.to_owned();
+        let prim_file = pikelet.code_map.add_filemap(prim_name, prim_src);
+
+        let prelude_path = "prelude".to_owned();
+        let prelude_name = FileName::virtual_("prelude");
+        let prelude_src = library::PRELUDE.to_owned();
+        let prelude_file = pikelet.code_map.add_filemap(prelude_name, prelude_src);
+
+        pikelet.load_file(prim_path, prim_file).unwrap();
+        pikelet.load_file(prelude_path, prelude_file).unwrap();
+
+        pikelet
+    }
+
+    pub fn load_file(
+        &mut self,
+        internal_path: String,
+        file_map: Arc<FileMap>,
+    ) -> Result<(), Vec<Diagnostic>> {
+        let (concrete_term, _import_paths, errors) = syntax::parse::term(&file_map);
+        if !errors.is_empty() {
+            return Err(errors.iter().map(|error| error.to_diagnostic()).collect());
+        }
+        let raw_term = self.desugar(&concrete_term)?;
+        let (term, ty) = self.infer_term(&raw_term)?;
+        // FIXME: Check if import already exists
+        self.tc_env
+            .insert_import(internal_path, Import::Term(term), ty);
+
+        Ok(())
+    }
+
+    pub fn desugar<T>(&self, src: &impl Desugar<T>) -> Result<T, Vec<Diagnostic>> {
+        src.desugar(&self.desugar_env)
+            .map_err(|e| vec![e.to_diagnostic()])
+    }
+
+    pub fn infer_bind_term(
+        &mut self,
+        name: &str,
+        raw_term: &raw::RcTerm,
+    ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
+        let (term, inferred) = self.infer_term(&raw_term)?;
+
+        let fv = self.desugar_env.on_binding(&name);
+        self.tc_env.insert_declaration(fv.clone(), inferred.clone());
+        self.tc_env.insert_definition(fv.clone(), term.clone());
+
+        Ok((term, inferred))
+    }
+
+    pub fn infer_term(
+        &self,
+        raw_term: &raw::RcTerm,
+    ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
+        semantics::infer_term(&self.tc_env, &raw_term).map_err(|e| vec![e.to_diagnostic()])
+    }
+
+    pub fn nf_term(&self, term: &core::RcTerm) -> Result<core::RcValue, Vec<Diagnostic>> {
+        semantics::nf_term(&self.tc_env, term).map_err(|e| vec![e.to_diagnostic()])
+    }
+
+    pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
+        self.tc_env.resugar(src)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use codespan_reporting::termcolor::{ColorChoice, StandardStream};
+
+    use super::*;
+
+    #[test]
+    fn prelude() {
+        let mut pikelet = Pikelet::new();
+        let writer = StandardStream::stdout(ColorChoice::Always);
+
+        let prim_path = "prim".to_owned();
+        let prim_name = FileName::virtual_("prim");
+        let prim_src = library::PRIM.to_owned();
+        let prim_file = pikelet.code_map.add_filemap(prim_name, prim_src);
+
+        let prelude_path = "prelude".to_owned();
+        let prelude_name = FileName::virtual_("prelude");
+        let prelude_src = library::PRELUDE.to_owned();
+        let prelude_file = pikelet.code_map.add_filemap(prelude_name, prelude_src);
+
+        if let Err(diagnostics) = pikelet.load_file(prim_path, prim_file) {
+            for diagnostic in diagnostics {
+                codespan_reporting::emit(&mut writer.lock(), &pikelet.code_map, &diagnostic)
+                    .unwrap();
+            }
+            panic!("load error!")
+        }
+
+        if let Err(diagnostics) = pikelet.load_file(prelude_path, prelude_file) {
+            for diagnostic in diagnostics {
+                codespan_reporting::emit(&mut writer.lock(), &pikelet.code_map, &diagnostic)
+                    .unwrap();
+            }
+            panic!("load error!")
+        }
+    }
 }
