@@ -231,16 +231,6 @@ pub fn check_term(
             return Ok(RcTerm::from(Term::Literal(literal)));
         },
 
-        (&raw::Term::Extern(_, name_span, ref name), _) => match env.get_extern_definition(name) {
-            Some(_) => return Ok(RcTerm::from(Term::Extern(name.clone()))),
-            None => {
-                return Err(TypeError::UndefinedExternName {
-                    span: name_span,
-                    name: name.clone(),
-                });
-            },
-        },
-
         // C-LAM
         (&raw::Term::Lam(_, ref lam_scope), &Value::Pi(ref pi_scope)) => {
             let ((lam_name, Embed(lam_ann)), lam_body, (Binder(pi_name), Embed(pi_ann)), pi_body) =
@@ -435,8 +425,8 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
             }.into()),
         },
 
-        raw::Term::Extern(span, name_span, ref name) => match env.get_extern_definition(name) {
-            Some(_) => Err(TypeError::AmbiguousExtern { span }),
+        raw::Term::Extern(_, name_span, ref name) => match env.get_extern_definition(name) {
+            Some(prim) => Ok((RcTerm::from(Term::Extern(name.clone())), prim.ty.clone())),
             None => Err(TypeError::UndefinedExternName {
                 span: name_span,
                 name: name.clone(),
