@@ -6,6 +6,7 @@
 - [Primitive types and their literals](#primitive-types-and-their-literals)
 - [Type annotations](#type-annotations)
 - [Identifiers](#identifiers)
+- [Keywords](#keywords)
 
 ## Comments
 
@@ -64,3 +65,27 @@ error: found a floating point literal, but expected a type `U64`
 ## Identifiers
 
 > TODO
+
+## Keywords
+| Keyword  | Documentation                             |
+|----------|-------------------------------------------|
+| `as`     | [internal field names]                    |
+| `case`   | [case expressions]                        |
+| `else`   | [if-then-else-expressions]                |
+| `extern` |                                           |
+| `if`     | [if-then-else-expressions]                |
+| `import` |                                           |
+| `in`     | [bindings]                                |
+| `let`    | [bindings]                                |
+| `record` | [record] values                           |
+| `Record` | [Record] types                            |
+| `Type`   | [polymorphic functions], [types of types] |
+| `where`  |                                           |
+
+[if-then-else-expressions]: conditionals.html#if-then-else-expressions
+[case expressions]: conditionals.html#case-expressions
+[bindings]: bindings.html
+[record]: records.html
+[polymorphic functions]: functions.html
+[types of types]: universes.html#types-of-types
+[internal field names]: records.html#external-vs-internal-field-names
