@@ -96,12 +96,9 @@ impl ToDoc for Term {
             Term::Hole(_) => Doc::text("_"),
             Term::Name(_, ref name, None) => Doc::text(format!("{}", name)),
             Term::Name(_, ref name, Some(shift)) => Doc::text(format!("{}^{}", name, shift)),
-            Term::Extern(_, _, ref name) => Doc::text("extern")
+            Term::Import(_, _, ref name) => Doc::text("import")
                 .append(Doc::space())
                 .append(format!("{:?}", name)),
-            Term::Import(_, _, ref path) => Doc::text("import")
-                .append(Doc::space())
-                .append(format!("{:?}", path)),
             Term::Lam(_, ref params, ref body) => Doc::text("\\")
                 .append(pretty_lam_params(params))
                 .append(Doc::space())

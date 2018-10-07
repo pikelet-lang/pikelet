@@ -17,7 +17,7 @@ mod normalize;
 #[cfg(test)]
 mod tests;
 
-pub use self::env::{Extern, Globals, TcEnv};
+pub use self::env::{Globals, Import, TcEnv};
 pub use self::errors::{InternalError, TypeError};
 pub use self::normalize::{match_value, nf_term};
 
@@ -425,9 +425,9 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
             }.into()),
         },
 
-        raw::Term::Extern(_, name_span, ref name) => match env.get_extern_definition(name) {
-            Some(prim) => Ok((RcTerm::from(Term::Extern(name.clone())), prim.ty.clone())),
-            None => Err(TypeError::UndefinedExternName {
+        raw::Term::Import(_, name_span, ref name) => match env.get_import_declaration(name) {
+            Some(ty) => Ok((RcTerm::from(Term::Import(name.clone())), ty.clone())),
+            None => Err(TypeError::UndefinedImport {
                 span: name_span,
                 name: name.clone(),
             }),

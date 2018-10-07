@@ -87,7 +87,7 @@ fn case_expr() {
     let given_expr = r#"case "helloo" {
         "hi" => "haha";
         "hello" => "byee";
-        greeting => (extern "string-append" : String -> String -> String) greeting "!!";
+        greeting => (import "prim/string/append") greeting "!!";
     }"#;
 
     let expected_ty = parse_nf_term(&mut codemap, &tc_env, expected_ty);

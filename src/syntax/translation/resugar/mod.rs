@@ -17,8 +17,7 @@ pub struct ResugarEnv {
 }
 
 const KEYWORDS: &[&str] = &[
-    "as", "case", "else", "extern", "if", "import", "in", "let", "of", "record", "Record", "then",
-    "Type",
+    "as", "case", "else", "if", "import", "in", "let", "record", "Record", "then", "Type",
 ];
 
 impl ResugarEnv {
@@ -491,9 +490,10 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             // TODO: Better message
             panic!("Tried to convert a term that was not locally closed");
         },
-        core::Term::Extern(ref name) => {
-            concrete::Term::Extern(ByteSpan::default(), ByteSpan::default(), name.clone())
-        },
+        core::Term::Import(ref name) => parens_if(
+            Prec::LAM < prec,
+            concrete::Term::Import(ByteSpan::default(), ByteSpan::default(), name.clone()),
+        ),
         core::Term::Pi(ref scope) => resugar_pi(env, scope, prec),
         core::Term::Lam(ref scope) => resugar_lam(env, scope, prec),
         core::Term::App(ref head, ref arg) => parens_if(
@@ -523,7 +523,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         },
                         ann,
                     }
-                }).collect();
+                })
+                .collect();
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
@@ -548,7 +549,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         return_ann: None,
                         term: term_body,
                     }
-                }).collect();
+                })
+                .collect();
 
             // TODO: Add let to rename shadowed globals?
             concrete::Term::Record(ByteSpan::default(), fields)
@@ -580,7 +582,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         resugar_pattern(&mut env, &pattern, Prec::NO_WRAP),
                         resugar_term(&env, &term, Prec::NO_WRAP),
                     )
-                }).collect(),
+                })
+                .collect(),
         ),
         core::Term::Array(ref elems) => concrete::Term::Array(
             ByteSpan::default(),

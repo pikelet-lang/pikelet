@@ -2,7 +2,7 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{Head, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcValue, Term, Value};
 
-use semantics::{InternalError, TcEnv};
+use semantics::{Import, InternalError, TcEnv};
 
 /// Reduce a term to its normal form
 pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
@@ -35,12 +35,15 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
             }),
         },
 
-        Term::Extern(ref name) => match env
-            .get_extern_definition(name)
-            .and_then(|prim| (prim.interpretation)(&[]))
-        {
-            Some(value) => Ok(value),
-            None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Extern(
+        Term::Import(ref name) => match env.get_import_definition(name) {
+            Some(Import::Term(ref term)) => nf_term(env, term),
+            Some(Import::Prim(ref interpretation)) => match interpretation(&[]) {
+                Some(value) => Ok(value),
+                None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Import(
+                    name.clone(),
+                ))))),
+            },
+            None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Import(
                 name.clone(),
             ))))),
         },
@@ -78,14 +81,21 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
                     let mut spine = spine.clone();
 
                     match *neutral.inner {
-                        Neutral::Head(Head::Extern(ref name)) => {
+                        Neutral::Head(Head::Import(ref name)) => {
                             spine.push(arg);
 
-                            if let Some(value) = env
-                                .get_extern_definition(name)
-                                .and_then(|prim| (prim.interpretation)(&spine))
-                            {
-                                return Ok(value);
+                            match env.get_import_definition(name) {
+                                Some(Import::Term(ref term)) => {
+                                    // nf_term(env, term)
+                                    unimplemented!("import applications")
+                                },
+                                Some(Import::Prim(ref interpretation)) => {
+                                    match interpretation(&spine) {
+                                        Some(value) => return Ok(value),
+                                        None => {},
+                                    }
+                                },
+                                None => {},
                             }
                         },
                         Neutral::Head(Head::Var(..)) | Neutral::Proj(..) | Neutral::Case(..) => {
