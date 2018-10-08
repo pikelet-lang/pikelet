@@ -38,7 +38,6 @@ extern {
         "import" => Token::Import,
         "in" => Token::In,
         "let" => Token::Let,
-        "of" => Token::Of,
         "record" => Token::Record,
         "Record" => Token::RecordType,
         "then" => Token::Then,
