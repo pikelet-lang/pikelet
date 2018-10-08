@@ -72,7 +72,7 @@ smaller universes being contained within the larger universes:
 ```
 
 Note that in most regular programming you will rarely see anything above `Type`,
-and even more rarely still will you see things of `Type^1`, so all of this might
+and even more rarely still will you see things above `Type^1`, so all of this might
 seem a little excessive. That being said, we believe it is important enough to
 plug this gap in our type system while we have the chance.
 
