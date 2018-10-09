@@ -329,7 +329,7 @@ pub enum Term {
     /// Case expression
     ///
     /// ```text
-    /// case t1 of { pat => t2; .. }
+    /// case t1 { pat => t2; .. }
     /// ```
     Case(ByteSpan, Box<Term>, Vec<(Pattern, Term)>),
     /// Record type

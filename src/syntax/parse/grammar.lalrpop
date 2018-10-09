@@ -38,7 +38,6 @@ extern {
         "import" => Token::Import,
         "in" => Token::In,
         "let" => Token::Let,
-        "of" => Token::Of,
         "record" => Token::Record,
         "Record" => Token::RecordType,
         "then" => Token::Then,
@@ -170,7 +169,7 @@ LamTerm: Term = {
     <start: @L> "if" <cond: AppTerm> "then" <if_true: AppTerm> "else" <if_false: AppTerm> => {
         Term::If(start, Box::new(cond), Box::new(if_true), Box::new(if_false))
     },
-    <start: @L> "case" <head: AppTerm> "of" "{" <arms: (<PatternArm> ";")*> <last: PatternArm?> "}" <end: @R> => {
+    <start: @L> "case" <head: AppTerm> "{" <arms: (<PatternArm> ";")*> <last: PatternArm?> "}" <end: @R> => {
         let mut arms = arms;
         arms.extend(last);
         Term::Case(ByteSpan::new(start, end), Box::new(head), arms)
