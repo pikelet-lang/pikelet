@@ -153,7 +153,7 @@ Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 </code></pre>
 <a class="header" href="#case-expressions" id="case-expressions"><h2>Case expressions</h2></a>
 <p>Pikelet supports case expressions on strings, and numbers:</p>
-<pre><code class="language-pikelet">case value of {
+<pre><code class="language-pikelet">case value {
     &quot;hello&quot; =&gt; &quot;goodbye&quot;;
     &quot;goodbye&quot; =&gt; &quot;hello&quot;;
     value =&gt; value; -- matches all strings
@@ -161,7 +161,7 @@ Pikelet&gt; if false then &quot;hello!&quot; else &quot;goodbye!&quot;
 </code></pre>
 <p>Note that we don't (yet) check that the series of patterns provided cover all
 possible cases, leading to the following embarrassing error:</p>
-<pre><code class="language-pikelet-repl">Pikelet&gt; case &quot;hello&quot; of { &quot;hi&quot; =&gt; &quot;oh dear&quot; }
+<pre><code class="language-pikelet-repl">Pikelet&gt; case &quot;hello&quot; { &quot;hi&quot; =&gt; &quot;oh dear&quot; }
 error: internal compiler error: no patterns matched the given expression
 </code></pre>
 <p>In the future we' plan to fix this, add support for matching on booleans, and
