@@ -40,7 +40,8 @@ fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> S
             pretty_binder(binder)
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
-        )).append(Doc::space())
+        ))
+        .append(Doc::space())
         .append(body.to_doc()),
     )
 }
@@ -56,7 +57,8 @@ fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> St
             pretty_binder(binder)
                 .append(Doc::space())
                 .append(ann.to_doc().group()),
-        )).append(Doc::space())
+        ))
+        .append(Doc::space())
         .append(body.to_doc()),
     )
 }
@@ -163,7 +165,8 @@ impl ToDoc for raw::Term {
                                 .append(ann.to_doc().group())
                                 .append(Doc::space())
                                 .append(term.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 )),
                 &scope.unsafe_body.inner,
@@ -175,7 +178,8 @@ impl ToDoc for raw::Term {
                             Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(ann.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 ),
             )),
@@ -186,7 +190,8 @@ impl ToDoc for raw::Term {
                             Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(term.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 ),
             )),
@@ -203,7 +208,8 @@ impl ToDoc for raw::Term {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                )).append("]"),
+                ))
+                .append("]"),
         }
     }
 }
@@ -267,7 +273,8 @@ impl ToDoc for Term {
                                 .append(ann.to_doc().group())
                                 .append(Doc::space())
                                 .append(term.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 )),
                 &scope.unsafe_body.inner,
@@ -280,7 +287,8 @@ impl ToDoc for Term {
                             Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(ann.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 ),
             )),
@@ -291,7 +299,8 @@ impl ToDoc for Term {
                             Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(term.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 ),
             )),
@@ -306,7 +315,8 @@ impl ToDoc for Term {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                )).append("]"),
+                ))
+                .append("]"),
         }
     }
 }
@@ -333,7 +343,8 @@ impl ToDoc for Value {
                             Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(ann.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 ),
             )),
@@ -344,7 +355,8 @@ impl ToDoc for Value {
                             Doc::as_string(label)
                                 .append(Doc::space())
                                 .append(term.to_doc().group()),
-                        ).append(Doc::newline())
+                        )
+                        .append(Doc::newline())
                     },
                 ),
             )),
@@ -352,7 +364,8 @@ impl ToDoc for Value {
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
-                )).append("]"),
+                ))
+                .append("]"),
             Value::Neutral(ref neutral, ref spine) if spine.is_empty() => neutral.to_doc(),
             Value::Neutral(ref neutral, ref spine) => {
                 pretty_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))

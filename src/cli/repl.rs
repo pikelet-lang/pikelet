@@ -134,8 +134,10 @@ pub fn run(color: ColorChoice, opts: &Opts) -> Result<(), Error> {
                 match eval_print(&mut pikelet, &codemap.add_filemap(filename, line)) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
-                    Err(diagnostics) => for diagnostic in diagnostics {
-                        codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                    Err(diagnostics) => {
+                        for diagnostic in diagnostics {
+                            codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
+                        }
                     },
                 }
             },

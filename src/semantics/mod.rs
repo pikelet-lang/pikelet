@@ -209,7 +209,8 @@ pub fn infer_pattern(
             Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
                 span: Some(raw_pattern.span()),
                 var: var.clone(),
-            }.into()),
+            }
+            .into()),
         },
         raw::Pattern::Literal(ref literal) => {
             let (literal, ty) = infer_literal(env, literal)?;
@@ -299,7 +300,8 @@ pub fn check_term(
                                 expected: ty_label,
                             })
                         }
-                    }).collect::<Result<_, _>>()?;
+                    })
+                    .collect::<Result<_, _>>()?;
 
                 Nest::new(fields)
             };
@@ -322,7 +324,8 @@ pub fn check_term(
                     let body = check_term(&body_env, &raw_body, expected_ty)?;
 
                     Ok(Scope::new(pattern, body))
-                }).collect::<Result<_, TypeError>>()?;
+                })
+                .collect::<Result<_, TypeError>>()?;
 
             return Ok(RcTerm::from(Term::Case(head, clauses)));
         },
@@ -422,7 +425,8 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
             Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
                 span: Some(raw_term.span()),
                 var: var.clone(),
-            }.into()),
+            }
+            .into()),
         },
 
         raw::Term::Import(_, name_span, ref name) => match env.get_import_declaration(name) {
@@ -504,7 +508,8 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
                         env.insert_declaration(free_var.clone(), ann_value);
 
                         Ok((Binder(free_var), Embed((ann, term))))
-                    }).collect::<Result<_, TypeError>>()?;
+                    })
+                    .collect::<Result<_, TypeError>>()?;
 
                 let (body, ty) = infer_term(&env, &raw_body)?;
                 let term = RcTerm::from(Term::Let(Scope::new(Nest::new(bindings), body)));
@@ -555,7 +560,8 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
                         env.insert_declaration(free_var.clone(), nf_ann);
 
                         Ok((label, Binder(free_var), Embed(ann)))
-                    }).collect::<Result<_, TypeError>>()?
+                    })
+                    .collect::<Result<_, TypeError>>()?
             };
 
             Ok((
@@ -654,7 +660,8 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
                     }
 
                     Ok(Scope::new(pattern, body))
-                }).collect::<Result<_, TypeError>>()?;
+                })
+                .collect::<Result<_, TypeError>>()?;
 
             match ty {
                 Some(ty) => Ok((RcTerm::from(Term::Case(head, clauses)), ty)),

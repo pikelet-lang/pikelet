@@ -57,7 +57,7 @@ impl DesugarEnv {
 pub enum DesugarError {
     #[fail(
         display = "Name had more than one declaration associated with it: `{}`",
-        name,
+        name
     )]
     DuplicateDeclarations {
         original_span: ByteSpan,
@@ -72,7 +72,7 @@ pub enum DesugarError {
     },
     #[fail(
         display = "Name had more than one definition associated with it: `{}`",
-        name,
+        name
     )]
     DuplicateDefinitions {
         original_span: ByteSpan,
@@ -92,10 +92,12 @@ impl DesugarError {
             } => Diagnostic::new_error(format!(
                 "name had more than one declaration associated with it `{}`",
                 name,
-            )).with_label(
+            ))
+            .with_label(
                 DiagnosticLabel::new_primary(duplicate_span)
                     .with_message("the duplicated declaration"),
-            ).with_label(
+            )
+            .with_label(
                 DiagnosticLabel::new_secondary(original_span)
                     .with_message("the original declaration"),
             ),
@@ -106,7 +108,8 @@ impl DesugarError {
             } => Diagnostic::new_error(format!("declarations cannot follow definitions"))
                 .with_label(
                     DiagnosticLabel::new_primary(declaration_span).with_message("the declaration"),
-                ).with_label(
+                )
+                .with_label(
                     DiagnosticLabel::new_secondary(definition_span)
                         .with_message("the original definition"),
                 ),
@@ -117,10 +120,12 @@ impl DesugarError {
             } => Diagnostic::new_error(format!(
                 "name had more than one definition associated with it `{}`",
                 name,
-            )).with_label(
+            ))
+            .with_label(
                 DiagnosticLabel::new_primary(duplicate_span)
                     .with_message("the duplicated definition"),
-            ).with_label(
+            )
+            .with_label(
                 DiagnosticLabel::new_secondary(original_span)
                     .with_message("the original definition"),
             ),
@@ -371,7 +376,8 @@ fn desugar_record_ty(
             };
 
             Ok((Label(label.clone()), Binder(free_var), Embed(ann)))
-        }).collect::<Result<Vec<_>, _>>()?;
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(raw::RcTerm::from(raw::Term::RecordType(
         span,
@@ -409,7 +415,8 @@ fn desugar_record(
                 let free_var = env.on_binding(name);
                 Ok((Label(name.clone()), Binder(free_var), Embed(expr)))
             },
-        }).collect::<Result<Vec<_>, _>>()?;
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(raw::RcTerm::from(raw::Term::Record(
         span,
@@ -550,7 +557,8 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                         .map(|(pattern, term)| {
                             let (pattern, env) = pattern.desugar(env)?;
                             Ok(Scope::new(pattern, term.desugar(&env)?))
-                        }).collect::<Result<_, _>>()?,
+                        })
+                        .collect::<Result<_, _>>()?,
                 )))
             },
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(env, span, fields),

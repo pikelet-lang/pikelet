@@ -523,7 +523,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         },
                         ann,
                     }
-                }).collect();
+                })
+                .collect();
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
@@ -548,7 +549,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         return_ann: None,
                         term: term_body,
                     }
-                }).collect();
+                })
+                .collect();
 
             // TODO: Add let to rename shadowed globals?
             concrete::Term::Record(ByteSpan::default(), fields)
@@ -580,7 +582,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         resugar_pattern(&mut env, &pattern, Prec::NO_WRAP),
                         resugar_term(&env, &term, Prec::NO_WRAP),
                     )
-                }).collect(),
+                })
+                .collect(),
         ),
         core::Term::Array(ref elems) => concrete::Term::Array(
             ByteSpan::default(),

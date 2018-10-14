@@ -244,7 +244,8 @@ impl TcEnv {
             .filter_map(|(free_var, _)| {
                 let pretty_name = free_var.pretty_name.as_ref()?;
                 Some((pretty_name.clone(), free_var.clone()))
-            }).collect()
+            })
+            .collect()
     }
 }
 

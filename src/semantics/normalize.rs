@@ -131,7 +131,8 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
                     .into_iter()
                     .map(|(label, binder, Embed(ann))| {
                         Ok((label, binder, Embed(nf_term(env, &ann)?)))
-                    }).collect::<Result<_, _>>()?,
+                    })
+                    .collect::<Result<_, _>>()?,
             );
 
             Ok(RcValue::from(Value::RecordType(Scope::new(fields, ()))))
@@ -146,7 +147,8 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
                     .into_iter()
                     .map(|(label, binder, Embed(term))| {
                         Ok((label, binder, Embed(nf_term(env, &term)?)))
-                    }).collect::<Result<_, _>>()?,
+                    })
+                    .collect::<Result<_, _>>()?,
             );
 
             Ok(RcValue::from(Value::Record(Scope::new(fields, ()))))
@@ -192,7 +194,8 @@ pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
                             .map(|clause| {
                                 let (pattern, body) = clause.clone().unbind();
                                 Ok(Scope::new(pattern, nf_term(env, &body)?))
-                            }).collect::<Result<_, _>>()?,
+                            })
+                            .collect::<Result<_, _>>()?,
                     )),
                     spine.clone(),
                 )))
