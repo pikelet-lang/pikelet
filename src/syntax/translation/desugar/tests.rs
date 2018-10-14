@@ -13,7 +13,7 @@ fn golden(filename: &str, literal: &str) {
 
     let mut mint = Mint::new(path);
     let mut file = mint.new_goldenfile(filename).unwrap();
-    let env = DesugarEnv::new(HashMap::new());
+    let env = DesugarEnv::new(im::HashMap::new());
 
     let term = parse_desugar_term(&env, literal);
 
@@ -68,7 +68,7 @@ mod term {
 
     #[test]
     fn free_var() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         match *parse_desugar_term(&env, r"or-elim").inner {
             raw::Term::Var(_, Var::Free(ref free_var), LevelShift(0)) => {
@@ -110,7 +110,7 @@ mod term {
 
     #[test]
     fn lam_ann() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
 
@@ -134,7 +134,7 @@ mod term {
 
     #[test]
     fn lam() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
         let y = FreeVar::fresh_named("y");
@@ -160,7 +160,7 @@ mod term {
 
     #[test]
     fn lam_lam_ann() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
         let y = FreeVar::fresh_named("y");
@@ -182,7 +182,7 @@ mod term {
 
     #[test]
     fn arrow() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
             parse_desugar_term(&env, r"Type -> Type"),
@@ -195,7 +195,7 @@ mod term {
 
     #[test]
     fn pi() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
 
@@ -219,7 +219,7 @@ mod term {
 
     #[test]
     fn pi_pi() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
         let y = FreeVar::fresh_named("y");
@@ -241,7 +241,7 @@ mod term {
 
     #[test]
     fn pi_arrow() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
 
@@ -262,7 +262,7 @@ mod term {
 
     #[test]
     fn lam_app() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
         let y = FreeVar::fresh_named("y");
@@ -293,7 +293,7 @@ mod term {
 
     #[test]
     fn id() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let x = FreeVar::fresh_named("x");
         let a = FreeVar::fresh_named("a");
@@ -315,7 +315,7 @@ mod term {
 
     #[test]
     fn id_ty() {
-        let env = DesugarEnv::new(HashMap::new());
+        let env = DesugarEnv::new(im::HashMap::new());
 
         let a = FreeVar::fresh_named("a");
 
@@ -337,7 +337,7 @@ mod term {
     #[test]
     fn let_forward_declarations() {
         let mut codemap = CodeMap::new();
-        let desugar_env = DesugarEnv::new(HashMap::new());
+        let desugar_env = DesugarEnv::new(im::HashMap::new());
 
         let src = "
             let
@@ -359,7 +359,7 @@ mod term {
     // #[test]
     // fn let_forward_declarations_forward_ref() {
     //     let mut codemap = CodeMap::new();
-    //     let desugar_env = DesugarEnv::new(HashMap::new());
+    //     let desugar_env = DesugarEnv::new(im::HashMap::new());
 
     //     let src = "
     //         let
@@ -381,7 +381,7 @@ mod term {
     #[test]
     fn let_declaration_after_definition() {
         let mut codemap = CodeMap::new();
-        let desugar_env = DesugarEnv::new(HashMap::new());
+        let desugar_env = DesugarEnv::new(im::HashMap::new());
 
         let src = "
             let
@@ -401,7 +401,7 @@ mod term {
     #[test]
     fn let_duplicate_declarations() {
         let mut codemap = CodeMap::new();
-        let desugar_env = DesugarEnv::new(HashMap::new());
+        let desugar_env = DesugarEnv::new(im::HashMap::new());
 
         let src = "
             let
@@ -421,7 +421,7 @@ mod term {
     #[test]
     fn let_duplicate_definitions() {
         let mut codemap = CodeMap::new();
-        let desugar_env = DesugarEnv::new(HashMap::new());
+        let desugar_env = DesugarEnv::new(im::HashMap::new());
 
         let src = "
             let
@@ -443,7 +443,7 @@ mod term {
 
         #[test]
         fn lam_args() {
-            let env = DesugarEnv::new(HashMap::new());
+            let env = DesugarEnv::new(im::HashMap::new());
 
             assert_term_eq!(
                 parse_desugar_term(&env, r"\x (y : Type) z => x"),
@@ -453,7 +453,7 @@ mod term {
 
         #[test]
         fn lam_args_multi() {
-            let env = DesugarEnv::new(HashMap::new());
+            let env = DesugarEnv::new(im::HashMap::new());
 
             assert_term_eq!(
                 parse_desugar_term(&env, r"\(x : Type) (y : Type) z => x"),
@@ -463,7 +463,7 @@ mod term {
 
         #[test]
         fn pi_args() {
-            let env = DesugarEnv::new(HashMap::new());
+            let env = DesugarEnv::new(im::HashMap::new());
 
             assert_term_eq!(
                 parse_desugar_term(&env, r"(a : Type) -> (x y z : a) -> x"),
@@ -473,7 +473,7 @@ mod term {
 
         #[test]
         fn pi_args_multi() {
-            let env = DesugarEnv::new(HashMap::new());
+            let env = DesugarEnv::new(im::HashMap::new());
 
             assert_term_eq!(
                 parse_desugar_term(&env, r"(a : Type) (x y z : a) (w : x) -> x"),
@@ -486,7 +486,7 @@ mod term {
 
         #[test]
         fn arrow() {
-            let env = DesugarEnv::new(HashMap::new());
+            let env = DesugarEnv::new(im::HashMap::new());
 
             assert_term_eq!(
                 parse_desugar_term(&env, r"(a : Type) -> a -> a"),

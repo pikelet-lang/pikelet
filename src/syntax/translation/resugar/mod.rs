@@ -1,5 +1,5 @@
 use codespan::{ByteIndex, ByteSpan};
-use im::HashMap;
+use im;
 use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::concrete;
@@ -12,8 +12,8 @@ mod tests;
 /// The environment used when resugaring from the core to the concrete syntax
 #[derive(Debug, Clone)]
 pub struct ResugarEnv {
-    usages: HashMap<String, u32>,
-    renames: HashMap<FreeVar<String>, String>,
+    usages: im::HashMap<String, u32>,
+    renames: im::HashMap<FreeVar<String>, String>,
 }
 
 const KEYWORDS: &[&str] = &[
@@ -24,7 +24,7 @@ impl ResugarEnv {
     pub fn new() -> ResugarEnv {
         ResugarEnv {
             usages: KEYWORDS.iter().map(|&kw| (kw.to_owned(), 0)).collect(),
-            renames: HashMap::new(),
+            renames: im::HashMap::new(),
         }
     }
 
@@ -523,8 +523,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         },
                         ann,
                     }
-                })
-                .collect();
+                }).collect();
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
@@ -549,8 +548,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         return_ann: None,
                         term: term_body,
                     }
-                })
-                .collect();
+                }).collect();
 
             // TODO: Add let to rename shadowed globals?
             concrete::Term::Record(ByteSpan::default(), fields)
@@ -582,8 +580,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                         resugar_pattern(&mut env, &pattern, Prec::NO_WRAP),
                         resugar_term(&env, &term, Prec::NO_WRAP),
                     )
-                })
-                .collect(),
+                }).collect(),
         ),
         core::Term::Array(ref elems) => concrete::Term::Array(
             ByteSpan::default(),

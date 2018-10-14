@@ -1,6 +1,6 @@
 use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use codespan_reporting::{Diagnostic, Label as DiagnosticLabel};
-use im::HashMap;
+use im;
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::concrete;
@@ -20,11 +20,11 @@ pub struct DesugarEnv {
     ///
     /// If we arrive at a variable that has not already been assigned a free name,
     /// we assume that it is a global name.
-    locals: HashMap<String, FreeVar<String>>,
+    locals: im::HashMap<String, FreeVar<String>>,
 }
 
 impl DesugarEnv {
-    pub fn new(mappings: HashMap<String, FreeVar<String>>) -> DesugarEnv {
+    pub fn new(mappings: im::HashMap<String, FreeVar<String>>) -> DesugarEnv {
         DesugarEnv { locals: mappings }
     }
 
