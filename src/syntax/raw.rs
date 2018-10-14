@@ -110,8 +110,8 @@ pub enum Term {
     Hole(ByteSpan),
     /// A variable
     Var(ByteSpan, Var<String>, LevelShift),
-    /// An external definition
-    Extern(ByteSpan, ByteSpan, String),
+    /// An imported definition
+    Import(ByteSpan, ByteSpan, String),
     /// Dependent function types
     Pi(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
@@ -147,7 +147,7 @@ impl Term {
             Term::Universe(span, ..)
             | Term::Hole(span)
             | Term::Var(span, ..)
-            | Term::Extern(span, ..)
+            | Term::Import(span, ..)
             | Term::Pi(span, ..)
             | Term::Lam(span, ..)
             | Term::RecordType(span, ..)

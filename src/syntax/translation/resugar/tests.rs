@@ -96,9 +96,9 @@ mod term {
     }
 
     #[test]
-    fn extern_() {
-        let core_term = core::Term::Extern("type".to_owned());
-        let concrete_term = concrete::Term::Extern(span(), span(), "type".to_owned());
+    fn import() {
+        let core_term = core::Term::Import("type".to_owned());
+        let concrete_term = concrete::Term::Import(span(), span(), "type".to_owned());
 
         assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
     }

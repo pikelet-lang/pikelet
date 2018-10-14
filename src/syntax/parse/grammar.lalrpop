@@ -33,7 +33,6 @@ extern {
         "as" => Token::As,
         "case" => Token::Case,
         "else" => Token::Else,
-        "extern" => Token::Extern,
         "if" => Token::If,
         "import" => Token::Import,
         "in" => Token::In,
@@ -157,8 +156,9 @@ pub Term: Term = {
 
 LamTerm: Term = {
     PiTerm,
-    <start: @L> "extern" <name_start: @L> <name: "string literal"> <end: @R> => {
-        Term::Extern(ByteSpan::new(start, end), ByteSpan::new(name_start, end), name)
+    <start: @L> "import" <path_start: @L> <path: "string literal"> <end: @R> => {
+        import_paths.push(path.clone());
+        Term::Import(ByteSpan::new(start, end), ByteSpan::new(path_start, end), path)
     },
     <start: @L> "\\" <name: IndexedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
         Term::Lam(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
@@ -218,10 +218,6 @@ AtomicTerm: Term = {
     <start: @L> "?" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
     <start: @L> <ident: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
         Term::Name(ByteSpan::new(start, end), ident, shift.map(|x| x as u32)) // FIXME: underflow?
-    },
-    <start: @L> "import" <path_start: @L> <path: "string literal"> <end: @R> => {
-        import_paths.push(path.clone());
-        Term::Import(ByteSpan::new(start, end), ByteSpan::new(path_start, end), path)
     },
     <start: @L> "Record" "{" <fields: (<RecordTypeField> ";")*> <last: RecordTypeField?> "}" <end: @R> => {
         let mut fields = fields;

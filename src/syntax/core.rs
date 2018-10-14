@@ -91,8 +91,8 @@ pub enum Term {
     Literal(Literal),
     /// A variable
     Var(Var<String>, LevelShift),
-    /// An external definition
-    Extern(String),
+    /// An imported definition
+    Import(String),
     /// Dependent function types
     Pi(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
     /// Lambda abstractions
@@ -146,7 +146,7 @@ impl RcTerm {
                 Some(&(_, ref term)) => term.clone(),
                 None => self.clone(),
             },
-            Term::Extern(ref name) => RcTerm::from(Term::Extern(name.clone())),
+            Term::Import(ref name) => RcTerm::from(Term::Import(name.clone())),
             Term::Pi(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
                 RcTerm::from(Term::Pi(Scope {
@@ -342,7 +342,7 @@ impl Value {
     pub fn free_var_app(&self) -> Option<(&FreeVar<String>, LevelShift, &[RcValue])> {
         self.head_app().and_then(|(head, spine)| match *head {
             Head::Var(Var::Free(ref free_var), shift) => Some((free_var, shift, &spine[..])),
-            Head::Extern(_) | Head::Var(Var::Bound(_), _) => None,
+            Head::Import(_) | Head::Var(Var::Bound(_), _) => None,
         })
     }
 }
@@ -413,8 +413,8 @@ impl fmt::Display for RcValue {
 pub enum Head {
     /// Variables that have not yet been replaced with a definition
     Var(Var<String>, LevelShift),
-    /// External definitions
-    Extern(String),
+    /// Imported definitions
+    Import(String),
     // TODO: Metavariables
 }
 
@@ -461,7 +461,7 @@ impl RcNeutral {
             // Neutral::Head(Head::Var(_, ref mut head_shift)) => {
             //     *head_shift += shift; // NOTE: Not sure if this is correct!
             // },
-            Neutral::Head(Head::Var(_, _)) | Neutral::Head(Head::Extern(_)) => {},
+            Neutral::Head(Head::Var(_, _)) | Neutral::Head(Head::Import(_)) => {},
             Neutral::Proj(ref mut expr, _, _) => expr.shift_universes(shift),
             Neutral::Case(ref mut expr, ref mut clauses) => {
                 expr.shift_universes(shift);
@@ -601,7 +601,7 @@ impl<'a> From<&'a Head> for Term {
     fn from(src: &'a Head) -> Term {
         match *src {
             Head::Var(ref var, shift) => Term::Var(var.clone(), shift),
-            Head::Extern(ref name) => Term::Extern(name.clone()),
+            Head::Import(ref name) => Term::Import(name.clone()),
         }
     }
 }

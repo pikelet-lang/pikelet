@@ -134,8 +134,6 @@ pub enum TypeError {
     AmbiguousIntLiteral { span: ByteSpan },
     #[fail(display = "Ambiguous floating point literal")]
     AmbiguousFloatLiteral { span: ByteSpan },
-    #[fail(display = "Ambiguous extern definition")]
-    AmbiguousExtern { span: ByteSpan },
     #[fail(display = "Empty case expressions need type annotations.")]
     AmbiguousEmptyCase { span: ByteSpan },
     #[fail(
@@ -171,8 +169,8 @@ pub enum TypeError {
         span: ByteSpan,
         free_var: FreeVar<String>,
     },
-    #[fail(display = "Undefined extern name `{:?}`", name)]
-    UndefinedExternName { span: ByteSpan, name: String },
+    #[fail(display = "Undefined import `{:?}`", name)]
+    UndefinedImport { span: ByteSpan, name: String },
     #[fail(
         display = "Label mismatch: found label `{}` but `{}` was expected",
         found,
@@ -305,9 +303,6 @@ impl TypeError {
             TypeError::AmbiguousFloatLiteral { span } => Diagnostic::new_error(
                 "ambiguous floating point literal",
             ).with_label(Label::new_primary(span).with_message("type annotation needed here")),
-            TypeError::AmbiguousExtern { span } => Diagnostic::new_error(
-                "ambiguous extern definition",
-            ).with_label(Label::new_primary(span).with_message("type annotation needed here")),
             TypeError::AmbiguousEmptyCase { span } => Diagnostic::new_error(
                 "empty case expressions need type annotations",
             ).with_label(Label::new_primary(span).with_message("type annotation needed here")),
@@ -347,11 +342,9 @@ impl TypeError {
                 Diagnostic::new_bug(format!("cannot find `{}` in scope", free_var))
                     .with_label(Label::new_primary(span).with_message("not found in this scope"))
             },
-            TypeError::UndefinedExternName { span, ref name } => {
-                Diagnostic::new_error(format!("cannot find external definition for `{:?}`", name))
-                    .with_label(
-                        Label::new_primary(span).with_message("external definition not found"),
-                    )
+            TypeError::UndefinedImport { span, ref name } => {
+                Diagnostic::new_error(format!("cannot find import for `{:?}`", name))
+                    .with_label(Label::new_primary(span).with_message("import not found"))
             },
             TypeError::LabelMismatch {
                 span,

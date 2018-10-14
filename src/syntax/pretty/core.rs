@@ -29,8 +29,8 @@ fn pretty_var(var: &Var<String>, shift: LevelShift) -> StaticDoc {
     sexpr("var", Doc::text(format!("{:#}^{}", var, shift)))
 }
 
-fn pretty_extern(name: &str) -> StaticDoc {
-    sexpr("extern", Doc::text(format!("{:?}", name)))
+fn pretty_import(name: &str) -> StaticDoc {
+    sexpr("import", Doc::text(format!("{:?}", name)))
 }
 
 fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
@@ -142,7 +142,7 @@ impl ToDoc for raw::Term {
             raw::Term::Hole(_) => parens(Doc::text("hole")),
             raw::Term::Literal(ref literal) => literal.to_doc(),
             raw::Term::Var(_, ref var, shift) => pretty_var(var, shift),
-            raw::Term::Extern(_, _, ref name) => pretty_extern(name),
+            raw::Term::Import(_, _, ref name) => pretty_import(name),
             raw::Term::Lam(_, ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
@@ -247,7 +247,7 @@ impl ToDoc for Term {
             Term::Universe(level) => pretty_universe(level),
             Term::Literal(ref literal) => literal.to_doc(),
             Term::Var(ref var, shift) => pretty_var(var, shift),
-            Term::Extern(ref name) => pretty_extern(name),
+            Term::Import(ref name) => pretty_import(name),
             Term::Lam(ref scope) => pretty_lam(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
@@ -380,7 +380,7 @@ impl ToDoc for Head {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Head::Var(ref var, shift) => pretty_var(var, shift),
-            Head::Extern(ref name) => pretty_extern(name),
+            Head::Import(ref name) => pretty_import(name),
         }
     }
 }

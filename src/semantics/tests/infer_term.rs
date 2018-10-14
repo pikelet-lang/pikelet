@@ -1,38 +1,6 @@
 use super::*;
 
 #[test]
-fn prelude() {
-    use library;
-
-    let mut codemap = CodeMap::new();
-    let filemap = codemap.add_filemap(FileName::virtual_("test"), library::PRELUDE.into());
-    let writer = StandardStream::stdout(ColorChoice::Always);
-
-    let (concrete_term, _import_paths, errors) = parse::term(&filemap);
-    if !errors.is_empty() {
-        for error in errors {
-            codespan_reporting::emit(&mut writer.lock(), &codemap, &error.to_diagnostic()).unwrap();
-        }
-        panic!("parse error!")
-    }
-
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
-    let raw_term = match concrete_term.desugar(&desugar_env) {
-        Ok(raw_term) => raw_term,
-        Err(err) => {
-            codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
-            panic!("desugar error!")
-        },
-    };
-
-    if let Err(err) = infer_term(&tc_env, &raw_term) {
-        codespan_reporting::emit(&mut writer.lock(), &codemap, &err.to_diagnostic()).unwrap();
-        panic!("type error!")
-    }
-}
-
-#[test]
 fn undefined_name() {
     use syntax::LevelShift;
 
@@ -55,19 +23,19 @@ fn undefined_name() {
 }
 
 #[test]
-fn extern_not_found() {
+fn import_not_found() {
     let mut codemap = CodeMap::new();
     let tc_env = TcEnv::default();
     let desugar_env = DesugarEnv::new(tc_env.mappings());
 
-    let given_expr = r#"extern "does-not-exist" : Record {}"#;
+    let given_expr = r#"import "does-not-exist" : Record {}"#;
 
     let raw_term = parse_term(&mut codemap, given_expr)
         .desugar(&desugar_env)
         .unwrap();
 
     match infer_term(&tc_env, &raw_term) {
-        Err(TypeError::UndefinedExternName { .. }) => {},
+        Err(TypeError::UndefinedImport { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
     }
@@ -565,7 +533,7 @@ fn case_expr() {
     let given_expr = r#"case "helloo" {
         "hi" => "haha";
         "hello" => "byee";
-        greeting => (extern "string-append" : String -> String -> String) greeting "!!";
+        greeting => (import "prim/string/append") greeting "!!";
     }"#;
 
     assert_term_eq!(

@@ -260,16 +260,10 @@ pub enum Term {
     /// x^1
     /// ```
     Name(ByteSpan, String, Option<u32>),
-    /// Extern definitions
+    /// An imported definition
     ///
     /// ```text
-    /// extern "extern-name"
-    /// ```
-    Extern(ByteSpan, ByteSpan, String),
-    /// An imported term
-    ///
-    /// ```text
-    /// import "prelude.pi"
+    /// import "prelude"
     /// ```
     Import(ByteSpan, ByteSpan, String),
     /// Lambda abstraction
@@ -366,7 +360,6 @@ impl Term {
             | Term::Universe(span, ..)
             | Term::Hole(span)
             | Term::Name(span, ..)
-            | Term::Extern(span, ..)
             | Term::Import(span, ..)
             | Term::Case(span, ..)
             | Term::RecordType(span, ..)

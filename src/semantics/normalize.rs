@@ -2,14 +2,10 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{Head, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcValue, Term, Value};
 
-use semantics::errors::InternalError;
-use semantics::DefinitionEnv;
+use semantics::{Import, InternalError, TcEnv};
 
 /// Reduce a term to its normal form
-pub fn nf_term<Env>(env: &Env, term: &RcTerm) -> Result<RcValue, InternalError>
-where
-    Env: DefinitionEnv,
-{
+pub fn nf_term(env: &TcEnv, term: &RcTerm) -> Result<RcValue, InternalError> {
     match *term.inner {
         // E-ANN
         Term::Ann(ref expr, _) => nf_term(env, expr),
@@ -39,9 +35,18 @@ where
             }),
         },
 
-        Term::Extern(ref name) => Ok(RcValue::from(Value::from(Neutral::Head(Head::Extern(
-            name.clone(),
-        ))))),
+        Term::Import(ref name) => match env.get_import_definition(name) {
+            Some(Import::Term(ref term)) => nf_term(env, term),
+            Some(Import::Prim(ref interpretation)) => match interpretation(&[]) {
+                Some(value) => Ok(value),
+                None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Import(
+                    name.clone(),
+                ))))),
+            },
+            None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Import(
+                name.clone(),
+            ))))),
+        },
 
         // E-PI
         Term::Pi(ref scope) => {
@@ -76,20 +81,21 @@ where
                     let mut spine = spine.clone();
 
                     match *neutral.inner {
-                        Neutral::Head(Head::Extern(ref name)) => {
+                        Neutral::Head(Head::Import(ref name)) => {
                             spine.push(arg);
 
-                            // Apply the arguments to primitive definitions if the number of
-                            // arguments matches the arity of the primitive, all aof the arguments
-                            // are fully nfd
-                            if let Some(prim) = env.get_extern_definition(name) {
-                                if prim.arity == spine.len() && spine.iter().all(|arg| arg.is_nf())
-                                {
-                                    match (prim.interpretation)(spine) {
-                                        Ok(value) => return Ok(value),
-                                        Err(()) => unimplemented!("proper error"),
+                            match env.get_import_definition(name) {
+                                Some(Import::Term(ref _term)) => {
+                                    // nf_term(env, term)
+                                    unimplemented!("import applications")
+                                },
+                                Some(Import::Prim(ref interpretation)) => {
+                                    match interpretation(&spine) {
+                                        Some(value) => return Ok(value),
+                                        None => {},
                                     }
-                                }
+                                },
+                                None => {},
                             }
                         },
                         Neutral::Head(Head::Var(..)) | Neutral::Proj(..) | Neutral::Case(..) => {
@@ -217,14 +223,11 @@ where
 
 /// If the pattern matches the value, this function returns the substitutions
 /// needed to apply the pattern to some body expression
-pub fn match_value<Env>(
-    env: &Env,
+pub fn match_value(
+    env: &TcEnv,
     pattern: &RcPattern,
     value: &RcValue,
-) -> Result<Option<Vec<(FreeVar<String>, RcValue)>>, InternalError>
-where
-    Env: DefinitionEnv,
-{
+) -> Result<Option<Vec<(FreeVar<String>, RcValue)>>, InternalError> {
     match (&*pattern.inner, &*value.inner) {
         (&Pattern::Binder(Binder(ref free_var)), _) => {
             Ok(Some(vec![(free_var.clone(), value.clone())]))
