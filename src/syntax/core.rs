@@ -171,7 +171,8 @@ impl RcTerm {
                             binder.clone(),
                             Embed((ann.substs(mappings), term.substs(mappings))),
                         )
-                    }).collect();
+                    })
+                    .collect();
 
                 RcTerm::from(Term::Let(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
@@ -193,7 +194,8 @@ impl RcTerm {
                     .iter()
                     .map(|&(ref label, ref binder, Embed(ref ann))| {
                         (label.clone(), binder.clone(), Embed(ann.substs(mappings)))
-                    }).collect();
+                    })
+                    .collect();
 
                 RcTerm::from(Term::RecordType(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
@@ -207,7 +209,8 @@ impl RcTerm {
                     .iter()
                     .map(|&(ref label, ref binder, Embed(ref expr))| {
                         (label.clone(), binder.clone(), Embed(expr.substs(mappings)))
-                    }).collect();
+                    })
+                    .collect();
 
                 RcTerm::from(Term::Record(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
@@ -226,7 +229,8 @@ impl RcTerm {
                             unsafe_pattern: scope.unsafe_pattern.clone(), // subst?
                             unsafe_body: scope.unsafe_body.substs(mappings),
                         }
-                    }).collect(),
+                    })
+                    .collect(),
             )),
             Term::Array(ref elems) => RcTerm::from(Term::Array(
                 elems.iter().map(|elem| elem.substs(mappings)).collect(),
@@ -373,8 +377,10 @@ impl RcValue {
                     term.shift_universes(shift);
                 }
             },
-            Value::Array(ref mut elems) => for elem in elems {
-                elem.shift_universes(shift);
+            Value::Array(ref mut elems) => {
+                for elem in elems {
+                    elem.shift_universes(shift);
+                }
             },
             Value::Neutral(ref mut neutral, ref mut spine) => {
                 neutral.shift_universes(shift);
@@ -532,7 +538,8 @@ impl<'a> From<&'a Value> for Term {
                     .iter()
                     .map(|&(ref label, ref binder, Embed(ref ann))| {
                         (label.clone(), binder.clone(), Embed(RcTerm::from(&**ann)))
-                    }).collect();
+                    })
+                    .collect();
 
                 Term::RecordType(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
@@ -546,7 +553,8 @@ impl<'a> From<&'a Value> for Term {
                     .iter()
                     .map(|&(ref label, ref binder, Embed(ref expr))| {
                         (label.clone(), binder.clone(), Embed(RcTerm::from(&**expr)))
-                    }).collect();
+                    })
+                    .collect();
 
                 Term::Record(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
@@ -585,7 +593,8 @@ impl<'a> From<&'a Neutral> for Term {
                     .map(|clause| Scope {
                         unsafe_pattern: clause.unsafe_pattern.clone(),
                         unsafe_body: RcTerm::from(&*clause.unsafe_body),
-                    }).collect(),
+                    })
+                    .collect(),
             ),
         }
     }

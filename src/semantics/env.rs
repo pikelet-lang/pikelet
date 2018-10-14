@@ -1,4 +1,4 @@
-use im::HashMap;
+use im;
 use moniker::{Binder, FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
@@ -228,23 +228,24 @@ pub struct TcEnv {
     /// The globals
     globals: Rc<Globals>,
     /// Imported declarations
-    import_declarations: HashMap<String, RcType>,
+    import_declarations: im::HashMap<String, RcType>,
     /// Imported definitions
-    import_definitions: HashMap<String, Import>,
+    import_definitions: im::HashMap<String, Import>,
     /// The type annotations of the binders we have passed over
-    declarations: HashMap<FreeVar<String>, RcType>,
+    declarations: im::HashMap<FreeVar<String>, RcType>,
     /// Any definitions we have passed over
-    definitions: HashMap<FreeVar<String>, RcTerm>,
+    definitions: im::HashMap<FreeVar<String>, RcTerm>,
 }
 
 impl TcEnv {
-    pub fn mappings(&self) -> HashMap<String, FreeVar<String>> {
+    pub fn mappings(&self) -> im::HashMap<String, FreeVar<String>> {
         self.declarations
             .iter()
             .filter_map(|(free_var, _)| {
                 let pretty_name = free_var.pretty_name.as_ref()?;
                 Some((pretty_name.clone(), free_var.clone()))
-            }).collect()
+            })
+            .collect()
     }
 }
 
@@ -289,10 +290,10 @@ impl Default for TcEnv {
                 ty_f64: RcValue::from(Value::var(Var::Free(var_f64.clone()), 0)),
                 var_array: var_array.clone(),
             }),
-            import_declarations: HashMap::new(),
-            import_definitions: HashMap::new(),
-            declarations: HashMap::new(),
-            definitions: HashMap::new(),
+            import_declarations: im::HashMap::new(),
+            import_definitions: im::HashMap::new(),
+            declarations: im::HashMap::new(),
+            definitions: im::HashMap::new(),
         };
 
         let universe0 = RcValue::from(Value::universe(0));

@@ -31,15 +31,18 @@ impl ToDoc for Item {
                 .append(match params[..] {
                     [] => Doc::nil(),
                     _ => pretty_lam_params(params).append(Doc::space()),
-                }).append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
+                })
+                .append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
                     Doc::text(":")
                         .append(return_ann.to_doc())
                         .append(Doc::space())
-                })).append("=")
+                }))
+                .append("=")
                 .append(Doc::space())
                 .append(body.to_doc().nest(INDENT_WIDTH)),
             Item::Error(_) => Doc::text("<error>"),
-        }.append(";")
+        }
+        .append(";")
     }
 }
 
@@ -92,7 +95,8 @@ impl ToDoc for Term {
                 .append(Doc::intersperse(
                     elems.iter().map(Term::to_doc),
                     Doc::text(";").append(Doc::space()),
-                )).append("]"),
+                ))
+                .append("]"),
             Term::Hole(_) => Doc::text("_"),
             Term::Name(_, ref name, None) => Doc::text(format!("{}", name)),
             Term::Name(_, ref name, Some(shift)) => Doc::text(format!("{}^{}", name, shift)),
@@ -126,7 +130,8 @@ impl ToDoc for Term {
                         // FIXME: Indentation
                         items.iter().map(|item| item.to_doc()),
                         Doc::newline(),
-                    )).append("in")
+                    ))
+                    .append("in")
                     .append(body.to_doc())
             },
             Term::Where(ref expr, ref items, _) => expr
@@ -137,7 +142,8 @@ impl ToDoc for Term {
                 .append(Doc::intersperse(
                     items.iter().map(|item| item.to_doc().group()),
                     Doc::newline(),
-                )).append(Doc::newline())
+                ))
+                .append(Doc::newline())
                 .nest(INDENT_WIDTH)
                 .append("}"),
             Term::If(_, ref cond, ref if_true, ref if_false) => Doc::text("if")
@@ -170,7 +176,8 @@ impl ToDoc for Term {
                             .append(";")
                     }),
                     Doc::newline(),
-                )).append(Doc::newline())
+                ))
+                .append(Doc::newline())
                 .nest(INDENT_WIDTH)
                 .append("}"),
             Term::RecordType(_, ref fields) if fields.is_empty() => Doc::text("Record {}"),
@@ -187,14 +194,16 @@ impl ToDoc for Term {
                                         .append(Doc::space())
                                         .append(Doc::as_string(binder)),
                                     None => Doc::nil(),
-                                }).append(Doc::space())
+                                })
+                                .append(Doc::space())
                                 .append(":")
                                 .append(Doc::space())
                                 .append(field.ann.to_doc()),
                         )
                     }),
                     Doc::text(";").append(Doc::space()),
-                )).nest(INDENT_WIDTH)
+                ))
+                .nest(INDENT_WIDTH)
                 .append(Doc::space())
                 .append("}"),
             Term::Record(_, ref fields) => Doc::text("record {")
@@ -219,17 +228,20 @@ impl ToDoc for Term {
                                 .append(match params[..] {
                                     [] => Doc::nil(),
                                     _ => pretty_lam_params(params).append(Doc::space()),
-                                }).append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
+                                })
+                                .append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
                                     Doc::text(":")
                                         .append(return_ann.to_doc())
                                         .append(Doc::space())
-                                })).append("=")
+                                }))
+                                .append("=")
                                 .append(Doc::space())
                                 .append(term.to_doc()),
                         ),
                     }),
                     Doc::text(";").append(Doc::space()),
-                )).nest(INDENT_WIDTH)
+                ))
+                .nest(INDENT_WIDTH)
                 .append(Doc::space())
                 .append("}"),
             Term::Proj(_, ref expr, _, ref label, None) => {
@@ -253,7 +265,8 @@ fn pretty_lam_params(params: &[LamParamGroup]) -> StaticDoc {
                 .append(Doc::intersperse(
                     names.iter().map(|name| Doc::as_string(&name.1)),
                     Doc::space(),
-                )).append(Doc::space())
+                ))
+                .append(Doc::space())
                 .append(":")
                 .append(Doc::space())
                 .append(ann.to_doc())
@@ -270,7 +283,8 @@ fn pretty_pi_params(params: &[PiParamGroup]) -> StaticDoc {
                 .append(Doc::intersperse(
                     names.iter().map(|name| Doc::as_string(&name.1)),
                     Doc::space(),
-                )).append(Doc::space())
+                ))
+                .append(Doc::space())
                 .append(":")
                 .append(Doc::space())
                 .append(ann.to_doc())
