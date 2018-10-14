@@ -6,9 +6,6 @@ use syntax::concrete;
 use syntax::core;
 use syntax::{Label, Level, LevelShift};
 
-#[cfg(test)]
-mod tests;
-
 /// The environment used when resugaring from the core to the concrete syntax
 #[derive(Debug, Clone)]
 pub struct ResugarEnv {

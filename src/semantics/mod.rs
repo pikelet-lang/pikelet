@@ -14,8 +14,6 @@ use syntax::Level;
 mod env;
 mod errors;
 mod normalize;
-#[cfg(test)]
-mod tests;
 
 pub use self::env::{Globals, Import, TcEnv};
 pub use self::errors::{InternalError, TypeError};

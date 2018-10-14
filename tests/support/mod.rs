@@ -1,14 +1,16 @@
-use codespan::{ByteIndex, CodeMap, FileName};
+#![allow(dead_code)]
+
+use codespan::{CodeMap, FileName};
 use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 
-use syntax::concrete;
-use syntax::parse;
-use syntax::translation::{Desugar, DesugarEnv};
+use pikelet::semantics::{self, TcEnv};
+use pikelet::syntax::concrete;
+use pikelet::syntax::core::{RcTerm, RcType, RcValue};
+use pikelet::syntax::parse;
+use pikelet::syntax::translation::{Desugar, DesugarEnv};
 
-use super::*;
-
-fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
+pub fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
     let (concrete_term, _import_paths, errors) = parse::term(&filemap);
 
@@ -23,11 +25,11 @@ fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
     concrete_term
 }
 
-fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm, RcType) {
+pub fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm, RcType) {
     let raw_term = parse_term(codemap, src)
         .desugar(&DesugarEnv::new(tc_env.mappings()))
         .unwrap();
-    match infer_term(tc_env, &raw_term) {
+    match semantics::infer_term(tc_env, &raw_term) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -37,9 +39,9 @@ fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm
     }
 }
 
-fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
+pub fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
     let term = parse_infer_term(codemap, tc_env, src).0;
-    match nf_term(tc_env, &term) {
+    match semantics::nf_term(tc_env, &term) {
         Ok(value) => value,
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -49,11 +51,11 @@ fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
     }
 }
 
-fn parse_check_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str, expected: &RcType) {
+pub fn parse_check_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str, expected: &RcType) {
     let raw_term = parse_term(codemap, src)
         .desugar(&DesugarEnv::new(tc_env.mappings()))
         .unwrap();
-    match check_term(tc_env, &raw_term, expected) {
+    match semantics::check_term(tc_env, &raw_term, expected) {
         Ok(_) => {},
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -62,7 +64,3 @@ fn parse_check_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str, expected: 
         },
     }
 }
-
-mod check_term;
-mod infer_term;
-mod normalize;

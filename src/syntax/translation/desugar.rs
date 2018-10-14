@@ -7,9 +7,6 @@ use syntax::concrete;
 use syntax::raw;
 use syntax::{Label, Level, LevelShift};
 
-#[cfg(test)]
-mod tests;
-
 /// The environment used when desugaring from the concrete to raw syntax
 #[derive(Debug, Clone)]
 pub struct DesugarEnv {
