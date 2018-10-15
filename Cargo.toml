@@ -1,44 +1,9 @@
-[package]
-name = "pikelet"
-version = "0.1.0"
-readme = "README.md"
-license = "Apache-2.0"
-authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
-description = "An implementation of a small dependently typed lambda calculus in Rust."
-homepage = "https://github.com/pikelet-lang/pikelet"
-repository = "https://github.com/pikelet-lang/pikelet"
-publish = false
-
-[features]
-default = ["cli"]
-cli = [
-    "linefeed",
-    "structopt",
-    "term_size",
+[workspace]
+members = [
+    "./crates/pikelet",
+    "./crates/pikelet-driver",
+    "./crates/pikelet-elaborate",
+    "./crates/pikelet-language-server",
+    "./crates/pikelet-repl",
+    "./crates/pikelet-syntax",
 ]
-
-[[bin]]
-name = "pikelet"
-required-features = ["cli"]
-
-[dependencies]
-codespan = "0.2.0"
-codespan-reporting = "0.2.0"
-failure = "0.1.2"
-im = "12.2.0"
-lalrpop-util = "0.16.0"
-moniker = { version = "0.5.0", features = ["codespan", "im"] }
-pretty = { version = "0.5.2", features = ["termcolor"] }
-unicode-xid = "0.1.0"
-
-# cli dependencies
-linefeed = { version = "0.5.1", optional = true }
-structopt = { version = "0.2.10", optional = true }
-term_size = { version = "0.3.1", optional = true }
-
-[build-dependencies]
-lalrpop = "0.16.0"
-
-[dev-dependencies]
-goldenfile = "0.7.1"
-pretty_assertions = "0.5.1"

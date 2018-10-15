@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "editorconfig.editorconfig",
+        "eg2.tslint",
+        "esbenp.prettier-vscode",
+        "rust-lang.rust"
+    ]
+}

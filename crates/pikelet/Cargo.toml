@@ -1,0 +1,16 @@
+[package]
+name = "pikelet"
+version = "0.1.0"
+readme = "../../README.md"
+license = "Apache-2.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+description = "An implementation of a small dependently typed lambda calculus in Rust."
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+publish = false
+
+[dependencies]
+failure = "0.1.2"
+pikelet-language-server = { version = "0.1.0", path = "../pikelet-language-server" }
+pikelet-repl = { version = "0.1.0", path = "../pikelet-repl" }
+structopt = "0.2.12"

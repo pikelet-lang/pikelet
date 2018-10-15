@@ -3,6 +3,7 @@ cache:
   cargo: true
   directories:
     - book/highlight.js/node_modules
+    - editors/code/node_modules
 rust:
   - 1.28.0
   - stable
@@ -14,14 +15,16 @@ matrix:
     - rust: nightly
 
 install:
-  - ci/install-cargo-updates
-  - ci/build-highlight-js
+  - tools/install-cargo-updates
+  - tools/build-highlight-js
   - cargo build --verbose # https://docs.travis-ci.com/user/languages/rust/#Dependency-Management
+  - (cd editors/code && npm install)
 
 script:
   - cargo build --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
   - cargo test --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
-  - ci/build-book
+  - (cd editors/code && npm run travis)
+  - tools/build-book
 
 deploy:
   # Deploy the book to Github Pages
