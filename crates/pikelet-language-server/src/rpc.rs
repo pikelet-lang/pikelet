@@ -24,11 +24,11 @@
 //! [json-rpc]: https://www.jsonrpc.org/specification
 
 use lsp_ty;
-use serde::Serialize;
 use std::io::{self, BufRead, Write};
 
+/// Sends an RPC call containing the given content
 #[allow(dead_code)]
-pub fn send<T: Serialize>(writer: &mut impl Write, content: String) -> Result<(), io::Error> {
+pub fn send_content(writer: &mut impl Write, content: String) -> Result<(), io::Error> {
     let content_length = content.len();
     let content_type = "application/vscode-jsonrpc; charset=utf-8";
 
@@ -51,8 +51,9 @@ pub fn send<T: Serialize>(writer: &mut impl Write, content: String) -> Result<()
     Ok(())
 }
 
+/// Receives an RPC call from the given reader, returning the content as a string
 #[allow(dead_code)]
-pub fn recv(reader: &mut impl BufRead) -> Result<String, io::Error> {
+pub fn recv_content(reader: &mut impl BufRead) -> Result<String, io::Error> {
     // Header part
     //
     // https://microsoft.github.io/language-server-protocol/specification#header-part
@@ -63,20 +64,38 @@ pub fn recv(reader: &mut impl BufRead) -> Result<String, io::Error> {
     // header           ::= content-length / content-type / unknown
     // headers          ::= header headers / "\r\n"
 
-    let content_len = None::<usize>; // TODO
+    let mut content_len = None::<usize>;
     let charset = None::<&str>; // TODO
 
+    // Loop through headers, collecting the relevant information
     let mut header_buffer = String::new();
     loop {
         reader.read_line(&mut header_buffer)?;
-        match header_buffer.as_str() {
-            "\r\n" => break,
-            _ => {
-                // TODO: parse content-length
-                // TODO: parse content-type
-                eprintln!("skipping")
-            },
+        {
+            let mut splits = header_buffer.splitn(2, ": ");
+            match (splits.next(), splits.next()) {
+                // Content-Length header
+                (Some("Content-Length"), Some(value)) => {
+                    if content_len.is_none() {
+                        content_len = Some(value.trim_right().parse().map_err(|err| {
+                            io::Error::new(
+                                io::ErrorKind::InvalidData,
+                                format!("`Content-Length` was not a valid number: {:?}", err),
+                            )
+                        })?);
+                    }
+                },
+                // Content-Type header
+                (Some("Content-Type"), Some(_)) => {}, // TODO: parse content type?
+                // Other headers, skipped to ensure forwards compatibility
+                (Some(name), Some(_)) => eprintln!("Skipping unknown header: {:?}", name),
+                // End of the headers
+                (Some("\r\n"), None) => break,
+                (Some(header), None) => eprintln!("Skipping malformed header: {:?}", header),
+                (None, _) => eprintln!("Malformed header, skipping"),
+            }
         }
+        header_buffer.clear();
     }
 
     // Content part
@@ -84,13 +103,14 @@ pub fn recv(reader: &mut impl BufRead) -> Result<String, io::Error> {
     // https://microsoft.github.io/language-server-protocol/specification#content-part
     match content_len {
         Some(content_len) => {
-            // Read into a pre-allocated buffer
-            let mut buffer = Vec::with_capacity(content_len + 2); // why do we need to add 2?
+            // Read the content into a pre-allocated buffer
+            // let mut buffer = vec![0; content_len + 2]; // why do we need to add 2?
+            let mut buffer = vec![0; content_len];
             reader.read_exact(&mut buffer)?;
 
             match charset {
                 // Map `utf8` to `utf-8` for backwards compatibility
-                // If no charset is given default to `utf-8`
+                // If no charset is given, we'll default to `utf-8`
                 Some("utf-8") | Some("utf8") | None => String::from_utf8(buffer)
                     .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error)),
                 // Should be fine to continue after this, because we've already
@@ -105,7 +125,7 @@ pub fn recv(reader: &mut impl BufRead) -> Result<String, io::Error> {
         // next thing that looks like a header :/
         None => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "missing content length",
+            "Missing content length",
         )),
     }
 }
@@ -164,4 +184,77 @@ pub enum LspCommand {
         id: usize,
         params: lsp_ty::CompletionItem,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod recv_content {
+        use super::*;
+
+        #[test]
+        fn valid_empty_no_charset() {
+            let message = "Content-Length: 0\r\n\r\n";
+            let mut cursor = io::Cursor::new(message);
+            assert_eq!(recv_content(&mut cursor).unwrap(), "");
+        }
+
+        #[test]
+        fn valid_no_charset() {
+            let message = "Content-Length: 13\r\n\r\nhello, world!";
+            let mut cursor = io::Cursor::new(message);
+            assert_eq!(recv_content(&mut cursor).unwrap(), "hello, world!");
+        }
+
+        #[test]
+        fn valid_explicit_charset_utf_8() {
+            let message =
+                "Content-Length: 13\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\nhello, world!";
+            let mut cursor = io::Cursor::new(message);
+            assert_eq!(recv_content(&mut cursor).unwrap(), "hello, world!");
+        }
+
+        #[test]
+        fn valid_explicit_charset_utf8() {
+            let message =
+                "Content-Length: 13\r\nContent-Type: application/vscode-jsonrpc; charset=utf8\r\n\r\nhello, world!";
+            let mut cursor = io::Cursor::new(message);
+            assert_eq!(recv_content(&mut cursor).unwrap(), "hello, world!");
+        }
+
+        #[test]
+        fn valid_unknown_header() {
+            let message = "Content-Length: 13\r\nX-Foo: silly\r\n\r\nhello, world!";
+            let mut cursor = io::Cursor::new(message);
+            assert_eq!(recv_content(&mut cursor).unwrap(), "hello, world!");
+        }
+
+        // TODO: test more combinations
+
+        // #[test]
+        // fn combinations() {
+        //     let things = vec![
+        //         ("Content-Length: 0\r\n\r\n", Ok("")),
+        //         ("Content-Length: 13\r\n\r\nhello, world!", Ok("hello, world!")),
+        //         ("Content-Length: 13\r\nX-Foo: silly\r\n\r\nhello, world!", Ok("hello, world!")),
+        //         ("Content-Length: 13\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\nhello, world!", Ok("hello, world!")),
+        //         ("Content-Length: 13\r\nContent-Type: application/vscode-jsonrpc; charset=utf8\r\n\r\nhello, world!", Ok("hello, world!")),
+        //         ("Content-Type: application/vscode-jsonrpc; charset=utf-8\r\nContent-Length: 13\r\n\r\nhello, world!", Ok("hello, world!")),
+        //         ("Content-Type: application/vscode-jsonrpc; charset=utf8\r\nContent-Length: 13\r\n\r\nhello, world!", Ok("hello, world!")),
+        //         ("\r\nhello, world!", Err(_)),
+        //         ("Content-Length: 13.0\r\n\r\nhello, world!", Err(_)),
+        //         ("Content-Type: application/vscode-jsonrpc; charset=utf8\r\n\r\nhello, world!", Err(_)),
+        //     ];
+        // }
+    }
+
+    // #[test]
+    // fn send_content_recv_content_roundtrip() {
+    //     // TODO: finish
+    //     // TODO: quickcheck?
+    //     let content = "hello, world!";
+    //     let result = unimplemented!();
+    //     assert_eq!(content, result);
+    // }
 }

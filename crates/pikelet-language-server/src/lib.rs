@@ -55,7 +55,7 @@ pub fn run(_opts: Opts) -> Result<(), Error> {
 
     // TODO: send init_result
     // loop {
-    //     match rpc::recv::<LspCommand>() {
+    //     match rpc::recv_content(&mut stdin) {
     //         Ok(_) => unimplemented!(),
     //         Err(error) => eprintln!("error: {}", error),
     //     }
