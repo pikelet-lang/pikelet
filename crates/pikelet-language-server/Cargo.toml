@@ -1,0 +1,19 @@
+[package]
+name = "pikelet-language-server"
+version = "0.1.0"
+license = "Apache-2.0"
+readme = "README.md"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+description = "Language Server Protocol implementation for Pikelet"
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+publish = false
+
+[dependencies]
+failure = "0.1.2"
+languageserver-types = "0.51.0"
+pikelet-driver = { version = "0.1.0", path = "../pikelet-driver" }
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+structopt = "0.2.12"

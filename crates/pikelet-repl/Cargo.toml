@@ -1,0 +1,19 @@
+[package]
+name = "pikelet-repl"
+version = "0.1.0"
+license = "Apache-2.0"
+readme = "../../README.md"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+publish = false
+
+[dependencies]
+codespan = "0.2.0"
+codespan-reporting = "0.2.0"
+failure = "0.1.2"
+linefeed = "0.5.3"
+pikelet-driver = { version = "0.1.0", path = "../pikelet-driver" }
+pikelet-syntax = { version = "0.1.0", path = "../pikelet-syntax" }
+structopt = "0.2.12"
+term_size = "0.3.1"

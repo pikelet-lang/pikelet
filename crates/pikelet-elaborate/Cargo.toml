@@ -1,0 +1,20 @@
+[package]
+name = "pikelet-elaborate"
+version = "0.1.0"
+license = "Apache-2.0"
+readme = "../../README.md"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+publish = false
+
+[dependencies]
+codespan = "0.2.0"
+codespan-reporting = "0.2.0"
+failure = "0.1.2"
+im = "12.2.0"
+moniker = { version = "0.5.0", features = ["codespan", "im"] }
+pikelet-syntax = { version = "0.1.0", path = "../pikelet-syntax" }
+
+[dev-dependencies]
+goldenfile = "0.7.1"

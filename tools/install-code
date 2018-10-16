@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+main() {
+    local pikelet_dir=./crates/pikelet
+    local extension_dir=./editors/code
+
+    echo "Installing Pikelet executable"
+    cargo install --path $pikelet_dir --force
+
+    (
+        cd $extension_dir
+        echo "Installing Pikelet VS Code extension"
+        npm run install-dev-extension
+    )
+}
+
+main

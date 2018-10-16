@@ -24,7 +24,7 @@ better or worse, we've included this as a submodule as a temporary solution.
 To build this, we've included a handy script:
 
 ```sh
-ci/build-highlight-js
+tools/build-highlight-js
 ```
 
 This should update/initialize the submodule, update the npm dependencies,
