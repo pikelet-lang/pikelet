@@ -47,13 +47,29 @@ fn server_capabilities() -> lsp_ty::ServerCapabilities {
 
 /// Run `language-server` with the given options
 pub fn run(_opts: Opts) -> Result<(), Error> {
-    // TODO: recv initialize
+    // TODO: multi-threading
+    // FIXME: Just sketching this out - this currently doesn't work! :/
 
-    let _init_result = lsp_ty::InitializeResult {
-        capabilities: server_capabilities(),
-    };
+    {
+        let stdin = std::io::stdin();
+        let init_content = rpc::recv_content(&mut stdin.lock())?;
+        match serde_json::from_str::<rpc::JsonRpc<rpc::LspCommand>>(&init_content) {
+            Ok(rpc::JsonRpc {
+                result: rpc::LspCommand::Initialize { .. },
+                ..
+            }) => {},
+            Ok(_) => unimplemented!(),
+            Err(_) => unimplemented!(),
+        }
+    }
 
-    // TODO: send init_result
+    {
+        let stdout = std::io::stdout();
+        let capabilities = server_capabilities();
+        let init_resp = rpc::JsonRpc::new(0, lsp_ty::InitializeResult { capabilities });
+        rpc::send_content(&mut stdout.lock(), serde_json::to_string(&init_resp)?)?;
+    }
+
     // loop {
     //     match rpc::recv_content(&mut stdin) {
     //         Ok(_) => unimplemented!(),
