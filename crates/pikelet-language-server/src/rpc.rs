@@ -26,7 +26,6 @@
 use lsp_ty;
 use serde::Serialize;
 use std::io::{self, BufRead, Write};
-use std::string::FromUtf8Error;
 
 #[allow(dead_code)]
 pub fn send<T: Serialize>(writer: &mut impl Write, content: String) -> Result<(), io::Error> {
@@ -52,26 +51,8 @@ pub fn send<T: Serialize>(writer: &mut impl Write, content: String) -> Result<()
     Ok(())
 }
 
-#[derive(Debug, Fail)]
-pub enum RecvError {
-    #[fail(display = "Missing content length")]
-    MissingContentLength,
-    #[fail(display = "Unknown charset: {}", _0)]
-    UnknownCharset(String),
-    #[fail(display = "UTF8 error: {}", _0)]
-    FromUtf8(#[cause] FromUtf8Error),
-    #[fail(display = "IO error: {}", _0)]
-    Io(#[cause] io::Error),
-}
-
-impl From<io::Error> for RecvError {
-    fn from(src: io::Error) -> RecvError {
-        RecvError::Io(src)
-    }
-}
-
 #[allow(dead_code)]
-pub fn recv(reader: &mut impl BufRead) -> Result<String, RecvError> {
+pub fn recv(reader: &mut impl BufRead) -> Result<String, io::Error> {
     // Header part
     //
     // https://microsoft.github.io/language-server-protocol/specification#header-part
@@ -110,17 +91,22 @@ pub fn recv(reader: &mut impl BufRead) -> Result<String, RecvError> {
             match charset {
                 // Map `utf8` to `utf-8` for backwards compatibility
                 // If no charset is given default to `utf-8`
-                Some("utf-8") | Some("utf8") | None => {
-                    String::from_utf8(buffer).map_err(RecvError::FromUtf8)
-                },
+                Some("utf-8") | Some("utf8") | None => String::from_utf8(buffer)
+                    .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error)),
                 // Should be fine to continue after this, because we've already
                 // consumed the buffer
-                Some(charset) => Err(RecvError::UnknownCharset(charset.to_owned())),
+                Some(charset) => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Unknown charset: {}", charset),
+                )),
             }
         },
         // FIXME: Can we recover from this? We'd need to try to skip to the
         // next thing that looks like a header :/
-        None => Err(RecvError::MissingContentLength),
+        None => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "missing content length",
+        )),
     }
 }
 

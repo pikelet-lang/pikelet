@@ -1,6 +1,5 @@
 //! A language server for Pikelet
 
-#[macro_use]
 extern crate failure;
 extern crate languageserver_types as lsp_ty;
 extern crate pikelet_driver;
