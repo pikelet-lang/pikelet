@@ -2,7 +2,7 @@
 name = "pikelet-driver"
 version = "0.1.0"
 license = "Apache-2.0"
-readme = "../../README.md"
+readme = "README.md"
 authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
 homepage = "https://github.com/pikelet-lang/pikelet"
 repository = "https://github.com/pikelet-lang/pikelet"
