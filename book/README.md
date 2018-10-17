@@ -21,7 +21,7 @@ mdbook serve
 Highlight.js can be [hard to extend][mdbook-custom-highlighting-issue], so we've
 had to make a [custom fork][highlightjs-fork] that supports Pikelet syntax. For
 better or worse, we've included this as a submodule as a temporary solution.
-To build this, we've included a handy script:
+To build this, we've included a [handy script][build-highlight-js-script]:
 
 ```sh
 tools/build-highlight-js
@@ -34,3 +34,4 @@ of building and deploying this automatically.
 
 [mdbook-custom-highlighting-issue]: https://github.com/rust-lang-nursery/mdBook/issues/657
 [highlightjs-fork]: https://github.com/pikelet-lang/highlight.js/tree/add-pikelet
+[build-highlight-js-script]: /tools/build-highlight-js

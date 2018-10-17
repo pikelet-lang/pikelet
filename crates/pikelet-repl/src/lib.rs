@@ -18,7 +18,7 @@ use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
 
-use pikelet_driver::Pikelet;
+use pikelet_driver::Driver;
 use pikelet_syntax::parse;
 
 /// Options for the `repl` subcommand
@@ -105,7 +105,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     let interface = Interface::new("repl")?;
     let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(opts.color.into());
-    let mut pikelet = Pikelet::with_prelude();
+    let mut pikelet = Driver::with_prelude();
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);
@@ -175,7 +175,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(pikelet: &mut Pikelet, filemap: &FileMap) -> Result<ControlFlow, Vec<Diagnostic>> {
+fn eval_print(pikelet: &mut Driver, filemap: &FileMap) -> Result<ControlFlow, Vec<Diagnostic>> {
     use codespan::ByteSpan;
 
     use pikelet_syntax::concrete::{ReplCommand, Term};

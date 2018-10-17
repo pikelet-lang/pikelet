@@ -153,7 +153,7 @@ use pikelet_syntax::{core, raw};
 /// An environment that keeps track of the state of a Pikelet program during
 /// compilation or interactive sessions
 #[derive(Debug, Clone)]
-pub struct Pikelet {
+pub struct Driver {
     /// The base type checking environment, containing the built-in definitions
     tc_env: TcEnv,
     /// The base desugar environment, using the definitions from the `tc_env`
@@ -162,13 +162,13 @@ pub struct Pikelet {
     code_map: CodeMap,
 }
 
-impl Pikelet {
+impl Driver {
     /// Create a new Pikelet environment, containing only the built-in definitions
-    pub fn new() -> Pikelet {
+    pub fn new() -> Driver {
         let tc_env = TcEnv::default();
         let desugar_env = DesugarEnv::new(tc_env.mappings());
 
-        Pikelet {
+        Driver {
             tc_env,
             desugar_env,
             code_map: CodeMap::new(),
@@ -176,8 +176,8 @@ impl Pikelet {
     }
 
     /// Create a new Pikelet environment, with the prelude loaded as well
-    pub fn with_prelude() -> Pikelet {
-        let mut pikelet = Pikelet::new();
+    pub fn with_prelude() -> Driver {
+        let mut pikelet = Driver::new();
 
         let prim_path = "prim".to_owned();
         let prim_name = FileName::virtual_("prim");
@@ -256,12 +256,12 @@ mod tests {
 
     #[test]
     fn with_prelude() {
-        let _pikelet = Pikelet::with_prelude();
+        let _pikelet = Driver::with_prelude();
     }
 
     #[test]
     fn prelude() {
-        let mut pikelet = Pikelet::new();
+        let mut pikelet = Driver::new();
         let writer = StandardStream::stdout(ColorChoice::Always);
 
         let prim_path = "prim".to_owned();
