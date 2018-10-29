@@ -8,7 +8,7 @@ extern crate pikelet_syntax;
 use codespan::{ByteIndex, ByteSpan, CodeMap};
 use moniker::{FreeVar, Var};
 
-use pikelet_elaborate::{TcEnv, TypeError};
+use pikelet_elaborate::{Context, TypeError};
 use pikelet_syntax::translation::{Desugar, DesugarEnv};
 use pikelet_syntax::{concrete, raw};
 
@@ -18,7 +18,7 @@ mod support;
 fn undefined_name() {
     use pikelet_syntax::LevelShift;
 
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let x = FreeVar::fresh_named("x");
     let given_expr = raw::RcTerm::from(raw::Term::Var(
@@ -28,7 +28,7 @@ fn undefined_name() {
     ));
 
     assert_eq!(
-        pikelet_elaborate::infer_term(&tc_env, &given_expr),
+        pikelet_elaborate::infer_term(&context, &given_expr),
         Err(TypeError::UndefinedName {
             span: ByteSpan::default(),
             free_var: x.clone(),
@@ -39,8 +39,8 @@ fn undefined_name() {
 #[test]
 fn import_not_found() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"import "does-not-exist" : Record {}"#;
 
@@ -48,7 +48,7 @@ fn import_not_found() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::UndefinedImport { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
@@ -58,64 +58,64 @@ fn import_not_found() {
 #[test]
 fn ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"Type";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn ty_levels() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"Type^0 : Type^1 : Type^2 : Type^3"; //... Type^∞       ...+:｡(ﾉ･ω･)ﾉﾞ
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn ann_ty_id() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type -> Type";
     let given_expr = r"(\a => a) : Type -> Type";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn ann_arrow_ty_id() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(Type -> Type) -> (Type -> Type)";
     let given_expr = r"(\a => a) : (Type -> Type) -> (Type -> Type)";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn ann_id_as_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r"(\a => a) : Type";
 
@@ -123,7 +123,7 @@ fn ann_id_as_ty() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::UnexpectedFunction { .. }) => {},
         other => panic!("unexpected result: {:#?}", other),
     }
@@ -132,22 +132,22 @@ fn ann_id_as_ty() {
 #[test]
 fn app() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"(\a : Type^1 => a) Type";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn app_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r"Type Type";
 
@@ -156,7 +156,7 @@ fn app_ty() {
         .unwrap();
 
     assert_eq!(
-        pikelet_elaborate::infer_term(&tc_env, &raw_term),
+        pikelet_elaborate::infer_term(&context, &raw_term),
         Err(TypeError::ArgAppliedToNonFunction {
             fn_span: ByteSpan::new(ByteIndex(1), ByteIndex(5)),
             arg_span: ByteSpan::new(ByteIndex(6), ByteIndex(10)),
@@ -168,56 +168,56 @@ fn app_ty() {
 #[test]
 fn lam() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a : Type) -> Type";
     let given_expr = r"\a : Type => a";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn pi() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"(a : Type) -> a";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn id() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a : Type) -> a -> a";
     let given_expr = r"\(a : Type) (x : a) => x";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn id_ann() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a : Type) -> a -> a";
     let given_expr = r"(\a (x : a) => x) : (A : Type) -> A -> A";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
@@ -226,14 +226,14 @@ fn id_ann() {
 #[test]
 fn id_app_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type -> Type";
     let given_expr = r"(\(a : Type^1) (x : a) => x) Type";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
@@ -241,119 +241,119 @@ fn id_app_ty() {
 #[test]
 fn id_app_ty_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) Type";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn id_app_ty_arr_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn id_app_arr_pi_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type -> Type";
     let given_expr = r"(\(a : Type^1) (x : a) => x) (Type -> Type) (\x => x)";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn apply() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a b : Type) -> (a -> b) -> a -> b";
     let given_expr = r"\(a b : Type) (f : a -> b) (x : a) => f x";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn const_() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a b : Type) -> a -> b -> a";
     let given_expr = r"\(a b : Type) (x : a) (y : b) => x";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn const_flipped() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a b : Type) -> a -> b -> b";
     let given_expr = r"\(a b : Type) (x : a) (y : b) => y";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn flip() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a b c : Type) -> (a -> b -> c) -> (b -> a -> c)";
     let given_expr = r"\(a b c : Type) (f : a -> b -> c) (y : b) (x : a) => f x y";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn compose() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c)";
     let given_expr = r"\(a b c : Type) (f : b -> c) (g : a -> b) (x : a) => f (g x)";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn let_expr_1() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"String";
     let given_expr = r#"
@@ -363,15 +363,15 @@ fn let_expr_1() {
     "#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn let_expr_2() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"String";
     let given_expr = r#"
@@ -382,15 +382,15 @@ fn let_expr_2() {
     "#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn let_shift_universes() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let given_expr = r#"
         let
@@ -412,13 +412,13 @@ fn let_shift_universes() {
             record {}
     "#;
 
-    support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+    support::parse_infer_term(&mut codemap, &context, given_expr);
 }
 
 #[test]
 fn let_shift_universes_id_self_application() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     // Here is a curious example from the Idris docs:
     // http://docs.idris-lang.org/en/v1.3.0/tutorial/miscellany.html#cumulativity
@@ -445,13 +445,13 @@ fn let_shift_universes_id_self_application() {
             record {}
     "#;
 
-    support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+    support::parse_infer_term(&mut codemap, &context, given_expr);
 }
 
 #[test]
 fn let_shift_universes_literals() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let given_expr = r#"
         let
@@ -463,14 +463,14 @@ fn let_shift_universes_literals() {
             record {}
     "#;
 
-    support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+    support::parse_infer_term(&mut codemap, &context, given_expr);
 }
 
 #[test]
 fn let_shift_universes_literals_bad() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"
         let
@@ -486,7 +486,7 @@ fn let_shift_universes_literals_bad() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::LiteralMismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {}", err),
@@ -496,8 +496,8 @@ fn let_shift_universes_literals_bad() {
 #[test]
 fn let_shift_universes_too_little() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"
         let
@@ -513,7 +513,7 @@ fn let_shift_universes_too_little() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Ok(_) => panic!("expected error"),
         Err(TypeError::Mismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {}", err),
@@ -523,7 +523,7 @@ fn let_shift_universes_too_little() {
 #[test]
 fn let_shift_universes_too_much() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let given_expr = r#"
         let
@@ -535,13 +535,13 @@ fn let_shift_universes_too_much() {
             record {}
     "#;
 
-    support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+    support::parse_infer_term(&mut codemap, &context, given_expr);
 }
 
 #[test]
 fn case_expr() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"String";
     let given_expr = r#"case "helloo" {
@@ -551,15 +551,15 @@ fn case_expr() {
     }"#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn case_expr_bool() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"String";
     let given_expr = r#"case true {
@@ -568,16 +568,16 @@ fn case_expr_bool() {
     }"#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn case_expr_bool_bad() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"case "hello" {
         true => "hello";
@@ -588,7 +588,7 @@ fn case_expr_bool_bad() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::Mismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
@@ -598,7 +598,7 @@ fn case_expr_bool_bad() {
 #[test]
 fn case_expr_wildcard() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"String";
     let given_expr = r#"case "helloo" {
@@ -606,16 +606,16 @@ fn case_expr_wildcard() {
     }"#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn case_expr_empty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"case "helloo" {}"#;
 
@@ -623,7 +623,7 @@ fn case_expr_empty() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::AmbiguousEmptyCase { .. }) => {},
         other => panic!("unexpected result: {:#?}", other),
     }
@@ -635,7 +635,7 @@ mod church_encodings {
     #[test]
     fn void() {
         let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
+        let context = Context::default();
 
         let given_expr = r"
         record {
@@ -652,13 +652,13 @@ mod church_encodings {
         }
     ";
 
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+        support::parse_infer_term(&mut codemap, &context, given_expr);
     }
 
     #[test]
     fn unit() {
         let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
+        let context = Context::default();
 
         let given_expr = r"
         record {
@@ -675,13 +675,13 @@ mod church_encodings {
         }
     ";
 
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+        support::parse_infer_term(&mut codemap, &context, given_expr);
     }
 
     #[test]
     fn and() {
         let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
+        let context = Context::default();
 
         let given_expr = r"
             record {
@@ -705,13 +705,13 @@ mod church_encodings {
             }
         ";
 
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+        support::parse_infer_term(&mut codemap, &context, given_expr);
     }
 
     #[test]
     fn or() {
         let mut codemap = CodeMap::new();
-        let tc_env = TcEnv::default();
+        let context = Context::default();
 
         let given_expr = r"
             record {
@@ -733,85 +733,85 @@ mod church_encodings {
             }
         ";
 
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr);
+        support::parse_infer_term(&mut codemap, &context, given_expr);
     }
 }
 
 #[test]
 fn empty_record_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type";
     let given_expr = r"Record {}";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn empty_record() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Record {}";
     let given_expr = r"record {}";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn dependent_record_ty() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^2";
     let given_expr = r"Record { t : Type^1; x : t }";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn record() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Record { t : Type; x : String }";
     let given_expr = r#"record { t = String; x = "Hello" }"#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn proj() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"String";
     let given_expr = r#"(record { t = String; x = "hello" } : Record { t : Type; x : String }).x"#;
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn proj_missing() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"(record { x = "hello" } : Record { x : String }).bloop"#;
 
@@ -819,7 +819,7 @@ fn proj_missing() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::NoFieldInType { .. }) => {},
         x => panic!("expected a field lookup error, found {:?}", x),
     }
@@ -828,7 +828,7 @@ fn proj_missing() {
 #[test]
 fn proj_weird1() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"Record {
@@ -842,15 +842,15 @@ fn proj_weird1() {
     }";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn proj_weird2() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"Type^1";
     let given_expr = r"Record {
@@ -863,15 +863,15 @@ fn proj_weird2() {
     }";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn proj_shift() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
+    let context = Context::default();
 
     let expected_ty = r"(a : Type^1) -> a -> a";
     let given_expr = r"record {
@@ -879,16 +879,16 @@ fn proj_shift() {
     }.id^1";
 
     assert_term_eq!(
-        support::parse_infer_term(&mut codemap, &tc_env, given_expr).1,
-        support::parse_nf_term(&mut codemap, &tc_env, expected_ty),
+        support::parse_infer_term(&mut codemap, &context, given_expr).1,
+        support::parse_nf_term(&mut codemap, &context, expected_ty),
     );
 }
 
 #[test]
 fn array_ambiguous() {
     let mut codemap = CodeMap::new();
-    let tc_env = TcEnv::default();
-    let desugar_env = DesugarEnv::new(tc_env.mappings());
+    let context = Context::default();
+    let desugar_env = DesugarEnv::new(context.mappings());
 
     let given_expr = r#"[1; 2 : S32]"#;
 
@@ -896,7 +896,7 @@ fn array_ambiguous() {
         .desugar(&desugar_env)
         .unwrap();
 
-    match pikelet_elaborate::infer_term(&tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::AmbiguousArrayLiteral { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
         Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),

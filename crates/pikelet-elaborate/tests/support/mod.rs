@@ -4,7 +4,7 @@ use codespan::{CodeMap, FileName};
 use codespan_reporting;
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 
-use pikelet_elaborate::{self, TcEnv};
+use pikelet_elaborate::{self, Context};
 use pikelet_syntax::concrete;
 use pikelet_syntax::core::{RcTerm, RcType, RcValue};
 use pikelet_syntax::parse;
@@ -25,11 +25,11 @@ pub fn parse_term(codemap: &mut CodeMap, src: &str) -> concrete::Term {
     concrete_term
 }
 
-pub fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (RcTerm, RcType) {
+pub fn parse_infer_term(codemap: &mut CodeMap, context: &Context, src: &str) -> (RcTerm, RcType) {
     let raw_term = parse_term(codemap, src)
-        .desugar(&DesugarEnv::new(tc_env.mappings()))
+        .desugar(&DesugarEnv::new(context.mappings()))
         .unwrap();
-    match pikelet_elaborate::infer_term(tc_env, &raw_term) {
+    match pikelet_elaborate::infer_term(context, &raw_term) {
         Ok((term, ty)) => (term, ty),
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -39,9 +39,9 @@ pub fn parse_infer_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> (Rc
     }
 }
 
-pub fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValue {
-    let term = parse_infer_term(codemap, tc_env, src).0;
-    match pikelet_elaborate::nf_term(tc_env, &term) {
+pub fn parse_nf_term(codemap: &mut CodeMap, context: &Context, src: &str) -> RcValue {
+    let term = parse_infer_term(codemap, context, src).0;
+    match pikelet_elaborate::nf_term(context, &term) {
         Ok(value) => value,
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
@@ -51,11 +51,11 @@ pub fn parse_nf_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str) -> RcValu
     }
 }
 
-pub fn parse_check_term(codemap: &mut CodeMap, tc_env: &TcEnv, src: &str, expected: &RcType) {
+pub fn parse_check_term(codemap: &mut CodeMap, context: &Context, src: &str, expected: &RcType) {
     let raw_term = parse_term(codemap, src)
-        .desugar(&DesugarEnv::new(tc_env.mappings()))
+        .desugar(&DesugarEnv::new(context.mappings()))
         .unwrap();
-    match pikelet_elaborate::check_term(tc_env, &raw_term, expected) {
+    match pikelet_elaborate::check_term(context, &raw_term, expected) {
         Ok(_) => {},
         Err(error) => {
             let writer = StandardStream::stdout(ColorChoice::Always);
