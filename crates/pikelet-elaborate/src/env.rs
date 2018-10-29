@@ -237,18 +237,6 @@ pub struct TcEnv {
     definitions: im::HashMap<FreeVar<String>, RcTerm>,
 }
 
-impl TcEnv {
-    pub fn mappings(&self) -> im::HashMap<String, FreeVar<String>> {
-        self.declarations
-            .iter()
-            .filter_map(|(free_var, _)| {
-                let pretty_name = free_var.pretty_name.as_ref()?;
-                Some((pretty_name.clone(), free_var.clone()))
-            })
-            .collect()
-    }
-}
-
 impl Default for TcEnv {
     fn default() -> TcEnv {
         use moniker::{Embed, Scope};
@@ -503,6 +491,16 @@ impl Default for TcEnv {
 impl TcEnv {
     pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
         src.resugar(&self.resugar_env)
+    }
+
+    pub fn mappings(&self) -> im::HashMap<String, FreeVar<String>> {
+        self.declarations
+            .iter()
+            .filter_map(|(free_var, _)| {
+                let pretty_name = free_var.pretty_name.as_ref()?;
+                Some((pretty_name.clone(), free_var.clone()))
+            })
+            .collect()
     }
 
     pub fn bool(&self) -> &RcType {
