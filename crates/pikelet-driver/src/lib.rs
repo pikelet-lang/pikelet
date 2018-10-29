@@ -146,7 +146,7 @@ use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting::Diagnostic;
 use std::sync::Arc;
 
-use pikelet_elaborate::{Import, TcEnv};
+use pikelet_elaborate::{Context, Import};
 use pikelet_syntax::translation::{Desugar, DesugarEnv, Resugar};
 use pikelet_syntax::{core, raw};
 
@@ -154,9 +154,9 @@ use pikelet_syntax::{core, raw};
 /// compilation or interactive sessions
 #[derive(Debug, Clone)]
 pub struct Driver {
-    /// The base type checking environment, containing the built-in definitions
-    tc_env: TcEnv,
-    /// The base desugar environment, using the definitions from the `tc_env`
+    /// The base type checking context, containing the built-in definitions
+    context: Context,
+    /// The base desugar environment, using the definitions from the `context`
     desugar_env: DesugarEnv,
     /// A codemap that owns the source code for any terms that are currently loaded
     code_map: CodeMap,
@@ -165,11 +165,11 @@ pub struct Driver {
 impl Driver {
     /// Create a new Pikelet environment, containing only the built-in definitions
     pub fn new() -> Driver {
-        let tc_env = TcEnv::default();
-        let desugar_env = DesugarEnv::new(tc_env.mappings());
+        let context = Context::default();
+        let desugar_env = DesugarEnv::new(context.mappings());
 
         Driver {
-            tc_env,
+            context,
             desugar_env,
             code_map: CodeMap::new(),
         }
@@ -207,7 +207,7 @@ impl Driver {
         let raw_term = self.desugar(&concrete_term)?;
         let (term, ty) = self.infer_term(&raw_term)?;
         // FIXME: Check if import already exists
-        self.tc_env
+        self.context
             .insert_import(internal_path, Import::Term(term), ty);
 
         Ok(())
@@ -226,8 +226,9 @@ impl Driver {
         let (term, inferred) = self.infer_term(&raw_term)?;
 
         let fv = self.desugar_env.on_binding(&name);
-        self.tc_env.insert_declaration(fv.clone(), inferred.clone());
-        self.tc_env.insert_definition(fv.clone(), term.clone());
+        self.context
+            .insert_declaration(fv.clone(), inferred.clone());
+        self.context.insert_definition(fv.clone(), term.clone());
 
         Ok((term, inferred))
     }
@@ -236,15 +237,15 @@ impl Driver {
         &self,
         raw_term: &raw::RcTerm,
     ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
-        pikelet_elaborate::infer_term(&self.tc_env, &raw_term).map_err(|e| vec![e.to_diagnostic()])
+        pikelet_elaborate::infer_term(&self.context, &raw_term).map_err(|e| vec![e.to_diagnostic()])
     }
 
     pub fn nf_term(&self, term: &core::RcTerm) -> Result<core::RcValue, Vec<Diagnostic>> {
-        pikelet_elaborate::nf_term(&self.tc_env, term).map_err(|e| vec![e.to_diagnostic()])
+        pikelet_elaborate::nf_term(&self.context, term).map_err(|e| vec![e.to_diagnostic()])
     }
 
     pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
-        self.tc_env.resugar(src)
+        self.context.resugar(src)
     }
 }
 

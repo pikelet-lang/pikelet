@@ -12,15 +12,15 @@ use pikelet_syntax::{FloatFormat, IntFormat};
 // I'm not super happy with the API at the moment, so these are currently private
 
 trait IntoValue {
-    fn ty(env: &TcEnv) -> RcType;
+    fn ty(context: &Context) -> RcType;
     fn into_value(self) -> RcValue;
 }
 
 macro_rules! impl_into_value {
     ($T:ty, $ty:ident, $Variant:ident) => {
         impl IntoValue for $T {
-            fn ty(env: &TcEnv) -> RcType {
-                env.$ty().clone()
+            fn ty(context: &Context) -> RcType {
+                context.$ty().clone()
             }
 
             fn into_value(self) -> RcValue {
@@ -30,8 +30,8 @@ macro_rules! impl_into_value {
     };
     ($T:ty, $ty:ident, $Variant:ident, $format:expr) => {
         impl IntoValue for $T {
-            fn ty(env: &TcEnv) -> RcType {
-                env.$ty().clone()
+            fn ty(context: &Context) -> RcType {
+                context.$ty().clone()
             }
 
             fn into_value(self) -> RcValue {
@@ -210,17 +210,17 @@ pub struct Globals {
     var_array: FreeVar<String>,
 }
 
-/// The type checking environment
+/// The type checking context
 ///
-/// A default environment with entries for built-in types is provided via the
+/// A default context with entries for built-in types is provided via the
 /// implementation of the `Default` trait.
 ///
 /// We use persistent data structures internally so that we can copy the
-/// environment as we enter into scopes, without having to deal with the
+/// context as we enter into scopes, without having to deal with the
 /// error-prone tedium of working with mutable context.
 #[derive(Clone, Debug)]
-pub struct TcEnv {
-    /// The resugar environment
+pub struct Context {
+    /// The resugar context
     ///
     /// We'll keep this up to date as we type check to make it easier to do
     /// resugaring on any errors that we encounter
@@ -237,8 +237,8 @@ pub struct TcEnv {
     definitions: im::HashMap<FreeVar<String>, RcTerm>,
 }
 
-impl Default for TcEnv {
-    fn default() -> TcEnv {
+impl Default for Context {
+    fn default() -> Context {
         use moniker::{Embed, Scope};
 
         use pikelet_syntax::core::Term;
@@ -260,7 +260,7 @@ impl Default for TcEnv {
         let var_f64 = FreeVar::fresh_named("F64");
         let var_array = FreeVar::fresh_named("Array");
 
-        let mut tc_env = TcEnv {
+        let mut context = Context {
             resugar_env: ResugarEnv::new(),
             globals: Rc::new(Globals {
                 ty_bool: RcValue::from(Value::var(Var::Free(var_bool.clone()), 0)),
@@ -285,12 +285,12 @@ impl Default for TcEnv {
         };
 
         let universe0 = RcValue::from(Value::universe(0));
-        let bool_ty = tc_env.globals.ty_bool.clone();
+        let bool_ty = context.globals.ty_bool.clone();
         let bool_lit = |value| RcTerm::from(Term::Literal(Literal::Bool(value)));
         let array_ty = RcValue::from(Value::Pi(Scope::new(
             (
                 Binder(FreeVar::fresh_unnamed()),
-                Embed(tc_env.globals.ty_u64.clone()),
+                Embed(context.globals.ty_u64.clone()),
             ),
             RcValue::from(Value::Pi(Scope::new(
                 (Binder(FreeVar::fresh_unnamed()), Embed(universe0.clone())),
@@ -298,25 +298,25 @@ impl Default for TcEnv {
             ))),
         )));
 
-        tc_env.insert_declaration(var_bool, universe0.clone());
-        tc_env.insert_declaration(var_string, universe0.clone());
-        tc_env.insert_declaration(var_char, universe0.clone());
-        tc_env.insert_declaration(var_u8, universe0.clone());
-        tc_env.insert_declaration(var_u16, universe0.clone());
-        tc_env.insert_declaration(var_u32, universe0.clone());
-        tc_env.insert_declaration(var_u64, universe0.clone());
-        tc_env.insert_declaration(var_s8, universe0.clone());
-        tc_env.insert_declaration(var_s16, universe0.clone());
-        tc_env.insert_declaration(var_s32, universe0.clone());
-        tc_env.insert_declaration(var_s64, universe0.clone());
-        tc_env.insert_declaration(var_f32, universe0.clone());
-        tc_env.insert_declaration(var_f64, universe0.clone());
-        tc_env.insert_declaration(var_array, array_ty);
+        context.insert_declaration(var_bool, universe0.clone());
+        context.insert_declaration(var_string, universe0.clone());
+        context.insert_declaration(var_char, universe0.clone());
+        context.insert_declaration(var_u8, universe0.clone());
+        context.insert_declaration(var_u16, universe0.clone());
+        context.insert_declaration(var_u32, universe0.clone());
+        context.insert_declaration(var_u64, universe0.clone());
+        context.insert_declaration(var_s8, universe0.clone());
+        context.insert_declaration(var_s16, universe0.clone());
+        context.insert_declaration(var_s32, universe0.clone());
+        context.insert_declaration(var_s64, universe0.clone());
+        context.insert_declaration(var_f32, universe0.clone());
+        context.insert_declaration(var_f64, universe0.clone());
+        context.insert_declaration(var_array, array_ty);
 
-        tc_env.insert_declaration(var_true.clone(), bool_ty.clone());
-        tc_env.insert_declaration(var_false.clone(), bool_ty.clone());
-        tc_env.insert_definition(var_true, bool_lit(true));
-        tc_env.insert_definition(var_false, bool_lit(false));
+        context.insert_declaration(var_true.clone(), bool_ty.clone());
+        context.insert_declaration(var_false.clone(), bool_ty.clone());
+        context.insert_definition(var_true, bool_lit(true));
+        context.insert_definition(var_false, bool_lit(false));
 
         /// Define a primitive import
         macro_rules! prim_import {
@@ -331,14 +331,14 @@ impl Default for TcEnv {
                     }
                 }
 
-                let ty = <$RType>::ty(&tc_env);
+                let ty = <$RType>::ty(&context);
                 $(let ty = {
                     let param_var = FreeVar::fresh_unnamed();
-                    let param_ty = <$PType>::ty(&tc_env);
+                    let param_ty = <$PType>::ty(&context);
                     RcValue::from(Value::Pi(Scope::new((Binder(param_var), Embed(param_ty)), ty)))
                 };)*
 
-                tc_env.insert_import($name.to_owned(), Import::Prim(interpretation), ty);
+                context.insert_import($name.to_owned(), Import::Prim(interpretation), ty);
             }};
         }
 
@@ -484,11 +484,11 @@ impl Default for TcEnv {
 
         prim_import!("prim/string/append", fn(x: String, y: String) -> String { x.clone() + y }); // FIXME: Clone
 
-        tc_env
+        context
     }
 }
 
-impl TcEnv {
+impl Context {
     pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
         src.resugar(&self.resugar_env)
     }
