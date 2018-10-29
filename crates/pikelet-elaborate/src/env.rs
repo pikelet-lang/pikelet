@@ -601,18 +601,4 @@ impl TcEnv {
         self.resugar_env.on_binder(&Binder(free_var.clone()));
         self.definitions.insert(free_var, term);
     }
-
-    pub fn extend_declarations(
-        &mut self,
-        iter: impl IntoIterator<Item = (FreeVar<String>, RcType)>,
-    ) {
-        self.declarations.extend(iter)
-    }
-
-    pub fn extend_definitions<T>(
-        &mut self,
-        iter: impl IntoIterator<Item = (FreeVar<String>, RcTerm)>,
-    ) {
-        self.definitions.extend(iter)
-    }
 }

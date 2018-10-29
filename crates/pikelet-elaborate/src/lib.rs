@@ -325,9 +325,13 @@ pub fn check_term(
                     let (raw_pattern, raw_body) = raw_clause.clone().unbind();
                     let (pattern, declarations) = check_pattern(env, &raw_pattern, &head_ty)?;
 
-                    let mut body_env = env.clone();
-                    body_env.extend_declarations(declarations);
-                    let body = check_term(&body_env, &raw_body, expected_ty)?;
+                    let body = {
+                        let mut body_env = env.clone();
+                        for (free_var, ty) in declarations {
+                            body_env.insert_declaration(free_var, ty);
+                        }
+                        check_term(&body_env, &raw_body, expected_ty)?
+                    };
 
                     Ok(Scope::new(pattern, body))
                 })
@@ -648,7 +652,9 @@ pub fn infer_term(env: &TcEnv, raw_term: &raw::RcTerm) -> Result<(RcTerm, RcType
 
                     let (body, body_ty) = {
                         let mut body_env = env.clone();
-                        body_env.extend_declarations(declarations);
+                        for (free_var, ty) in declarations {
+                            body_env.insert_declaration(free_var, ty);
+                        }
                         infer_term(&body_env, &raw_body)?
                     };
 
