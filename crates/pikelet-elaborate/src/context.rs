@@ -227,10 +227,8 @@ pub struct Context {
     resugar_env: ResugarEnv,
     /// The globals
     globals: Rc<Globals>,
-    /// Imported declarations
-    import_declarations: im::HashMap<String, RcType>,
-    /// Imported definitions
-    import_definitions: im::HashMap<String, Import>,
+    /// Imports
+    imports: im::HashMap<String, (Import, RcType)>,
     /// The type annotations of the binders we have passed over
     declarations: im::HashMap<FreeVar<String>, RcType>,
     /// Any definitions we have passed over
@@ -278,8 +276,7 @@ impl Default for Context {
                 ty_f64: RcValue::from(Value::var(Var::Free(var_f64.clone()), 0)),
                 var_array: var_array.clone(),
             }),
-            import_declarations: im::HashMap::new(),
-            import_definitions: im::HashMap::new(),
+            imports: im::HashMap::new(),
             declarations: im::HashMap::new(),
             definitions: im::HashMap::new(),
         };
@@ -571,12 +568,8 @@ impl Context {
         }
     }
 
-    pub fn get_import_declaration(&self, name: &str) -> Option<&RcType> {
-        self.import_declarations.get(name)
-    }
-
-    pub fn get_import_definition(&self, name: &str) -> Option<&Import> {
-        self.import_definitions.get(name)
+    pub fn get_import(&self, name: &str) -> Option<&(Import, RcType)> {
+        self.imports.get(name)
     }
 
     pub fn get_declaration(&self, free_var: &FreeVar<String>) -> Option<&RcType> {
@@ -588,8 +581,7 @@ impl Context {
     }
 
     pub fn insert_import(&mut self, name: String, import: Import, ty: RcType) {
-        self.import_declarations.insert(name.clone(), ty);
-        self.import_definitions.insert(name, import);
+        self.imports.insert(name, (import, ty));
     }
 
     pub fn insert_declaration(&mut self, free_var: FreeVar<String>, ty: RcType) {

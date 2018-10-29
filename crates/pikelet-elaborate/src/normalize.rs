@@ -37,9 +37,9 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
             }),
         },
 
-        Term::Import(ref name) => match context.get_import_definition(name) {
-            Some(Import::Term(ref term)) => nf_term(context, term),
-            Some(Import::Prim(ref interpretation)) => match interpretation(&[]) {
+        Term::Import(ref name) => match context.get_import(name) {
+            Some(&(Import::Term(ref term), _)) => nf_term(context, term),
+            Some(&(Import::Prim(ref interpretation), _)) => match interpretation(&[]) {
                 Some(value) => Ok(value),
                 None => Ok(RcValue::from(Value::from(Neutral::Head(Head::Import(
                     name.clone(),
@@ -86,12 +86,12 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
                         Neutral::Head(Head::Import(ref name)) => {
                             spine.push(arg);
 
-                            match context.get_import_definition(name) {
-                                Some(Import::Term(ref _term)) => {
+                            match context.get_import(name) {
+                                Some(&(Import::Term(ref _term), _)) => {
                                     // nf_term(context, term)
                                     unimplemented!("import applications")
                                 },
-                                Some(Import::Prim(ref interpretation)) => {
+                                Some(&(Import::Prim(ref interpretation), _)) => {
                                     match interpretation(&spine) {
                                         Some(value) => return Ok(value),
                                         None => {},

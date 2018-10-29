@@ -446,8 +446,8 @@ pub fn infer_term(
             .into()),
         },
 
-        raw::Term::Import(_, name_span, ref name) => match context.get_import_declaration(name) {
-            Some(ty) => Ok((RcTerm::from(Term::Import(name.clone())), ty.clone())),
+        raw::Term::Import(_, name_span, ref name) => match context.get_import(name) {
+            Some((_, ty)) => Ok((RcTerm::from(Term::Import(name.clone())), ty.clone())),
             None => Err(TypeError::UndefinedImport {
                 span: name_span,
                 name: name.clone(),
