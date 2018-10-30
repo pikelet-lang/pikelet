@@ -251,6 +251,12 @@ impl ToDoc for Term {
                 .to_doc()
                 .append(".")
                 .append(format!("{}^{}", label, shift)),
+            Term::VariantType(_, ref fields) => {
+                unimplemented!("pretty concrete::Term::VariantType")
+            },
+            Term::Variant(_, ref name, ref term) => {
+                unimplemented!("pretty concrete::Term::Variant")
+            },
             Term::Error(_) => Doc::text("<error>"),
         }
     }

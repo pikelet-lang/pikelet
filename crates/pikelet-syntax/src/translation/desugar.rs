@@ -540,8 +540,8 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                     span,
                     cond.desugar(env)?,
                     vec![
-                        Scope::new(bool_pattern("true"), if_true.desugar(&env)?),
-                        Scope::new(bool_pattern("false"), if_false.desugar(&env)?),
+                        Scope::new(bool_pattern("true"), if_true.desugar(env)?),
+                        Scope::new(bool_pattern("false"), if_false.desugar(env)?),
                     ],
                 )))
             },
@@ -560,6 +560,17 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             },
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(env, span, fields),
             concrete::Term::Record(span, ref fields) => desugar_record(env, span, fields),
+            concrete::Term::VariantType(_, ref variants) => {
+                let variants = variants
+                    .iter()
+                    .map(|variant| Ok((Label(variant.label.1.clone()), variant.ann.desugar(env)?)))
+                    .collect::<Result<_, _>>()?;
+
+                Ok(raw::RcTerm::from(raw::Term::VariantType(span, variants)))
+            },
+            concrete::Term::Variant(_, ref label, ref term) => Ok(raw::RcTerm::from(
+                raw::Term::Variant(span, Label(label.clone()), term.desugar(env)?),
+            )),
             concrete::Term::Proj(_, ref tm, label_start, ref label, shift) => {
                 Ok(raw::RcTerm::from(raw::Term::Proj(
                     span,

@@ -198,6 +198,8 @@ impl ToDoc for raw::Term {
             raw::Term::Proj(_, ref expr, _, ref label, shift) => {
                 pretty_proj(&expr.inner, label, shift)
             },
+            raw::Term::VariantType(_, ref variants) => unimplemented!(),
+            raw::Term::Variant(_, ref label, ref term) => unimplemented!(),
             raw::Term::Case(_, ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses
@@ -305,6 +307,8 @@ impl ToDoc for Term {
                 ),
             )),
             Term::Proj(ref expr, ref label, shift) => pretty_proj(&expr.inner, label, shift),
+            Term::VariantType(ref variants) => unimplemented!(),
+            Term::Variant(ref label, ref term) => unimplemented!(),
             Term::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses
@@ -360,6 +364,8 @@ impl ToDoc for Value {
                     },
                 ),
             )),
+            Value::VariantType(ref variants) => unimplemented!(),
+            Value::Variant(ref label, ref term) => unimplemented!(),
             Value::Array(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),

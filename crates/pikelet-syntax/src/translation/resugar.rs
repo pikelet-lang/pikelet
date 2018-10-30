@@ -552,6 +552,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             // TODO: Add let to rename shadowed globals?
             concrete::Term::Record(ByteSpan::default(), fields)
         },
+        core::Term::VariantType(ref variants) => unimplemented!("resugar core::Term::VariantType"),
+        core::Term::Variant(ref label, ref term) => unimplemented!("resugar core::Term::Variant"),
         core::Term::Proj(ref expr, Label(ref label), shift) => {
             let shift = match shift {
                 LevelShift(0) => None,

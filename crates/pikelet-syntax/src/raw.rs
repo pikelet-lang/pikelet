@@ -123,13 +123,17 @@ pub enum Term {
         ByteSpan,
         Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
-    /// Dependent record
+    /// Dependent record introduction
     Record(
         ByteSpan,
         Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
-    /// Field projection
+    /// Record field projection
     Proj(ByteSpan, RcTerm, ByteSpan, Label, LevelShift),
+    /// Variant types
+    VariantType(ByteSpan, Vec<(Label, RcTerm)>),
+    /// Variant introduction
+    Variant(ByteSpan, Label, RcTerm),
     /// Case expressions
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -153,6 +157,8 @@ impl Term {
             | Term::RecordType(span, ..)
             | Term::Record(span, ..)
             | Term::Proj(span, ..)
+            | Term::VariantType(span, ..)
+            | Term::Variant(span, ..)
             | Term::Case(span, ..)
             | Term::Array(span, ..)
             | Term::Let(span, ..) => span,

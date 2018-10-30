@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
+use concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordField, ReplCommand, VariantTypeField};
 use parse::{LalrpopError, ParseError, Token};
 use {FloatFormat, IntFormat};
 
@@ -32,6 +32,8 @@ extern {
         // Keywords
         "as" => Token::As,
         "case" => Token::Case,
+        "data" => Token::Data,
+        "Data" => Token::DataType,
         "else" => Token::Else,
         "if" => Token::If,
         "import" => Token::Import,
@@ -229,6 +231,14 @@ AtomicTerm: Term = {
         fields.extend(last);
         Term::Record(ByteSpan::new(start, end), fields)
     },
+    <start: @L> "Data" "{" <variants: (<VariantTypeField> ";")*> <last: VariantTypeField?> "}" <end: @R> => {
+        let mut variants = variants;
+        variants.extend(last);
+        Term::VariantType(ByteSpan::new(start, end), variants)
+    },
+    <start: @L> "data" "{" <label: Ident> "=" <term: Term> "}" <end: @R> => {
+        Term::Variant(ByteSpan::new(start, end), label, Box::new(term))
+    },
     <start: @L> <term: AtomicTerm> "." <label_start: @L> <label: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
         Term::Proj(ByteSpan::new(start, end), Box::new(term), label_start, label, shift.map(|x| x as u32))
     },
@@ -249,10 +259,6 @@ RecordTypeField: RecordTypeField = {
     },
 };
 
-PatternArm: (Pattern, Term) = {
-    <Pattern> "=>" <Term>,
-};
-
 RecordField: RecordField = {
     <label: IndexedIdent> <shift: ("^" <"decimal literal">)?> => {
         RecordField::Punned { label, shift: shift.map(|x| x as u32) }
@@ -261,6 +267,16 @@ RecordField: RecordField = {
         let return_ann = return_ann.map(Box::new);
         RecordField::Explicit { label, params, return_ann, term }
     },
+};
+
+VariantTypeField: VariantTypeField = {
+    <_comment: "doc comment"*> <label: IndexedIdent> ":" <ann: Term> => {
+        VariantTypeField { label, ann }
+    },
+};
+
+PatternArm: (Pattern, Term) = {
+    <Pattern> "=>" <Term>,
 };
 
 IndexedIdent: (ByteIndex, String) = {

@@ -183,6 +183,20 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
             })
         },
 
+        // E-VARIANT-TYPE
+        Term::VariantType(ref variants) => Ok(RcValue::from(Value::VariantType(
+            variants
+                .iter()
+                .map(|&(ref label, ref ann)| Ok((label.clone(), nf_term(context, ann)?)))
+                .collect::<Result<_, _>>()?,
+        ))),
+
+        // E-VARIANT
+        Term::Variant(ref label, ref term) => Ok(RcValue::from(Value::Variant(
+            label.clone(),
+            nf_term(context, term)?,
+        ))),
+
         // E-CASE
         Term::Case(ref head, ref clauses) => {
             let head = nf_term(context, head)?;

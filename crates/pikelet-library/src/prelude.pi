@@ -91,6 +91,40 @@ record {
     unit = record {};
 
 
+    ||| The void or 'uninhabited' type
+    |||
+    ||| It should never be possible to create anything of this type!
+    Void : Type;
+    Void = Data {};
+
+    ||| We should never make a `Void`, so if we've got one, anything is possible!
+    |||
+    ||| This is known as the [_Principle of explosion_ or _ex falso quodlibet_]
+    ||| (https://en.wikipedia.org/wiki/Principle_of_explosion).
+    absurd : (A : Type) -> Void -> A;
+    absurd _ void = case void {};
+
+
+    ||| Option type
+    |||
+    ||| This can either be some value `A`, or nothing. We can use this to
+    ||| represent data that may or may not be present. This is also known as
+    ||| 'nullable' types in some languages.
+    |||
+    ||| ```
+    ||| test-some : Option S32;
+    ||| test-some = data { some = 1 };
+    |||
+    ||| test-none : Option S32;
+    ||| test-none = data { none = unit };
+    ||| ```
+    Option : Type -> Type;
+    Option A = Data {
+        some : A;
+        none : Unit;
+    };
+
+
     ||| Dependent products
     Prod : (A : Type) (B : A -> Type) -> Type;
     Prod A B = (a : A) -> B a;

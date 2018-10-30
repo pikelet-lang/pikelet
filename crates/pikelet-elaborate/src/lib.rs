@@ -319,6 +319,20 @@ pub fn check_term(
             return Ok(RcTerm::from(Term::Record(Scope::new(fields, ()))));
         },
 
+        (&raw::Term::Variant(span, ref label, ref raw_term), &Value::VariantType(ref variants)) => {
+            for &(ref ty_label, ref ann) in variants {
+                if label == ty_label {
+                    return check_term(&context, &raw_term, ann);
+                }
+            }
+
+            return Err(InternalError::Unimplemented {
+                span: Some(span),
+                message: "variant not found".to_owned(),
+            }
+            .into());
+        },
+
         (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
             let (head, head_ty) = infer_term(context, raw_head)?;
 
@@ -644,6 +658,30 @@ pub fn infer_term(
                 found: Box::new(context.resugar(&ty)),
             })
         },
+
+        raw::Term::VariantType(_, ref raw_variants) => {
+            let mut max_level = Level(0);
+
+            let variants = raw_variants
+                .iter()
+                .map(|&(ref label, ref raw_ann)| {
+                    let (ann, ann_level) = infer_universe(context, raw_ann)?;
+                    max_level = cmp::max(max_level, ann_level);
+                    Ok((label.clone(), ann))
+                })
+                .collect::<Result<_, TypeError>>()?;
+
+            Ok((
+                RcTerm::from(Term::VariantType(variants)),
+                RcValue::from(Value::Universe(max_level)),
+            ))
+        },
+
+        raw::Term::Variant(span, ref label, ref raw_term) => Err(InternalError::Unimplemented {
+            span: Some(span),
+            message: "ambiguous variant".to_owned(),
+        }
+        .into()),
 
         // I-CASE
         raw::Term::Case(span, ref raw_head, ref raw_clauses) => {

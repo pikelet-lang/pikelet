@@ -101,10 +101,14 @@ pub enum Term {
     App(RcTerm, RcTerm),
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
-    /// Dependent record
+    /// Dependent record introduction
     Record(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
-    /// Field projection
+    /// Record field projection
     Proj(RcTerm, Label, LevelShift),
+    /// Variant types
+    VariantType(Vec<(Label, RcTerm)>),
+    /// Variant introduction
+    Variant(Label, RcTerm),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
@@ -220,6 +224,15 @@ impl RcTerm {
             Term::Proj(ref expr, ref label, shift) => {
                 RcTerm::from(Term::Proj(expr.substs(mappings), label.clone(), shift))
             },
+            Term::VariantType(ref variants) => RcTerm::from(Term::VariantType(
+                variants
+                    .iter()
+                    .map(|&(ref label, ref ann)| (label.clone(), ann.substs(mappings)))
+                    .collect(),
+            )),
+            Term::Variant(ref label, ref term) => {
+                RcTerm::from(Term::Variant(label.clone(), term.substs(mappings)))
+            },
             Term::Case(ref head, ref clauses) => RcTerm::from(Term::Case(
                 head.substs(mappings),
                 clauses
@@ -278,8 +291,12 @@ pub enum Value {
     Lam(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
-    /// Dependent record
+    /// Dependent record introduction
     Record(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
+    /// Variant types
+    VariantType(Vec<(Label, RcValue)>),
+    /// Variant introduction
+    Variant(Label, RcValue),
     /// Array literals
     Array(Vec<RcValue>),
     /// Neutral terms
@@ -312,6 +329,8 @@ impl Value {
             | Value::Lam(_)
             | Value::RecordType(_)
             | Value::Record(_)
+            | Value::VariantType(_)
+            | Value::Variant(_, _)
             | Value::Array(_) => true,
             Value::Neutral(_, _) => false,
         }
@@ -329,6 +348,8 @@ impl Value {
                 .unsafe_patterns
                 .iter()
                 .all(|(_, _, Embed(ref term))| term.is_nf()),
+            Value::VariantType(ref variants) => variants.iter().all(|&(_, ref ann)| ann.is_nf()),
+            Value::Variant(_, ref term) => term.is_nf(),
             Value::Array(ref elems) => elems.iter().all(|elem| elem.is_nf()),
             Value::Neutral(_, _) => false,
         }
@@ -377,6 +398,12 @@ impl RcValue {
                     term.shift_universes(shift);
                 }
             },
+            Value::VariantType(ref mut variants) => {
+                for &mut (_, ref mut ann) in variants {
+                    ann.shift_universes(shift);
+                }
+            },
+            Value::Variant(_, ref mut term) => term.shift_universes(shift),
             Value::Array(ref mut elems) => {
                 for elem in elems {
                     elem.shift_universes(shift);
@@ -437,7 +464,7 @@ pub type Spine = Vec<RcValue>;
 pub enum Neutral {
     /// Head of an application
     Head(Head),
-    /// Field projection
+    /// Record field projection
     Proj(RcNeutral, Label, LevelShift),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
@@ -560,6 +587,15 @@ impl<'a> From<&'a Value> for Term {
                     unsafe_pattern: Nest { unsafe_patterns },
                     unsafe_body: (),
                 })
+            },
+            Value::VariantType(ref variants) => Term::VariantType(
+                variants
+                    .iter()
+                    .map(|&(ref label, ref ann)| (label.clone(), RcTerm::from(&**ann)))
+                    .collect(),
+            ),
+            Value::Variant(ref label, ref term) => {
+                Term::Variant(label.clone(), RcTerm::from(&**term))
             },
             Value::Array(ref elems) => {
                 Term::Array(elems.iter().map(|elem| RcTerm::from(&**elem)).collect())

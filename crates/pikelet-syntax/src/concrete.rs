@@ -96,6 +96,12 @@ pub enum RecordField {
     },
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct VariantTypeField {
+    pub label: (ByteIndex, String),
+    pub ann: Term,
+}
+
 /// Top-level items within a module
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
@@ -283,7 +289,7 @@ pub enum Term {
     /// (x y : t1) -> t2
     /// ```
     Pi(ByteIndex, PiParams, Box<Term>),
-    /// Non-Dependent function type
+    /// Non-dependent function type
     ///
     /// ```text
     /// t1 -> t2
@@ -326,19 +332,31 @@ pub enum Term {
     /// case t1 { pat => t2; .. }
     /// ```
     Case(ByteSpan, Box<Term>, Vec<(Pattern, Term)>),
-    /// Record type
+    /// Dependent record type
     ///
     /// ```text
     /// Record { x : t1, .. }
     /// ```
     RecordType(ByteSpan, Vec<RecordTypeField>),
-    /// Record value
+    /// Dependent record introduction
     ///
     /// ```text
     /// record { x = t1, .. }
     /// record { id (a : Type) (x : a) : a = x, .. }
     /// ```
     Record(ByteSpan, Vec<RecordField>),
+    /// Variant type
+    ///
+    /// ```text
+    /// Data { x : t1, .. }
+    /// ```
+    VariantType(ByteSpan, Vec<VariantTypeField>),
+    /// Variant introduction
+    ///
+    /// ```text
+    /// data { x = t1 }
+    /// ```
+    Variant(ByteSpan, String, Box<Term>),
     /// Record field projection
     ///
     /// ```text
@@ -365,6 +383,8 @@ impl Term {
             | Term::RecordType(span, ..)
             | Term::Record(span, ..)
             | Term::Proj(span, ..)
+            | Term::VariantType(span, ..)
+            | Term::Variant(span, ..)
             | Term::Array(span, ..)
             | Term::Error(span) => span,
             Term::Literal(ref literal) => literal.span(),
