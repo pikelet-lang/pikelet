@@ -47,13 +47,15 @@ if you'd like to give your input and get involved!
 - [Strict evaluation](https://en.wikipedia.org/wiki/Eager_evaluation)
 - Implicit arguments
 - Dependent records+instance arguments as first class modules/type classes
-- Non-uniform memory layout
+- Non-uniform memory layout - custom data layouts for records and variants?
 - [Quantitative type theory](https://bentnib.org/quantitative-type-theory.pdf)
   for [erasure](https://en.wikipedia.org/wiki/Type_erasure) and
   [linear types](https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems)
 - Totality checking
 - Explicit tail-call elimination
+- Excellent editor support with fast, incremental program analysis
 - Interactive program development using holes
+- Refinement types for lightweight verification
 
 Some more hand-wavey ideas:
 
@@ -67,15 +69,16 @@ features and design goals:
 
 - [Effect systems/Algebraic Effects](https://en.wikipedia.org/wiki/Effect_system)
     - could make it easier to integrate async-io without needing to build it in
-    - how do cubical type theory and observational type theory play into this?
+    - how do we use effects for generative modules?
     - how do we makes this *fast* for systems programming?
         - should compile down in a similar way to the equivalent procedural code in Rust or C
+        - most effect handling does not need to be dynamic
         - most systems cause lots of intermediate allocations or stack switching
 - [Combined Effects/Coeffects](https://www.cs.kent.ac.uk/people/staff/dao7/publ/combining-effects-and-coeffects-icfp16.pdf)
     - allow for statically checked compilation configurations
     - explicit variable capture could be modelled as a coeffect
     - could subsume quantitative type theory, implicit arguments, etc
-    - not yet integrated into dependent types in the research literature
+    - not yet integrated into dependent types in the research literature (Granule is working on this)
 - Row polymorphism
     - no research on integrating these with dependent records and inductive data types
 - Program composition via category theory
@@ -86,20 +89,21 @@ features and design goals:
 
 ## A possible implementation plan
 
-1. Start with a simple dependent type system, like [LambdaPi](https://www.andres-loeh.de/LambdaPi/)
+1. ~~Start with a simple dependent type system, like [LambdaPi](https://www.andres-loeh.de/LambdaPi/)~~
 2. Implement additional language extensions needed for actual usefulness
-    - dependent records
-    - let/where bindings
+    - ~~dependent records~~
+    - ~~let/where bindings~~
     - quantitative type theory
     - implicit arguments
     - instance arguments
-    - better universe handling (or a flag to turn on `Type : Type` in the interim)
+    - basic (non-dependent) effect system
+    - ~~cumulative universes~~
 3. Implement back end(s)
     - JIT and embeddable runtime (for bootstrapping usage) - possibly with
-      [HolyJIT](https://github.com/nbp/holyjit)?
-    - Optimizing compiler - Possibly with LLVM or [Cretonne](https://github.com/Cretonne/cretonne),
-      or a verified compiler (like CompCert) in the future
-        - Cretonne would unlock WebASM, which would be a huge boost
+      [HolyJIT](https://github.com/nbp/holyjit) or or [CraneLift](https://github.com/CraneStation/cranelift)
+        - CraneLift would unlock WebASM, which would be a huge boost
+    - Optimizing compiler - Possibly with LLVM or a verified compiler (like
+      CompCert) in the future
         - Figure out how to integrate with libraries written in other languages,
           like C or Rust
 
