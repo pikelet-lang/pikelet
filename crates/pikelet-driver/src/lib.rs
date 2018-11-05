@@ -131,17 +131,6 @@ extern crate pikelet_elaborate;
 extern crate pikelet_library;
 extern crate pikelet_syntax;
 
-#[cfg(feature = "cli")]
-extern crate linefeed;
-#[cfg(feature = "cli")]
-#[macro_use]
-extern crate structopt;
-#[cfg(feature = "cli")]
-extern crate term_size;
-
-#[cfg(feature = "cli")]
-pub mod cli;
-
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting::Diagnostic;
 use std::sync::Arc;
