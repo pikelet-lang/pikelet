@@ -194,13 +194,15 @@ if you'd like to give your input and get involved!</p>
 <li><a href="https://en.wikipedia.org/wiki/Eager_evaluation">Strict evaluation</a></li>
 <li>Implicit arguments</li>
 <li>Dependent records+instance arguments as first class modules/type classes</li>
-<li>Non-uniform memory layout</li>
+<li>Non-uniform memory layout - custom data layouts for records and variants?</li>
 <li><a href="https://bentnib.org/quantitative-type-theory.pdf">Quantitative type theory</a>
 for <a href="https://en.wikipedia.org/wiki/Type_erasure">erasure</a> and
 <a href="https://en.wikipedia.org/wiki/Substructural_type_system#Linear_type_systems">linear types</a></li>
 <li>Totality checking</li>
 <li>Explicit tail-call elimination</li>
+<li>Excellent editor support with fast, incremental program analysis</li>
 <li>Interactive program development using holes</li>
+<li>Refinement types for lightweight verification</li>
 </ul>
 <p>Some more hand-wavey ideas:</p>
 <ul>
@@ -215,10 +217,11 @@ features and design goals:</p>
 <li><a href="https://en.wikipedia.org/wiki/Effect_system">Effect systems/Algebraic Effects</a>
 <ul>
 <li>could make it easier to integrate async-io without needing to build it in</li>
-<li>how do cubical type theory and observational type theory play into this?</li>
+<li>how do we use effects for generative modules?</li>
 <li>how do we makes this <em>fast</em> for systems programming?
 <ul>
 <li>should compile down in a similar way to the equivalent procedural code in Rust or C</li>
+<li>most effect handling does not need to be dynamic</li>
 <li>most systems cause lots of intermediate allocations or stack switching</li>
 </ul>
 </li>
@@ -229,7 +232,7 @@ features and design goals:</p>
 <li>allow for statically checked compilation configurations</li>
 <li>explicit variable capture could be modelled as a coeffect</li>
 <li>could subsume quantitative type theory, implicit arguments, etc</li>
-<li>not yet integrated into dependent types in the research literature</li>
+<li>not yet integrated into dependent types in the research literature (Granule is working on this)</li>
 </ul>
 </li>
 <li>Row polymorphism
@@ -248,25 +251,29 @@ data structures, instead we want to build up stack allocated state machines
 </ul>
 <a class="header" href="#a-possible-implementation-plan" id="a-possible-implementation-plan"><h2>A possible implementation plan</h2></a>
 <ol>
-<li>Start with a simple dependent type system, like <a href="https://www.andres-loeh.de/LambdaPi/">LambdaPi</a></li>
+<li>~~Start with a simple dependent type system, like <a href="https://www.andres-loeh.de/LambdaPi/">LambdaPi</a>~~</li>
 <li>Implement additional language extensions needed for actual usefulness
 <ul>
-<li>dependent records</li>
-<li>let/where bindings</li>
+<li>~~dependent records~~</li>
+<li>~~let/where bindings~~</li>
 <li>quantitative type theory</li>
 <li>implicit arguments</li>
 <li>instance arguments</li>
-<li>better universe handling (or a flag to turn on <code>Type : Type</code> in the interim)</li>
+<li>basic (non-dependent) effect system</li>
+<li>~~cumulative universes~~</li>
 </ul>
 </li>
 <li>Implement back end(s)
 <ul>
 <li>JIT and embeddable runtime (for bootstrapping usage) - possibly with
-<a href="https://github.com/nbp/holyjit">HolyJIT</a>?</li>
-<li>Optimizing compiler - Possibly with LLVM or <a href="https://github.com/Cretonne/cretonne">Cretonne</a>,
-or a verified compiler (like CompCert) in the future
+<a href="https://github.com/nbp/holyjit">HolyJIT</a> or or <a href="https://github.com/CraneStation/cranelift">CraneLift</a>
 <ul>
-<li>Cretonne would unlock WebASM, which would be a huge boost</li>
+<li>CraneLift would unlock WebASM, which would be a huge boost</li>
+</ul>
+</li>
+<li>Optimizing compiler - Possibly with LLVM or a verified compiler (like
+CompCert) in the future
+<ul>
 <li>Figure out how to integrate with libraries written in other languages,
 like C or Rust</li>
 </ul>
