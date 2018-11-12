@@ -9,6 +9,8 @@ rust:
   - stable
   - beta
   - nightly
+env:
+  - TRAVIS_NODE_VERSION="11.1.0"
 
 matrix:
   allow_failures:
