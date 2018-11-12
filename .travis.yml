@@ -2,8 +2,8 @@ language: rust
 cache:
   cargo: true
   directories:
-    - book/highlight.js/node_modules
     - editors/code/node_modules
+    - website/node_modules
 rust:
   - 1.31.0
   - stable
@@ -17,25 +17,24 @@ matrix:
     - rust: nightly
 
 install:
-  - tools/install-cargo-updates
-  - tools/build-highlight-js
   - cargo build --verbose # https://docs.travis-ci.com/user/languages/rust/#Dependency-Management
   - (cd editors/code && npm install)
+  - (cd website && npm install)
 
 script:
   - cargo build --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
   - cargo test --verbose --all # https://docs.travis-ci.com/user/languages/rust/#Default-Build-Script
   - (cd editors/code && npm run travis)
-  - tools/build-book
+  - (cd website && npm run build)
 
 deploy:
-  # Deploy the book to Github Pages
+  # Deploy the website to Github Pages
   # https://docs.travis-ci.com/user/deployment/pages/
   - provider: pages
     skip-cleanup: true
     github-token: $GITHUB_TOKEN  # Set in travis-ci.org dashboard, marked secure
     keep-history: true
-    local-dir: book/build
+    local-dir: website/build/pikelet-site
     on:
       branch: master
       rust: stable

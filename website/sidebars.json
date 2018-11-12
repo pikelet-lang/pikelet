@@ -1,10 +1,28 @@
 {
-  "docs": {
-    "Docusaurus": ["doc1"],
-    "First Category": ["doc2"],
-    "Second Category": ["doc3"]
+  "guide": {
+    "Getting Started": [
+      "guide",
+      "guide/installation"
+    ],
+    "Language": [
+      "guide/language/basics",
+      "guide/language/conditionals",
+      "guide/language/functions",
+      "guide/language/records",
+      "guide/language/bindings",
+      "guide/language/type-inference",
+      "guide/language/universes"
+    ],
+    "Appendix": [
+      "guide/appendix/design",
+      "guide/appendix/influences"
+    ]
   },
-  "docs-other": {
-    "First Category": ["doc4", "doc5"]
+  "spec": {
+    "Language Spec": [
+      "spec",
+      "spec/theory",
+      "spec/references"
+    ]
   }
 }
