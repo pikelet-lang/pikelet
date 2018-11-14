@@ -14,6 +14,7 @@
     "rename-version": "docusaurus-rename-version"
   },
   "devDependencies": {
-    "docusaurus": "^1.5.1"
+    "docusaurus": "^1.5.1",
+    "katex": "^0.10.0"
   }
 }

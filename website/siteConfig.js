@@ -153,8 +153,20 @@ const siteConfig = {
     },
   },
 
+  markdownPlugins: [require('./lib/remarkable-katex')],
+
   // Add custom scripts here that would be placed in <script> tags.
   scripts: ['https://buttons.github.io/buttons.js'],
+
+  // Add custom stylesheets here that would be placed in <link rel="stylesheet"> tags.
+  stylesheets: [
+    {
+      href: 'https://cdn.jsdelivr.net/npm/katex@0.10.0-beta/dist/katex.min.css',
+      integrity:
+        'sha384-9tPv11A+glH/on/wEu99NVwDPwkMQESOocs/ZGXPoIiLE8MU/qkqUcZ3zzL+6DuH',
+      crossOrigin: 'anonymous',
+    },
+  ],
 
   // On page navigation for the current documentation page.
   onPageNav: 'separate',
