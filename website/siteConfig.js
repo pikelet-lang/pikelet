@@ -153,7 +153,85 @@ const siteConfig = {
     },
   },
 
-  markdownPlugins: [require('./lib/remarkable-katex')],
+  markdownPlugins: [
+    md =>
+      md.use(require('./lib/remarkable-katex'), {
+        macros: {
+          // Haskell-style append https://tex.stackexchange.com/questions/4194/how-to-typeset-haskell-operator-and-friends
+          '\\doubleplus': '+\\kern-1.3ex+\\kern0.8ex',
+          // Small caps https://github.com/mathjax/MathJax-docs/wiki/Small-caps-%5Ctextsc-in-MathJaxx
+          '\\sc#1': '\\dosc#1\\csod',
+          '\\dosc#1#2': '\\csod{{\\rm #1{\\small #2}}}',
+
+          '\\rule[3]': '\\dfrac{ ~~#2~~ }{ ~~#3~~ } & \\Tiny{\\text{(#1)}}',
+
+          // \DeclareMathOperator{\max}{max}
+          // \DeclareMathOperator{\field}{field}
+          // \DeclareMathOperator{\fieldty}{fieldty}
+          // \DeclareMathOperator{\fieldsubst}{fieldsubst}
+          // \DeclareMathOperator{\Match}{\sc{MATCH}}
+          // \DeclareMathOperator{\shift}{shift}
+
+          // Judgments
+          '\\eval[3]': '#1 \\vdash #2 \\hookrightarrow #3',
+          '\\check[4]': '#1 \\vdash #2 \\uparrow #3 \\leadsto #4',
+          '\\infer[4]': '#1 \\vdash #2 downarrow #3 \\leadsto #4',
+          '\\subty[3]': '#1 \\vdash #2 preccurlyeq #3',
+          '\\match[3]': 'Match(#1,#2) \\Longrightarrow #3',
+          '\\checkpat[5]':
+            '#1 \\vdash #2 \\uparrow #3 \\leadsto #4 \\Longrightarrow #5',
+          '\\inferpat[5]':
+            '#1 \\vdash #2 downarrow #3 \\leadsto #4 \\Longrightarrow #5',
+
+          // Metavariables
+          '\\rexpr': 'r', // raw expressions
+          '\\rtype': 'R', // raw types
+          '\\rpat': 's', // raw patterns
+
+          '\\texpr': 't', // expressions
+          '\\ttype': 'T', // types
+          '\\tpat': 'p', // patterns
+
+          '\\vexpr': 'v', // value expressions
+          '\\vtype': 'V', // value types
+          '\\wexpr': 'w', // whnf expressions
+          '\\wtype': 'W', // whnf types
+          '\\nexpr': 'n', // neutral expressions
+          '\\ntype': 'N', // neutral types
+
+          '\\ctx': '\\Gamma', // contexts
+
+          // Keywords
+          '\\kw[1]': '\\mathsf{#1}',
+
+          // Term and Type constructors
+          '\\label': 'l',
+          '\\binder': 'x',
+          '\\var[1]': 'x^\\wedge{#1}',
+          '\\Type[1]': '\\kw{Type}^\\wedge{#1}',
+          '\\Arrow[2]': '#1 \\rightarrow #2',
+          '\\Pi[2]': '\\Arrow{(#1)}{#2}',
+          '\\lam[2]': '\\kw{\\lambda} #1 . #2',
+          '\\app[2]': '#1 ~ #2',
+          '\\case[2]': '\\kw{case} ~ #1 \\left{ #2 \\right}',
+          '\\RecordCons[2]': '\\kw{Record} \\left{ #1; #2 \\right}',
+          '\\RecordEmpty': '\\kw{Record} \\left{\\right}',
+          '\\as': '~ \\kw{as} ~',
+          '\\record[1]': '\\kw{record} \\left{ #1 \\right}',
+          '\\proj[3]': '#1.#2^\\wedge{#3}',
+          '\\subst[3]': '#1 ~ [#2 \\rightarrow #3]',
+
+          // Items
+          '\\declItem[2]': '#1 : #2',
+          '\\defnItem[2]': '#1 = #2',
+
+          // Contexts
+          '\\emptyCtx': '\\varnothing',
+          '\\composeCtx[2]': '#1 sim #2',
+          '\\extendCtx[2]': '#1, #2',
+        },
+      }),
+  ],
 
   // Add custom scripts here that would be placed in <script> tags.
   scripts: ['https://buttons.github.io/buttons.js'],

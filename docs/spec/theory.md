@@ -58,77 +58,6 @@ etc. If you would like to discuss this with us, please check out
 ### Raw terms
 
 $$
-% Haskell-style append https://tex.stackexchange.com/questions/4194/how-to-typeset-haskell-operator-and-friends
-\gedf\doubleplus{+\kern-1.3ex+\kern0.8ex}
-% Small caps https://github.com/mathjax/MathJax-docs/wiki/Small-caps-%5Ctextsc-in-MathJaxx
-\gedf\sc#1{\dosc#1\csod}
-\gedf\dosc#1#2\csod{{\rm #1{\small #2}}}
-\
-\gedf\rule[3]{ \dfrac{ ~~#2~~ }{ ~~#3~~ } & \Tiny{\text{(#1)}} }
-\
-\DeclareMathOperator{\max}{max}
-\DeclareMathOperator{\field}{field}
-\DeclareMathOperator{\fieldty}{fieldty}
-\DeclareMathOperator{\fieldsubst}{fieldsubst}
-\DeclareMathOperator{\Match}{\sc{MATCH}}
-\DeclareMathOperator{\shift}{shift}
-\
-% Judgments
-\gedf\eval[3]{ #1 \vdash #2 \hookrightarrow #3 }
-\gedf\check[4]{ #1 \vdash #2 \uparrow #3 \leadsto #4 }
-\gedf\infer[4]{ #1 \vdash #2 \downarrow #3 \leadsto #4 }
-\gedf\subty[3]{ #1 \vdash #2 \preccurlyeq #3 }
-\gedf\match[3]{ \Match(#1,#2) \Longrightarrow #3 }
-\gedf\checkpat[5]{ #1 \vdash #2 \uparrow #3 \leadsto #4 \Longrightarrow #5 }
-\gedf\inferpat[5]{ #1 \vdash #2 \downarrow #3 \leadsto #4 \Longrightarrow #5 }
-\
-% Metavariables
-\gedf\rexpr{r} % raw expressions
-\gedf\rtype{R} % raw types
-\gedf\rpat{s}  % raw patterns
-\
-\gedf\texpr{t} % expressions
-\gedf\ttype{T} % types
-\gedf\tpat{p}  % patterns
-\
-\gedf\vexpr{v} % value expressions
-\gedf\vtype{V} % value types
-\gedf\wexpr{w} % whnf expressions
-\gedf\wtype{W} % whnf types
-\gedf\nexpr{n} % neutral expressions
-\gedf\ntype{N} % neutral types
-\
-\gedf\ctx{\Gamma} % contexts
-\
-% Keywords
-\gedf\kw[1]{ \mathsf{#1} }
-\
-% Term and Type constructors
-\gedf\label{l}
-\gedf\binder{x}
-\gedf\var[1]{x^\wedge{#1}}
-\gedf\Type[1]{\kw{Type}^\wedge{#1}}
-\gedf\Arrow[2]{ #1 \rightarrow #2 }
-\gedf\Pi[2]{ \Arrow{(#1)}{#2} }
-\gedf\lam[2]{ \kw{\lambda} #1 . #2 }
-\gedf\app[2]{ #1 ~ #2 }
-\gedf\case[2]{ \kw{case} ~ #1 \left\{ #2 \right\} }
-\gedf\RecordCons[2]{ \kw{Record} \left\{ #1; #2 \right\} }
-\gedf\RecordEmpty{ \kw{Record} \left\{\right\} }
-\gedf\as{ ~ \kw{as} ~ }
-\gedf\record[1]{ \kw{record} \left\{ #1 \right\} }
-\gedf\proj[3]{ #1.#2^\wedge{#3} }
-\gedf\subst[3]{ #1 ~ [#2 \rightarrow #3] }
-\
-% Items
-\gedf\declItem[2]{ #1 : #2 }
-\gedf\defnItem[2]{ #1 = #2 }
-\
-% Contexts
-\gedf\emptyCtx{ \varnothing }
-\gedf\composeCtx[2]{ #1 \sim #2 }
-\gedf\extendCtx[2]{ #1, #2 }
-\
 \begin{array}{rrll}
     \rexpr,\rtype   & ::= & \var{i}                             & \text{variables ($i \in \mathbb{N}$)} \\
                     &   | & \Type{i}                            & \text{universe of types ($i \in \mathbb{N}$)} \\
@@ -146,8 +75,6 @@ $$
     \\
     \rpat           & ::= & \binder                             & \text{binder pattern} \\
                     &   | & \rpat : \rtype                      & \text{pattern annotated with a type} \\
-                %   &   | & \record{\label=\rpat_1, \rpat_2}    & \text{record extension pattern} \\
-                %   &   | & \record{}                           & \text{empty record pattern} \\
     \\
 \end{array}
 $$
@@ -406,7 +333,6 @@ $$
         \infer{ \ctx }{ \rexpr }{ \vtype_1 }{ \texpr }
         \qquad
         \overline{
-            % TODO: impl pattern checks
             ~
             \check{ \ctx }{ \rpat_i }{ \vtype_1 }{ \tpat_i } \Rightarrow \ctx'
             \qquad
@@ -631,9 +557,7 @@ $$
 \begin{array}{llrl}
     \shift(\var{i},                                             & j) & = & \var{i} \\
     \shift(\app{\nexpr}{\texpr},                                & j) & = & \app{\shift(\nexpr, j)}{\shift(\texpr, j)} \\
-    \shift(\case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}, & j) & = &
-        % FIXME: define pattern shifting
-        \case{\shift(\nexpr, j)}{\overline{\shift(\tpat_i, j) \rightarrow \shift(\texpr_i, j)}^{;}} \\
+    \shift(\case{\nexpr}{\overline{\tpat_i \rightarrow \texpr_i}^{;}}, & j) & = & \case{\shift(\nexpr, j)}{\overline{\shift(\tpat_i, j) \rightarrow \shift(\texpr_i, j)}^{;}} \\
     \shift(\proj{\nexpr}{\label}{i},                            & j) & = & \proj{\shift(\nexpr, j)}{\label}{i} \\
     \shift(\Type{i},                                            & j) & = & \Type{(i + j)} \\
     \shift(\Pi{\binder:\vtype_1}{\vtype_2},                     & j) & = & \Pi{\binder:\shift(\vtype_1, j)}{\shift(\vtype_2, j)} \\
@@ -670,19 +594,6 @@ $$
         \match{ \wexpr }{ \binder }{ [\binder \rightarrow \wexpr] }
     }
     \\[2em]
-% TODO:
-%   \rule{M-RECORD}{
-%       \match{ \wexpr_1 }{ \tpat_1 }{ \theta_1 }
-%       \qquad
-%       \match{ \wexpr_2 }{ \tpat_2 }{ \theta_2 }
-%   }{
-%       \match{ \record{\label=\wexpr_1, \wexpr_2} }{ \record{\label=\tpat_1, \tpat_2} }{ \theta_1 \doubleplus \theta_2 }
-%   }
-%   \\[2em]
-%   \rule{M-EMPTY-RECORD}{}{
-%       \match{ \record{} }{ \record{} }{ [] }
-%   }
-%   \\[2em]
 \end{array}
 $$
 
