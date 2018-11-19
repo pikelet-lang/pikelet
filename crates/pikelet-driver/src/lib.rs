@@ -131,9 +131,10 @@ extern crate pikelet_concrete;
 extern crate pikelet_core;
 extern crate pikelet_library;
 
-use codespan::{CodeMap, FileMap, FileName};
-use codespan_reporting::Diagnostic;
-use std::sync::Arc;
+use codespan::CodeMap;
+pub use codespan::FileName;
+pub use codespan_reporting::{termcolor, ColorArg, Diagnostic};
+use std::io;
 
 use pikelet_concrete::desugar::{Desugar, DesugarEnv};
 use pikelet_concrete::elaborate::Context;
@@ -170,60 +171,76 @@ impl Driver {
     pub fn with_prelude() -> Driver {
         let mut pikelet = Driver::new();
 
-        let prim_path = "prim".to_owned();
-        let prim_name = FileName::virtual_("prim");
-        let prim_src = pikelet_library::PRIM.to_owned();
-        let prim_file = pikelet.code_map.add_filemap(prim_name, prim_src);
+        pikelet
+            .register_file(
+                "prim".to_owned(),
+                FileName::virtual_("prim"),
+                pikelet_library::PRIM.to_owned(),
+            )
+            .unwrap();
 
-        let prelude_path = "prelude".to_owned();
-        let prelude_name = FileName::virtual_("prelude");
-        let prelude_src = pikelet_library::PRELUDE.to_owned();
-        let prelude_file = pikelet.code_map.add_filemap(prelude_name, prelude_src);
-
-        pikelet.load_file(prim_path, prim_file).unwrap();
-        pikelet.load_file(prelude_path, prelude_file).unwrap();
+        pikelet
+            .register_file(
+                "prelude".to_owned(),
+                FileName::virtual_("prelude"),
+                pikelet_library::PRELUDE.to_owned(),
+            )
+            .unwrap();
 
         pikelet
     }
 
-    pub fn load_file(
+    /// Add a binding to the driver's top-level environment
+    pub fn add_binding(&mut self, name: &str, term: core::RcTerm, ann: domain::RcType) {
+        let fv = self.desugar_env.on_binding(&name);
+        self.context.insert_declaration(fv.clone(), ann.clone());
+        self.context.insert_definition(fv.clone(), term.clone());
+    }
+
+    /// Register a file with the driver
+    pub fn register_file(
         &mut self,
-        internal_path: String,
-        file_map: Arc<FileMap>,
+        path: String,
+        name: FileName,
+        src: String,
     ) -> Result<(), Vec<Diagnostic>> {
+        let (term, ty) = self.infer_file(name, src)?;
+        // FIXME: Check if import already exists
+        self.context.insert_import(path, Import::Term(term), ty);
+
+        Ok(())
+    }
+
+    /// Infer the type of a file
+    pub fn infer_file(
+        &mut self,
+        name: FileName,
+        src: String,
+    ) -> Result<(core::RcTerm, domain::RcType), Vec<Diagnostic>> {
+        let file_map = self.code_map.add_filemap(name, src);
+        // TODO: follow import paths
         let (concrete_term, _import_paths, errors) = pikelet_concrete::parse::term(&file_map);
         if !errors.is_empty() {
             return Err(errors.iter().map(|error| error.to_diagnostic()).collect());
         }
         let raw_term = self.desugar(&concrete_term)?;
-        let (term, ty) = self.infer_term(&raw_term)?;
-        // FIXME: Check if import already exists
-        self.context
-            .insert_import(internal_path, Import::Term(term), ty);
-
-        Ok(())
+        self.infer_term(&raw_term)
     }
 
-    pub fn desugar<T>(&self, src: &impl Desugar<T>) -> Result<T, Vec<Diagnostic>> {
-        src.desugar(&self.desugar_env)
-            .map_err(|e| vec![e.to_diagnostic()])
-    }
-
-    pub fn infer_bind_term(
+    /// Normalize the contents of a file
+    pub fn normalize_file(
         &mut self,
-        name: &str,
-        raw_term: &raw::RcTerm,
-    ) -> Result<(core::RcTerm, domain::RcType), Vec<Diagnostic>> {
-        let (term, inferred) = self.infer_term(&raw_term)?;
+        name: FileName,
+        src: String,
+    ) -> Result<domain::RcValue, Vec<Diagnostic>> {
+        use pikelet_concrete::elaborate::InternalError;
 
-        let fv = self.desugar_env.on_binding(&name);
-        self.context
-            .insert_declaration(fv.clone(), inferred.clone());
-        self.context.insert_definition(fv.clone(), term.clone());
-
-        Ok((term, inferred))
+        let (term, _) = self.infer_file(name, src)?;
+        pikelet_core::nbe::nf_term(&self.context, &term)
+            .map_err(|err| vec![InternalError::from(err).to_diagnostic()])
     }
 
+    /// Infer the type of a term
     pub fn infer_term(
         &self,
         raw_term: &raw::RcTerm,
@@ -232,58 +249,34 @@ impl Driver {
             .map_err(|err| vec![err.to_diagnostic()])
     }
 
-    pub fn nf_term(&self, term: &core::RcTerm) -> Result<domain::RcValue, Vec<Diagnostic>> {
+    /// Normalize a term
+    pub fn normalize_term(&self, term: &core::RcTerm) -> Result<domain::RcValue, Vec<Diagnostic>> {
         use pikelet_concrete::elaborate::InternalError;
 
         pikelet_core::nbe::nf_term(&self.context, term)
             .map_err(|err| vec![InternalError::from(err).to_diagnostic()])
     }
 
+    /// Desugar a term
+    pub fn desugar<T>(&self, src: &impl Desugar<T>) -> Result<T, Vec<Diagnostic>> {
+        src.desugar(&self.desugar_env)
+            .map_err(|e| vec![e.to_diagnostic()])
+    }
+
+    /// Resugar a term
     pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
         self.context.resugar(src)
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use codespan_reporting::termcolor::{ColorChoice, StandardStream};
-
-    use super::*;
-
-    #[test]
-    fn with_prelude() {
-        let _pikelet = Driver::with_prelude();
-    }
-
-    #[test]
-    fn prelude() {
-        let mut pikelet = Driver::new();
-        let writer = StandardStream::stdout(ColorChoice::Always);
-
-        let prim_path = "prim".to_owned();
-        let prim_name = FileName::virtual_("prim");
-        let prim_src = pikelet_library::PRIM.to_owned();
-        let prim_file = pikelet.code_map.add_filemap(prim_name, prim_src);
-
-        let prelude_path = "prelude".to_owned();
-        let prelude_name = FileName::virtual_("prelude");
-        let prelude_src = pikelet_library::PRELUDE.to_owned();
-        let prelude_file = pikelet.code_map.add_filemap(prelude_name, prelude_src);
-
-        if let Err(diagnostics) = pikelet.load_file(prim_path, prim_file) {
-            for diagnostic in diagnostics {
-                codespan_reporting::emit(&mut writer.lock(), &pikelet.code_map, &diagnostic)
-                    .unwrap();
-            }
-            panic!("load error!")
+    /// Emit the diagnostics using the given writer
+    pub fn emit<'a>(
+        &self,
+        mut writer: impl termcolor::WriteColor,
+        diagnostics: impl IntoIterator<Item = &'a Diagnostic>,
+    ) -> io::Result<()> {
+        for diagnostic in diagnostics {
+            codespan_reporting::emit(&mut writer, &self.code_map, diagnostic)?;
         }
-
-        if let Err(diagnostics) = pikelet.load_file(prelude_path, prelude_file) {
-            for diagnostic in diagnostics {
-                codespan_reporting::emit(&mut writer.lock(), &pikelet.code_map, &diagnostic)
-                    .unwrap();
-            }
-            panic!("load error!")
-        }
+        Ok(())
     }
 }

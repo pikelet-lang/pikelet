@@ -138,7 +138,6 @@ pub enum Token<S> {
     // Data
     Ident(S),
     DocComment(S),
-    ReplCommand(S),
     StringLiteral(String),
     CharLiteral(char),
     BinIntLiteral(u64),
@@ -188,7 +187,6 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
         match *self {
             Token::Ident(ref name) => write!(f, "{}", name),
             Token::DocComment(ref comment) => write!(f, "||| {}", comment),
-            Token::ReplCommand(ref command) => write!(f, ":{}", command),
             Token::StringLiteral(ref value) => write!(f, "{:?}", value),
             Token::CharLiteral(ref value) => write!(f, "'{:?}'", value),
             Token::BinIntLiteral(ref value) => write!(f, "{:b}", value),
@@ -234,7 +232,6 @@ impl<'input> From<Token<&'input str>> for Token<String> {
         match src {
             Token::Ident(name) => Token::Ident(name.to_owned()),
             Token::DocComment(comment) => Token::DocComment(comment.to_owned()),
-            Token::ReplCommand(command) => Token::ReplCommand(command.to_owned()),
             Token::StringLiteral(value) => Token::StringLiteral(value),
             Token::CharLiteral(value) => Token::CharLiteral(value),
             Token::BinIntLiteral(value) => Token::BinIntLiteral(value),
@@ -357,19 +354,6 @@ impl<'input> Lexer<'input> {
 
         let eof = self.eof();
         (eof, self.slice(start, eof))
-    }
-
-    /// Consume a REPL command
-    fn repl_command(&mut self, start: ByteIndex) -> SpannedToken<'input> {
-        let (end, command) = self.take_while(start + ByteOffset::from_str(":"), |ch| {
-            is_ident_continue(ch) || ch == '?'
-        });
-
-        if command.is_empty() {
-            (start, Token::Colon, end)
-        } else {
-            (start, Token::ReplCommand(command), end)
-        }
     }
 
     /// Consume a doc comment
@@ -559,7 +543,7 @@ impl<'input> Iterator for Lexer<'input> {
                     let (end, symbol) = self.take_while(start, is_symbol);
 
                     match symbol {
-                        ":" => Ok(self.repl_command(start)),
+                        ":" => Ok((start, Token::Colon, end)),
                         "^" => Ok((start, Token::Caret, end)),
                         "," => Ok((start, Token::Comma, end)),
                         "." => Ok((start, Token::Dot, end)),

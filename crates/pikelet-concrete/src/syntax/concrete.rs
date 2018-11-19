@@ -6,63 +6,6 @@ use std::fmt;
 
 use syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH, PRETTY_INDENT_WIDTH};
 
-/// Commands entered in the REPL
-#[derive(Debug, Clone)]
-pub enum ReplCommand {
-    /// Evaluate a term
-    ///
-    /// ```text
-    /// <term>
-    /// ```
-    Eval(Box<Term>),
-    /// Show the raw representation of a term
-    ///
-    /// ```text
-    /// :raw <term>
-    /// ```
-    Raw(Box<Term>),
-    /// Show the core representation of a term
-    ///
-    /// ```text
-    /// :core <term>
-    /// ```
-    Core(Box<Term>),
-    /// Print some help about using the REPL
-    ///
-    /// ```text
-    /// :?
-    /// :h
-    /// :help
-    /// ```
-    Help,
-    /// Add a declaration to the REPL environment
-    ///
-    /// ```text
-    ///:let <name> = <term>
-    /// ```
-    Let(String, Box<Term>),
-    ///  No command
-    NoOp,
-    /// Quit the REPL
-    ///
-    /// ```text
-    /// :q
-    /// :quit
-    /// ```
-    Quit,
-    /// Print the type of the term
-    ///
-    /// ```text
-    /// :t <term>
-    /// :type <term>
-    /// ```
-    TypeOf(Box<Term>),
-    /// Repl commands that could not be parsed correctly
-    ///
-    /// This is used for error recovery
-    Error(ByteSpan),
-}
-
 /// A group of lambda parameters that share an annotation
 pub type FunIntroParamGroup = (Vec<(ByteIndex, String)>, Option<Box<Term>>);
 
