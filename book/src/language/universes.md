@@ -19,7 +19,7 @@ Type
 We call this special 'type of types' a _universe_.
 
 You might then wonder, “what is the type of `Type`?” That's a good question!
-Clever people have figured out that `Type` was its own type, ie. `Type : Type`,
+Clever people have figured out that if `Type` was its own type, ie. `Type : Type`,
 it would lead situations like [Girard's paradox][girards-paradox], (the type
 theory equivalent of the more well-known [Russel's paradox][russels-paradox] in
 set theory). There is nothing worse than paradoxes in a type system, so instead
