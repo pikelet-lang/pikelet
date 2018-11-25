@@ -125,7 +125,7 @@ Literal: Literal = {
 
 pub Pattern: Pattern = {
     AtomicPattern,
-    <pattern: Pattern> ":" <ty: LamTerm> => {
+    <pattern: Pattern> ":" <ty: FunIntroTerm> => {
         Pattern::Ann(Box::new(pattern), Box::new(ty))
     }
 };
@@ -145,26 +145,26 @@ AtomicPattern : Pattern = {
 }
 
 pub Term: Term = {
-    LamTerm,
-    <expr: LamTerm> ":" <ty: Term> => {
+    FunIntroTerm,
+    <expr: FunIntroTerm> ":" <ty: Term> => {
         Term::Ann(Box::new(expr), Box::new(ty))
     },
-    <expr: LamTerm> "where" "{" <items: Item+> "}" <end: @R> => {
+    <expr: FunIntroTerm> "where" "{" <items: Item+> "}" <end: @R> => {
         Term::Where(Box::new(expr), items, end)
     }
 };
 
-LamTerm: Term = {
-    PiTerm,
+FunIntroTerm: Term = {
+    FunTypeTerm,
     <start: @L> "import" <path_start: @L> <path: "string literal"> <end: @R> => {
         import_paths.push(path.clone());
         Term::Import(ByteSpan::new(start, end), ByteSpan::new(path_start, end), path)
     },
-    <start: @L> "\\" <name: IndexedIdent> ":" <ann: PiTerm> "=>" <body: LamTerm> => {
-        Term::Lam(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
+    <start: @L> "\\" <name: IndexedIdent> ":" <ann: FunTypeTerm> "=>" <body: FunIntroTerm> => {
+        Term::FunIntro(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
     },
-    <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: LamTerm> => {
-        Term::Lam(start, params, Box::new(body))
+    <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: FunIntroTerm> => {
+        Term::FunIntro(start, params, Box::new(body))
     },
     <start: @L> "if" <cond: AppTerm> "then" <if_true: AppTerm> "else" <if_false: AppTerm> => {
         Term::If(start, Box::new(cond), Box::new(if_true), Box::new(if_false))
@@ -174,34 +174,34 @@ LamTerm: Term = {
         arms.extend(last);
         Term::Case(ByteSpan::new(start, end), Box::new(head), arms)
     },
-    <start: @L> "let" <items: Item+> "in" <body: LamTerm> => {
+    <start: @L> "let" <items: Item+> "in" <body: FunIntroTerm> => {
         Term::Let(start, items, Box::new(body))
     },
 };
 
-PiTerm: Term = {
+FunTypeTerm: Term = {
     AppTerm,
     // Naively we would want to write the following rules:
     //
     // ```lalrpop
-    // <params: ("(" <IndexedIdent+> ":" <PiTerm> ")")+> "->" <body: LamTerm> => {
-    //      Term::Pi(params, Box::new(body))
+    // <params: ("(" <IndexedIdent+> ":" <FunTypeTerm> ")")+> "->" <body: FunIntroTerm> => {
+    //      Term::FunType(params, Box::new(body))
     //  },
-    //  <ann: AppTerm> "->" <body: LamTerm> => {
+    //  <ann: AppTerm> "->" <body: FunIntroTerm> => {
     //      Term::Arrow(Box::new(ann), Box::new(body))
     //  },
     // ```
     //
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in by reparsing the binder:
-    <start: @L> <binder: AppTerm> "->" <body: LamTerm> <end: @R> =>? {
-        super::reparse_pi_type_hack(ByteSpan::new(start, end), binder, body)
+    <start: @L> <binder: AppTerm> "->" <body: FunIntroTerm> <end: @R> =>? {
+        super::reparse_fun_ty_hack(ByteSpan::new(start, end), binder, body)
     },
 };
 
 AppTerm: Term = {
     AtomicTerm,
-    <head: AtomicTerm> <args: AtomicTerm+> => Term::App(Box::new(head), args),
+    <head: AtomicTerm> <args: AtomicTerm+> => Term::FunApp(Box::new(head), args),
 };
 
 AtomicTerm: Term = {
@@ -213,7 +213,7 @@ AtomicTerm: Term = {
     <start: @L> "[" <elems: (<Term> ";")*> <last: Term?> "]" <end: @R> => {
         let mut elems = elems;
         elems.extend(last);
-        Term::Array(ByteSpan::new(start, end), elems)
+        Term::ArrayIntro(ByteSpan::new(start, end), elems)
     },
     <start: @L> "?" <end: @R> => Term::Hole(ByteSpan::new(start, end)),
     <start: @L> <ident: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
@@ -227,10 +227,10 @@ AtomicTerm: Term = {
     <start: @L> "record" "{" <fields: (<RecordField> ";")*> <last: RecordField?> "}" <end: @R> => {
         let mut fields = fields;
         fields.extend(last);
-        Term::Record(ByteSpan::new(start, end), fields)
+        Term::RecordIntro(ByteSpan::new(start, end), fields)
     },
     <start: @L> <term: AtomicTerm> "." <label_start: @L> <label: Ident> <shift: ("^" <"decimal literal">)?> <end: @R> => {
-        Term::Proj(ByteSpan::new(start, end), Box::new(term), label_start, label, shift.map(|x| x as u32))
+        Term::RecordProj(ByteSpan::new(start, end), Box::new(term), label_start, label, shift.map(|x| x as u32))
     },
     <start: @L> <recovered: !> <end: @R> => {
         errors.push(super::errors::from_lalrpop(filemap, recovered.error));
@@ -240,7 +240,7 @@ AtomicTerm: Term = {
 
 AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
     <name: IndexedIdent> => (vec![name], None),
-    "(" <names: IndexedIdent+> <ann: (":" <PiTerm>)?> ")" => (names, ann.map(Box::new)),
+    "(" <names: IndexedIdent+> <ann: (":" <FunTypeTerm>)?> ")" => (names, ann.map(Box::new)),
 };
 
 RecordTypeField: RecordTypeField = {

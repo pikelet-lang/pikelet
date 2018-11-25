@@ -187,7 +187,7 @@ fn resugar_pattern(
     }
 }
 
-fn resugar_pi(
+fn resugar_fun_ty(
     env: &ResugarEnv,
     scope: &Scope<(Binder<String>, Embed<core::RcTerm>), core::RcTerm>,
     prec: Prec,
@@ -220,7 +220,7 @@ fn resugar_pi(
             // (a : Type) (b : Type -> Type) -> ...
             // ```
             let ((next_binder, Embed(next_ann)), next_body) = match *body {
-                core::Term::Pi(ref scope) => scope.clone().unbind(),
+                core::Term::FunType(ref scope) => scope.clone().unbind(),
                 _ => break,
             };
 
@@ -249,10 +249,10 @@ fn resugar_pi(
                 // Stop collapsing parameters if we encounter a non-dependent pi type.
                 return parens_if(
                     Prec::PI < prec,
-                    concrete::Term::Pi(
+                    concrete::Term::FunType(
                         ByteIndex::default(),
                         params,
-                        Box::new(concrete::Term::Arrow(
+                        Box::new(concrete::Term::FunArrow(
                             Box::new(resugar_term(&env, &next_ann, Prec::APP)),
                             Box::new(resugar_term(&env, &next_body, Prec::LAM)),
                         )),
@@ -266,7 +266,7 @@ fn resugar_pi(
 
         parens_if(
             Prec::PI < prec,
-            concrete::Term::Pi(
+            concrete::Term::FunType(
                 ByteIndex::default(),
                 params,
                 Box::new(resugar_term(&env, &body, Prec::LAM)),
@@ -282,7 +282,7 @@ fn resugar_pi(
         // ```
         parens_if(
             Prec::PI < prec,
-            concrete::Term::Arrow(
+            concrete::Term::FunArrow(
                 Box::new(resugar_term(&env, &ann, Prec::APP)),
                 Box::new(resugar_term(&env, &body, Prec::LAM)),
             ),
@@ -290,7 +290,7 @@ fn resugar_pi(
     }
 }
 
-fn resugar_lam(
+fn resugar_fun_intro(
     env: &ResugarEnv,
     scope: &Scope<(Binder<String>, Embed<core::RcTerm>), core::RcTerm>,
     prec: Prec,
@@ -316,7 +316,7 @@ fn resugar_lam(
         // \(a : Type) (b : Type -> Type) => ...
         // ```
         let ((next_binder, Embed(next_ann)), next_body) = match *body {
-            core::Term::Lam(ref scope) => scope.clone().unbind(),
+            core::Term::FunIntro(ref scope) => scope.clone().unbind(),
             _ => break,
         };
 
@@ -344,7 +344,7 @@ fn resugar_lam(
 
     parens_if(
         Prec::LAM < prec,
-        concrete::Term::Lam(
+        concrete::Term::FunIntro(
             ByteIndex::default(),
             params,
             Box::new(resugar_term(&env, &body, Prec::LAM)),
@@ -368,7 +368,7 @@ fn resugar_let(
         let name = env.on_binder(&binder);
         // pull lambda arguments from the body into the definition
         let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
-            concrete::Term::Lam(_, params, term_body) => (params, *term_body),
+            concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
             term_body => (vec![], term_body),
         };
 
@@ -395,7 +395,7 @@ fn resugar_let(
             let next_name = env.on_binder(&binder);
             // pull lambda arguments from the body into the definition
             let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
-                concrete::Term::Lam(_, params, term_body) => (params, *term_body),
+                concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
                 term_body => (vec![], term_body),
             };
 
@@ -491,11 +491,11 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             Prec::LAM < prec,
             concrete::Term::Import(ByteSpan::default(), ByteSpan::default(), name.clone()),
         ),
-        core::Term::Pi(ref scope) => resugar_pi(env, scope, prec),
-        core::Term::Lam(ref scope) => resugar_lam(env, scope, prec),
-        core::Term::App(ref head, ref arg) => parens_if(
+        core::Term::FunType(ref scope) => resugar_fun_ty(env, scope, prec),
+        core::Term::FunIntro(ref scope) => resugar_fun_intro(env, scope, prec),
+        core::Term::FunApp(ref head, ref arg) => parens_if(
             Prec::APP < prec,
-            concrete::Term::App(
+            concrete::Term::FunApp(
                 Box::new(resugar_term(env, head, Prec::NO_WRAP)),
                 vec![resugar_term(env, arg, Prec::NO_WRAP)], // TODO
             ),
@@ -525,7 +525,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
-        core::Term::Record(ref scope) => {
+        core::Term::RecordIntro(ref scope) => {
             let mut env = env.clone();
             let (scope, ()) = scope.clone().unbind();
 
@@ -534,7 +534,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 .into_iter()
                 .map(|(label, binder, Embed(term))| {
                     let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
-                        concrete::Term::Lam(_, params, term_body) => (params, *term_body),
+                        concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
                         term_body => (vec![], term_body),
                     };
                     let name = env.on_item(&label, &binder);
@@ -550,15 +550,15 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 .collect();
 
             // TODO: Add let to rename shadowed globals?
-            concrete::Term::Record(ByteSpan::default(), fields)
+            concrete::Term::RecordIntro(ByteSpan::default(), fields)
         },
-        core::Term::Proj(ref expr, Label(ref label), shift) => {
+        core::Term::RecordProj(ref expr, Label(ref label), shift) => {
             let shift = match shift {
                 LevelShift(0) => None,
                 LevelShift(shift) => Some(shift),
             };
 
-            concrete::Term::Proj(
+            concrete::Term::RecordProj(
                 ByteSpan::default(),
                 Box::new(resugar_term(env, expr, Prec::ATOMIC)),
                 ByteIndex::default(),
@@ -582,7 +582,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 })
                 .collect(),
         ),
-        core::Term::Array(ref elems) => concrete::Term::Array(
+        core::Term::ArrayIntro(ref elems) => concrete::Term::ArrayIntro(
             ByteSpan::default(),
             elems
                 .iter()

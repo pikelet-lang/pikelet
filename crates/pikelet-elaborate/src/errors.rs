@@ -92,10 +92,7 @@ pub enum TypeError {
         duplicate_span: ByteSpan,
         binder: Binder<String>,
     },
-    #[fail(
-        display = "Applied an argument to a non-function type `{}`",
-        found
-    )]
+    #[fail(display = "Applied an argument to a non-function type `{}`", found)]
     ArgAppliedToNonFunction {
         fn_span: ByteSpan,
         arg_span: ByteSpan,
@@ -110,19 +107,12 @@ pub enum TypeError {
         var_span: Option<ByteSpan>,
         name: FreeVar<String>,
     },
-    #[fail(
-        display = "Type annotation needed for the binder `{}`",
-        binder
-    )]
+    #[fail(display = "Type annotation needed for the binder `{}`", binder)]
     BinderNeedsAnnotation {
         span: ByteSpan,
         binder: Binder<String>,
     },
-    #[fail(
-        display = "found a `{}`, but expected a type `{}`",
-        found,
-        expected
-    )]
+    #[fail(display = "found a `{}`, but expected a type `{}`", found, expected)]
     LiteralMismatch {
         literal_span: ByteSpan,
         found: raw::Literal,
@@ -134,18 +124,14 @@ pub enum TypeError {
     AmbiguousFloatLiteral { span: ByteSpan },
     #[fail(display = "Empty case expressions need type annotations.")]
     AmbiguousEmptyCase { span: ByteSpan },
-    #[fail(
-        display = "Unable to elaborate hole, expected: `{:?}`",
-        expected
-    )]
+    #[fail(display = "Unable to elaborate hole, expected: `{:?}`", expected)]
     UnableToElaborateHole {
         span: ByteSpan,
         expected: Option<Box<concrete::Term>>,
     },
     #[fail(
         display = "Type mismatch: found `{}` but `{}` was expected",
-        found,
-        expected
+        found, expected
     )]
     Mismatch {
         span: ByteSpan,
@@ -171,8 +157,7 @@ pub enum TypeError {
     UndefinedImport { span: ByteSpan, name: String },
     #[fail(
         display = "Label mismatch: found label `{}` but `{}` was expected",
-        found,
-        expected
+        found, expected
     )]
     LabelMismatch {
         span: ByteSpan,
@@ -181,8 +166,7 @@ pub enum TypeError {
     },
     #[fail(
         display = "Mismatched array length: expected {} elements but found {}",
-        expected_len,
-        found_len
+        expected_len, found_len
     )]
     ArrayLengthMismatch {
         span: ByteSpan,
@@ -193,8 +177,7 @@ pub enum TypeError {
     AmbiguousArrayLiteral { span: ByteSpan },
     #[fail(
         display = "The type `{}` does not contain a field named `{}`.",
-        found,
-        expected_label
+        found, expected_label
     )]
     NoFieldInType {
         label_span: ByteSpan,
@@ -203,8 +186,7 @@ pub enum TypeError {
     },
     #[fail(
         display = "Mismatched record size: expected {} fields but found {}",
-        expected_size,
-        found_size
+        expected_size, found_size
     )]
     RecordSizeMismatch {
         span: ByteSpan,

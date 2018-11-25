@@ -51,29 +51,29 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
         },
 
         // E-PI
-        Term::Pi(ref scope) => {
+        Term::FunType(ref scope) => {
             let ((name, Embed(ann)), body) = scope.clone().unbind();
 
-            Ok(RcValue::from(Value::Pi(Scope::new(
+            Ok(RcValue::from(Value::FunType(Scope::new(
                 (name, Embed(nf_term(context, &ann)?)),
                 nf_term(context, &body)?,
             ))))
         },
 
         // E-LAM
-        Term::Lam(ref scope) => {
+        Term::FunIntro(ref scope) => {
             let ((name, Embed(ann)), body) = scope.clone().unbind();
 
-            Ok(RcValue::from(Value::Lam(Scope::new(
+            Ok(RcValue::from(Value::FunIntro(Scope::new(
                 (name, Embed(nf_term(context, &ann)?)),
                 nf_term(context, &body)?,
             ))))
         },
 
         // E-APP
-        Term::App(ref head, ref arg) => {
+        Term::FunApp(ref head, ref arg) => {
             match *nf_term(context, head)?.inner {
-                Value::Lam(ref scope) => {
+                Value::FunIntro(ref scope) => {
                     // FIXME: do a local unbind here
                     let ((Binder(free_var), Embed(_)), body) = scope.clone().unbind();
                     nf_term(context, &body.substs(&[(free_var, arg.clone())]))
@@ -100,9 +100,9 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
                                 None => {},
                             }
                         },
-                        Neutral::Head(Head::Var(..)) | Neutral::Proj(..) | Neutral::Case(..) => {
-                            spine.push(arg)
-                        },
+                        Neutral::Head(Head::Var(..))
+                        | Neutral::RecordProj(..)
+                        | Neutral::Case(..) => spine.push(arg),
                     }
 
                     Ok(RcValue::from(Value::Neutral(neutral.clone(), spine)))
@@ -141,7 +141,7 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
         },
 
         // E-RECORD, E-EMPTY-RECORD
-        Term::Record(ref scope) => {
+        Term::RecordIntro(ref scope) => {
             let (fields, ()) = scope.clone().unbind();
             let fields = Nest::new(
                 fields
@@ -153,19 +153,19 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
                     .collect::<Result<_, _>>()?,
             );
 
-            Ok(RcValue::from(Value::Record(Scope::new(fields, ()))))
+            Ok(RcValue::from(Value::RecordIntro(Scope::new(fields, ()))))
         },
 
         // E-PROJ
-        Term::Proj(ref expr, ref label, shift) => {
+        Term::RecordProj(ref expr, ref label, shift) => {
             match *nf_term(context, expr)? {
                 Value::Neutral(ref neutral, ref spine) => {
                     return Ok(RcValue::from(Value::Neutral(
-                        RcNeutral::from(Neutral::Proj(neutral.clone(), label.clone(), shift)),
+                        RcNeutral::from(Neutral::RecordProj(neutral.clone(), label.clone(), shift)),
                         spine.clone(),
                     )));
                 },
-                Value::Record(ref scope) => {
+                Value::RecordIntro(ref scope) => {
                     let (fields, ()) = scope.clone().unbind();
 
                     // FIXME: mappings?
@@ -217,7 +217,7 @@ pub fn nf_term(context: &Context, term: &RcTerm) -> Result<RcValue, InternalErro
         },
 
         // E-ARRAY
-        Term::Array(ref elems) => Ok(RcValue::from(Value::Array(
+        Term::ArrayIntro(ref elems) => Ok(RcValue::from(Value::ArrayIntro(
             elems
                 .iter()
                 .map(|elem| nf_term(context, elem))

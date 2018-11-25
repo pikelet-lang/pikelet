@@ -94,21 +94,21 @@ pub enum Term {
     /// An imported definition
     Import(String),
     /// Dependent function types
-    Pi(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
-    /// Lambda abstractions
-    Lam(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
-    /// Term application
-    App(RcTerm, RcTerm),
+    FunType(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
+    /// Function introductions
+    FunIntro(Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
+    /// Function applications
+    FunApp(RcTerm, RcTerm),
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
-    /// Dependent record
-    Record(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
-    /// Field projection
-    Proj(RcTerm, Label, LevelShift),
+    /// Record introductions
+    RecordIntro(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
+    /// Record field projection
+    RecordProj(RcTerm, Label, LevelShift),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
-    Array(Vec<RcTerm>),
+    ArrayIntro(Vec<RcTerm>),
     /// Let bindings
     Let(Scope<Nest<(Binder<String>, Embed<(RcTerm, RcTerm)>)>, RcTerm>),
 }
@@ -147,16 +147,16 @@ impl RcTerm {
                 None => self.clone(),
             },
             Term::Import(ref name) => RcTerm::from(Term::Import(name.clone())),
-            Term::Pi(ref scope) => {
+            Term::FunType(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-                RcTerm::from(Term::Pi(Scope {
+                RcTerm::from(Term::FunType(Scope {
                     unsafe_pattern: (name.clone(), Embed(ann.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
-            Term::Lam(ref scope) => {
+            Term::FunIntro(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-                RcTerm::from(Term::Lam(Scope {
+                RcTerm::from(Term::FunIntro(Scope {
                     unsafe_pattern: (name.clone(), Embed(ann.substs(mappings))),
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
@@ -179,10 +179,10 @@ impl RcTerm {
                     unsafe_body: scope.unsafe_body.substs(mappings),
                 }))
             },
-            Term::App(ref head, ref arg) => {
-                RcTerm::from(Term::App(head.substs(mappings), arg.substs(mappings)))
+            Term::FunApp(ref head, ref arg) => {
+                RcTerm::from(Term::FunApp(head.substs(mappings), arg.substs(mappings)))
             },
-            Term::RecordType(ref scope) | Term::Record(ref scope)
+            Term::RecordType(ref scope) | Term::RecordIntro(ref scope)
                 if scope.unsafe_pattern.unsafe_patterns.is_empty() =>
             {
                 self.clone()
@@ -202,7 +202,7 @@ impl RcTerm {
                     unsafe_body: (),
                 }))
             },
-            Term::Record(ref scope) => {
+            Term::RecordIntro(ref scope) => {
                 let unsafe_patterns = scope
                     .unsafe_pattern
                     .unsafe_patterns
@@ -212,14 +212,16 @@ impl RcTerm {
                     })
                     .collect();
 
-                RcTerm::from(Term::Record(Scope {
+                RcTerm::from(Term::RecordIntro(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
                     unsafe_body: (),
                 }))
             },
-            Term::Proj(ref expr, ref label, shift) => {
-                RcTerm::from(Term::Proj(expr.substs(mappings), label.clone(), shift))
-            },
+            Term::RecordProj(ref expr, ref label, shift) => RcTerm::from(Term::RecordProj(
+                expr.substs(mappings),
+                label.clone(),
+                shift,
+            )),
             Term::Case(ref head, ref clauses) => RcTerm::from(Term::Case(
                 head.substs(mappings),
                 clauses
@@ -232,7 +234,7 @@ impl RcTerm {
                     })
                     .collect(),
             )),
-            Term::Array(ref elems) => RcTerm::from(Term::Array(
+            Term::ArrayIntro(ref elems) => RcTerm::from(Term::ArrayIntro(
                 elems.iter().map(|elem| elem.substs(mappings)).collect(),
             )),
         }
@@ -272,16 +274,16 @@ pub enum Value {
     Universe(Level),
     /// Literals
     Literal(Literal),
-    /// A pi type
-    Pi(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
-    /// A lambda abstraction
-    Lam(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
+    /// Dependent function types
+    FunType(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
+    /// Function introductions
+    FunIntro(Scope<(Binder<String>, Embed<RcValue>), RcValue>),
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
-    /// Dependent record
-    Record(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
+    /// Dependent record introductions
+    RecordIntro(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
     /// Array literals
-    Array(Vec<RcValue>),
+    ArrayIntro(Vec<RcValue>),
     /// Neutral terms
     ///
     /// A term whose computation has stopped because of an attempt to compute an
@@ -308,11 +310,11 @@ impl Value {
         match *self {
             Value::Universe(_)
             | Value::Literal(_)
-            | Value::Pi(_)
-            | Value::Lam(_)
+            | Value::FunType(_)
+            | Value::FunIntro(_)
             | Value::RecordType(_)
-            | Value::Record(_)
-            | Value::Array(_) => true,
+            | Value::RecordIntro(_)
+            | Value::ArrayIntro(_) => true,
             Value::Neutral(_, _) => false,
         }
     }
@@ -321,15 +323,15 @@ impl Value {
     pub fn is_nf(&self) -> bool {
         match *self {
             Value::Universe(_) | Value::Literal(_) => true,
-            Value::Pi(ref scope) | Value::Lam(ref scope) => {
+            Value::FunType(ref scope) | Value::FunIntro(ref scope) => {
                 (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
             },
-            Value::RecordType(ref scope) | Value::Record(ref scope) => scope
+            Value::RecordType(ref scope) | Value::RecordIntro(ref scope) => scope
                 .unsafe_pattern
                 .unsafe_patterns
                 .iter()
                 .all(|(_, _, Embed(ref term))| term.is_nf()),
-            Value::Array(ref elems) => elems.iter().all(|elem| elem.is_nf()),
+            Value::ArrayIntro(ref elems) => elems.iter().all(|elem| elem.is_nf()),
             Value::Neutral(_, _) => false,
         }
     }
@@ -368,16 +370,16 @@ impl RcValue {
         match *Rc::make_mut(&mut self.inner) {
             Value::Universe(ref mut level) => *level += shift,
             Value::Literal(_) => {},
-            Value::Pi(ref mut scope) | Value::Lam(ref mut scope) => {
+            Value::FunType(ref mut scope) | Value::FunIntro(ref mut scope) => {
                 (scope.unsafe_pattern.1).0.shift_universes(shift);
                 scope.unsafe_body.shift_universes(shift);
             },
-            Value::RecordType(ref mut scope) | Value::Record(ref mut scope) => {
+            Value::RecordType(ref mut scope) | Value::RecordIntro(ref mut scope) => {
                 for &mut (_, _, Embed(ref mut term)) in &mut scope.unsafe_pattern.unsafe_patterns {
                     term.shift_universes(shift);
                 }
             },
-            Value::Array(ref mut elems) => {
+            Value::ArrayIntro(ref mut elems) => {
                 for elem in elems {
                     elem.shift_universes(shift);
                 }
@@ -438,7 +440,7 @@ pub enum Neutral {
     /// Head of an application
     Head(Head),
     /// Field projection
-    Proj(RcNeutral, Label, LevelShift),
+    RecordProj(RcNeutral, Label, LevelShift),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
 }
@@ -468,7 +470,7 @@ impl RcNeutral {
             //     *head_shift += shift; // NOTE: Not sure if this is correct!
             // },
             Neutral::Head(Head::Var(_, _)) | Neutral::Head(Head::Import(_)) => {},
-            Neutral::Proj(ref mut expr, _, _) => expr.shift_universes(shift),
+            Neutral::RecordProj(ref mut expr, _, _) => expr.shift_universes(shift),
             Neutral::Case(ref mut expr, ref mut clauses) => {
                 expr.shift_universes(shift);
                 for clause in clauses {
@@ -517,16 +519,16 @@ impl<'a> From<&'a Value> for Term {
         match *src {
             Value::Universe(level) => Term::Universe(level),
             Value::Literal(ref lit) => Term::Literal(lit.clone()),
-            Value::Pi(ref scope) => {
+            Value::FunType(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-                Term::Pi(Scope {
+                Term::FunType(Scope {
                     unsafe_pattern: (name.clone(), Embed(RcTerm::from(&**ann))),
                     unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
             },
-            Value::Lam(ref scope) => {
+            Value::FunIntro(ref scope) => {
                 let (ref name, Embed(ref ann)) = scope.unsafe_pattern;
-                Term::Lam(Scope {
+                Term::FunIntro(Scope {
                     unsafe_pattern: (name.clone(), Embed(RcTerm::from(&**ann))),
                     unsafe_body: RcTerm::from(&*scope.unsafe_body),
                 })
@@ -546,7 +548,7 @@ impl<'a> From<&'a Value> for Term {
                     unsafe_body: (),
                 })
             },
-            Value::Record(ref scope) => {
+            Value::RecordIntro(ref scope) => {
                 let unsafe_patterns = scope
                     .unsafe_pattern
                     .unsafe_patterns
@@ -556,17 +558,17 @@ impl<'a> From<&'a Value> for Term {
                     })
                     .collect();
 
-                Term::Record(Scope {
+                Term::RecordIntro(Scope {
                     unsafe_pattern: Nest { unsafe_patterns },
                     unsafe_body: (),
                 })
             },
-            Value::Array(ref elems) => {
-                Term::Array(elems.iter().map(|elem| RcTerm::from(&**elem)).collect())
+            Value::ArrayIntro(ref elems) => {
+                Term::ArrayIntro(elems.iter().map(|elem| RcTerm::from(&**elem)).collect())
             },
             Value::Neutral(ref neutral, ref spine) => {
                 spine.iter().fold(Term::from(&*neutral.inner), |acc, arg| {
-                    Term::App(RcTerm::from(acc), RcTerm::from(&**arg))
+                    Term::FunApp(RcTerm::from(acc), RcTerm::from(&**arg))
                 })
             },
         }
@@ -583,8 +585,8 @@ impl<'a> From<&'a Neutral> for Term {
     fn from(src: &'a Neutral) -> Term {
         match *src {
             Neutral::Head(ref head) => Term::from(head),
-            Neutral::Proj(ref expr, ref name, shift) => {
-                Term::Proj(RcTerm::from(&**expr), name.clone(), shift)
+            Neutral::RecordProj(ref expr, ref name, shift) => {
+                Term::RecordProj(RcTerm::from(&**expr), name.clone(), shift)
             },
             Neutral::Case(ref head, ref clauses) => Term::Case(
                 RcTerm::from(&**head),

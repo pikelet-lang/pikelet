@@ -113,27 +113,27 @@ pub enum Term {
     /// An imported definition
     Import(ByteSpan, ByteSpan, String),
     /// Dependent function types
-    Pi(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
-    /// Lambda abstractions
-    Lam(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
-    /// Term application
-    App(RcTerm, RcTerm),
+    FunType(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
+    /// Function introductions
+    FunIntro(ByteSpan, Scope<(Binder<String>, Embed<RcTerm>), RcTerm>),
+    /// Function application
+    FunApp(RcTerm, RcTerm),
     /// Dependent record types
     RecordType(
         ByteSpan,
         Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
-    /// Dependent record
-    Record(
+    /// Record introductions
+    RecordIntro(
         ByteSpan,
         Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
-    /// Field projection
-    Proj(ByteSpan, RcTerm, ByteSpan, Label, LevelShift),
+    /// Record field projection
+    RecordProj(ByteSpan, RcTerm, ByteSpan, Label, LevelShift),
     /// Case expressions
     Case(ByteSpan, RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Array literals
-    Array(ByteSpan, Vec<RcTerm>),
+    ArrayIntro(ByteSpan, Vec<RcTerm>),
     /// Let bindings
     Let(
         ByteSpan,
@@ -148,17 +148,17 @@ impl Term {
             | Term::Hole(span)
             | Term::Var(span, ..)
             | Term::Import(span, ..)
-            | Term::Pi(span, ..)
-            | Term::Lam(span, ..)
+            | Term::FunType(span, ..)
+            | Term::FunIntro(span, ..)
             | Term::RecordType(span, ..)
-            | Term::Record(span, ..)
-            | Term::Proj(span, ..)
+            | Term::RecordIntro(span, ..)
+            | Term::RecordProj(span, ..)
             | Term::Case(span, ..)
-            | Term::Array(span, ..)
+            | Term::ArrayIntro(span, ..)
             | Term::Let(span, ..) => span,
             Term::Literal(ref literal) => literal.span(),
             Term::Ann(ref expr, ref ty) => expr.span().to(ty.span()),
-            Term::App(ref head, ref arg) => head.span().to(arg.span()),
+            Term::FunApp(ref head, ref arg) => head.span().to(arg.span()),
         }
     }
 }

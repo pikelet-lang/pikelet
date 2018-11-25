@@ -12,7 +12,7 @@ use pikelet_syntax::translation::{Desugar, DesugarEnv};
 mod support;
 
 #[test]
-fn record() {
+fn record_intro() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -24,7 +24,7 @@ fn record() {
 }
 
 #[test]
-fn record_field_mismatch_lt() {
+fn record_intro_field_mismatch_lt() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
@@ -45,7 +45,7 @@ fn record_field_mismatch_lt() {
 }
 
 #[test]
-fn record_field_mismatch_gt() {
+fn record_intro_field_mismatch_gt() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
@@ -66,7 +66,7 @@ fn record_field_mismatch_gt() {
 }
 
 #[test]
-fn dependent_record() {
+fn record_intro_dependent_record_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -78,7 +78,7 @@ fn dependent_record() {
 }
 
 #[test]
-fn dependent_record_propagate_types() {
+fn record_intro_dependent_record_ty_propagate_types() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -156,7 +156,7 @@ fn case_expr_empty() {
 }
 
 #[test]
-fn array_0_string() {
+fn array_intro_0_string() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -168,7 +168,7 @@ fn array_0_string() {
 }
 
 #[test]
-fn array_3_string() {
+fn array_intro_3_string() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -180,7 +180,7 @@ fn array_3_string() {
 }
 
 #[test]
-fn array_len_mismatch() {
+fn array_intro_len_mismatch() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
@@ -201,7 +201,7 @@ fn array_len_mismatch() {
 }
 
 #[test]
-fn array_elem_ty_mismatch() {
+fn array_intro_elem_ty_mismatch() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());

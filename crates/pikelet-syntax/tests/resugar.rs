@@ -110,7 +110,7 @@ fn import() {
 
 #[test]
 fn arrow() {
-    let core_term = core::RcTerm::from(core::Term::Pi(Scope::new(
+    let core_term = core::RcTerm::from(core::Term::FunType(Scope::new(
         (
             Binder(FreeVar::fresh_unnamed()),
             Embed(core::RcTerm::from(core::RcTerm::from(
@@ -120,7 +120,7 @@ fn arrow() {
         core::RcTerm::from(core::RcTerm::from(core::Term::universe(0))),
     )));
 
-    let concrete_term = concrete::Term::Arrow(
+    let concrete_term = concrete::Term::FunArrow(
         Box::new(concrete::Term::Universe(span(), None)),
         Box::new(concrete::Term::Universe(span(), None)),
     );
@@ -130,10 +130,10 @@ fn arrow() {
 
 #[test]
 fn arrow_parens() {
-    let core_term = core::Term::Pi(Scope::new(
+    let core_term = core::Term::FunType(Scope::new(
         (
             Binder(FreeVar::fresh_unnamed()),
-            Embed(core::RcTerm::from(core::Term::Pi(Scope::new(
+            Embed(core::RcTerm::from(core::Term::FunType(Scope::new(
                 (
                     Binder(FreeVar::fresh_unnamed()),
                     Embed(core::RcTerm::from(core::RcTerm::from(
@@ -146,10 +146,10 @@ fn arrow_parens() {
         core::RcTerm::from(core::RcTerm::from(core::Term::universe(1))),
     ));
 
-    let concrete_term = concrete::Term::Arrow(
+    let concrete_term = concrete::Term::FunArrow(
         Box::new(concrete::Term::Parens(
             span(),
-            Box::new(concrete::Term::Arrow(
+            Box::new(concrete::Term::FunArrow(
                 Box::new(concrete::Term::Universe(span(), None)),
                 Box::new(concrete::Term::Universe(span(), None)),
             )),
@@ -185,7 +185,7 @@ fn let_shadow_keyword() {
                 )),
             ),
         ]),
-        core::RcTerm::from(core::Term::Record(Scope::new(Nest::new(vec![]), ()))),
+        core::RcTerm::from(core::Term::RecordIntro(Scope::new(Nest::new(vec![]), ()))),
     ));
 
     let concrete_module = concrete::Term::Let(
@@ -212,7 +212,7 @@ fn let_shadow_keyword() {
                 body: concrete::Term::Universe(span(), None),
             },
         ],
-        Box::new(concrete::Term::Record(span(), vec![])),
+        Box::new(concrete::Term::RecordIntro(span(), vec![])),
     );
 
     assert_eq!(core_module.resugar(&ResugarEnv::new()), concrete_module);
@@ -280,21 +280,21 @@ fn record_ty() {
 
 #[test]
 fn record_empty() {
-    let core_term = core::Term::Record(Scope::new(Nest::new(vec![]), ()));
-    let concrete_term = concrete::Term::Record(span(), vec![]);
+    let core_term = core::Term::RecordIntro(Scope::new(Nest::new(vec![]), ()));
+    let concrete_term = concrete::Term::RecordIntro(span(), vec![]);
 
     assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
 }
 
 #[test]
-fn proj_atomic() {
-    let core_term = core::Term::Proj(
+fn record_proj_atomic() {
+    let core_term = core::Term::RecordProj(
         core::RcTerm::from(core::RcTerm::from(core::Term::universe(0))),
         Label("hello".to_owned()),
         LevelShift(0),
     );
 
-    let concrete_term = concrete::Term::Proj(
+    let concrete_term = concrete::Term::RecordProj(
         span(),
         Box::new(concrete::Term::Universe(span(), None)),
         index(),
@@ -306,14 +306,14 @@ fn proj_atomic() {
 }
 
 #[test]
-fn proj_app() {
-    let core_term = core::Term::Proj(
+fn record_proj_fun_app() {
+    let core_term = core::Term::RecordProj(
         core::RcTerm::from(core::RcTerm::from(core::Term::universe(1))),
         Label("hello".to_owned()),
         LevelShift(0),
     );
 
-    let concrete_term = concrete::Term::Proj(
+    let concrete_term = concrete::Term::RecordProj(
         span(),
         Box::new(concrete::Term::Parens(
             span(),
@@ -330,13 +330,13 @@ fn proj_app() {
 // TODO: core::Term::Case
 
 #[test]
-fn array() {
-    let core_term = core::Term::Array(vec![
+fn array_intro() {
+    let core_term = core::Term::ArrayIntro(vec![
         core::RcTerm::from(core::RcTerm::from(core::Term::universe(1))),
         core::RcTerm::from(core::RcTerm::from(core::Term::universe(1))),
     ]);
 
-    let concrete_term = concrete::Term::Array(
+    let concrete_term = concrete::Term::ArrayIntro(
         span(),
         vec![
             concrete::Term::Universe(span(), Some(1)),

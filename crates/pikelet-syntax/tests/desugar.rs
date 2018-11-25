@@ -112,19 +112,19 @@ fn ann_ann_ann() {
 }
 
 #[test]
-fn lam_ann() {
+fn fun_intro_ann() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
         parse_desugar_term(&env, r"\x : Type -> Type => x"),
-        RcTerm::from(Term::Lam(
+        RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
                 (
                     Binder(x.clone()),
-                    Embed(RcTerm::from(Term::Pi(
+                    Embed(RcTerm::from(Term::FunType(
                         ByteSpan::default(),
                         Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
                     ))),
@@ -136,7 +136,7 @@ fn lam_ann() {
 }
 
 #[test]
-fn lam() {
+fn fun_intro() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
@@ -145,12 +145,12 @@ fn lam() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"\x : (\y => y) => x"),
-        RcTerm::from(Term::Lam(
+        RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
                 (
                     Binder(x.clone()),
-                    Embed(RcTerm::from(Term::Lam(
+                    Embed(RcTerm::from(Term::FunIntro(
                         ByteSpan::default(),
                         Scope::new((Binder(y.clone()), Embed(hole())), var(&y)),
                     )))
@@ -162,7 +162,7 @@ fn lam() {
 }
 
 #[test]
-fn lam_lam_ann() {
+fn fun_intro2_ann() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
@@ -170,11 +170,11 @@ fn lam_lam_ann() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"\(x y : Type) => x"),
-        RcTerm::from(Term::Lam(
+        RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
                 (Binder(x.clone()), Embed(u0())),
-                RcTerm::from(Term::Lam(
+                RcTerm::from(Term::FunIntro(
                     ByteSpan::default(),
                     Scope::new((Binder(y.clone()), Embed(u0())), var(&x)),
                 )),
@@ -189,7 +189,7 @@ fn arrow() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"Type -> Type"),
-        RcTerm::from(Term::Pi(
+        RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
         )),
@@ -197,19 +197,19 @@ fn arrow() {
 }
 
 #[test]
-fn pi() {
+fn fun_ty() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
         parse_desugar_term(&env, r"(x : Type -> Type) -> x"),
-        RcTerm::from(Term::Pi(
+        RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
                 (
                     Binder(x.clone()),
-                    Embed(RcTerm::from(Term::Pi(
+                    Embed(RcTerm::from(Term::FunType(
                         ByteSpan::default(),
                         Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
                     ))),
@@ -221,7 +221,7 @@ fn pi() {
 }
 
 #[test]
-fn pi_pi() {
+fn fun_ty2() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
@@ -229,11 +229,11 @@ fn pi_pi() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"(x y : Type) -> x"),
-        RcTerm::from(Term::Pi(
+        RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
                 (Binder(x.clone()), Embed(u0())),
-                RcTerm::from(Term::Pi(
+                RcTerm::from(Term::FunType(
                     ByteSpan::default(),
                     Scope::new((Binder(y.clone()), Embed(u0())), var(&x)),
                 )),
@@ -243,18 +243,18 @@ fn pi_pi() {
 }
 
 #[test]
-fn pi_arrow() {
+fn fun_ty_arrow() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
         parse_desugar_term(&env, r"(x : Type) -> x -> x"),
-        RcTerm::from(Term::Pi(
+        RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
                 (Binder(x.clone()), Embed(u0())),
-                RcTerm::from(Term::Pi(
+                RcTerm::from(Term::FunType(
                     ByteSpan::default(),
                     Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(var(&x))), var(&x)),
                 )),
@@ -264,7 +264,7 @@ fn pi_arrow() {
 }
 
 #[test]
-fn lam_app() {
+fn fun_intro_fun_app() {
     let env = DesugarEnv::new(im::HashMap::new());
 
     let x = FreeVar::fresh_named("x");
@@ -272,21 +272,21 @@ fn lam_app() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"\(x : Type -> Type) (y : Type) => x y"),
-        RcTerm::from(Term::Lam(
+        RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
                 (
                     Binder(x.clone()),
-                    Embed(RcTerm::from(Term::Pi(
+                    Embed(RcTerm::from(Term::FunType(
                         ByteSpan::default(),
                         Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(u0())), u0()),
                     ))),
                 ),
-                RcTerm::from(Term::Lam(
+                RcTerm::from(Term::FunIntro(
                     ByteSpan::default(),
                     Scope::new(
                         (Binder(y.clone()), Embed(u0())),
-                        RcTerm::from(Term::App(var(&x), var(&y))),
+                        RcTerm::from(Term::FunApp(var(&x), var(&y))),
                     ),
                 )),
             ),
@@ -303,11 +303,11 @@ fn id() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"\(a : Type) (x : a) => x"),
-        RcTerm::from(Term::Lam(
+        RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
                 (Binder(a.clone()), Embed(u0())),
-                RcTerm::from(Term::Lam(
+                RcTerm::from(Term::FunIntro(
                     ByteSpan::default(),
                     Scope::new((Binder(x.clone()), Embed(var(&a))), var(&x)),
                 )),
@@ -324,11 +324,11 @@ fn id_ty() {
 
     assert_term_eq!(
         parse_desugar_term(&env, r"(a : Type) -> a -> a"),
-        RcTerm::from(Term::Pi(
+        RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
                 (Binder(a.clone()), Embed(u0())),
-                RcTerm::from(Term::Pi(
+                RcTerm::from(Term::FunType(
                     ByteSpan::default(),
                     Scope::new((Binder(FreeVar::fresh_unnamed()), Embed(var(&a))), var(&a)),
                 )),
@@ -445,7 +445,7 @@ mod sugar {
     use super::*;
 
     #[test]
-    fn lam_args() {
+    fn fun_intro_params() {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
@@ -455,7 +455,7 @@ mod sugar {
     }
 
     #[test]
-    fn lam_args_multi() {
+    fn fun_intro_params_multi() {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
@@ -465,7 +465,7 @@ mod sugar {
     }
 
     #[test]
-    fn pi_args() {
+    fn fun_ty_params() {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
@@ -475,7 +475,7 @@ mod sugar {
     }
 
     #[test]
-    fn pi_args_multi() {
+    fn fun_ty_params_multi() {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
@@ -499,7 +499,7 @@ mod sugar {
 
     #[test]
     fn if_then_else() {
-        let env = DesugarEnv::new(hashmap!{
+        let env = DesugarEnv::new(hashmap! {
             "true".to_owned() => FreeVar::fresh_named("true"),
             "false".to_owned() => FreeVar::fresh_named("false"),
         });
@@ -512,7 +512,7 @@ mod sugar {
 
     #[test]
     fn record_field_puns() {
-        let env = DesugarEnv::new(hashmap!{
+        let env = DesugarEnv::new(hashmap! {
             "x".to_owned() => FreeVar::fresh_named("x"),
             "y".to_owned() => FreeVar::fresh_named("y"),
         });
