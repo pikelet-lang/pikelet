@@ -146,9 +146,9 @@ pub trait Desugar<T> {
 /// ```text
 /// (a : t1) -> (b : t1) -> (c : t2) -> t3
 /// ```
-fn desugar_pi(
+fn desugar_fun_ty(
     env: &DesugarEnv,
-    param_groups: &[concrete::PiParamGroup],
+    param_groups: &[concrete::FunTypeParamGroup],
     body: &concrete::Term,
 ) -> Result<raw::RcTerm, DesugarError> {
     let mut env = env.clone();
@@ -166,7 +166,7 @@ fn desugar_pi(
         .into_iter()
         .rev()
         .fold(body.desugar(&env)?, |acc, (start, binder, ann)| {
-            raw::RcTerm::from(raw::Term::Pi(
+            raw::RcTerm::from(raw::Term::FunType(
                 ByteSpan::new(start, acc.span().end()),
                 Scope::new((binder, Embed(ann.clone())), acc),
             ))
@@ -184,9 +184,9 @@ fn desugar_pi(
 /// ```text
 /// \(a : t1) => \(b : t1) => \c => \(d : t2) => t3
 /// ```
-fn desugar_lam(
+fn desugar_fun_intro(
     env: &DesugarEnv,
-    param_groups: &[concrete::LamParamGroup],
+    param_groups: &[concrete::FunIntroParamGroup],
     return_ann: Option<&concrete::Term>,
     body: &concrete::Term,
 ) -> Result<raw::RcTerm, DesugarError> {
@@ -214,7 +214,7 @@ fn desugar_lam(
         .into_iter()
         .rev()
         .fold(body, |acc, (start, binder, ann)| {
-            raw::RcTerm::from(raw::Term::Lam(
+            raw::RcTerm::from(raw::Term::FunIntro(
                 ByteSpan::new(start, acc.span().end()),
                 Scope::new((binder, Embed(ann.clone())), acc),
             ))
@@ -288,7 +288,8 @@ fn desugar_items(
             } => {
                 let binder = env.on_item(name);
                 let name_span = ByteSpan::from_offset(start, ByteOffset::from_str(name));
-                let term = desugar_lam(env, params, return_ann.as_ref().map(<_>::as_ref), body)?;
+                let term =
+                    desugar_fun_intro(env, params, return_ann.as_ref().map(<_>::as_ref), body)?;
                 let ann = match forward_declarations.get(&binder).cloned() {
                     // This declaration was already given a definition, so this
                     // is an error!
@@ -382,7 +383,7 @@ fn desugar_record_ty(
     )))
 }
 
-fn desugar_record(
+fn desugar_record_intro(
     env: &DesugarEnv,
     span: ByteSpan,
     fields: &[concrete::RecordField],
@@ -408,14 +409,15 @@ fn desugar_record(
                 ref return_ann,
                 ref term,
             } => {
-                let expr = desugar_lam(&env, params, return_ann.as_ref().map(<_>::as_ref), term)?;
+                let expr =
+                    desugar_fun_intro(&env, params, return_ann.as_ref().map(<_>::as_ref), term)?;
                 let free_var = env.on_binding(name);
                 Ok((Label(name.clone()), Binder(free_var), Embed(expr)))
             },
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(raw::RcTerm::from(raw::Term::Record(
+    Ok(raw::RcTerm::from(raw::Term::RecordIntro(
         span,
         Scope::new(Nest::new(fields), ()),
     )))
@@ -493,13 +495,13 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             concrete::Term::Literal(ref literal) => {
                 Ok(raw::RcTerm::from(raw::Term::Literal(literal.desugar(env)?)))
             },
-            concrete::Term::Array(_, ref elems) => {
+            concrete::Term::ArrayIntro(_, ref elems) => {
                 let elems = elems
                     .iter()
                     .map(|elem| elem.desugar(env))
                     .collect::<Result<_, _>>()?;
 
-                Ok(raw::RcTerm::from(raw::Term::Array(span, elems)))
+                Ok(raw::RcTerm::from(raw::Term::ArrayIntro(span, elems)))
             },
             concrete::Term::Hole(_) => Ok(raw::RcTerm::from(raw::Term::Hole(span))),
             concrete::Term::Name(_, ref name, shift) => {
@@ -508,18 +510,25 @@ impl Desugar<raw::RcTerm> for concrete::Term {
             concrete::Term::Import(_, name_span, ref name) => Ok(raw::RcTerm::from(
                 raw::Term::Import(span, name_span, name.clone()),
             )),
-            concrete::Term::Pi(_, ref params, ref body) => desugar_pi(env, params, body),
-            concrete::Term::Lam(_, ref params, ref body) => desugar_lam(env, params, None, body),
-            concrete::Term::Arrow(ref ann, ref body) => Ok(raw::RcTerm::from(raw::Term::Pi(
-                span,
-                Scope::new(
-                    (Binder(FreeVar::fresh_unnamed()), Embed(ann.desugar(env)?)),
-                    body.desugar(env)?,
-                ),
-            ))),
-            concrete::Term::App(ref head, ref args) => {
+            concrete::Term::FunType(_, ref params, ref body) => desugar_fun_ty(env, params, body),
+            concrete::Term::FunIntro(_, ref params, ref body) => {
+                desugar_fun_intro(env, params, None, body)
+            },
+            concrete::Term::FunArrow(ref ann, ref body) => {
+                Ok(raw::RcTerm::from(raw::Term::FunType(
+                    span,
+                    Scope::new(
+                        (Binder(FreeVar::fresh_unnamed()), Embed(ann.desugar(env)?)),
+                        body.desugar(env)?,
+                    ),
+                )))
+            },
+            concrete::Term::FunApp(ref head, ref args) => {
                 args.iter().fold(head.desugar(env), |acc, arg| {
-                    Ok(raw::RcTerm::from(raw::Term::App(acc?, arg.desugar(env)?)))
+                    Ok(raw::RcTerm::from(raw::Term::FunApp(
+                        acc?,
+                        arg.desugar(env)?,
+                    )))
                 })
             },
             concrete::Term::Let(start, ref items, ref body) => desugar_let(env, start, items, body),
@@ -559,9 +568,11 @@ impl Desugar<raw::RcTerm> for concrete::Term {
                 )))
             },
             concrete::Term::RecordType(span, ref fields) => desugar_record_ty(env, span, fields),
-            concrete::Term::Record(span, ref fields) => desugar_record(env, span, fields),
-            concrete::Term::Proj(_, ref tm, label_start, ref label, shift) => {
-                Ok(raw::RcTerm::from(raw::Term::Proj(
+            concrete::Term::RecordIntro(span, ref fields) => {
+                desugar_record_intro(env, span, fields)
+            },
+            concrete::Term::RecordProj(_, ref tm, label_start, ref label, shift) => {
+                Ok(raw::RcTerm::from(raw::Term::RecordProj(
                     span,
                     tm.desugar(env)?,
                     ByteSpan::from_offset(label_start, ByteOffset::from_str(label)),

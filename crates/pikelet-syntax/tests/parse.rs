@@ -26,7 +26,7 @@ fn imports() {
 }
 
 #[test]
-fn pi_bad_ident() {
+fn fun_ty_bad_ident() {
     let src = "((x : Type) : Type) -> Type";
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
@@ -46,7 +46,7 @@ fn pi_bad_ident() {
 }
 
 #[test]
-fn pi_bad_ident_multi() {
+fn fun_ty_bad_ident_multi() {
     let src = "((x : Type) : Type) (x : Type) -> Type";
     let mut codemap = CodeMap::new();
     let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());

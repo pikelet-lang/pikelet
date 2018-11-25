@@ -34,7 +34,7 @@ fn is_subtype(context: &Context, ty1: &RcType, ty2: &RcType) -> bool {
         (&Value::Universe(level1), &Value::Universe(level2)) => level1 <= level2,
 
         // ST-PI
-        (&Value::Pi(ref scope1), &Value::Pi(ref scope2)) => {
+        (&Value::FunType(ref scope1), &Value::FunType(ref scope2)) => {
             let ((_, Embed(ann1)), body1, (Binder(free_var2), Embed(ann2)), body2) =
                 Scope::unbind2(scope1.clone(), scope2.clone());
 
@@ -243,27 +243,31 @@ pub fn check_term(
         },
 
         // C-LAM
-        (&raw::Term::Lam(_, ref lam_scope), &Value::Pi(ref pi_scope)) => {
-            let ((lam_name, Embed(lam_ann)), lam_body, (Binder(pi_name), Embed(pi_ann)), pi_body) =
-                Scope::unbind2(lam_scope.clone(), pi_scope.clone());
+        (&raw::Term::FunIntro(_, ref fun_scope), &Value::FunType(ref fun_ty_scope)) => {
+            let (
+                (fun_name, Embed(fun_ann)),
+                fun_body,
+                (Binder(fun_ty_name), Embed(fun_ty_ann)),
+                fun_ty_body,
+            ) = Scope::unbind2(fun_scope.clone(), fun_ty_scope.clone());
 
             // Elaborate the hole, if it exists
-            if let raw::Term::Hole(_) = *lam_ann.inner {
-                let lam_ann = RcTerm::from(Term::from(&*pi_ann));
-                let lam_body = {
+            if let raw::Term::Hole(_) = *fun_ann.inner {
+                let fun_ann = RcTerm::from(Term::from(&*fun_ty_ann));
+                let fun_body = {
                     let mut body_context = context.clone();
-                    body_context.insert_declaration(pi_name, pi_ann);
-                    check_term(&body_context, &lam_body, &pi_body)?
+                    body_context.insert_declaration(fun_ty_name, fun_ty_ann);
+                    check_term(&body_context, &fun_body, &fun_ty_body)?
                 };
-                let lam_scope = Scope::new((lam_name, Embed(lam_ann)), lam_body);
+                let fun_scope = Scope::new((fun_name, Embed(fun_ann)), fun_body);
 
-                return Ok(RcTerm::from(Term::Lam(lam_scope)));
+                return Ok(RcTerm::from(Term::FunIntro(fun_scope)));
             }
 
             // TODO: We might want to optimise for this case, rather than
             // falling through to `infer` and unbinding again at I-LAM
         },
-        (&raw::Term::Lam(_, _), _) => {
+        (&raw::Term::FunIntro(_, _), _) => {
             return Err(TypeError::UnexpectedFunction {
                 span: raw_term.span(),
                 expected: Box::new(context.resugar(expected_ty)),
@@ -271,7 +275,7 @@ pub fn check_term(
         },
 
         // C-RECORD
-        (&raw::Term::Record(span, ref raw_scope), &Value::RecordType(ref raw_ty_scope)) => {
+        (&raw::Term::RecordIntro(span, ref raw_scope), &Value::RecordType(ref raw_ty_scope)) => {
             let (raw_fields, (), raw_ty_fields, ()) = {
                 // Until Scope::unbind2 returns a Result.
                 let found_size = raw_scope.unsafe_pattern.binders().len();
@@ -316,7 +320,7 @@ pub fn check_term(
                 Nest::new(fields)
             };
 
-            return Ok(RcTerm::from(Term::Record(Scope::new(fields, ()))));
+            return Ok(RcTerm::from(Term::RecordIntro(Scope::new(fields, ()))));
         },
 
         (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
@@ -344,7 +348,7 @@ pub fn check_term(
             return Ok(RcTerm::from(Term::Case(head, clauses)));
         },
 
-        (&raw::Term::Array(span, ref elems), _) => {
+        (&raw::Term::ArrayIntro(span, ref elems), _) => {
             return match context.array(expected_ty) {
                 Some((len, elem_ty)) if len == elems.len() as u64 => {
                     let elems = elems
@@ -352,7 +356,7 @@ pub fn check_term(
                         .map(|elem| check_term(context, elem, elem_ty))
                         .collect::<Result<_, _>>()?;
 
-                    Ok(RcTerm::from(Term::Array(elems)))
+                    Ok(RcTerm::from(Term::ArrayIntro(elems)))
                 },
                 Some((len, _)) => Err(TypeError::ArrayLengthMismatch {
                     span,
@@ -455,7 +459,7 @@ pub fn infer_term(
         },
 
         // I-PI
-        raw::Term::Pi(_, ref raw_scope) => {
+        raw::Term::FunType(_, ref raw_scope) => {
             let ((Binder(free_var), Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
             let (ann, ann_level) = infer_universe(context, &raw_ann)?;
@@ -466,14 +470,16 @@ pub fn infer_term(
                 infer_universe(&body_context, &raw_body)?
             };
 
+            let param = (Binder(free_var), Embed(ann));
+
             Ok((
-                RcTerm::from(Term::Pi(Scope::new((Binder(free_var), Embed(ann)), body))),
+                RcTerm::from(Term::FunType(Scope::new(param, body))),
                 RcValue::from(Value::Universe(cmp::max(ann_level, body_level))),
             ))
         },
 
         // I-LAM
-        raw::Term::Lam(_, ref raw_scope) => {
+        raw::Term::FunIntro(_, ref raw_scope) => {
             let ((Binder(free_var), Embed(raw_ann)), raw_body) = raw_scope.clone().unbind();
 
             // Check for holes before entering to ensure we get a nice error
@@ -485,20 +491,20 @@ pub fn infer_term(
                 });
             }
 
-            let (lam_ann, _) = infer_universe(context, &raw_ann)?;
-            let pi_ann = nf_term(context, &lam_ann)?;
-            let (lam_body, pi_body) = {
+            let (fun_ann, _) = infer_universe(context, &raw_ann)?;
+            let fun_ty_ann = nf_term(context, &fun_ann)?;
+            let (fun_body, fun_ty_body) = {
                 let mut body_context = context.clone();
-                body_context.insert_declaration(free_var.clone(), pi_ann.clone());
+                body_context.insert_declaration(free_var.clone(), fun_ty_ann.clone());
                 infer_term(&body_context, &raw_body)?
             };
 
-            let lam_param = (Binder(free_var.clone()), Embed(lam_ann));
-            let pi_param = (Binder(free_var.clone()), Embed(pi_ann));
+            let fun_param = (Binder(free_var.clone()), Embed(fun_ann));
+            let fun_ty_param = (Binder(free_var.clone()), Embed(fun_ty_ann));
 
             Ok((
-                RcTerm::from(Term::Lam(Scope::new(lam_param, lam_body))),
-                RcValue::from(Value::Pi(Scope::new(pi_param, pi_body))),
+                RcTerm::from(Term::FunIntro(Scope::new(fun_param, fun_body))),
+                RcValue::from(Value::FunType(Scope::new(fun_ty_param, fun_ty_body))),
             ))
         },
 
@@ -538,17 +544,17 @@ pub fn infer_term(
         },
 
         // I-APP
-        raw::Term::App(ref raw_head, ref raw_arg) => {
+        raw::Term::FunApp(ref raw_head, ref raw_arg) => {
             let (head, head_ty) = infer_term(context, raw_head)?;
 
             match *head_ty {
-                Value::Pi(ref scope) => {
+                Value::FunType(ref scope) => {
                     let ((Binder(free_var), Embed(ann)), body) = scope.clone().unbind();
 
                     let arg = check_term(context, raw_arg, &ann)?;
                     let body = nf_term(context, &body.substs(&[(free_var, arg.clone())]))?;
 
-                    Ok((RcTerm::from(Term::App(head, arg)), body))
+                    Ok((RcTerm::from(Term::FunApp(head, arg)), body))
                 },
                 _ => Err(TypeError::ArgAppliedToNonFunction {
                     fn_span: raw_head.span(),
@@ -588,7 +594,7 @@ pub fn infer_term(
         },
 
         // I-RECORD, I-EMPTY-RECORD
-        raw::Term::Record(_, ref raw_scope) => {
+        raw::Term::RecordIntro(_, ref raw_scope) => {
             let (raw_fields, ()) = raw_scope.clone().unbind();
             let raw_fields = raw_fields.unnest();
 
@@ -609,13 +615,13 @@ pub fn infer_term(
             }
 
             Ok((
-                RcTerm::from(Term::Record(Scope::new(Nest::new(fields), ()))),
+                RcTerm::from(Term::RecordIntro(Scope::new(Nest::new(fields), ()))),
                 RcValue::from(Value::RecordType(Scope::new(Nest::new(ty_fields), ()))),
             ))
         },
 
         // I-PROJ
-        raw::Term::Proj(_, ref expr, label_span, ref label, shift) => {
+        raw::Term::RecordProj(_, ref expr, label_span, ref label, shift) => {
             let (expr, ty) = infer_term(context, expr)?;
 
             if let Value::RecordType(ref scope) = *ty.inner {
@@ -624,15 +630,16 @@ pub fn infer_term(
 
                 for (current_label, Binder(free_var), Embed(current_ann)) in fields.unnest() {
                     if current_label == *label {
+                        let expr = RcTerm::from(Term::RecordProj(expr, current_label, shift));
                         let mut ty = nf_term(context, &current_ann.substs(&mappings))?;
                         ty.shift_universes(shift);
 
-                        return Ok((RcTerm::from(Term::Proj(expr, current_label, shift)), ty));
+                        return Ok((expr, ty));
                     } else {
                         mappings.push((
                             free_var,
                             // NOTE: Not sure if we should be shifting here...
-                            RcTerm::from(Term::Proj(expr.clone(), current_label, shift)),
+                            RcTerm::from(Term::RecordProj(expr.clone(), current_label, shift)),
                         ));
                     }
                 }
@@ -688,6 +695,6 @@ pub fn infer_term(
             }
         },
 
-        raw::Term::Array(span, _) => Err(TypeError::AmbiguousArrayLiteral { span }),
+        raw::Term::ArrayIntro(span, _) => Err(TypeError::AmbiguousArrayLiteral { span }),
     }
 }

@@ -284,12 +284,12 @@ impl Default for Context {
         let universe0 = RcValue::from(Value::universe(0));
         let bool_ty = context.globals.ty_bool.clone();
         let bool_lit = |value| RcTerm::from(Term::Literal(Literal::Bool(value)));
-        let array_ty = RcValue::from(Value::Pi(Scope::new(
+        let array_ty = RcValue::from(Value::FunType(Scope::new(
             (
                 Binder(FreeVar::fresh_unnamed()),
                 Embed(context.globals.ty_u64.clone()),
             ),
-            RcValue::from(Value::Pi(Scope::new(
+            RcValue::from(Value::FunType(Scope::new(
                 (Binder(FreeVar::fresh_unnamed()), Embed(universe0.clone())),
                 universe0.clone(),
             ))),
@@ -332,7 +332,7 @@ impl Default for Context {
                 $(let ty = {
                     let param_var = FreeVar::fresh_unnamed();
                     let param_ty = <$PType>::ty(&context);
-                    RcValue::from(Value::Pi(Scope::new((Binder(param_var), Embed(param_ty)), ty)))
+                    RcValue::from(Value::FunType(Scope::new((Binder(param_var), Embed(param_ty)), ty)))
                 };)*
 
                 context.insert_import($name.to_owned(), Import::Prim(interpretation), ty);

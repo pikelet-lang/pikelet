@@ -45,16 +45,16 @@ mod grammar {
 /// This is an ugly hack that cobbles together a pi type from a binder term and
 /// a body. See the comments on the `PiTerm` rule in the `grammar.lalrpop` for
 /// more information.
-fn reparse_pi_type_hack<L, T>(
+fn reparse_fun_ty_hack<L, T>(
     span: ByteSpan,
     binder: concrete::Term,
     body: concrete::Term,
 ) -> Result<concrete::Term, LalrpopError<L, T, ParseError>> {
     use concrete::Term;
 
-    fn pi_binder<L, T>(
+    fn fun_ty_binder<L, T>(
         binder: &Term,
-    ) -> Result<Option<concrete::PiParamGroup>, LalrpopError<L, T, ParseError>> {
+    ) -> Result<Option<concrete::FunTypeParamGroup>, LalrpopError<L, T, ParseError>> {
         match *binder {
             Term::Parens(_, ref term) => match **term {
                 Term::Ann(ref params, ref ann) => {
@@ -74,7 +74,7 @@ fn reparse_pi_type_hack<L, T>(
     ) -> Result<(), LalrpopError<L, T, ParseError>> {
         match *term {
             Term::Name(span, ref name, None) => names.push((span.start(), name.clone())),
-            Term::App(ref head, ref args) => {
+            Term::FunApp(ref head, ref args) => {
                 param_names(head, names)?;
                 for arg in args {
                     param_names(arg, names)?;
@@ -90,23 +90,23 @@ fn reparse_pi_type_hack<L, T>(
     }
 
     match binder {
-        Term::App(ref head, ref args) => {
+        Term::FunApp(ref head, ref args) => {
             use std::iter;
 
             let mut binders = Vec::with_capacity(args.len() + 1);
 
-            for next in iter::once(&**head).chain(args).map(pi_binder) {
+            for next in iter::once(&**head).chain(args).map(fun_ty_binder) {
                 match next? {
                     Some((names, ann)) => binders.push((names, ann)),
-                    None => return Ok(Term::Arrow(Box::new(binder.clone()), Box::new(body))),
+                    None => return Ok(Term::FunArrow(Box::new(binder.clone()), Box::new(body))),
                 }
             }
 
-            Ok(Term::Pi(span.start(), binders, Box::new(body)))
+            Ok(Term::FunType(span.start(), binders, Box::new(body)))
         },
-        binder => match pi_binder(&binder)? {
-            Some(binder) => Ok(Term::Pi(span.start(), vec![binder], Box::new(body))),
-            None => Ok(Term::Arrow(binder.into(), Box::new(body))),
+        binder => match fun_ty_binder(&binder)? {
+            Some(binder) => Ok(Term::FunType(span.start(), vec![binder], Box::new(body))),
+            None => Ok(Term::FunArrow(binder.into(), Box::new(body))),
         },
     }
 }

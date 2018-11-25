@@ -2,7 +2,7 @@
 
 use super::pretty::Doc;
 
-use concrete::{Item, LamParamGroup, Literal, Pattern, PiParamGroup, RecordField, Term};
+use concrete::{FunIntroParamGroup, FunTypeParamGroup, Item, Literal, Pattern, RecordField, Term};
 use {FloatFormat, IntFormat};
 
 use super::{StaticDoc, ToDoc};
@@ -30,7 +30,7 @@ impl ToDoc for Item {
                 .append(Doc::space())
                 .append(match params[..] {
                     [] => Doc::nil(),
-                    _ => pretty_lam_params(params).append(Doc::space()),
+                    _ => pretty_fun_intro_params(params).append(Doc::space()),
                 })
                 .append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
                     Doc::text(":")
@@ -91,7 +91,7 @@ impl ToDoc for Term {
             Term::Universe(_, None) => Doc::text("Type"),
             Term::Universe(_, Some(level)) => Doc::text(format!("Type^{}", level)),
             Term::Literal(ref literal) => literal.to_doc(),
-            Term::Array(_, ref elems) => Doc::text("[")
+            Term::ArrayIntro(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(Term::to_doc),
                     Doc::text(";").append(Doc::space()),
@@ -103,24 +103,24 @@ impl ToDoc for Term {
             Term::Import(_, _, ref name) => Doc::text("import")
                 .append(Doc::space())
                 .append(format!("{:?}", name)),
-            Term::Lam(_, ref params, ref body) => Doc::text("\\")
-                .append(pretty_lam_params(params))
+            Term::FunIntro(_, ref params, ref body) => Doc::text("\\")
+                .append(pretty_fun_intro_params(params))
                 .append(Doc::space())
                 .append("=>")
                 .append(Doc::space())
                 .append(body.to_doc()),
-            Term::Pi(_, ref params, ref body) => pretty_pi_params(params)
+            Term::FunType(_, ref params, ref body) => pretty_fun_ty_params(params)
                 .append(Doc::space())
                 .append("->")
                 .append(Doc::space())
                 .append(body.to_doc()),
-            Term::Arrow(ref ann, ref body) => ann
+            Term::FunArrow(ref ann, ref body) => ann
                 .to_doc()
                 .append(Doc::space())
                 .append("->")
                 .append(Doc::space())
                 .append(body.to_doc()),
-            Term::App(ref head, ref args) => head.to_doc().append(Doc::space()).append(
+            Term::FunApp(ref head, ref args) => head.to_doc().append(Doc::space()).append(
                 Doc::intersperse(args.iter().map(|arg| arg.to_doc()), Doc::space()),
             ),
             Term::Let(_, ref items, ref body) => {
@@ -181,7 +181,7 @@ impl ToDoc for Term {
                 .nest(INDENT_WIDTH)
                 .append("}"),
             Term::RecordType(_, ref fields) if fields.is_empty() => Doc::text("Record {}"),
-            Term::Record(_, ref fields) if fields.is_empty() => Doc::text("record {}"),
+            Term::RecordIntro(_, ref fields) if fields.is_empty() => Doc::text("record {}"),
             Term::RecordType(_, ref fields) => Doc::text("Record {")
                 .append(Doc::space())
                 .append(Doc::intersperse(
@@ -206,7 +206,7 @@ impl ToDoc for Term {
                 .nest(INDENT_WIDTH)
                 .append(Doc::space())
                 .append("}"),
-            Term::Record(_, ref fields) => Doc::text("record {")
+            Term::RecordIntro(_, ref fields) => Doc::text("record {")
                 .append(Doc::space())
                 .append(Doc::intersperse(
                     fields.iter().map(|field| match field {
@@ -227,7 +227,7 @@ impl ToDoc for Term {
                                 .append(Doc::space())
                                 .append(match params[..] {
                                     [] => Doc::nil(),
-                                    _ => pretty_lam_params(params).append(Doc::space()),
+                                    _ => pretty_fun_intro_params(params).append(Doc::space()),
                                 })
                                 .append(return_ann.as_ref().map_or(Doc::nil(), |return_ann| {
                                     Doc::text(":")
@@ -244,10 +244,10 @@ impl ToDoc for Term {
                 .nest(INDENT_WIDTH)
                 .append(Doc::space())
                 .append("}"),
-            Term::Proj(_, ref expr, _, ref label, None) => {
+            Term::RecordProj(_, ref expr, _, ref label, None) => {
                 expr.to_doc().append(".").append(format!("{}", label))
             },
-            Term::Proj(_, ref expr, _, ref label, Some(shift)) => expr
+            Term::RecordProj(_, ref expr, _, ref label, Some(shift)) => expr
                 .to_doc()
                 .append(".")
                 .append(format!("{}^{}", label, shift)),
@@ -256,7 +256,7 @@ impl ToDoc for Term {
     }
 }
 
-fn pretty_lam_params(params: &[LamParamGroup]) -> StaticDoc {
+fn pretty_fun_intro_params(params: &[FunIntroParamGroup]) -> StaticDoc {
     Doc::intersperse(
         params.iter().map(|&(ref names, ref ann)| match *ann {
             None if names.len() == 1 => Doc::as_string(&names[0].1),
@@ -276,7 +276,7 @@ fn pretty_lam_params(params: &[LamParamGroup]) -> StaticDoc {
     )
 }
 
-fn pretty_pi_params(params: &[PiParamGroup]) -> StaticDoc {
+fn pretty_fun_ty_params(params: &[FunTypeParamGroup]) -> StaticDoc {
     Doc::intersperse(
         params.iter().map(|&(ref names, ref ann)| {
             Doc::text("(")

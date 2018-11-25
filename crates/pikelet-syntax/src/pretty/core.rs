@@ -33,7 +33,7 @@ fn pretty_import(name: &str) -> StaticDoc {
     sexpr("import", Doc::text(format!("{:?}", name)))
 }
 
-fn pretty_lam(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_fun_intro(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "λ",
         Doc::group(parens(
@@ -50,7 +50,7 @@ fn pretty_let(binders: StaticDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr("let", binders.append(Doc::space()).append(body.to_doc()))
 }
 
-fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
+fn pretty_fun_ty(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> StaticDoc {
     sexpr(
         "Π",
         Doc::group(parens(
@@ -63,7 +63,7 @@ fn pretty_pi(binder: &Binder<String>, ann: &impl ToDoc, body: &impl ToDoc) -> St
     )
 }
 
-fn pretty_app<'a, As, A>(expr: StaticDoc, args: As) -> StaticDoc
+fn pretty_fun_app<'a, As, A>(expr: StaticDoc, args: As) -> StaticDoc
 where
     As: 'a + IntoIterator<Item = &'a A>,
     A: 'a + ToDoc,
@@ -81,7 +81,7 @@ fn pretty_record_ty(inner: StaticDoc) -> StaticDoc {
     sexpr("Record", inner)
 }
 
-fn pretty_record(inner: StaticDoc) -> StaticDoc {
+fn pretty_record_intro(inner: StaticDoc) -> StaticDoc {
     sexpr("record", inner)
 }
 
@@ -102,7 +102,7 @@ where
     )
 }
 
-fn pretty_proj(expr: &impl ToDoc, label: &Label, shift: LevelShift) -> StaticDoc {
+fn pretty_record_proj(expr: &impl ToDoc, label: &Label, shift: LevelShift) -> StaticDoc {
     sexpr(
         "proj",
         expr.to_doc()
@@ -145,17 +145,19 @@ impl ToDoc for raw::Term {
             raw::Term::Literal(ref literal) => literal.to_doc(),
             raw::Term::Var(_, ref var, shift) => pretty_var(var, shift),
             raw::Term::Import(_, _, ref name) => pretty_import(name),
-            raw::Term::Lam(_, ref scope) => pretty_lam(
+            raw::Term::FunIntro(_, ref scope) => pretty_fun_intro(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            raw::Term::Pi(_, ref scope) => pretty_pi(
+            raw::Term::FunType(_, ref scope) => pretty_fun_ty(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            raw::Term::App(ref head, ref arg) => pretty_app(head.to_doc(), iter::once(&arg.inner)),
+            raw::Term::FunApp(ref head, ref arg) => {
+                pretty_fun_app(head.to_doc(), iter::once(&arg.inner))
+            },
             raw::Term::Let(_, ref scope) => pretty_let(
                 Doc::concat(scope.unsafe_pattern.unsafe_patterns.iter().map(
                     |&(ref binder, Embed((ref ann, ref term)))| {
@@ -183,7 +185,7 @@ impl ToDoc for raw::Term {
                     },
                 ),
             )),
-            raw::Term::Record(_, ref scope) => pretty_record(Doc::concat(
+            raw::Term::RecordIntro(_, ref scope) => pretty_record_intro(Doc::concat(
                 scope.unsafe_pattern.unsafe_patterns.iter().map(
                     |&(ref label, _, Embed(ref term))| {
                         parens(
@@ -195,8 +197,8 @@ impl ToDoc for raw::Term {
                     },
                 ),
             )),
-            raw::Term::Proj(_, ref expr, _, ref label, shift) => {
-                pretty_proj(&expr.inner, label, shift)
+            raw::Term::RecordProj(_, ref expr, _, ref label, shift) => {
+                pretty_record_proj(&expr.inner, label, shift)
             },
             raw::Term::Case(_, ref head, ref clauses) => pretty_case(
                 &head.inner,
@@ -204,7 +206,7 @@ impl ToDoc for raw::Term {
                     .iter()
                     .map(|clause| (&clause.unsafe_pattern.inner, &clause.unsafe_body.inner)),
             ),
-            raw::Term::Array(_, ref elems) => Doc::text("[")
+            raw::Term::ArrayIntro(_, ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
@@ -254,12 +256,12 @@ impl ToDoc for Term {
             Term::Literal(ref literal) => literal.to_doc(),
             Term::Var(ref var, shift) => pretty_var(var, shift),
             Term::Import(ref name) => pretty_import(name),
-            Term::Lam(ref scope) => pretty_lam(
+            Term::FunIntro(ref scope) => pretty_fun_intro(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            Term::Pi(ref scope) => pretty_pi(
+            Term::FunType(ref scope) => pretty_fun_ty(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
@@ -279,7 +281,9 @@ impl ToDoc for Term {
                 )),
                 &scope.unsafe_body.inner,
             ),
-            Term::App(ref head, ref arg) => pretty_app(head.to_doc(), iter::once(&arg.inner)),
+            Term::FunApp(ref head, ref arg) => {
+                pretty_fun_app(head.to_doc(), iter::once(&arg.inner))
+            },
             Term::RecordType(ref scope) => pretty_record_ty(Doc::concat(
                 scope.unsafe_pattern.unsafe_patterns.iter().map(
                     |&(ref label, _, Embed(ref ann))| {
@@ -292,7 +296,7 @@ impl ToDoc for Term {
                     },
                 ),
             )),
-            Term::Record(ref scope) => pretty_record(Doc::concat(
+            Term::RecordIntro(ref scope) => pretty_record_intro(Doc::concat(
                 scope.unsafe_pattern.unsafe_patterns.iter().map(
                     |&(ref label, _, Embed(ref term))| {
                         parens(
@@ -304,14 +308,14 @@ impl ToDoc for Term {
                     },
                 ),
             )),
-            Term::Proj(ref expr, ref label, shift) => pretty_proj(&expr.inner, label, shift),
+            Term::RecordProj(ref expr, ref label, shift) => pretty_record_proj(&expr.inner, label, shift),
             Term::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses
                     .iter()
                     .map(|clause| (&clause.unsafe_pattern.inner, &clause.unsafe_body.inner)),
             ),
-            Term::Array(ref elems) => Doc::text("[")
+            Term::ArrayIntro(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
@@ -326,12 +330,12 @@ impl ToDoc for Value {
         match *self {
             Value::Universe(level) => pretty_universe(level),
             Value::Literal(ref literal) => literal.to_doc(),
-            Value::Lam(ref scope) => pretty_lam(
+            Value::FunIntro(ref scope) => pretty_fun_intro(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
             ),
-            Value::Pi(ref scope) => pretty_pi(
+            Value::FunType(ref scope) => pretty_fun_ty(
                 &scope.unsafe_pattern.0,
                 &(scope.unsafe_pattern.1).0.inner,
                 &scope.unsafe_body.inner,
@@ -348,7 +352,7 @@ impl ToDoc for Value {
                     },
                 ),
             )),
-            Value::Record(ref scope) => pretty_record(Doc::concat(
+            Value::RecordIntro(ref scope) => pretty_record_intro(Doc::concat(
                 scope.unsafe_pattern.unsafe_patterns.iter().map(
                     |&(ref label, _, Embed(ref term))| {
                         parens(
@@ -360,7 +364,7 @@ impl ToDoc for Value {
                     },
                 ),
             )),
-            Value::Array(ref elems) => Doc::text("[")
+            Value::ArrayIntro(ref elems) => Doc::text("[")
                 .append(Doc::intersperse(
                     elems.iter().map(|elem| elem.to_doc()),
                     Doc::text(";").append(Doc::space()),
@@ -368,7 +372,7 @@ impl ToDoc for Value {
                 .append("]"),
             Value::Neutral(ref neutral, ref spine) if spine.is_empty() => neutral.to_doc(),
             Value::Neutral(ref neutral, ref spine) => {
-                pretty_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))
+                pretty_fun_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))
             },
         }
     }
@@ -378,7 +382,9 @@ impl ToDoc for Neutral {
     fn to_doc(&self) -> StaticDoc {
         match *self {
             Neutral::Head(ref head) => head.to_doc(),
-            Neutral::Proj(ref expr, ref label, shift) => pretty_proj(&expr.inner, label, shift),
+            Neutral::RecordProj(ref expr, ref label, shift) => {
+                pretty_record_proj(&expr.inner, label, shift)
+            },
             Neutral::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses

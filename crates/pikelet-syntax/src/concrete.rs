@@ -64,16 +64,16 @@ pub enum ReplCommand {
 }
 
 /// A group of lambda parameters that share an annotation
-pub type LamParamGroup = (Vec<(ByteIndex, String)>, Option<Box<Term>>);
+pub type FunIntroParamGroup = (Vec<(ByteIndex, String)>, Option<Box<Term>>);
 
 /// The parameters to a lambda abstraction
-pub type LamParams = Vec<LamParamGroup>;
+pub type FunIntroParams = Vec<FunIntroParamGroup>;
 
 /// A group of parameters to a dependent function that share an annotation
-pub type PiParamGroup = (Vec<(ByteIndex, String)>, Term);
+pub type FunTypeParamGroup = (Vec<(ByteIndex, String)>, Term);
 
 /// The parameters to a dependent function type
-pub type PiParams = Vec<PiParamGroup>;
+pub type FunTypeParams = Vec<FunTypeParamGroup>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecordTypeField {
@@ -90,7 +90,7 @@ pub enum RecordField {
     },
     Explicit {
         label: (ByteIndex, String),
-        params: LamParams,
+        params: FunIntroParams,
         return_ann: Option<Box<Term>>,
         term: Term,
     },
@@ -116,7 +116,7 @@ pub enum Item {
     /// ```
     Definition {
         name: (ByteIndex, String),
-        params: LamParams,
+        params: FunIntroParams,
         return_ann: Option<Box<Term>>,
         body: Term,
     },
@@ -246,7 +246,7 @@ pub enum Term {
     /// Literals
     Literal(Literal),
     /// Array literals
-    Array(ByteSpan, Vec<Term>),
+    ArrayIntro(ByteSpan, Vec<Term>),
     /// Holes
     ///
     /// ```text
@@ -266,7 +266,20 @@ pub enum Term {
     /// import "prelude"
     /// ```
     Import(ByteSpan, ByteSpan, String),
-    /// Lambda abstraction
+    /// Dependent function type
+    ///
+    /// ```text
+    /// (x : t1) -> t2
+    /// (x y : t1) -> t2
+    /// ```
+    FunType(ByteIndex, FunTypeParams, Box<Term>),
+    /// Non-Dependent function type
+    ///
+    /// ```text
+    /// t1 -> t2
+    /// ```
+    FunArrow(Box<Term>, Box<Term>),
+    /// Function introduction
     ///
     /// ```text
     /// \x => t
@@ -275,26 +288,13 @@ pub enum Term {
     /// \(x : t1) y (z : t2) => t3
     /// \(x y : t1) => t3
     /// ```
-    Lam(ByteIndex, LamParams, Box<Term>),
-    /// Dependent function type
-    ///
-    /// ```text
-    /// (x : t1) -> t2
-    /// (x y : t1) -> t2
-    /// ```
-    Pi(ByteIndex, PiParams, Box<Term>),
-    /// Non-Dependent function type
-    ///
-    /// ```text
-    /// t1 -> t2
-    /// ```
-    Arrow(Box<Term>, Box<Term>),
-    /// Term application
+    FunIntro(ByteIndex, FunIntroParams, Box<Term>),
+    /// Function application
     ///
     /// ```text
     /// e1 e2
     /// ```
-    App(Box<Term>, Vec<Term>),
+    FunApp(Box<Term>, Vec<Term>),
     /// Let binding
     ///
     /// ```text
@@ -332,20 +332,20 @@ pub enum Term {
     /// Record { x : t1, .. }
     /// ```
     RecordType(ByteSpan, Vec<RecordTypeField>),
-    /// Record value
+    /// Record introduction
     ///
     /// ```text
     /// record { x = t1, .. }
     /// record { id (a : Type) (x : a) : a = x, .. }
     /// ```
-    Record(ByteSpan, Vec<RecordField>),
+    RecordIntro(ByteSpan, Vec<RecordField>),
     /// Record field projection
     ///
     /// ```text
     /// e.l
     /// e.l^1
     /// ```
-    Proj(ByteSpan, Box<Term>, ByteIndex, String, Option<u32>),
+    RecordProj(ByteSpan, Box<Term>, ByteIndex, String, Option<u32>),
     /// Terms that could not be correctly parsed
     ///
     /// This is used for error recovery
@@ -363,19 +363,19 @@ impl Term {
             | Term::Import(span, ..)
             | Term::Case(span, ..)
             | Term::RecordType(span, ..)
-            | Term::Record(span, ..)
-            | Term::Proj(span, ..)
-            | Term::Array(span, ..)
+            | Term::RecordIntro(span, ..)
+            | Term::RecordProj(span, ..)
+            | Term::ArrayIntro(span, ..)
             | Term::Error(span) => span,
             Term::Literal(ref literal) => literal.span(),
-            Term::Pi(start, _, ref body)
-            | Term::Lam(start, _, ref body)
+            Term::FunType(start, _, ref body)
+            | Term::FunIntro(start, _, ref body)
             | Term::Let(start, _, ref body)
             | Term::If(start, _, _, ref body) => ByteSpan::new(start, body.span().end()),
             Term::Where(ref expr, _, end) => ByteSpan::new(expr.span().start(), end),
             Term::Ann(ref term, ref ty) => term.span().to(ty.span()),
-            Term::Arrow(ref ann, ref body) => ann.span().to(body.span()),
-            Term::App(ref head, ref arg) => head.span().to(arg.last().unwrap().span()),
+            Term::FunArrow(ref ann, ref body) => ann.span().to(body.span()),
+            Term::FunApp(ref head, ref arg) => head.span().to(arg.last().unwrap().span()),
         }
     }
 }

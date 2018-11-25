@@ -38,7 +38,7 @@ fn ty() {
 }
 
 #[test]
-fn lam() {
+fn fun_intro() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -46,7 +46,7 @@ fn lam() {
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, r"\x : Type => x"),
-        RcValue::from(Value::Lam(Scope::new(
+        RcValue::from(Value::FunIntro(Scope::new(
             (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
             RcValue::from(Value::var(Var::Free(x), 0)),
         ))),
@@ -54,7 +54,7 @@ fn lam() {
 }
 
 #[test]
-fn pi() {
+fn fun_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -62,7 +62,7 @@ fn pi() {
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, r"(x : Type) -> x"),
-        RcValue::from(Value::Pi(Scope::new(
+        RcValue::from(Value::FunType(Scope::new(
             (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
             RcValue::from(Value::var(Var::Free(x), 0)),
         ))),
@@ -70,7 +70,7 @@ fn pi() {
 }
 
 #[test]
-fn lam_app() {
+fn fun_intro_fun_app() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -78,7 +78,7 @@ fn lam_app() {
 
     let x = FreeVar::fresh_named("x");
     let y = FreeVar::fresh_named("y");
-    let ty_arr = RcValue::from(Value::Pi(Scope::new(
+    let ty_arr = RcValue::from(Value::FunType(Scope::new(
         (
             Binder(FreeVar::fresh_unnamed()),
             Embed(RcValue::from(Value::universe(0))),
@@ -88,9 +88,9 @@ fn lam_app() {
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, given_expr,),
-        RcValue::from(Value::Lam(Scope::new(
+        RcValue::from(Value::FunIntro(Scope::new(
             (Binder(x.clone()), Embed(ty_arr)),
-            RcValue::from(Value::Lam(Scope::new(
+            RcValue::from(Value::FunIntro(Scope::new(
                 (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                 RcValue::from(Value::Neutral(
                     RcNeutral::from(Neutral::var(Var::Free(x), 0)),
@@ -102,7 +102,7 @@ fn lam_app() {
 }
 
 #[test]
-fn pi_app() {
+fn fun_ty_fun_app() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -110,7 +110,7 @@ fn pi_app() {
 
     let x = FreeVar::fresh_named("x");
     let y = FreeVar::fresh_named("y");
-    let ty_arr = RcValue::from(Value::Pi(Scope::new(
+    let ty_arr = RcValue::from(Value::FunType(Scope::new(
         (
             Binder(FreeVar::fresh_unnamed()),
             Embed(RcValue::from(Value::universe(0))),
@@ -120,9 +120,9 @@ fn pi_app() {
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, given_expr),
-        RcValue::from(Value::Pi(Scope::new(
+        RcValue::from(Value::FunType(Scope::new(
             (Binder(x.clone()), Embed(ty_arr)),
-            RcValue::from(Value::Pi(Scope::new(
+            RcValue::from(Value::FunType(Scope::new(
                 (Binder(y.clone()), Embed(RcValue::from(Value::universe(0)))),
                 RcValue::from(Value::Neutral(
                     RcNeutral::from(Neutral::var(Var::Free(x), 0)),
@@ -136,7 +136,7 @@ fn pi_app() {
 // Passing `Type` to the polymorphic identity function should yield the type
 // identity function
 #[test]
-fn id_app_ty() {
+fn id_fun_app_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -151,7 +151,7 @@ fn id_app_ty() {
 
 // Passing `Type` to the `Type` identity function should yield `Type`
 #[test]
-fn id_app_ty_ty() {
+fn id_fun_app_ty_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -167,7 +167,7 @@ fn id_app_ty_ty() {
 // Passing `Type -> Type` to the `Type` identity function should yield
 // `Type -> Type`
 #[test]
-fn id_app_ty_arr_ty() {
+fn id_fun_app_ty_arr_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -182,7 +182,7 @@ fn id_app_ty_arr_ty() {
 
 // Passing the id function to itself should yield the id function
 #[test]
-fn id_app_id() {
+fn id_fun_app_id() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -202,7 +202,7 @@ fn id_app_id() {
 // Passing the id function to the 'const' combinator should yield a
 // function that always returns the id function
 #[test]
-fn const_app_id_ty() {
+fn const_fun_app_id_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -222,7 +222,7 @@ fn const_app_id_ty() {
 }
 
 #[test]
-fn horrifying_app_1() {
+fn horrifying_fun_app_1() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -236,7 +236,7 @@ fn horrifying_app_1() {
 }
 
 #[test]
-fn horrifying_app_2() {
+fn horrifying_fun_app_2() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -386,7 +386,7 @@ fn case_expr_bool() {
 }
 
 #[test]
-fn record_shadow() {
+fn record_ty_shadow() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 

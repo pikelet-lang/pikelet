@@ -130,7 +130,7 @@ fn ann_id_as_ty() {
 }
 
 #[test]
-fn app() {
+fn fun_app() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -144,7 +144,7 @@ fn app() {
 }
 
 #[test]
-fn app_ty() {
+fn fun_app_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
@@ -166,7 +166,7 @@ fn app_ty() {
 }
 
 #[test]
-fn lam() {
+fn fun_intro() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -180,7 +180,7 @@ fn lam() {
 }
 
 #[test]
-fn pi() {
+fn fun_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -224,7 +224,7 @@ fn id_ann() {
 // Passing `Type` to the polymorphic identity function should yield the type
 // identity function
 #[test]
-fn id_app_ty() {
+fn id_fun_app_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -239,7 +239,7 @@ fn id_app_ty() {
 
 // Passing `Type` to the `Type` identity function should yield `Type`
 #[test]
-fn id_app_ty_ty() {
+fn id_fun_app_ty_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -253,7 +253,7 @@ fn id_app_ty_ty() {
 }
 
 #[test]
-fn id_app_ty_arr_ty() {
+fn id_fun_app_ty_arr_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -267,7 +267,7 @@ fn id_app_ty_arr_ty() {
 }
 
 #[test]
-fn id_app_arr_pi_ty() {
+fn id_fun_app_arr_fun_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -752,7 +752,7 @@ fn empty_record_ty() {
 }
 
 #[test]
-fn empty_record() {
+fn empty_record_intro() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -780,7 +780,7 @@ fn dependent_record_ty() {
 }
 
 #[test]
-fn record() {
+fn record_intro() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -794,7 +794,7 @@ fn record() {
 }
 
 #[test]
-fn proj() {
+fn record_proj() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -808,7 +808,7 @@ fn proj() {
 }
 
 #[test]
-fn proj_missing() {
+fn record_proj_missing() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
@@ -826,7 +826,7 @@ fn proj_missing() {
 }
 
 #[test]
-fn proj_weird1() {
+fn record_proj_weird1() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -848,7 +848,7 @@ fn proj_weird1() {
 }
 
 #[test]
-fn proj_weird2() {
+fn record_proj_weird2() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -869,7 +869,7 @@ fn proj_weird2() {
 }
 
 #[test]
-fn proj_shift() {
+fn record_proj_shift() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
@@ -885,7 +885,7 @@ fn proj_shift() {
 }
 
 #[test]
-fn array_ambiguous() {
+fn array_intro_ambiguous() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
