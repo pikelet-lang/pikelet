@@ -36,12 +36,12 @@
         "vscode-languageclient": "^4.1.4"
     },
     "devDependencies": {
-        "prettier": "^1.14.3",
+        "prettier": "^1.15.2",
         "tslint": "^5.11.0",
-        "tslint-config-prettier": "^1.15.0",
+        "tslint-config-prettier": "^1.17.0",
         "typescript": "^2.6.1",
-        "vsce": "^1.51.1",
-        "vscode": "^1.1.21"
+        "vsce": "^1.53.2",
+        "vscode": "^1.1.22"
     },
     "prettier": {
         "tabWidth": 4,
