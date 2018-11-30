@@ -4,6 +4,7 @@ use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use concrete;
 use core;
+use domain;
 use {Label, Level, LevelShift};
 
 /// The environment used when resugaring from the core to the concrete syntax
@@ -598,14 +599,14 @@ impl Resugar<concrete::Term> for core::Term {
     }
 }
 
-impl Resugar<concrete::Term> for core::Value {
+impl Resugar<concrete::Term> for domain::Value {
     fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
         // FIXME: Make this more efficient?
         resugar_term(env, &core::Term::from(self), Prec::NO_WRAP)
     }
 }
 
-impl Resugar<concrete::Term> for core::Neutral {
+impl Resugar<concrete::Term> for domain::Neutral {
     fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
         // FIXME: Make this more efficient?
         resugar_term(env, &core::Term::from(self), Prec::NO_WRAP)
@@ -618,13 +619,13 @@ impl Resugar<concrete::Term> for core::RcTerm {
     }
 }
 
-impl Resugar<concrete::Term> for core::RcValue {
+impl Resugar<concrete::Term> for domain::RcValue {
     fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
         self.inner.resugar(env)
     }
 }
 
-impl Resugar<concrete::Term> for core::RcNeutral {
+impl Resugar<concrete::Term> for domain::RcNeutral {
     fn resugar(&self, env: &ResugarEnv) -> concrete::Term {
         self.inner.resugar(env)
     }

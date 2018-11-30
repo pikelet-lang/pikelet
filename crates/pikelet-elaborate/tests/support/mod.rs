@@ -6,7 +6,8 @@ use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 
 use pikelet_elaborate::{self, Context};
 use pikelet_syntax::concrete;
-use pikelet_syntax::core::{RcTerm, RcType, RcValue};
+use pikelet_syntax::core::RcTerm;
+use pikelet_syntax::domain::{RcType, RcValue};
 use pikelet_syntax::parse;
 use pikelet_syntax::translation::{Desugar, DesugarEnv};
 

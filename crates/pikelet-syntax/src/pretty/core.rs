@@ -4,7 +4,8 @@ use super::pretty::Doc;
 use moniker::{Binder, Embed, Var};
 use std::iter;
 
-use core::{Head, Literal, Neutral, Pattern, Term, Value};
+use core::{Literal, Pattern, Term};
+use domain::{Head, Neutral, Value};
 use raw;
 use {FloatFormat, IntFormat, Label, Level, LevelShift};
 
@@ -308,7 +309,9 @@ impl ToDoc for Term {
                     },
                 ),
             )),
-            Term::RecordProj(ref expr, ref label, shift) => pretty_record_proj(&expr.inner, label, shift),
+            Term::RecordProj(ref expr, ref label, shift) => {
+                pretty_record_proj(&expr.inner, label, shift)
+            },
             Term::Case(ref head, ref clauses) => pretty_case(
                 &head.inner,
                 clauses

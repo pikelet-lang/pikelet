@@ -15,7 +15,8 @@ extern crate pikelet_syntax;
 use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
-use pikelet_syntax::core::{Literal, Pattern, RcPattern, RcTerm, RcType, RcValue, Term, Value};
+use pikelet_syntax::core::{Literal, Pattern, RcPattern, RcTerm, Term};
+use pikelet_syntax::domain::{RcType, RcValue, Value};
 use pikelet_syntax::raw;
 use pikelet_syntax::Level;
 

@@ -1,8 +1,7 @@
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
-use pikelet_syntax::core::{
-    Head, Neutral, Pattern, RcNeutral, RcPattern, RcTerm, RcValue, Term, Value,
-};
+use pikelet_syntax::core::{Pattern, RcPattern, RcTerm, Term};
+use pikelet_syntax::domain::{Head, Neutral, RcNeutral, RcValue, Value};
 
 use {Context, Import, InternalError};
 

@@ -3,7 +3,8 @@ use moniker::{Binder, FreeVar, Var};
 use std::fmt;
 use std::rc::Rc;
 
-use pikelet_syntax::core::{Literal, RcTerm, RcType, RcValue, Value};
+use pikelet_syntax::core::{Literal, RcTerm};
+use pikelet_syntax::domain::{RcType, RcValue, Value};
 use pikelet_syntax::translation::{Resugar, ResugarEnv};
 use pikelet_syntax::{FloatFormat, IntFormat};
 

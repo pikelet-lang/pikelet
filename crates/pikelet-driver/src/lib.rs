@@ -37,9 +37,9 @@
 //!       .---------------------------.
 //!       | pikelet_syntax::raw::Term |
 //!       '---------------------------'
-//!                     |                                .-----------------------------.
-//!      pikelet_elaborate::{check,infer} <------------- | pikelet_syntax::core::Value |
-//!                     |                                '-----------------------------'
+//!                     |                                .-------------------------------.
+//!      pikelet_elaborate::{check,infer} <------------- | pikelet_syntax::domain::Value |
+//!                     |                                '-------------------------------'
 //!                     v                                                ^
 //!       .----------------------------.                                 |
 //!       | pikelet_syntax::core::Term | - pikelet_elaborate::normalize -'
@@ -137,7 +137,7 @@ use std::sync::Arc;
 
 use pikelet_elaborate::{Context, Import};
 use pikelet_syntax::translation::{Desugar, DesugarEnv, Resugar};
-use pikelet_syntax::{core, raw};
+use pikelet_syntax::{core, domain, raw};
 
 /// An environment that keeps track of the state of a Pikelet program during
 /// compilation or interactive sessions
@@ -211,7 +211,7 @@ impl Driver {
         &mut self,
         name: &str,
         raw_term: &raw::RcTerm,
-    ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
+    ) -> Result<(core::RcTerm, domain::RcType), Vec<Diagnostic>> {
         let (term, inferred) = self.infer_term(&raw_term)?;
 
         let fv = self.desugar_env.on_binding(&name);
@@ -225,11 +225,11 @@ impl Driver {
     pub fn infer_term(
         &self,
         raw_term: &raw::RcTerm,
-    ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
+    ) -> Result<(core::RcTerm, domain::RcType), Vec<Diagnostic>> {
         pikelet_elaborate::infer_term(&self.context, &raw_term).map_err(|e| vec![e.to_diagnostic()])
     }
 
-    pub fn nf_term(&self, term: &core::RcTerm) -> Result<core::RcValue, Vec<Diagnostic>> {
+    pub fn nf_term(&self, term: &core::RcTerm) -> Result<domain::RcValue, Vec<Diagnostic>> {
         pikelet_elaborate::nf_term(&self.context, term).map_err(|e| vec![e.to_diagnostic()])
     }
 

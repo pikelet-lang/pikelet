@@ -19,6 +19,7 @@ use std::ops::{Add, AddAssign};
 
 pub mod concrete;
 pub mod core;
+pub mod domain;
 pub mod parse;
 pub mod pretty;
 pub mod raw;

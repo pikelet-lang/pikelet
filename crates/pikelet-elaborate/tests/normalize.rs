@@ -9,7 +9,8 @@ use codespan::CodeMap;
 use moniker::{Binder, Embed, FreeVar, Scope, Var};
 
 use pikelet_elaborate::Context;
-use pikelet_syntax::core::{Neutral, RcNeutral, RcTerm, RcValue, Term, Value};
+use pikelet_syntax::core::{RcTerm, Term};
+use pikelet_syntax::domain::{Neutral, RcNeutral, RcValue, Value};
 
 mod support;
 
