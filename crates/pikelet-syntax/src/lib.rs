@@ -11,6 +11,7 @@ extern crate moniker;
 #[cfg(test)]
 #[macro_use]
 extern crate pretty_assertions;
+extern crate pretty;
 extern crate unicode_xid;
 
 use moniker::{Binder, BoundPattern, BoundTerm, OnBoundFn, OnFreeFn, ScopeState, Var};
@@ -21,7 +22,6 @@ pub mod concrete;
 pub mod core;
 pub mod domain;
 pub mod parse;
-pub mod pretty;
 pub mod raw;
 pub mod translation;
 
@@ -170,3 +170,12 @@ impl fmt::Display for Label {
         write!(f, "{}", self.0)
     }
 }
+
+const PRETTY_INDENT_WIDTH: usize = 4;
+
+/// An effectively 'infinite' line length for when we don't have an explicit
+/// width provided for pretty printing.
+///
+/// `pretty.rs` seems to bug-out and break on every line when using
+/// `usize::MAX`, so we'll just use a really big number instead...
+pub const PRETTY_FALLBACK_WIDTH: usize = 1_000_000;

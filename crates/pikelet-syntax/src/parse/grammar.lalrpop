@@ -1,7 +1,7 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordField, ReplCommand};
+use concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordIntroField, ReplCommand};
 use parse::{LalrpopError, ParseError, Token};
 use {FloatFormat, IntFormat};
 
@@ -125,7 +125,7 @@ Literal: Literal = {
 
 pub Pattern: Pattern = {
     AtomicPattern,
-    <pattern: Pattern> ":" <ty: FunIntroTerm> => {
+    <pattern: Pattern> ":" <ty: ExprTerm> => {
         Pattern::Ann(Box::new(pattern), Box::new(ty))
     }
 };
@@ -145,25 +145,25 @@ AtomicPattern : Pattern = {
 }
 
 pub Term: Term = {
-    FunIntroTerm,
-    <expr: FunIntroTerm> ":" <ty: Term> => {
+    ExprTerm,
+    <expr: ExprTerm> ":" <ty: Term> => {
         Term::Ann(Box::new(expr), Box::new(ty))
     },
-    <expr: FunIntroTerm> "where" "{" <items: Item+> "}" <end: @R> => {
+    <expr: ExprTerm> "where" "{" <items: Item+> "}" <end: @R> => {
         Term::Where(Box::new(expr), items, end)
     }
 };
 
-FunIntroTerm: Term = {
-    FunTypeTerm,
+ExprTerm: Term = {
+    ArrowTerm,
     <start: @L> "import" <path_start: @L> <path: "string literal"> <end: @R> => {
         import_paths.push(path.clone());
         Term::Import(ByteSpan::new(start, end), ByteSpan::new(path_start, end), path)
     },
-    <start: @L> "\\" <name: IndexedIdent> ":" <ann: FunTypeTerm> "=>" <body: FunIntroTerm> => {
+    <start: @L> "\\" <name: IndexedIdent> ":" <ann: ArrowTerm> "=>" <body: ExprTerm> => {
         Term::FunIntro(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
     },
-    <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: FunIntroTerm> => {
+    <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: ExprTerm> => {
         Term::FunIntro(start, params, Box::new(body))
     },
     <start: @L> "if" <cond: AppTerm> "then" <if_true: AppTerm> "else" <if_false: AppTerm> => {
@@ -174,27 +174,27 @@ FunIntroTerm: Term = {
         arms.extend(last);
         Term::Case(ByteSpan::new(start, end), Box::new(head), arms)
     },
-    <start: @L> "let" <items: Item+> "in" <body: FunIntroTerm> => {
+    <start: @L> "let" <items: Item+> "in" <body: ExprTerm> => {
         Term::Let(start, items, Box::new(body))
     },
 };
 
-FunTypeTerm: Term = {
+ArrowTerm: Term = {
     AppTerm,
     // Naively we would want to write the following rules:
     //
     // ```lalrpop
-    // <params: ("(" <IndexedIdent+> ":" <FunTypeTerm> ")")+> "->" <body: FunIntroTerm> => {
+    // <params: ("(" <IndexedIdent+> ":" <ArrowTerm> ")")+> "->" <body: ExprTerm> => {
     //      Term::FunType(params, Box::new(body))
     //  },
-    //  <ann: AppTerm> "->" <body: FunIntroTerm> => {
+    //  <ann: AppTerm> "->" <body: ExprTerm> => {
     //      Term::Arrow(Box::new(ann), Box::new(body))
     //  },
     // ```
     //
     // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
     // have to hack this in by reparsing the binder:
-    <start: @L> <binder: AppTerm> "->" <body: FunIntroTerm> <end: @R> =>? {
+    <start: @L> <binder: AppTerm> "->" <body: ExprTerm> <end: @R> =>? {
         super::reparse_fun_ty_hack(ByteSpan::new(start, end), binder, body)
     },
 };
@@ -224,7 +224,7 @@ AtomicTerm: Term = {
         fields.extend(last);
         Term::RecordType(ByteSpan::new(start, end), fields)
     },
-    <start: @L> "record" "{" <fields: (<RecordField> ";")*> <last: RecordField?> "}" <end: @R> => {
+    <start: @L> "record" "{" <fields: (<RecordIntroField> ";")*> <last: RecordIntroField?> "}" <end: @R> => {
         let mut fields = fields;
         fields.extend(last);
         Term::RecordIntro(ByteSpan::new(start, end), fields)
@@ -240,7 +240,7 @@ AtomicTerm: Term = {
 
 AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
     <name: IndexedIdent> => (vec![name], None),
-    "(" <names: IndexedIdent+> <ann: (":" <FunTypeTerm>)?> ")" => (names, ann.map(Box::new)),
+    "(" <names: IndexedIdent+> <ann: (":" <ArrowTerm>)?> ")" => (names, ann.map(Box::new)),
 };
 
 RecordTypeField: RecordTypeField = {
@@ -253,13 +253,13 @@ PatternArm: (Pattern, Term) = {
     <Pattern> "=>" <Term>,
 };
 
-RecordField: RecordField = {
+RecordIntroField: RecordIntroField = {
     <label: IndexedIdent> <shift: ("^" <"decimal literal">)?> => {
-        RecordField::Punned { label, shift: shift.map(|x| x as u32) }
+        RecordIntroField::Punned { label, shift: shift.map(|x| x as u32) }
     },
     <label: IndexedIdent> <params: AtomicLamParam*> <return_ann: (":" <Term>)?> "=" <term: Term> => {
         let return_ann = return_ann.map(Box::new);
-        RecordField::Explicit { label, params, return_ann, term }
+        RecordIntroField::Explicit { label, params, return_ann, term }
     },
 };
 

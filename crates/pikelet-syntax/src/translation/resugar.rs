@@ -541,7 +541,7 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                     let name = env.on_item(&label, &binder);
 
                     // TODO: use a punned label if possible?
-                    concrete::RecordField::Explicit {
+                    concrete::RecordIntroField::Explicit {
                         label: (ByteIndex::default(), name),
                         params: term_params,
                         return_ann: None,

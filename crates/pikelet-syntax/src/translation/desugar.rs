@@ -386,16 +386,16 @@ fn desugar_record_ty(
 fn desugar_record_intro(
     env: &DesugarEnv,
     span: ByteSpan,
-    fields: &[concrete::RecordField],
+    fields: &[concrete::RecordIntroField],
 ) -> Result<raw::RcTerm, DesugarError> {
-    use concrete::RecordField;
+    use concrete::RecordIntroField;
 
     let mut env = env.clone();
 
     let fields = fields
         .iter()
         .map(|field| match field {
-            RecordField::Punned {
+            RecordIntroField::Punned {
                 label: (_, ref name),
                 shift,
             } => {
@@ -403,7 +403,7 @@ fn desugar_record_intro(
                 let free_var = env.on_binding(name);
                 Ok((Label(name.clone()), Binder(free_var), Embed(var)))
             },
-            RecordField::Explicit {
+            RecordIntroField::Explicit {
                 label: (_, ref name),
                 ref params,
                 ref return_ann,

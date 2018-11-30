@@ -179,12 +179,11 @@ fn eval_print(pikelet: &mut Driver, filemap: &FileMap) -> Result<ControlFlow, Ve
     use codespan::ByteSpan;
 
     use pikelet_syntax::concrete::{ReplCommand, Term};
-    use pikelet_syntax::pretty::{self, ToDoc};
 
     fn term_width() -> usize {
         term_size::dimensions()
             .map(|(width, _)| width)
-            .unwrap_or(pretty::FALLBACK_WIDTH)
+            .unwrap_or(1_000_000)
     }
 
     let (repl_command, _import_paths, parse_errors) = parse::repl_command(filemap);
