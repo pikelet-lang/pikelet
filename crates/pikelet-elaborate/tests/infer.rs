@@ -51,7 +51,7 @@ fn import_not_found() {
     match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::UndefinedImport { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
-        Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
+        Ok((term, ty)) => panic!("expected error, found {} : {:?}", term, ty),
     }
 }
 
@@ -591,7 +591,7 @@ fn case_expr_bool_bad() {
     match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::Mismatch { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
-        Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
+        Ok((term, ty)) => panic!("expected error, found {} : {:?}", term, ty),
     }
 }
 
@@ -899,6 +899,6 @@ fn array_intro_ambiguous() {
     match pikelet_elaborate::infer_term(&context, &raw_term) {
         Err(TypeError::AmbiguousArrayLiteral { .. }) => {},
         Err(err) => panic!("unexpected error: {:?}", err),
-        Ok((term, ty)) => panic!("expected error, found {} : {}", term, ty),
+        Ok((term, ty)) => panic!("expected error, found {} : {:?}", term, ty),
     }
 }

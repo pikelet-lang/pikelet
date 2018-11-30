@@ -5,7 +5,6 @@ use moniker::{Binder, Embed, Var};
 use std::iter;
 
 use core::{Literal, Pattern, Term};
-use domain::{Head, Neutral, Value};
 use raw;
 use {FloatFormat, IntFormat, Label, Level, LevelShift};
 
@@ -324,85 +323,6 @@ impl ToDoc for Term {
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append("]"),
-        }
-    }
-}
-
-impl ToDoc for Value {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Value::Universe(level) => pretty_universe(level),
-            Value::Literal(ref literal) => literal.to_doc(),
-            Value::FunIntro(ref scope) => pretty_fun_intro(
-                &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0.inner,
-                &scope.unsafe_body.inner,
-            ),
-            Value::FunType(ref scope) => pretty_fun_ty(
-                &scope.unsafe_pattern.0,
-                &(scope.unsafe_pattern.1).0.inner,
-                &scope.unsafe_body.inner,
-            ),
-            Value::RecordType(ref scope) => pretty_record_ty(Doc::concat(
-                scope.unsafe_pattern.unsafe_patterns.iter().map(
-                    |&(ref label, _, Embed(ref ann))| {
-                        parens(
-                            Doc::as_string(label)
-                                .append(Doc::space())
-                                .append(ann.to_doc().group()),
-                        )
-                        .append(Doc::newline())
-                    },
-                ),
-            )),
-            Value::RecordIntro(ref scope) => pretty_record_intro(Doc::concat(
-                scope.unsafe_pattern.unsafe_patterns.iter().map(
-                    |&(ref label, _, Embed(ref term))| {
-                        parens(
-                            Doc::as_string(label)
-                                .append(Doc::space())
-                                .append(term.to_doc().group()),
-                        )
-                        .append(Doc::newline())
-                    },
-                ),
-            )),
-            Value::ArrayIntro(ref elems) => Doc::text("[")
-                .append(Doc::intersperse(
-                    elems.iter().map(|elem| elem.to_doc()),
-                    Doc::text(";").append(Doc::space()),
-                ))
-                .append("]"),
-            Value::Neutral(ref neutral, ref spine) if spine.is_empty() => neutral.to_doc(),
-            Value::Neutral(ref neutral, ref spine) => {
-                pretty_fun_app(neutral.to_doc(), spine.iter().map(|arg| &arg.inner))
-            },
-        }
-    }
-}
-
-impl ToDoc for Neutral {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Neutral::Head(ref head) => head.to_doc(),
-            Neutral::RecordProj(ref expr, ref label, shift) => {
-                pretty_record_proj(&expr.inner, label, shift)
-            },
-            Neutral::Case(ref head, ref clauses) => pretty_case(
-                &head.inner,
-                clauses
-                    .iter()
-                    .map(|clause| (&clause.unsafe_pattern.inner, &clause.unsafe_body.inner)),
-            ),
-        }
-    }
-}
-
-impl ToDoc for Head {
-    fn to_doc(&self) -> StaticDoc {
-        match *self {
-            Head::Var(ref var, shift) => pretty_var(var, shift),
-            Head::Import(ref name) => pretty_import(name),
         }
     }
 }

@@ -1,12 +1,10 @@
 //! The semantic domain of the language
 
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
-use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
 use core::{Literal, RcPattern, RcTerm, Term};
-use pretty::{self, ToDoc};
 use {Label, Level, LevelShift};
 
 /// Values
@@ -99,12 +97,6 @@ impl Value {
     }
 }
 
-impl fmt::Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
-    }
-}
-
 /// Reference counted values
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct RcValue {
@@ -156,12 +148,6 @@ impl ops::Deref for RcValue {
     }
 }
 
-impl fmt::Display for RcValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
-    }
-}
-
 /// The head of an application
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Head {
@@ -194,12 +180,6 @@ pub enum Neutral {
 impl Neutral {
     pub fn var(var: impl Into<Var<String>>, shift: impl Into<LevelShift>) -> Neutral {
         Neutral::Head(Head::Var(var.into(), shift.into()))
-    }
-}
-
-impl fmt::Display for Neutral {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc().group().render_fmt(pretty::FALLBACK_WIDTH, f)
     }
 }
 
