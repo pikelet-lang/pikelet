@@ -391,8 +391,6 @@ fn desugar_record_intro(
 ) -> Result<raw::RcTerm, DesugarError> {
     use syntax::concrete::RecordIntroField;
 
-    let mut env = env.clone();
-
     let fields = fields
         .iter()
         .map(|field| match field {
@@ -401,27 +399,21 @@ fn desugar_record_intro(
                 shift,
             } => {
                 let var = env.on_name(span, name, shift.unwrap_or(0));
-                let free_var = env.on_binding(name);
-                Ok((Label(name.clone()), Binder(free_var), Embed(var)))
+                Ok((Label(name.clone()), var))
             },
             RecordIntroField::Explicit {
                 label: (_, ref name),
                 ref params,
                 ref return_ann,
                 ref term,
-            } => {
-                let expr =
-                    desugar_fun_intro(&env, params, return_ann.as_ref().map(<_>::as_ref), term)?;
-                let free_var = env.on_binding(name);
-                Ok((Label(name.clone()), Binder(free_var), Embed(expr)))
-            },
+            } => Ok((
+                Label(name.clone()),
+                desugar_fun_intro(env, params, return_ann.as_ref().map(<_>::as_ref), term)?,
+            )),
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(raw::RcTerm::from(raw::Term::RecordIntro(
-        span,
-        Scope::new(Nest::new(fields), ()),
-    )))
+    Ok(raw::RcTerm::from(raw::Term::RecordIntro(span, fields)))
 }
 
 impl Desugar<raw::Literal> for concrete::Literal {

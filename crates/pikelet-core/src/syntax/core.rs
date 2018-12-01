@@ -147,7 +147,7 @@ pub enum Term {
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
     /// Record introductions
-    RecordIntro(Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>),
+    RecordIntro(Vec<(Label, RcTerm)>),
     /// Record field projection
     RecordProj(RcTerm, Label, LevelShift),
     /// Case expressions
@@ -306,23 +306,18 @@ impl Term {
                 ))
                 .append(Doc::space())
                 .append("}"),
-            Term::RecordIntro(ref scope) => Doc::nil()
+            Term::RecordIntro(ref fields) => Doc::nil()
                 .append("record {")
                 .append(Doc::space())
                 .append(Doc::intersperse(
-                    scope.unsafe_pattern.unsafe_patterns.iter().map(
-                        |&(ref label, ref binder, Embed(ref value))| {
-                            Doc::nil()
-                                .append(Doc::as_string(label))
-                                .append("as")
-                                .append(Doc::space())
-                                .append(Doc::as_string(binder))
-                                .append(Doc::space())
-                                .append("=")
-                                .append(Doc::space())
-                                .append(value.to_doc())
-                        },
-                    ),
+                    fields.iter().map(|&(ref label, ref value)| {
+                        Doc::nil()
+                            .append(Doc::as_string(label))
+                            .append(Doc::space())
+                            .append("=")
+                            .append(Doc::space())
+                            .append(value.to_doc())
+                    }),
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append(Doc::space())
@@ -395,9 +390,7 @@ impl RcTerm {
             Term::FunApp(ref head, ref arg) => {
                 RcTerm::from(Term::FunApp(head.substs(mappings), arg.substs(mappings)))
             },
-            Term::RecordType(ref scope) | Term::RecordIntro(ref scope)
-                if scope.unsafe_pattern.unsafe_patterns.is_empty() =>
-            {
+            Term::RecordType(ref scope) if scope.unsafe_pattern.unsafe_patterns.is_empty() => {
                 self.clone()
             },
             Term::RecordType(ref scope) => {
@@ -415,20 +408,14 @@ impl RcTerm {
                     unsafe_body: (),
                 }))
             },
-            Term::RecordIntro(ref scope) => {
-                let unsafe_patterns = scope
-                    .unsafe_pattern
-                    .unsafe_patterns
+            Term::RecordIntro(ref fields) if fields.is_empty() => self.clone(),
+            Term::RecordIntro(ref fields) => {
+                let fields = fields
                     .iter()
-                    .map(|&(ref label, ref binder, Embed(ref expr))| {
-                        (label.clone(), binder.clone(), Embed(expr.substs(mappings)))
-                    })
+                    .map(|&(ref label, ref expr)| (label.clone(), expr.substs(mappings)))
                     .collect();
 
-                RcTerm::from(Term::RecordIntro(Scope {
-                    unsafe_pattern: Nest { unsafe_patterns },
-                    unsafe_body: (),
-                }))
+                RcTerm::from(Term::RecordIntro(fields))
             },
             Term::RecordProj(ref expr, ref label, shift) => RcTerm::from(Term::RecordProj(
                 expr.substs(mappings),
@@ -513,20 +500,13 @@ impl<'a> From<&'a Value> for Term {
                     unsafe_body: (),
                 })
             },
-            Value::RecordIntro(ref scope) => {
-                let unsafe_patterns = scope
-                    .unsafe_pattern
-                    .unsafe_patterns
+            Value::RecordIntro(ref fields) => {
+                let fields = fields
                     .iter()
-                    .map(|&(ref label, ref binder, Embed(ref expr))| {
-                        (label.clone(), binder.clone(), Embed(RcTerm::from(&**expr)))
-                    })
+                    .map(|&(ref label, ref expr)| (label.clone(), RcTerm::from(&**expr)))
                     .collect();
 
-                Term::RecordIntro(Scope {
-                    unsafe_pattern: Nest { unsafe_patterns },
-                    unsafe_body: (),
-                })
+                Term::RecordIntro(fields)
             },
             Value::ArrayIntro(ref elems) => {
                 Term::ArrayIntro(elems.iter().map(|elem| RcTerm::from(&**elem)).collect())

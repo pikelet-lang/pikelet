@@ -159,10 +159,7 @@ pub enum Term {
         Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
     ),
     /// Record introductions
-    RecordIntro(
-        ByteSpan,
-        Scope<Nest<(Label, Binder<String>, Embed<RcTerm>)>, ()>,
-    ),
+    RecordIntro(ByteSpan, Vec<(Label, RcTerm)>),
     /// Record field projection
     RecordProj(ByteSpan, RcTerm, ByteSpan, Label, LevelShift),
     /// Case expressions
@@ -337,23 +334,18 @@ impl Term {
                 ))
                 .append(Doc::space())
                 .append("}"),
-            Term::RecordIntro(_, ref scope) => Doc::nil()
+            Term::RecordIntro(_, ref fields) => Doc::nil()
                 .append("record {")
                 .append(Doc::space())
                 .append(Doc::intersperse(
-                    scope.unsafe_pattern.unsafe_patterns.iter().map(
-                        |&(ref label, ref binder, Embed(ref value))| {
-                            Doc::nil()
-                                .append(Doc::as_string(label))
-                                .append("as")
-                                .append(Doc::space())
-                                .append(Doc::as_string(binder))
-                                .append(Doc::space())
-                                .append("=")
-                                .append(Doc::space())
-                                .append(value.to_doc())
-                        },
-                    ),
+                    fields.iter().map(|&(ref label, ref value)| {
+                        Doc::nil()
+                            .append(Doc::as_string(label))
+                            .append(Doc::space())
+                            .append("=")
+                            .append(Doc::space())
+                            .append(value.to_doc())
+                    }),
                     Doc::text(";").append(Doc::space()),
                 ))
                 .append(Doc::space())

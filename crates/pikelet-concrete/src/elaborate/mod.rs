@@ -266,52 +266,47 @@ pub fn check_term(
         },
 
         // C-RECORD
-        (&raw::Term::RecordIntro(span, ref raw_scope), &Value::RecordType(ref raw_ty_scope)) => {
-            let (raw_fields, (), raw_ty_fields, ()) = {
-                // Until Scope::unbind2 returns a Result.
-                let found_size = raw_scope.unsafe_pattern.binders().len();
+        (&raw::Term::RecordIntro(span, ref raw_fields), &Value::RecordType(ref raw_ty_scope)) => {
+            let (raw_ty_fields, ()) = {
                 let expected_size = raw_ty_scope.unsafe_pattern.binders().len();
-                if found_size == expected_size {
-                    Scope::unbind2(raw_scope.clone(), raw_ty_scope.clone())
+                if raw_fields.len() == raw_ty_scope.unsafe_pattern.binders().len() {
+                    raw_ty_scope.clone().unbind()
                 } else {
                     return Err(TypeError::RecordSizeMismatch {
                         span,
-                        found_size: found_size as u64,
+                        found_size: raw_fields.len() as u64,
                         expected_size: expected_size as u64,
                     });
                 }
             };
 
-            let raw_fields = raw_fields.unnest();
             let raw_ty_fields = raw_ty_fields.unnest();
 
             // FIXME: Check that record is well-formed?
             let fields = {
                 let mut mappings = Vec::with_capacity(raw_fields.len());
-                let fields = <_>::zip(raw_fields.into_iter(), raw_ty_fields.into_iter())
+                <_>::zip(raw_fields.iter(), raw_ty_fields.into_iter())
                     .map(|(field, ty_field)| {
-                        let (label, Binder(free_var), Embed(raw_expr)) = field;
+                        let &(ref label, ref raw_expr) = field;
                         let (ty_label, Binder(ty_free_var), Embed(ann)) = ty_field;
 
-                        if label == ty_label {
+                        if *label == ty_label {
                             let ann = nbe::nf_term(context, &ann.substs(&mappings))?;
                             let expr = check_term(context, &raw_expr, &ann)?;
                             mappings.push((ty_free_var, expr.clone()));
-                            Ok((label, Binder(free_var), Embed(expr)))
+                            Ok((label.clone(), expr))
                         } else {
                             Err(TypeError::LabelMismatch {
                                 span,
-                                found: label,
+                                found: label.clone(),
                                 expected: ty_label,
                             })
                         }
                     })
-                    .collect::<Result<_, _>>()?;
-
-                Nest::new(fields)
+                    .collect::<Result<_, _>>()?
             };
 
-            return Ok(RcTerm::from(Term::RecordIntro(Scope::new(fields, ()))));
+            return Ok(RcTerm::from(Term::RecordIntro(fields)));
         },
 
         (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
@@ -585,28 +580,26 @@ pub fn infer_term(
         },
 
         // I-RECORD, I-EMPTY-RECORD
-        raw::Term::RecordIntro(_, ref raw_scope) => {
-            let (raw_fields, ()) = raw_scope.clone().unbind();
-            let raw_fields = raw_fields.unnest();
-
+        raw::Term::RecordIntro(_, ref raw_fields) => {
             let mut fields = Vec::with_capacity(raw_fields.len());
             let mut ty_fields = Vec::with_capacity(raw_fields.len());
 
             // FIXME: error on duplicate field names
             {
                 let mut ty_mappings = Vec::with_capacity(raw_fields.len());
-                for (label, Binder(free_var), Embed(raw_term)) in raw_fields {
+                for &(ref label, ref raw_term) in raw_fields {
+                    let free_var = FreeVar::fresh_named(label.0.clone());
                     let (term, term_ty) = infer_term(context, &raw_term)?;
                     let term_ty = nbe::nf_term(context, &term_ty.substs(&ty_mappings))?;
 
-                    fields.push((label.clone(), Binder(free_var.clone()), Embed(term.clone())));
-                    ty_fields.push((label, Binder(free_var.clone()), Embed(term_ty)));
+                    fields.push((label.clone(), term.clone()));
+                    ty_fields.push((label.clone(), Binder(free_var.clone()), Embed(term_ty)));
                     ty_mappings.push((free_var, term));
                 }
             }
 
             Ok((
-                RcTerm::from(Term::RecordIntro(Scope::new(Nest::new(fields), ()))),
+                RcTerm::from(Term::RecordIntro(fields)),
                 RcValue::from(Value::RecordType(Scope::new(Nest::new(ty_fields), ()))),
             ))
         },

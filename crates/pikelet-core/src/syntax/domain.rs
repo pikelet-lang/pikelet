@@ -25,7 +25,7 @@ pub enum Value {
     /// Dependent record types
     RecordType(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
     /// Dependent record introductions
-    RecordIntro(Scope<Nest<(Label, Binder<String>, Embed<RcValue>)>, ()>),
+    RecordIntro(Vec<(Label, RcValue)>),
     /// Array literals
     ArrayIntro(Vec<RcValue>),
     /// Neutral terms
@@ -70,11 +70,12 @@ impl Value {
             Value::FunType(ref scope) | Value::FunIntro(ref scope) => {
                 (scope.unsafe_pattern.1).0.is_nf() && scope.unsafe_body.is_nf()
             },
-            Value::RecordType(ref scope) | Value::RecordIntro(ref scope) => scope
+            Value::RecordType(ref scope) => scope
                 .unsafe_pattern
                 .unsafe_patterns
                 .iter()
                 .all(|(_, _, Embed(ref term))| term.is_nf()),
+            Value::RecordIntro(ref fields) => fields.iter().all(|&(_, ref term)| term.is_nf()),
             Value::ArrayIntro(ref elems) => elems.iter().all(|elem| elem.is_nf()),
             Value::Neutral(_, _) => false,
         }
@@ -112,8 +113,13 @@ impl RcValue {
                 (scope.unsafe_pattern.1).0.shift_universes(shift);
                 scope.unsafe_body.shift_universes(shift);
             },
-            Value::RecordType(ref mut scope) | Value::RecordIntro(ref mut scope) => {
+            Value::RecordType(ref mut scope) => {
                 for &mut (_, _, Embed(ref mut term)) in &mut scope.unsafe_pattern.unsafe_patterns {
+                    term.shift_universes(shift);
+                }
+            },
+            Value::RecordIntro(ref mut fields) => {
+                for &mut (_, ref mut term) in fields {
                     term.shift_universes(shift);
                 }
             },

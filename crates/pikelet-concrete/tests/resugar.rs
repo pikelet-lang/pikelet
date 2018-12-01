@@ -187,7 +187,7 @@ fn let_shadow_keyword() {
                 )),
             ),
         ]),
-        core::RcTerm::from(core::Term::RecordIntro(Scope::new(Nest::new(vec![]), ()))),
+        core::RcTerm::from(core::Term::RecordIntro(vec![])),
     ));
 
     let concrete_module = concrete::Term::Let(
@@ -282,7 +282,7 @@ fn record_ty() {
 
 #[test]
 fn record_empty() {
-    let core_term = core::Term::RecordIntro(Scope::new(Nest::new(vec![]), ()));
+    let core_term = core::Term::RecordIntro(vec![]);
     let concrete_term = concrete::Term::RecordIntro(span(), vec![]);
 
     assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);

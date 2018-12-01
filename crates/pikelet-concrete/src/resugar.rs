@@ -5,7 +5,7 @@ use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use pikelet_core::syntax::{core, domain};
 use pikelet_core::syntax::{Label, Level, LevelShift};
 
-use syntax::{concrete, IntFormat, FloatFormat};
+use syntax::{concrete, FloatFormat, IntFormat};
 
 /// The environment used when resugaring from the core to the concrete syntax
 #[derive(Debug, Clone)]
@@ -526,23 +526,20 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
 
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
-        core::Term::RecordIntro(ref scope) => {
+        core::Term::RecordIntro(ref fields) => {
             let mut env = env.clone();
-            let (scope, ()) = scope.clone().unbind();
 
-            let fields = scope
-                .unnest()
-                .into_iter()
-                .map(|(label, binder, Embed(term))| {
+            let fields = fields
+                .iter()
+                .map(|&(ref label, ref term)| {
                     let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
                         concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
                         term_body => (vec![], term_body),
                     };
-                    let name = env.on_item(&label, &binder);
 
                     // TODO: use a punned label if possible?
                     concrete::RecordIntroField::Explicit {
-                        label: (ByteIndex::default(), name),
+                        label: (ByteIndex::default(), label.0.clone()),
                         params: term_params,
                         return_ann: None,
                         term: term_body,
