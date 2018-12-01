@@ -5,8 +5,9 @@ extern crate codespan_reporting;
 #[macro_use]
 extern crate failure;
 extern crate linefeed;
+extern crate pikelet_concrete;
+extern crate pikelet_core;
 extern crate pikelet_driver;
-extern crate pikelet_syntax;
 #[macro_use]
 extern crate structopt;
 extern crate term_size;
@@ -18,8 +19,8 @@ use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
 
+use pikelet_concrete::parse;
 use pikelet_driver::Driver;
-use pikelet_syntax::parse;
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -178,7 +179,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 fn eval_print(pikelet: &mut Driver, filemap: &FileMap) -> Result<ControlFlow, Vec<Diagnostic>> {
     use codespan::ByteSpan;
 
-    use pikelet_syntax::concrete::{ReplCommand, Term};
+    use pikelet_concrete::syntax::concrete::{ReplCommand, Term};
 
     fn term_width() -> usize {
         term_size::dimensions()
@@ -210,7 +211,7 @@ fn eval_print(pikelet: &mut Driver, filemap: &FileMap) -> Result<ControlFlow, Ve
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
         ReplCommand::Core(concrete_term) => {
-            use pikelet_syntax::core::{RcTerm, Term};
+            use pikelet_core::syntax::core::{RcTerm, Term};
 
             let raw_term = pikelet.desugar(&*concrete_term)?;
             let (term, inferred) = pikelet.infer_term(&raw_term)?;
