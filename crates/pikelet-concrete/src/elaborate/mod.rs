@@ -8,9 +8,9 @@ use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use pikelet_core::nbe;
-use pikelet_core::syntax::core::{Literal, Pattern, RcPattern, RcTerm, Term};
+use pikelet_core::syntax::core::{Pattern, RcPattern, RcTerm, Term};
 use pikelet_core::syntax::domain::{RcType, RcValue, Value};
-use pikelet_core::syntax::Level;
+use pikelet_core::syntax::{Level, Literal};
 
 use syntax::raw;
 
@@ -124,7 +124,7 @@ fn infer_literal(
     context: &Context,
     raw_literal: &raw::Literal,
 ) -> Result<(Literal, RcType), TypeError> {
-    use pikelet_core::syntax::core::Literal::{Char, String};
+    use pikelet_core::syntax::Literal::{Char, String};
 
     match *raw_literal {
         raw::Literal::String(_, ref val) => Ok((String(val.clone()), context.string().clone())),

@@ -1,3 +1,4 @@
+use pretty::{BoxDoc, Doc};
 use std::fmt;
 use std::ops::{Add, AddAssign};
 
@@ -24,6 +25,53 @@ impl fmt::Debug for Import {
             Import::Term(ref term) => f.debug_tuple("Term").field(term).finish(),
             Import::Prim(_) => f.debug_tuple("Prim").field(&"|params| { .. }").finish(),
         }
+    }
+}
+
+/// Literals
+///
+/// We could church encode all the things, but that would be prohibitively expensive!
+#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]
+pub enum Literal {
+    Bool(bool),
+    String(String),
+    Char(char),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    S8(i8),
+    S16(i16),
+    S32(i32),
+    S64(i64),
+    F32(f32),
+    F64(f64),
+}
+
+impl Literal {
+    pub fn to_doc(&self) -> Doc<BoxDoc<()>> {
+        match *self {
+            Literal::Bool(true) => Doc::text("true"),
+            Literal::Bool(false) => Doc::text("false"),
+            Literal::String(ref value) => Doc::text(format!("{:?}", value)),
+            Literal::Char(value) => Doc::text(format!("{:?}", value)),
+            Literal::U8(value) => Doc::as_string(&value),
+            Literal::U16(value) => Doc::as_string(&value),
+            Literal::U32(value) => Doc::as_string(&value),
+            Literal::U64(value) => Doc::as_string(&value),
+            Literal::S8(value) => Doc::as_string(&value),
+            Literal::S16(value) => Doc::as_string(&value),
+            Literal::S32(value) => Doc::as_string(&value),
+            Literal::S64(value) => Doc::as_string(&value),
+            Literal::F32(value) => Doc::as_string(&value),
+            Literal::F64(value) => Doc::as_string(&value),
+        }
+    }
+}
+
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.to_doc().group().render_fmt(PRETTY_FALLBACK_WIDTH, f)
     }
 }
 

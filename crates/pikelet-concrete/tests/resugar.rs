@@ -8,7 +8,7 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use pikelet_concrete::resugar::{Resugar, ResugarEnv};
 use pikelet_concrete::syntax::concrete;
-use pikelet_core::syntax::{core, Label, LevelShift};
+use pikelet_core::syntax::{core, Label, LevelShift, Literal};
 
 fn span() -> ByteSpan {
     ByteSpan::default()
@@ -53,7 +53,7 @@ fn universe1() {
 
 #[test]
 fn lit_bool_true() {
-    let core_term = core::Term::Literal(core::Literal::Bool(true));
+    let core_term = core::Term::Literal(Literal::Bool(true));
     let concrete_term = concrete::Term::Name(span(), "true".to_owned(), None);
 
     assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
@@ -61,7 +61,7 @@ fn lit_bool_true() {
 
 #[test]
 fn lit_bool_false() {
-    let core_term = core::Term::Literal(core::Literal::Bool(false));
+    let core_term = core::Term::Literal(Literal::Bool(false));
     let concrete_term = concrete::Term::Name(span(), "false".to_owned(), None);
 
     assert_eq!(core_term.resugar(&ResugarEnv::new()), concrete_term);
@@ -69,7 +69,7 @@ fn lit_bool_false() {
 
 #[test]
 fn lit_string() {
-    let core_term = core::Term::Literal(core::Literal::String("hello".to_owned()));
+    let core_term = core::Term::Literal(Literal::String("hello".to_owned()));
     let concrete_term =
         concrete::Term::Literal(concrete::Literal::String(span(), "hello".to_owned()));
 

@@ -4,8 +4,8 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 use std::ops;
 use std::rc::Rc;
 
-use syntax::core::{Literal, RcPattern, RcTerm, Term};
-use syntax::{Label, Level, LevelShift};
+use syntax::core::{RcPattern, RcTerm, Term};
+use syntax::{Label, Level, LevelShift, Literal};
 
 /// Values
 ///

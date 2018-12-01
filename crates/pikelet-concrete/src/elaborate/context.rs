@@ -3,9 +3,9 @@ use moniker::{Binder, FreeVar, Var};
 use std::rc::Rc;
 
 use pikelet_core::nbe;
-use pikelet_core::syntax::core::{Literal, RcTerm};
+use pikelet_core::syntax::core::RcTerm;
 use pikelet_core::syntax::domain::{RcType, RcValue, Value};
-use pikelet_core::syntax::Import;
+use pikelet_core::syntax::{Import, Literal};
 
 use resugar::{Resugar, ResugarEnv};
 

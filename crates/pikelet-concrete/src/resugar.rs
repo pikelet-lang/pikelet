@@ -156,33 +156,34 @@ fn resugar_pattern(
             panic!("Tried to convert a term that was not locally closed");
         },
         core::Pattern::Literal(ref literal) => {
+            use pikelet_core::syntax::Literal;
+
             use syntax::concrete::Literal::*;
             use syntax::concrete::Pattern;
-            use syntax::concrete::Pattern::Literal;
 
             let span = ByteSpan::default();
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Pattern::Name(span, "true".to_owned(), None),
-                core::Literal::Bool(false) => Pattern::Name(span, "false".to_owned(), None),
+                Literal::Bool(true) => Pattern::Name(span, "true".to_owned(), None),
+                Literal::Bool(false) => Pattern::Name(span, "false".to_owned(), None),
 
-                core::Literal::String(ref val) => Literal(String(span, val.clone())),
-                core::Literal::Char(val) => Literal(Char(span, val)),
+                Literal::String(ref val) => Pattern::Literal(String(span, val.clone())),
+                Literal::Char(val) => Pattern::Literal(Char(span, val)),
 
-                core::Literal::U8(val) => Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                core::Literal::U16(val) => Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                core::Literal::U32(val) => Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                core::Literal::U64(val) => Literal(Int(span, val, IntFormat::Dec)),
+                Literal::U8(val) => Pattern::Literal(Int(span, u64::from(val), IntFormat::Dec)),
+                Literal::U16(val) => Pattern::Literal(Int(span, u64::from(val), IntFormat::Dec)),
+                Literal::U32(val) => Pattern::Literal(Int(span, u64::from(val), IntFormat::Dec)),
+                Literal::U64(val) => Pattern::Literal(Int(span, val, IntFormat::Dec)),
 
                 // FIXME: Underflow for negative numbers
-                core::Literal::S8(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
-                core::Literal::S16(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
-                core::Literal::S32(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
-                core::Literal::S64(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S8(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S16(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S32(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S64(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
 
-                core::Literal::F32(val) => Literal(Float(span, f64::from(val), FloatFormat::Dec)),
-                core::Literal::F64(val) => Literal(Float(span, val, FloatFormat::Dec)),
+                Literal::F32(v) => Pattern::Literal(Float(span, f64::from(v), FloatFormat::Dec)),
+                Literal::F64(v) => Pattern::Literal(Float(span, v, FloatFormat::Dec)),
             }
         },
     }
@@ -446,33 +447,34 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             )
         },
         core::Term::Literal(ref literal) => {
+            use pikelet_core::syntax::Literal;
+
             use syntax::concrete::Literal::*;
             use syntax::concrete::Term;
-            use syntax::concrete::Term::Literal;
 
             let span = ByteSpan::default();
 
             match *literal {
                 // FIXME: Draw these names from some environment?
-                core::Literal::Bool(true) => Term::Name(span, "true".to_owned(), None),
-                core::Literal::Bool(false) => Term::Name(span, "false".to_owned(), None),
+                Literal::Bool(true) => Term::Name(span, "true".to_owned(), None),
+                Literal::Bool(false) => Term::Name(span, "false".to_owned(), None),
 
-                core::Literal::String(ref val) => Literal(String(span, val.clone())),
-                core::Literal::Char(val) => Literal(Char(span, val)),
+                Literal::String(ref val) => Term::Literal(String(span, val.clone())),
+                Literal::Char(val) => Term::Literal(Char(span, val)),
 
-                core::Literal::U8(val) => Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                core::Literal::U16(val) => Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                core::Literal::U32(val) => Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                core::Literal::U64(val) => Literal(Int(span, val, IntFormat::Dec)),
+                Literal::U8(val) => Term::Literal(Int(span, u64::from(val), IntFormat::Dec)),
+                Literal::U16(val) => Term::Literal(Int(span, u64::from(val), IntFormat::Dec)),
+                Literal::U32(val) => Term::Literal(Int(span, u64::from(val), IntFormat::Dec)),
+                Literal::U64(val) => Term::Literal(Int(span, val, IntFormat::Dec)),
 
                 // FIXME: Underflow for negative numbers
-                core::Literal::S8(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
-                core::Literal::S16(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
-                core::Literal::S32(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
-                core::Literal::S64(val) => Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S8(val) => Term::Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S16(val) => Term::Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S32(val) => Term::Literal(Int(span, val as u64, IntFormat::Dec)),
+                Literal::S64(val) => Term::Literal(Int(span, val as u64, IntFormat::Dec)),
 
-                core::Literal::F32(val) => Literal(Float(span, f64::from(val), FloatFormat::Dec)),
-                core::Literal::F64(val) => Literal(Float(span, val, FloatFormat::Dec)),
+                Literal::F32(val) => Term::Literal(Float(span, f64::from(val), FloatFormat::Dec)),
+                Literal::F64(val) => Term::Literal(Float(span, val, FloatFormat::Dec)),
             }
         },
         core::Term::Var(Var::Free(ref free_var), shift) => {
