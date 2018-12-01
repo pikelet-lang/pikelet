@@ -4,7 +4,7 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 use std::ops;
 use std::rc::Rc;
 
-use syntax::core::{RcPattern, RcTerm, Term};
+use syntax::core::{RcTerm, Term};
 use syntax::{Label, Level, LevelShift, Literal};
 
 /// Values
@@ -179,8 +179,6 @@ pub enum Neutral {
     Head(Head),
     /// Field projection
     RecordProj(RcNeutral, Label, LevelShift),
-    /// Case expressions
-    Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
     /// Case split on booleans
     CaseBool(RcNeutral, RcValue, RcValue),
 }
@@ -205,14 +203,6 @@ impl RcNeutral {
             // },
             Neutral::Head(Head::Var(_, _)) | Neutral::Head(Head::Import(_)) => {},
             Neutral::RecordProj(ref mut head, _, _) => head.shift_universes(shift),
-            Neutral::Case(ref mut head, ref mut clauses) => {
-                head.shift_universes(shift);
-                for clause in clauses {
-                    // FIXME: implement shifting for patterns as well!
-                    // clause.unsafe_pattern.shift_universes(shift);
-                    clause.unsafe_body.shift_universes(shift);
-                }
-            },
             Neutral::CaseBool(ref mut head, ref mut true_case, ref mut false_case) => {
                 head.shift_universes(shift);
                 true_case.shift_universes(shift);

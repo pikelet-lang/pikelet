@@ -8,7 +8,7 @@ use codespan::ByteSpan;
 use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 
 use pikelet_core::nbe;
-use pikelet_core::syntax::core::{Pattern, RcPattern, RcTerm, Term};
+use pikelet_core::syntax::core::{RcTerm, Term};
 use pikelet_core::syntax::domain::{RcType, RcValue, Value};
 use pikelet_core::syntax::{Level, Literal};
 
@@ -140,24 +140,21 @@ pub fn check_pattern(
     context: &Context,
     raw_pattern: &raw::RcPattern,
     expected_ty: &RcType,
-) -> Result<(RcPattern, Vec<(FreeVar<String>, RcType)>), TypeError> {
+) -> Result<Vec<(FreeVar<String>, RcType)>, TypeError> {
     match (&*raw_pattern.inner, &*expected_ty.inner) {
         (&raw::Pattern::Binder(_, Binder(ref free_var)), _) => {
-            return Ok((
-                RcPattern::from(Pattern::Binder(Binder(free_var.clone()))),
-                vec![(free_var.clone(), expected_ty.clone())],
-            ));
+            return Ok(vec![(free_var.clone(), expected_ty.clone())]);
         },
         (&raw::Pattern::Literal(ref raw_literal), _) => {
             let literal = check_literal(context, raw_literal, expected_ty)?;
-            return Ok((RcPattern::from(Pattern::Literal(literal)), vec![]));
+            return Ok(vec![]);
         },
         _ => {},
     }
 
-    let (pattern, inferred_ty, declarations) = infer_pattern(context, raw_pattern)?;
+    let (inferred_ty, declarations) = infer_pattern(context, raw_pattern)?;
     if is_subtype(context, &inferred_ty, expected_ty) {
-        Ok((pattern, declarations))
+        Ok(declarations)
     } else {
         Err(TypeError::Mismatch {
             span: raw_pattern.span(),
@@ -172,18 +169,14 @@ pub fn check_pattern(
 pub fn infer_pattern(
     context: &Context,
     raw_pattern: &raw::RcPattern,
-) -> Result<(RcPattern, RcType, Vec<(FreeVar<String>, RcType)>), TypeError> {
+) -> Result<(RcType, Vec<(FreeVar<String>, RcType)>), TypeError> {
     match *raw_pattern.inner {
         raw::Pattern::Ann(ref raw_pattern, Embed(ref raw_ty)) => {
             let (ty, _) = infer_universe(context, raw_ty)?;
             let value_ty = nbe::nf_term(context, &ty)?;
-            let (pattern, declarations) = check_pattern(context, raw_pattern, &value_ty)?;
+            let declarations = check_pattern(context, raw_pattern, &value_ty)?;
 
-            Ok((
-                RcPattern::from(Pattern::Ann(pattern, Embed(ty))),
-                value_ty,
-                declarations,
-            ))
+            Ok((value_ty, declarations))
         },
         raw::Pattern::Binder(span, ref binder) => Err(TypeError::BinderNeedsAnnotation {
             span,
@@ -194,9 +187,8 @@ pub fn infer_pattern(
                 Some(ty) => {
                     let mut ty = ty.clone();
                     ty.shift_universes(shift);
-                    let pattern = RcPattern::from(Pattern::Var(Embed(var.clone()), shift));
 
-                    Ok((pattern, ty, vec![]))
+                    Ok((ty, vec![]))
                 },
                 None => Err(TypeError::UndefinedName {
                     span,
@@ -215,7 +207,7 @@ pub fn infer_pattern(
         },
         raw::Pattern::Literal(ref literal) => {
             let (literal, ty) = infer_literal(context, literal)?;
-            Ok((RcPattern::from(Pattern::Literal(literal)), ty, vec![]))
+            Ok((ty, vec![]))
         },
     }
 }
@@ -309,29 +301,14 @@ pub fn check_term(
             return Ok(RcTerm::from(Term::RecordIntro(fields)));
         },
 
-        (&raw::Term::Case(_, ref raw_head, ref raw_clauses), _) => {
+        (&raw::Term::Case(span, ref raw_head, ref raw_clauses), _) => {
             let (head, head_ty) = infer_term(context, raw_head)?;
 
-            // TODO: ensure that patterns are exhaustive
-            let clauses = raw_clauses
-                .iter()
-                .map(|raw_clause| {
-                    let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, declarations) = check_pattern(context, &raw_pattern, &head_ty)?;
-
-                    let body = {
-                        let mut body_context = context.clone();
-                        for (free_var, ty) in declarations {
-                            body_context.insert_declaration(free_var, ty);
-                        }
-                        check_term(&body_context, &raw_body, expected_ty)?
-                    };
-
-                    Ok(Scope::new(pattern, body))
-                })
-                .collect::<Result<_, TypeError>>()?;
-
-            return Ok(RcTerm::from(Term::Case(head, clauses)));
+            return Err(InternalError::Unimplemented {
+                span: Some(span),
+                message: "check raw::Term::Case".to_owned(),
+            }
+            .into());
         },
 
         (&raw::Term::ArrayIntro(span, ref elems), _) => {
@@ -639,44 +616,12 @@ pub fn infer_term(
         // I-CASE
         raw::Term::Case(span, ref raw_head, ref raw_clauses) => {
             let (head, head_ty) = infer_term(context, raw_head)?;
-            let mut ty = None;
 
-            // TODO: ensure that patterns are exhaustive
-            let clauses = raw_clauses
-                .iter()
-                .map(|raw_clause| {
-                    let (raw_pattern, raw_body) = raw_clause.clone().unbind();
-                    let (pattern, declarations) = check_pattern(context, &raw_pattern, &head_ty)?;
-
-                    let (body, body_ty) = {
-                        let mut body_context = context.clone();
-                        for (free_var, ty) in declarations {
-                            body_context.insert_declaration(free_var, ty);
-                        }
-                        infer_term(&body_context, &raw_body)?
-                    };
-
-                    match ty {
-                        None => ty = Some(body_ty),
-                        // FIXME: use common subtype?
-                        Some(ref ty) if RcValue::term_eq(&body_ty, ty) => {},
-                        Some(ref ty) => {
-                            return Err(TypeError::Mismatch {
-                                span: raw_body.span(),
-                                found: Box::new(context.resugar(&body_ty)),
-                                expected: Box::new(context.resugar(ty)),
-                            });
-                        },
-                    }
-
-                    Ok(Scope::new(pattern, body))
-                })
-                .collect::<Result<_, TypeError>>()?;
-
-            match ty {
-                Some(ty) => Ok((RcTerm::from(Term::Case(head, clauses)), ty)),
-                None => Err(TypeError::AmbiguousEmptyCase { span }),
+            Err(InternalError::Unimplemented {
+                span: Some(span),
+                message: "infer raw::Term::Case".to_owned(),
             }
+            .into())
         },
 
         raw::Term::ArrayIntro(span, _) => Err(TypeError::AmbiguousArrayLiteral { span }),

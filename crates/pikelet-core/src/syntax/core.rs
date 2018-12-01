@@ -9,75 +9,6 @@ use std::rc::Rc;
 use syntax::domain::{Head, Neutral, Value};
 use syntax::{Label, Level, LevelShift, Literal, PRETTY_FALLBACK_WIDTH};
 
-#[derive(Debug, Clone, PartialEq, BoundPattern)]
-pub enum Pattern {
-    /// Patterns annotated with types
-    Ann(RcPattern, Embed<RcTerm>),
-    /// Patterns that bind variables
-    Binder(Binder<String>),
-    /// Patterns to be compared structurally with a variable in scope
-    Var(Embed<Var<String>>, LevelShift),
-    /// Literal patterns
-    Literal(Literal),
-}
-
-impl Pattern {
-    pub fn to_doc(&self) -> Doc<BoxDoc<()>> {
-        match *self {
-            Pattern::Ann(ref pattern, Embed(ref ty)) => Doc::nil()
-                .append(pattern.to_doc())
-                .append(Doc::space())
-                .append(":")
-                .append(Doc::space())
-                .append(ty.to_doc()), // fun-intro?
-            ref pattern => pattern.to_doc_atomic(),
-        }
-    }
-
-    fn to_doc_atomic(&self) -> Doc<BoxDoc<()>> {
-        match *self {
-            Pattern::Binder(ref binder) => Doc::as_string(binder),
-            Pattern::Var(Embed(ref var), shift) => Doc::as_string(format!("{}^{}", var, shift)),
-            Pattern::Literal(ref literal) => literal.to_doc(),
-            ref pattern => Doc::text("(").append(pattern.to_doc()).append(")"),
-        }
-    }
-}
-
-impl fmt::Display for Pattern {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_doc().group().render_fmt(PRETTY_FALLBACK_WIDTH, f)
-    }
-}
-
-/// Reference counted patterns
-#[derive(Debug, Clone, PartialEq, BoundPattern)]
-pub struct RcPattern {
-    pub inner: Rc<Pattern>,
-}
-
-impl From<Pattern> for RcPattern {
-    fn from(src: Pattern) -> RcPattern {
-        RcPattern {
-            inner: Rc::new(src),
-        }
-    }
-}
-
-impl ops::Deref for RcPattern {
-    type Target = Pattern;
-
-    fn deref(&self) -> &Pattern {
-        &self.inner
-    }
-}
-
-impl fmt::Display for RcPattern {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
-    }
-}
-
 /// The core term syntax
 #[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
@@ -103,8 +34,6 @@ pub enum Term {
     RecordIntro(Vec<(Label, RcTerm)>),
     /// Record field projection
     RecordProj(RcTerm, Label, LevelShift),
-    /// Case expressions
-    Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
     /// Case split on booleans
     CaseBool(RcTerm, RcTerm, RcTerm),
     /// Array literals
@@ -151,25 +80,33 @@ impl Term {
                 .append("=>")
                 .append(Doc::space())
                 .append(scope.unsafe_body.to_doc_expr()),
-            Term::Case(ref head, ref clauses) => Doc::nil()
+            Term::CaseBool(ref head, ref true_case, ref false_case) => Doc::nil()
                 .append("case")
                 .append(Doc::space())
                 .append(head.to_doc_app())
                 .append(Doc::space())
                 .append("{")
                 .append(Doc::space())
-                .append(Doc::intersperse(
-                    clauses.iter().map(|scope| {
-                        Doc::nil()
-                            .append(scope.unsafe_pattern.to_doc())
-                            .append(Doc::space())
-                            .append("=>")
-                            .append(Doc::space())
-                            .append(scope.unsafe_body.to_doc())
-                            .append(";")
-                    }),
-                    Doc::newline(),
-                ))
+                .append(
+                    Doc::nil()
+                        .append("true")
+                        .append(Doc::space())
+                        .append("=>")
+                        .append(Doc::space())
+                        .append(true_case.to_doc())
+                        .append(";")
+                        .append(Doc::newline()),
+                )
+                .append(
+                    Doc::nil()
+                        .append("true")
+                        .append(Doc::space())
+                        .append("=>")
+                        .append(Doc::space())
+                        .append(false_case.to_doc())
+                        .append(";")
+                        .append(Doc::newline()),
+                )
                 .append(Doc::space())
                 .append("}"),
             Term::Let(ref scope) => Doc::nil()
@@ -377,18 +314,6 @@ impl RcTerm {
                 label.clone(),
                 shift,
             )),
-            Term::Case(ref head, ref clauses) => RcTerm::from(Term::Case(
-                head.substs(mappings),
-                clauses
-                    .iter()
-                    .map(|scope| {
-                        Scope {
-                            unsafe_pattern: scope.unsafe_pattern.clone(), // subst?
-                            unsafe_body: scope.unsafe_body.substs(mappings),
-                        }
-                    })
-                    .collect(),
-            )),
             Term::CaseBool(ref head, ref true_case, ref false_case) => {
                 RcTerm::from(Term::CaseBool(
                     head.substs(mappings),
@@ -495,16 +420,6 @@ impl<'a> From<&'a Neutral> for Term {
             Neutral::RecordProj(ref expr, ref name, shift) => {
                 Term::RecordProj(RcTerm::from(&**expr), name.clone(), shift)
             },
-            Neutral::Case(ref head, ref clauses) => Term::Case(
-                RcTerm::from(&**head),
-                clauses
-                    .iter()
-                    .map(|clause| Scope {
-                        unsafe_pattern: clause.unsafe_pattern.clone(),
-                        unsafe_body: RcTerm::from(&*clause.unsafe_body),
-                    })
-                    .collect(),
-            ),
             Neutral::CaseBool(ref head, ref true_case, ref false_case) => Term::CaseBool(
                 RcTerm::from(&**head),
                 RcTerm::from(&**true_case),

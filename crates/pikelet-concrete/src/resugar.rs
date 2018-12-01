@@ -128,67 +128,6 @@ fn parens_if(should_wrap: bool, inner: concrete::Term) -> concrete::Term {
     }
 }
 
-fn resugar_pattern(
-    env: &mut ResugarEnv,
-    pattern: &core::Pattern,
-    _prec: Prec,
-) -> concrete::Pattern {
-    match *pattern {
-        core::Pattern::Ann(ref pattern, Embed(ref ty)) => concrete::Pattern::Ann(
-            Box::new(resugar_pattern(env, pattern, Prec::NO_WRAP)),
-            Box::new(resugar_term(env, ty, Prec::LAM)),
-        ),
-        core::Pattern::Binder(ref binder) => {
-            let name = env.on_binder(binder);
-            concrete::Pattern::Name(ByteSpan::default(), name, None)
-        },
-        core::Pattern::Var(Embed(Var::Free(ref free_var)), shift) => {
-            let shift = match shift {
-                LevelShift(0) => None,
-                LevelShift(shift) => Some(shift),
-            };
-
-            let name = env.on_free_var(free_var);
-            concrete::Pattern::Name(ByteSpan::default(), name, shift)
-        },
-        core::Pattern::Var(Embed(Var::Bound(_)), _) => {
-            // TODO: Better message
-            panic!("Tried to convert a term that was not locally closed");
-        },
-        core::Pattern::Literal(ref literal) => {
-            use pikelet_core::syntax::Literal;
-
-            use syntax::concrete::Literal::*;
-            use syntax::concrete::Pattern;
-
-            let span = ByteSpan::default();
-
-            match *literal {
-                // FIXME: Draw these names from some environment?
-                Literal::Bool(true) => Pattern::Name(span, "true".to_owned(), None),
-                Literal::Bool(false) => Pattern::Name(span, "false".to_owned(), None),
-
-                Literal::String(ref val) => Pattern::Literal(String(span, val.clone())),
-                Literal::Char(val) => Pattern::Literal(Char(span, val)),
-
-                Literal::U8(val) => Pattern::Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                Literal::U16(val) => Pattern::Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                Literal::U32(val) => Pattern::Literal(Int(span, u64::from(val), IntFormat::Dec)),
-                Literal::U64(val) => Pattern::Literal(Int(span, val, IntFormat::Dec)),
-
-                // FIXME: Underflow for negative numbers
-                Literal::S8(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
-                Literal::S16(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
-                Literal::S32(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
-                Literal::S64(val) => Pattern::Literal(Int(span, val as u64, IntFormat::Dec)),
-
-                Literal::F32(v) => Pattern::Literal(Float(span, f64::from(v), FloatFormat::Dec)),
-                Literal::F64(v) => Pattern::Literal(Float(span, v, FloatFormat::Dec)),
-            }
-        },
-    }
-}
-
 fn resugar_fun_ty(
     env: &ResugarEnv,
     scope: &Scope<(Binder<String>, Embed<core::RcTerm>), core::RcTerm>,
@@ -566,22 +505,6 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 shift,
             )
         },
-        // TODO: Resugar boolean patterns into if-then-else expressions?
-        core::Term::Case(ref head, ref clauses) => concrete::Term::Case(
-            ByteSpan::default(),
-            Box::new(resugar_term(env, head, Prec::NO_WRAP)),
-            clauses
-                .iter()
-                .map(|scope| {
-                    let (pattern, term) = scope.clone().unbind();
-                    let mut env = env.clone();
-                    (
-                        resugar_pattern(&mut env, &pattern, Prec::NO_WRAP),
-                        resugar_term(&env, &term, Prec::NO_WRAP),
-                    )
-                })
-                .collect(),
-        ),
         core::Term::CaseBool(ref head, ref true_case, ref false_case) => concrete::Term::Case(
             ByteSpan::default(),
             Box::new(resugar_term(env, head, Prec::NO_WRAP)),

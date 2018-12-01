@@ -1,6 +1,6 @@
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
-use syntax::core::{Pattern, RcPattern, RcTerm, Term};
+use syntax::core::{RcTerm, Term};
 use syntax::domain::{Head, Neutral, RcNeutral, RcValue, Value};
 use syntax::{Import, Literal};
 
@@ -121,7 +121,6 @@ pub fn nf_term(env: &dyn Env, term: &RcTerm) -> Result<RcValue, NbeError> {
                         },
                         Neutral::Head(Head::Var(..))
                         | Neutral::RecordProj(..)
-                        | Neutral::Case(..)
                         | Neutral::CaseBool(_, _, _) => spine.push(arg),
                     }
 
@@ -195,39 +194,6 @@ pub fn nf_term(env: &dyn Env, term: &RcTerm) -> Result<RcValue, NbeError> {
             )))
         },
 
-        // E-CASE
-        Term::Case(ref head, ref clauses) => {
-            let head = nf_term(env, head)?;
-
-            if let Value::Neutral(ref neutral, ref spine) = *head {
-                Ok(RcValue::from(Value::Neutral(
-                    RcNeutral::from(Neutral::Case(
-                        neutral.clone(),
-                        clauses
-                            .iter()
-                            .map(|clause| {
-                                let (pattern, body) = clause.clone().unbind();
-                                Ok(Scope::new(pattern, nf_term(env, &body)?))
-                            })
-                            .collect::<Result<_, _>>()?,
-                    )),
-                    spine.clone(),
-                )))
-            } else {
-                for clause in clauses {
-                    let (pattern, body) = clause.clone().unbind();
-                    if let Some(mappings) = match_value(env, &pattern, &head)? {
-                        let mappings = mappings
-                            .into_iter()
-                            .map(|(free_var, value)| (free_var, RcTerm::from(&*value.inner)))
-                            .collect::<Vec<_>>();
-                        return nf_term(env, &body.substs(&mappings));
-                    }
-                }
-                Err(NbeError::new("no patterns applicable"))
-            }
-        },
-
         Term::CaseBool(ref head, ref true_case, ref false_case) => match *nf_term(env, head)? {
             Value::Literal(Literal::Bool(true)) => nf_term(env, true_case),
             Value::Literal(Literal::Bool(false)) => nf_term(env, false_case),
@@ -249,32 +215,5 @@ pub fn nf_term(env: &dyn Env, term: &RcTerm) -> Result<RcValue, NbeError> {
                 .map(|elem| nf_term(env, elem))
                 .collect::<Result<_, _>>()?,
         ))),
-    }
-}
-
-/// If the pattern matches the value, this function returns the substitutions
-/// needed to apply the pattern to some body expression
-pub fn match_value(
-    env: &dyn Env,
-    pattern: &RcPattern,
-    value: &RcValue,
-) -> Result<Option<Vec<(FreeVar<String>, RcValue)>>, NbeError> {
-    match (&*pattern.inner, &*value.inner) {
-        (&Pattern::Binder(Binder(ref free_var)), _) => {
-            Ok(Some(vec![(free_var.clone(), value.clone())]))
-        },
-        (&Pattern::Var(Embed(Var::Free(ref free_var)), _), _) => {
-            match env.get_definition(free_var).map(|term| nf_term(env, term)) {
-                Some(Ok(ref term)) if term == value => Ok(Some(vec![])),
-                Some(Ok(_)) | None => Ok(None),
-                Some(Err(err)) => Err(err),
-            }
-        },
-        (&Pattern::Literal(ref pattern_lit), &Value::Literal(ref value_lit))
-            if pattern_lit == value_lit =>
-        {
-            Ok(Some(vec![]))
-        },
-        (_, _) => Ok(None),
     }
 }
