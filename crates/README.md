@@ -19,14 +19,14 @@ your stay!
 
 ### Compiler
 
-| Name                        | Description                                             |
-|-----------------------------|---------------------------------------------------------|
-| [`pikelet-driver`]          | Main entry-point for the compiler pipeline              |
-| [`pikelet-library`]         | Builtin libraries                                       |
-| [`pikelet-syntax`]          | Parsing, ASTs, pretty printing, and desugaring          |
-| [`pikelet-elaborate`]       | Type checking, normalization, and elaboration of terms  |
+| Name                        | Description                                                       |
+|-----------------------------|-------------------------------------------------------------------|
+| [`pikelet-driver`]          | Main entry-point for the compiler pipeline                        |
+| [`pikelet-library`]         | Builtin libraries                                                 |
+| [`pikelet-concrete`]        | Parsing, pretty printing, and elaboration of the concrete syntax  |
+| [`pikelet-core`]            | Normalization-by-evaluation and checking of the core language     |
 
 [`pikelet-driver`]: /crates/pikelet-driver
 [`pikelet-library`]: /crates/pikelet-library
-[`pikelet-syntax`]: /crates/pikelet-syntax
-[`pikelet-elaborate`]: /crates/pikelet-elaborate
+[`pikelet-concrete`]: /crates/pikelet-concrete
+[`pikelet-core`]: /crates/pikelet-core

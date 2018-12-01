@@ -1,5 +1,5 @@
 [package]
-name = "pikelet-repl"
+name = "pikelet-concrete"
 version = "0.1.0"
 license = "Apache-2.0"
 readme = "README.md"
@@ -12,9 +12,16 @@ publish = false
 codespan = "0.2.0"
 codespan-reporting = "0.2.0"
 failure = "0.1.2"
-linefeed = "0.5.3"
-pikelet-concrete = { version = "0.1.0", path = "../pikelet-concrete" }
+im = "12.2.0"
+lalrpop-util = "0.16.0"
+moniker = { version = "0.5.0", features = ["codespan", "im"] }
 pikelet-core = { version = "0.1.0", path = "../pikelet-core" }
-pikelet-driver = { version = "0.1.0", path = "../pikelet-driver" }
-structopt = "0.2.12"
-term_size = "0.3.1"
+pretty = { version = "0.5.2", features = ["termcolor"] }
+unicode-xid = "0.1.0"
+
+[build-dependencies]
+lalrpop = "0.16.0"
+
+[dev-dependencies]
+goldenfile = "0.7.1"
+pretty_assertions = "0.5.1"

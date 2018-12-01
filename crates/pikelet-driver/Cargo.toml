@@ -11,6 +11,6 @@ publish = false
 [dependencies]
 codespan = "0.2.0"
 codespan-reporting = "0.2.0"
-pikelet-elaborate = { version = "0.1.0", path = "../pikelet-elaborate" }
+pikelet-concrete = { version = "0.1.0", path = "../pikelet-concrete" }
+pikelet-core = { version = "0.1.0", path = "../pikelet-core" }
 pikelet-library = { version = "0.1.0", path = "../pikelet-library" }
-pikelet-syntax = { version = "0.1.0", path = "../pikelet-syntax" }

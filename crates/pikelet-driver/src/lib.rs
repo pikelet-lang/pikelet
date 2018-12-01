@@ -10,68 +10,68 @@
 //! parsed, desugared, and type checked/elaborated:
 //!
 //! ```bob
-//!              .------------.
-//!              |   String   |
-//!              '------------'
-//!                     |
-//! - - - - - - - - - - | - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//! Frontend            |
-//!                     |
-//!        pikelet_syntax::parse::lexer
-//!                     |
-//!                     v
-//!   .-------------------------------------.
-//!   | pikelet_syntax::parse::lexer::Token |
-//!   '-------------------------------------'
-//!                     |
-//!       pikelet_syntax::parse::grammar
-//!                     |
-//!                     v
-//!     .--------------------------------.
-//!     | pikelet_syntax::concrete::Term |---------> Code formatter (TODO)
-//!     '--------------------------------'
-//!                     |
-//!     pikelet_syntax::translation::desugar
-//!                     |
-//!                     v
-//!       .---------------------------.
-//!       | pikelet_syntax::raw::Term |
-//!       '---------------------------'
-//!                     |                                .-----------------------------.
-//!      pikelet_elaborate::{check,infer} <------------- | pikelet_syntax::core::Value |
-//!                     |                                '-----------------------------'
-//!                     v                                                ^
-//!       .----------------------------.                                 |
-//!       | pikelet_syntax::core::Term | - pikelet_elaborate::normalize -'
-//!       '----------------------------'
-//!                     |
-//!                     |
-//! - - - - - - - - - - | - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//! Middle (TODO)       |
-//!                     |
-//!                     v
-//!             A-Normal Form (ANF)
-//!                     |
-//!                     v
-//!           Closure Conversion (CC)
-//!                     |
-//!                     v
-//!        Static Single Assignment (SSA)
-//!                     |
-//!                     |
-//! - - - - - - - - - - | - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//! Backend (TODO)      |
-//!                     |
-//!                     v
-//!                  Codegen
-//!                     |
-//!                     *-------> Bytecode?
-//!                     |
-//!                     *-------> WASM?
-//!                     |
-//!                     *-------> Cranelift IR?
-//!                     |
-//!                     '-------> LLVM IR?
+//!                .------------.
+//!                |   String   |
+//!                '------------'
+//!                       |
+//! - - - - - - - - - - - | - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//! Frontend              |
+//!                       |
+//!        pikelet_concrete::parse::lexer
+//!                       |
+//!                       v
+//!    .---------------------------------------.
+//!    | pikelet_concrete::parse::lexer::Token |
+//!    '---------------------------------------'
+//!                       |
+//!           pikelet_concrete::parse
+//!                       |
+//!                       v
+//!  .------------------------------------------.
+//!  | pikelet_concrete::syntax::concrete::Term |---------> Code formatter (TODO)
+//!  '------------------------------------------'
+//!                       |
+//!           pikelet_concrete::desugar
+//!                       |
+//!                       v
+//!    .-------------------------------------.
+//!    | pikelet_concrete::syntax::raw::Term |
+//!    '-------------------------------------'
+//!                       |                                  .-------------------------------------.
+//!   pikelet_concrete::elaborate::{check,infer} <---------- | pikelet_core::syntax::domain::Value |
+//!                       |                                  '-------------------------------------'
+//!                       v                                                    ^
+//!     .----------------------------------.                                   |
+//!     | pikelet_core::syntax::core::Term | -- pikelet_core::normalize -------'
+//!     '----------------------------------'
+//!                       |
+//!                       |
+//! - - - - - - - - - - - | - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//! Middle (TODO)         |
+//!                       |
+//!                       v
+//!               A-Normal Form (ANF)
+//!                       |
+//!                       v
+//!             Closure Conversion (CC)
+//!                       |
+//!                       v
+//!          Static Single Assignment (SSA)
+//!                       |
+//!                       |
+//! - - - - - - - - - - - | - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//! Backend (TODO)        |
+//!                       |
+//!                       v
+//!                    Codegen
+//!                       |
+//!                       *-------> Bytecode?
+//!                       |
+//!                       *-------> WASM?
+//!                       |
+//!                       *-------> Cranelift IR?
+//!                       |
+//!                       '-------> LLVM IR?
 //! ```
 //!
 //! As you can see we have only built the front-end as of the time of writing. When
@@ -127,17 +127,19 @@
 
 extern crate codespan;
 extern crate codespan_reporting;
-extern crate pikelet_elaborate;
+extern crate pikelet_concrete;
+extern crate pikelet_core;
 extern crate pikelet_library;
-extern crate pikelet_syntax;
 
 use codespan::{CodeMap, FileMap, FileName};
 use codespan_reporting::Diagnostic;
 use std::sync::Arc;
 
-use pikelet_elaborate::{Context, Import};
-use pikelet_syntax::translation::{Desugar, DesugarEnv, Resugar};
-use pikelet_syntax::{core, raw};
+use pikelet_concrete::desugar::{Desugar, DesugarEnv};
+use pikelet_concrete::elaborate::Context;
+use pikelet_concrete::resugar::Resugar;
+use pikelet_concrete::syntax::raw;
+use pikelet_core::syntax::{core, domain, Import};
 
 /// An environment that keeps track of the state of a Pikelet program during
 /// compilation or interactive sessions
@@ -189,7 +191,7 @@ impl Driver {
         internal_path: String,
         file_map: Arc<FileMap>,
     ) -> Result<(), Vec<Diagnostic>> {
-        let (concrete_term, _import_paths, errors) = pikelet_syntax::parse::term(&file_map);
+        let (concrete_term, _import_paths, errors) = pikelet_concrete::parse::term(&file_map);
         if !errors.is_empty() {
             return Err(errors.iter().map(|error| error.to_diagnostic()).collect());
         }
@@ -211,7 +213,7 @@ impl Driver {
         &mut self,
         name: &str,
         raw_term: &raw::RcTerm,
-    ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
+    ) -> Result<(core::RcTerm, domain::RcType), Vec<Diagnostic>> {
         let (term, inferred) = self.infer_term(&raw_term)?;
 
         let fv = self.desugar_env.on_binding(&name);
@@ -225,12 +227,16 @@ impl Driver {
     pub fn infer_term(
         &self,
         raw_term: &raw::RcTerm,
-    ) -> Result<(core::RcTerm, core::RcType), Vec<Diagnostic>> {
-        pikelet_elaborate::infer_term(&self.context, &raw_term).map_err(|e| vec![e.to_diagnostic()])
+    ) -> Result<(core::RcTerm, domain::RcType), Vec<Diagnostic>> {
+        pikelet_concrete::elaborate::infer_term(&self.context, &raw_term)
+            .map_err(|err| vec![err.to_diagnostic()])
     }
 
-    pub fn nf_term(&self, term: &core::RcTerm) -> Result<core::RcValue, Vec<Diagnostic>> {
-        pikelet_elaborate::nf_term(&self.context, term).map_err(|e| vec![e.to_diagnostic()])
+    pub fn nf_term(&self, term: &core::RcTerm) -> Result<domain::RcValue, Vec<Diagnostic>> {
+        use pikelet_concrete::elaborate::InternalError;
+
+        pikelet_core::nbe::nf_term(&self.context, term)
+            .map_err(|err| vec![InternalError::from(err).to_diagnostic()])
     }
 
     pub fn resugar<T>(&self, src: &impl Resugar<T>) -> T {
