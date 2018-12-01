@@ -7,7 +7,7 @@ use std::ops;
 use std::rc::Rc;
 
 use syntax::domain::{Head, Neutral, Value};
-use syntax::{FloatFormat, IntFormat, Label, Level, LevelShift, PRETTY_FALLBACK_WIDTH};
+use syntax::{Label, Level, LevelShift, PRETTY_FALLBACK_WIDTH};
 
 /// Literals
 ///
@@ -17,16 +17,16 @@ pub enum Literal {
     Bool(bool),
     String(String),
     Char(char),
-    U8(u8, IntFormat),
-    U16(u16, IntFormat),
-    U32(u32, IntFormat),
-    U64(u64, IntFormat),
-    S8(i8, IntFormat),
-    S16(i16, IntFormat),
-    S32(i32, IntFormat),
-    S64(i64, IntFormat),
-    F32(f32, FloatFormat),
-    F64(f64, FloatFormat),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    S8(i8),
+    S16(i16),
+    S32(i32),
+    S64(i64),
+    F32(f32),
+    F64(f64),
 }
 
 impl Literal {
@@ -36,16 +36,16 @@ impl Literal {
             Literal::Bool(false) => Doc::text("false"),
             Literal::String(ref value) => Doc::text(format!("{:?}", value)),
             Literal::Char(value) => Doc::text(format!("{:?}", value)),
-            Literal::U8(value, _) => Doc::as_string(&value),
-            Literal::U16(value, _) => Doc::as_string(&value),
-            Literal::U32(value, _) => Doc::as_string(&value),
-            Literal::U64(value, _) => Doc::as_string(&value),
-            Literal::S8(value, _) => Doc::as_string(&value),
-            Literal::S16(value, _) => Doc::as_string(&value),
-            Literal::S32(value, _) => Doc::as_string(&value),
-            Literal::S64(value, _) => Doc::as_string(&value),
-            Literal::F32(value, _) => Doc::as_string(&value),
-            Literal::F64(value, _) => Doc::as_string(&value),
+            Literal::U8(value) => Doc::as_string(&value),
+            Literal::U16(value) => Doc::as_string(&value),
+            Literal::U32(value) => Doc::as_string(&value),
+            Literal::U64(value) => Doc::as_string(&value),
+            Literal::S8(value) => Doc::as_string(&value),
+            Literal::S16(value) => Doc::as_string(&value),
+            Literal::S32(value) => Doc::as_string(&value),
+            Literal::S64(value) => Doc::as_string(&value),
+            Literal::F32(value) => Doc::as_string(&value),
+            Literal::F64(value) => Doc::as_string(&value),
         }
     }
 }

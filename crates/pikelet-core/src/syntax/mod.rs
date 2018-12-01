@@ -1,4 +1,3 @@
-use moniker::{Binder, BoundPattern, BoundTerm, OnBoundFn, OnFreeFn, ScopeState, Var};
 use std::fmt;
 use std::ops::{Add, AddAssign};
 
@@ -92,68 +91,6 @@ impl AddAssign<LevelShift> for Level {
     fn add_assign(&mut self, other: LevelShift) {
         self.0 += other.0;
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum IntFormat {
-    Bin,
-    Oct,
-    Dec,
-    Hex,
-}
-
-impl<N: Clone + PartialEq> BoundTerm<N> for IntFormat {
-    fn term_eq(&self, _: &IntFormat) -> bool {
-        true
-    }
-
-    fn close_term(&mut self, _: ScopeState, _: &impl OnFreeFn<N>) {}
-    fn open_term(&mut self, _: ScopeState, _: &impl OnBoundFn<N>) {}
-    fn visit_vars(&self, _: &mut impl FnMut(&Var<N>)) {}
-    fn visit_mut_vars(&mut self, _: &mut impl FnMut(&mut Var<N>)) {}
-}
-
-impl<N: Clone + PartialEq> BoundPattern<N> for IntFormat {
-    fn pattern_eq(&self, _: &IntFormat) -> bool {
-        true
-    }
-
-    fn close_pattern(&mut self, _: ScopeState, _: &impl OnFreeFn<N>) {}
-    fn open_pattern(&mut self, _: ScopeState, _: &impl OnBoundFn<N>) {}
-    fn visit_vars(&self, _: &mut impl FnMut(&Var<N>)) {}
-    fn visit_mut_vars(&mut self, _: &mut impl FnMut(&mut Var<N>)) {}
-    fn visit_binders(&self, _: &mut impl FnMut(&Binder<N>)) {}
-    fn visit_mut_binders(&mut self, _: &mut impl FnMut(&mut Binder<N>)) {}
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum FloatFormat {
-    Dec,
-    // TODO: Binary and Hex floats?
-}
-
-impl<N: Clone + PartialEq> BoundTerm<N> for FloatFormat {
-    fn term_eq(&self, _: &FloatFormat) -> bool {
-        true
-    }
-
-    fn close_term(&mut self, _: ScopeState, _: &impl OnFreeFn<N>) {}
-    fn open_term(&mut self, _: ScopeState, _: &impl OnBoundFn<N>) {}
-    fn visit_vars(&self, _: &mut impl FnMut(&Var<N>)) {}
-    fn visit_mut_vars(&mut self, _: &mut impl FnMut(&mut Var<N>)) {}
-}
-
-impl<N: Clone + PartialEq> BoundPattern<N> for FloatFormat {
-    fn pattern_eq(&self, _: &FloatFormat) -> bool {
-        true
-    }
-
-    fn close_pattern(&mut self, _: ScopeState, _: &impl OnFreeFn<N>) {}
-    fn open_pattern(&mut self, _: ScopeState, _: &impl OnBoundFn<N>) {}
-    fn visit_vars(&self, _: &mut impl FnMut(&Var<N>)) {}
-    fn visit_mut_vars(&mut self, _: &mut impl FnMut(&mut Var<N>)) {}
-    fn visit_binders(&self, _: &mut impl FnMut(&Binder<N>)) {}
-    fn visit_mut_binders(&mut self, _: &mut impl FnMut(&mut Binder<N>)) {}
 }
 
 /// A label that describes the name of a field in a record

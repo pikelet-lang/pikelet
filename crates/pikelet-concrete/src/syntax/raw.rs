@@ -8,9 +8,9 @@ use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
-use pikelet_core::syntax::{FloatFormat, IntFormat, Label, Level, LevelShift};
+use pikelet_core::syntax::{Label, Level, LevelShift};
 
-use syntax::PRETTY_FALLBACK_WIDTH;
+use syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH};
 
 /// Literals
 #[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]

@@ -1,9 +1,8 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use pikelet_core::syntax::{FloatFormat, IntFormat};
-
 use parse::{LalrpopError, ParseError, Token};
+use syntax::{FloatFormat, IntFormat};
 use syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordIntroField, ReplCommand};
 
 #[LALR]

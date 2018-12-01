@@ -4,9 +4,7 @@ use codespan::{ByteIndex, ByteSpan};
 use pretty::{BoxDoc, Doc};
 use std::fmt;
 
-use pikelet_core::syntax::{FloatFormat, IntFormat};
-
-use syntax::{PRETTY_FALLBACK_WIDTH, PRETTY_INDENT_WIDTH};
+use syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH, PRETTY_INDENT_WIDTH};
 
 /// Commands entered in the REPL
 #[derive(Debug, Clone)]

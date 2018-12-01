@@ -6,7 +6,6 @@ use pikelet_core::nbe;
 use pikelet_core::syntax::core::{Literal, RcTerm};
 use pikelet_core::syntax::domain::{RcType, RcValue, Value};
 use pikelet_core::syntax::Import;
-use pikelet_core::syntax::{FloatFormat, IntFormat};
 
 use resugar::{Resugar, ResugarEnv};
 
@@ -31,32 +30,21 @@ macro_rules! impl_into_value {
             }
         }
     };
-    ($T:ty, $ty:ident, $Variant:ident, $format:expr) => {
-        impl IntoValue for $T {
-            fn ty(context: &Context) -> RcType {
-                context.$ty().clone()
-            }
-
-            fn into_value(self) -> RcValue {
-                RcValue::from(Value::Literal(Literal::$Variant(self, $format)))
-            }
-        }
-    };
 }
 
 impl_into_value!(String, string, String);
 impl_into_value!(char, char, Char);
 impl_into_value!(bool, bool, Bool);
-impl_into_value!(u8, u8, U8, IntFormat::Dec);
-impl_into_value!(u16, u16, U16, IntFormat::Dec);
-impl_into_value!(u32, u32, U32, IntFormat::Dec);
-impl_into_value!(u64, u64, U64, IntFormat::Dec);
-impl_into_value!(i8, s8, S8, IntFormat::Dec);
-impl_into_value!(i16, s16, S16, IntFormat::Dec);
-impl_into_value!(i32, s32, S32, IntFormat::Dec);
-impl_into_value!(i64, s64, S64, IntFormat::Dec);
-impl_into_value!(f32, f32, F32, FloatFormat::Dec);
-impl_into_value!(f64, f64, F64, FloatFormat::Dec);
+impl_into_value!(u8, u8, U8);
+impl_into_value!(u16, u16, U16);
+impl_into_value!(u32, u32, U32);
+impl_into_value!(u64, u64, U64);
+impl_into_value!(i8, s8, S8);
+impl_into_value!(i16, s16, S16);
+impl_into_value!(i32, s32, S32);
+impl_into_value!(i64, s64, S64);
+impl_into_value!(f32, f32, F32);
+impl_into_value!(f64, f64, F64);
 
 trait TryFromValueRef {
     fn try_from_value_ref(src: &Value) -> Option<&Self>;
@@ -92,7 +80,7 @@ impl TryFromValueRef for bool {
 impl TryFromValueRef for u8 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U8(ref val, _)) => Some(val),
+            Value::Literal(Literal::U8(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -101,7 +89,7 @@ impl TryFromValueRef for u8 {
 impl TryFromValueRef for u16 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U16(ref val, _)) => Some(val),
+            Value::Literal(Literal::U16(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -110,7 +98,7 @@ impl TryFromValueRef for u16 {
 impl TryFromValueRef for u32 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U32(ref val, _)) => Some(val),
+            Value::Literal(Literal::U32(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -119,7 +107,7 @@ impl TryFromValueRef for u32 {
 impl TryFromValueRef for u64 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::U64(ref val, _)) => Some(val),
+            Value::Literal(Literal::U64(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -128,7 +116,7 @@ impl TryFromValueRef for u64 {
 impl TryFromValueRef for i8 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S8(ref val, _)) => Some(val),
+            Value::Literal(Literal::S8(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -137,7 +125,7 @@ impl TryFromValueRef for i8 {
 impl TryFromValueRef for i16 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S16(ref val, _)) => Some(val),
+            Value::Literal(Literal::S16(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -146,7 +134,7 @@ impl TryFromValueRef for i16 {
 impl TryFromValueRef for i32 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S32(ref val, _)) => Some(val),
+            Value::Literal(Literal::S32(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -155,7 +143,7 @@ impl TryFromValueRef for i32 {
 impl TryFromValueRef for i64 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::S64(ref val, _)) => Some(val),
+            Value::Literal(Literal::S64(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -164,7 +152,7 @@ impl TryFromValueRef for i64 {
 impl TryFromValueRef for f32 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::F32(ref val, _)) => Some(val),
+            Value::Literal(Literal::F32(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -173,7 +161,7 @@ impl TryFromValueRef for f32 {
 impl TryFromValueRef for f64 {
     fn try_from_value_ref(src: &Value) -> Option<&Self> {
         match *src {
-            Value::Literal(Literal::F64(ref val, _)) => Some(val),
+            Value::Literal(Literal::F64(ref val)) => Some(val),
             _ => None,
         }
     }
@@ -547,7 +535,7 @@ impl Context {
             // could be relaxed in the future if it becomes a problem?
             Some((fv, LevelShift(0), &[ref len, ref elem_ty])) if *fv == self.globals.var_array => {
                 match **len {
-                    Value::Literal(Literal::U64(len, _)) => Some((len, elem_ty)),
+                    Value::Literal(Literal::U64(len)) => Some((len, elem_ty)),
                     _ => None,
                 }
             },

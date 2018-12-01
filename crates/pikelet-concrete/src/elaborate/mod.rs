@@ -90,27 +90,25 @@ fn check_literal(
     raw_literal: &raw::Literal,
     expected_ty: &RcType,
 ) -> Result<Literal, TypeError> {
-    use pikelet_core::syntax::core::Literal::*;
-    use pikelet_core::syntax::FloatFormat::Dec as FloatDec;
-
-    let ty = expected_ty;
     match *raw_literal {
-        raw::Literal::String(_, ref val) if context.string() == ty => Ok(String(val.clone())),
-        raw::Literal::Char(_, val) if context.char() == ty => Ok(Char(val)),
+        raw::Literal::String(_, ref val) if context.string() == expected_ty => {
+            Ok(Literal::String(val.clone()))
+        },
+        raw::Literal::Char(_, val) if context.char() == expected_ty => Ok(Literal::Char(val)),
 
         // FIXME: overflow?
-        raw::Literal::Int(_, v, format) if context.u8() == ty => Ok(U8(v as u8, format)),
-        raw::Literal::Int(_, v, format) if context.u16() == ty => Ok(U16(v as u16, format)),
-        raw::Literal::Int(_, v, format) if context.u32() == ty => Ok(U32(v as u32, format)),
-        raw::Literal::Int(_, v, format) if context.u64() == ty => Ok(U64(v, format)),
-        raw::Literal::Int(_, v, format) if context.s8() == ty => Ok(S8(v as i8, format)),
-        raw::Literal::Int(_, v, format) if context.s16() == ty => Ok(S16(v as i16, format)),
-        raw::Literal::Int(_, v, format) if context.s32() == ty => Ok(S32(v as i32, format)),
-        raw::Literal::Int(_, v, format) if context.s64() == ty => Ok(S64(v as i64, format)),
-        raw::Literal::Int(_, v, _) if context.f32() == ty => Ok(F32(v as f32, FloatDec)),
-        raw::Literal::Int(_, v, _) if context.f64() == ty => Ok(F64(v as f64, FloatDec)),
-        raw::Literal::Float(_, v, format) if context.f32() == ty => Ok(F32(v as f32, format)),
-        raw::Literal::Float(_, v, format) if context.f64() == ty => Ok(F64(v, format)),
+        raw::Literal::Int(_, v, _) if context.u8() == expected_ty => Ok(Literal::U8(v as u8)),
+        raw::Literal::Int(_, v, _) if context.u16() == expected_ty => Ok(Literal::U16(v as u16)),
+        raw::Literal::Int(_, v, _) if context.u32() == expected_ty => Ok(Literal::U32(v as u32)),
+        raw::Literal::Int(_, v, _) if context.u64() == expected_ty => Ok(Literal::U64(v)),
+        raw::Literal::Int(_, v, _) if context.s8() == expected_ty => Ok(Literal::S8(v as i8)),
+        raw::Literal::Int(_, v, _) if context.s16() == expected_ty => Ok(Literal::S16(v as i16)),
+        raw::Literal::Int(_, v, _) if context.s32() == expected_ty => Ok(Literal::S32(v as i32)),
+        raw::Literal::Int(_, v, _) if context.s64() == expected_ty => Ok(Literal::S64(v as i64)),
+        raw::Literal::Int(_, v, _) if context.f32() == expected_ty => Ok(Literal::F32(v as f32)),
+        raw::Literal::Int(_, v, _) if context.f64() == expected_ty => Ok(Literal::F64(v as f64)),
+        raw::Literal::Float(_, v, _) if context.f32() == expected_ty => Ok(Literal::F32(v as f32)),
+        raw::Literal::Float(_, v, _) if context.f64() == expected_ty => Ok(Literal::F64(v)),
 
         _ => Err(TypeError::LiteralMismatch {
             literal_span: raw_literal.span(),
