@@ -105,6 +105,8 @@ pub enum Term {
     RecordProj(RcTerm, Label, LevelShift),
     /// Case expressions
     Case(RcTerm, Vec<Scope<RcPattern, RcTerm>>),
+    /// Case split on booleans
+    CaseBool(RcTerm, RcTerm, RcTerm),
     /// Array literals
     ArrayIntro(Vec<RcTerm>),
     /// Let bindings
@@ -387,6 +389,13 @@ impl RcTerm {
                     })
                     .collect(),
             )),
+            Term::CaseBool(ref head, ref true_case, ref false_case) => {
+                RcTerm::from(Term::CaseBool(
+                    head.substs(mappings),
+                    true_case.substs(mappings),
+                    false_case.substs(mappings),
+                ))
+            },
             Term::ArrayIntro(ref elems) => RcTerm::from(Term::ArrayIntro(
                 elems.iter().map(|elem| elem.substs(mappings)).collect(),
             )),
@@ -495,6 +504,11 @@ impl<'a> From<&'a Neutral> for Term {
                         unsafe_body: RcTerm::from(&*clause.unsafe_body),
                     })
                     .collect(),
+            ),
+            Neutral::CaseBool(ref head, ref true_case, ref false_case) => Term::CaseBool(
+                RcTerm::from(&**head),
+                RcTerm::from(&**true_case),
+                RcTerm::from(&**false_case),
             ),
         }
     }

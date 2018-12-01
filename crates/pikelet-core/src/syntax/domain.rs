@@ -181,6 +181,8 @@ pub enum Neutral {
     RecordProj(RcNeutral, Label, LevelShift),
     /// Case expressions
     Case(RcNeutral, Vec<Scope<RcPattern, RcValue>>),
+    /// Case split on booleans
+    CaseBool(RcNeutral, RcValue, RcValue),
 }
 
 impl Neutral {
@@ -202,14 +204,19 @@ impl RcNeutral {
             //     *head_shift += shift; // NOTE: Not sure if this is correct!
             // },
             Neutral::Head(Head::Var(_, _)) | Neutral::Head(Head::Import(_)) => {},
-            Neutral::RecordProj(ref mut expr, _, _) => expr.shift_universes(shift),
-            Neutral::Case(ref mut expr, ref mut clauses) => {
-                expr.shift_universes(shift);
+            Neutral::RecordProj(ref mut head, _, _) => head.shift_universes(shift),
+            Neutral::Case(ref mut head, ref mut clauses) => {
+                head.shift_universes(shift);
                 for clause in clauses {
                     // FIXME: implement shifting for patterns as well!
                     // clause.unsafe_pattern.shift_universes(shift);
                     clause.unsafe_body.shift_universes(shift);
                 }
+            },
+            Neutral::CaseBool(ref mut head, ref mut true_case, ref mut false_case) => {
+                head.shift_universes(shift);
+                true_case.shift_universes(shift);
+                false_case.shift_universes(shift);
             },
         }
     }

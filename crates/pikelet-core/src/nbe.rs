@@ -2,7 +2,7 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use syntax::core::{Pattern, RcPattern, RcTerm, Term};
 use syntax::domain::{Head, Neutral, RcNeutral, RcValue, Value};
-use syntax::Import;
+use syntax::{Import, Literal};
 
 /// An error produced during normalization
 ///
@@ -121,12 +121,13 @@ pub fn nf_term(env: &dyn Env, term: &RcTerm) -> Result<RcValue, NbeError> {
                         },
                         Neutral::Head(Head::Var(..))
                         | Neutral::RecordProj(..)
-                        | Neutral::Case(..) => spine.push(arg),
+                        | Neutral::Case(..)
+                        | Neutral::CaseBool(_, _, _) => spine.push(arg),
                     }
 
                     Ok(RcValue::from(Value::Neutral(neutral.clone(), spine)))
                 },
-                _ => Err(NbeError::new("argument applied to non function")),
+                _ => Err(NbeError::new("non-function applied to an argument")),
             }
         },
 
@@ -225,6 +226,20 @@ pub fn nf_term(env: &dyn Env, term: &RcTerm) -> Result<RcValue, NbeError> {
                 }
                 Err(NbeError::new("no patterns applicable"))
             }
+        },
+
+        Term::CaseBool(ref head, ref true_case, ref false_case) => match *nf_term(env, head)? {
+            Value::Literal(Literal::Bool(true)) => nf_term(env, true_case),
+            Value::Literal(Literal::Bool(false)) => nf_term(env, false_case),
+            Value::Neutral(ref neutral, ref spine) => Ok(RcValue::from(Value::Neutral(
+                RcNeutral::from(Neutral::CaseBool(
+                    neutral.clone(),
+                    nf_term(env, true_case)?,
+                    nf_term(env, false_case)?,
+                )),
+                spine.clone(),
+            ))),
+            _ => Err(NbeError::new("case split on non-boolean")),
         },
 
         // E-ARRAY

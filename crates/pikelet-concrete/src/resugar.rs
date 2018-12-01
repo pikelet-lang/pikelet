@@ -582,6 +582,21 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
                 })
                 .collect(),
         ),
+        core::Term::CaseBool(ref head, ref true_case, ref false_case) => concrete::Term::Case(
+            ByteSpan::default(),
+            Box::new(resugar_term(env, head, Prec::NO_WRAP)),
+            vec![
+                // FIXME: Draw these names from some environment?
+                (
+                    concrete::Pattern::Name(ByteSpan::default(), "true".to_owned(), None),
+                    resugar_term(&env, &true_case, Prec::NO_WRAP),
+                ),
+                (
+                    concrete::Pattern::Name(ByteSpan::default(), "false".to_owned(), None),
+                    resugar_term(&env, &false_case, Prec::NO_WRAP),
+                ),
+            ],
+        ),
         core::Term::ArrayIntro(ref elems) => concrete::Term::ArrayIntro(
             ByteSpan::default(),
             elems
