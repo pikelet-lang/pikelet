@@ -356,7 +356,7 @@ fn resugar_fun_intro(
 
 fn resugar_let(
     env: &ResugarEnv,
-    scope: &Scope<Nest<(Binder<String>, Embed<(core::RcTerm, core::RcTerm)>)>, core::RcTerm>,
+    scope: &Scope<Nest<(Binder<String>, Embed<core::RcTerm>)>, core::RcTerm>,
     prec: Prec,
 ) -> concrete::Term {
     let mut env = env.clone();
@@ -366,24 +366,43 @@ fn resugar_let(
 
     let mut items = Vec::with_capacity(bindings.len() * 2);
 
-    for (binder, Embed((ann, term))) in bindings {
+    for (binder, Embed(term)) in bindings {
         let name = env.on_binder(&binder);
-        // pull lambda arguments from the body into the definition
-        let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
-            concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
-            term_body => (vec![], term_body),
-        };
 
-        items.push(concrete::Item::Declaration {
-            name: (ByteIndex::default(), name.clone()),
-            ann: resugar_term(&env, &ann, Prec::ANN),
-        });
-        items.push(concrete::Item::Definition {
-            name: (ByteIndex::default(), name),
-            params: term_params,
-            return_ann: None,
-            body: term_body,
-        });
+        match *term.inner {
+            core::Term::Ann(ref term, ref ann) => {
+                // pull lambda arguments from the body into the definition
+                let (term_params, term_body) = match resugar_term(&env, term, Prec::NO_WRAP) {
+                    concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
+                    term_body => (vec![], term_body),
+                };
+
+                items.push(concrete::Item::Declaration {
+                    name: (ByteIndex::default(), name.clone()),
+                    ann: resugar_term(&env, &ann, Prec::ANN),
+                });
+                items.push(concrete::Item::Definition {
+                    name: (ByteIndex::default(), name),
+                    params: term_params,
+                    return_ann: None,
+                    body: term_body,
+                });
+            },
+            _ => {
+                // pull lambda arguments from the body into the definition
+                let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
+                    concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
+                    term_body => (vec![], term_body),
+                };
+
+                items.push(concrete::Item::Definition {
+                    name: (ByteIndex::default(), name),
+                    params: term_params,
+                    return_ann: None,
+                    body: term_body,
+                });
+            },
+        }
     }
 
     #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
@@ -393,24 +412,42 @@ fn resugar_let(
             _ => break,
         };
 
-        for (binder, Embed((ann, term))) in bindings.unnest() {
+        for (binder, Embed(term)) in bindings.unnest() {
             let next_name = env.on_binder(&binder);
-            // pull lambda arguments from the body into the definition
-            let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
-                concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
-                term_body => (vec![], term_body),
-            };
+            match *term.inner {
+                core::Term::Ann(ref term, ref ann) => {
+                    // pull lambda arguments from the body into the definition
+                    let (term_params, term_body) = match resugar_term(&env, term, Prec::NO_WRAP) {
+                        concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
+                        term_body => (vec![], term_body),
+                    };
 
-            items.push(concrete::Item::Declaration {
-                name: (ByteIndex::default(), next_name.clone()),
-                ann: resugar_term(&env, &ann, Prec::ANN),
-            });
-            items.push(concrete::Item::Definition {
-                name: (ByteIndex::default(), next_name),
-                params: term_params,
-                return_ann: None,
-                body: term_body,
-            });
+                    items.push(concrete::Item::Declaration {
+                        name: (ByteIndex::default(), next_name.clone()),
+                        ann: resugar_term(&env, &ann, Prec::ANN),
+                    });
+                    items.push(concrete::Item::Definition {
+                        name: (ByteIndex::default(), next_name),
+                        params: term_params,
+                        return_ann: None,
+                        body: term_body,
+                    });
+                },
+                _ => {
+                    // pull lambda arguments from the body into the definition
+                    let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
+                        concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
+                        term_body => (vec![], term_body),
+                    };
+
+                    items.push(concrete::Item::Definition {
+                        name: (ByteIndex::default(), next_name),
+                        params: term_params,
+                        return_ann: None,
+                        body: term_body,
+                    });
+                },
+            }
         }
 
         body = next_body;

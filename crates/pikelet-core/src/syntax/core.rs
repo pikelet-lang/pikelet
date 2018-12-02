@@ -108,7 +108,7 @@ pub enum Term {
     /// Array literals
     ArrayIntro(Vec<RcTerm>),
     /// Let bindings
-    Let(Scope<Nest<(Binder<String>, Embed<(RcTerm, RcTerm)>)>, RcTerm>),
+    Let(Scope<Nest<(Binder<String>, Embed<RcTerm>)>, RcTerm>),
 }
 
 impl Term {
@@ -175,17 +175,13 @@ impl Term {
                 .append(Doc::space())
                 .append(Doc::intersperse(
                     scope.unsafe_pattern.unsafe_patterns.iter().map(
-                        |&(ref binder, Embed((ref ann, ref value)))| {
+                        |&(ref binder, Embed(ref term))| {
                             Doc::nil()
                                 .append(Doc::as_string(binder))
                                 .append(Doc::space())
-                                .append(":")
-                                .append(Doc::space())
-                                .append(ann.to_doc())
-                                .append(Doc::space())
                                 .append("=")
                                 .append(Doc::space())
-                                .append(value.to_doc())
+                                .append(term.to_doc())
                         },
                     ),
                     Doc::newline(),
@@ -327,11 +323,8 @@ impl RcTerm {
                     .unsafe_pattern
                     .unsafe_patterns
                     .iter()
-                    .map(|&(ref binder, Embed((ref ann, ref term)))| {
-                        (
-                            binder.clone(),
-                            Embed((ann.substs(mappings), term.substs(mappings))),
-                        )
+                    .map(|&(ref binder, Embed(ref term))| {
+                        (binder.clone(), Embed(term.substs(mappings)))
                     })
                     .collect();
 

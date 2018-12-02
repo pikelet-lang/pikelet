@@ -1,5 +1,8 @@
 extern crate codespan;
 extern crate pikelet_concrete;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 
 use codespan::{ByteIndex, ByteSpan};
 use codespan::{CodeMap, FileName};

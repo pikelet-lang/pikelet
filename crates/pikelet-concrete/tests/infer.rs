@@ -4,6 +4,9 @@ extern crate codespan_reporting;
 extern crate moniker;
 extern crate pikelet_concrete;
 extern crate pikelet_core;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 
 use codespan::{ByteIndex, ByteSpan, CodeMap};
 use moniker::{FreeVar, Var};
