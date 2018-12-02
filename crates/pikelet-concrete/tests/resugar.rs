@@ -2,6 +2,9 @@ extern crate codespan;
 extern crate moniker;
 extern crate pikelet_concrete;
 extern crate pikelet_core;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 
 use codespan::{ByteIndex, ByteSpan};
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
@@ -174,17 +177,11 @@ fn let_shadow_keyword() {
         Nest::new(vec![
             (
                 Binder(var_else1.clone()),
-                Embed((
-                    core::RcTerm::from(core::Term::universe(1)),
-                    core::RcTerm::from(core::Term::universe(0)),
-                )),
+                Embed(core::RcTerm::from(core::Term::universe(0))),
             ),
             (
                 Binder(var_else2.clone()),
-                Embed((
-                    core::RcTerm::from(core::Term::universe(1)),
-                    core::RcTerm::from(core::Term::universe(0)),
-                )),
+                Embed(core::RcTerm::from(core::Term::universe(0))),
             ),
         ]),
         core::RcTerm::from(core::Term::RecordIntro(vec![])),
@@ -193,19 +190,11 @@ fn let_shadow_keyword() {
     let concrete_module = concrete::Term::Let(
         index(),
         vec![
-            concrete::Item::Declaration {
-                name: (index(), "else1".to_owned()),
-                ann: concrete::Term::Universe(span(), Some(1)),
-            },
             concrete::Item::Definition {
                 name: (index(), "else1".to_owned()),
                 params: vec![],
                 return_ann: None,
                 body: concrete::Term::Universe(span(), None),
-            },
-            concrete::Item::Declaration {
-                name: (index(), "else2".to_owned()),
-                ann: concrete::Term::Universe(span(), Some(1)),
             },
             concrete::Item::Definition {
                 name: (index(), "else2".to_owned()),

@@ -135,7 +135,7 @@ pub fn nf_term(env: &dyn Env, term: &RcTerm) -> Result<RcValue, NbeError> {
             let (bindings, body) = scope.clone().unbind();
             let mut mappings = Vec::with_capacity(bindings.unsafe_patterns.len());
 
-            for (Binder(free_var), Embed((_, term))) in bindings.unnest() {
+            for (Binder(free_var), Embed(term)) in bindings.unnest() {
                 let value = nf_term(env, &term.substs(&mappings))?;
                 mappings.push((free_var, RcTerm::from(&*value.inner)));
             }

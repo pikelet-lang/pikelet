@@ -7,6 +7,9 @@ extern crate moniker;
 extern crate goldenfile;
 extern crate pikelet_concrete;
 extern crate pikelet_core;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 
 use codespan::{ByteSpan, CodeMap, FileName};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};

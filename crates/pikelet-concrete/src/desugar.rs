@@ -225,7 +225,7 @@ fn desugar_fun_intro(
 fn desugar_items(
     env: &mut DesugarEnv,
     concrete_items: &[concrete::Item],
-) -> Result<Nest<(Binder<String>, Embed<(raw::RcTerm, raw::RcTerm)>)>, DesugarError> {
+) -> Result<Nest<(Binder<String>, Embed<raw::RcTerm>)>, DesugarError> {
     use im::HashMap;
 
     #[derive(Clone)]
@@ -317,7 +317,7 @@ fn desugar_items(
                 // definition of the same name later on!
                 forward_declarations.insert(binder.clone(), ForwardDecl::Defined(name_span));
                 // Add the definition to the elaborated items
-                items.push((binder, Embed((ann, term))));
+                items.push((binder, Embed(raw::RcTerm::from(raw::Term::Ann(term, ann)))));
             },
             concrete::Item::Error(_) => unimplemented!("error recovery"),
         }

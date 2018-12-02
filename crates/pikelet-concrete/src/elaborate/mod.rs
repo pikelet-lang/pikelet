@@ -387,12 +387,19 @@ pub fn infer_term(
 
     match *raw_term.inner {
         //  I-ANN
-        raw::Term::Ann(ref raw_expr, ref raw_ty) => {
-            let (ty, _) = infer_universe(context, raw_ty)?;
-            let value_ty = nbe::nf_term(context, &ty)?;
-            let expr = check_term(context, raw_expr, &value_ty)?;
+        raw::Term::Ann(ref raw_term, ref raw_ty) => {
+            if let raw::Term::Hole(_) = *raw_ty.inner {
+                let (term, value_ty) = infer_term(context, &raw_term)?;
+                let ty = RcTerm::from(&*value_ty);
 
-            Ok((RcTerm::from(Term::Ann(expr, ty)), value_ty))
+                Ok((RcTerm::from(Term::Ann(term, ty)), value_ty))
+            } else {
+                let (ty, _) = infer_universe(context, &raw_ty)?;
+                let value_ty = nbe::nf_term(context, &ty)?;
+                let term = check_term(context, raw_term, &value_ty)?;
+
+                Ok((RcTerm::from(Term::Ann(term, ty)), value_ty))
+            }
         },
 
         // I-TYPE
@@ -503,20 +510,13 @@ pub fn infer_term(
                 let bindings = raw_fields
                     .unnest()
                     .into_iter()
-                    .map(|(Binder(free_var), Embed((raw_ann, raw_term)))| {
-                        let (term, ann, ann_value) = if let raw::Term::Hole(_) = *raw_ann {
-                            let (term, ann_value) = infer_term(&context, &raw_term)?;
-                            (term, RcTerm::from(&*ann_value.inner), ann_value)
-                        } else {
-                            let (ann, _) = infer_universe(&context, &raw_ann)?;
-                            let ann_value = nbe::nf_term(&context, &ann)?;
-                            (check_term(&context, &raw_term, &ann_value)?, ann, ann_value)
-                        };
+                    .map(|(Binder(free_var), Embed(raw_term))| {
+                        let (term, term_ty) = infer_term(&context, &raw_term)?;
 
                         context.insert_definition(free_var.clone(), term.clone());
-                        context.insert_declaration(free_var.clone(), ann_value);
+                        context.insert_declaration(free_var.clone(), term_ty);
 
-                        Ok((Binder(free_var), Embed((ann, term))))
+                        Ok((Binder(free_var), Embed(term)))
                     })
                     .collect::<Result<_, TypeError>>()?;
 
