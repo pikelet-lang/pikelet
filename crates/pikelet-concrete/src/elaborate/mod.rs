@@ -208,7 +208,7 @@ pub fn infer_pattern(
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
-                span: Some(raw_pattern.span()),
+                span: raw_pattern.span(),
                 var: var.clone(),
             }
             .into()),
@@ -430,7 +430,7 @@ pub fn infer_term(
             // variables when entering scopes using `unbind`, so if we've
             // encountered one here this is definitely a bug!
             Var::Bound(_) => Err(InternalError::UnexpectedBoundVar {
-                span: Some(raw_term.span()),
+                span: raw_term.span(),
                 var: var.clone(),
             }
             .into()),

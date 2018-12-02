@@ -13,10 +13,7 @@ use syntax::{concrete, raw};
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum InternalError {
     #[fail(display = "Unexpected bound variable: `{}`.", var)]
-    UnexpectedBoundVar {
-        span: Option<ByteSpan>,
-        var: Var<String>,
-    },
+    UnexpectedBoundVar { span: ByteSpan, var: Var<String> },
     #[fail(display = "not yet implemented: {}", message)]
     Unimplemented {
         span: Option<ByteSpan>,
@@ -36,13 +33,9 @@ impl InternalError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             InternalError::UnexpectedBoundVar { span, ref var } => {
-                let base = Diagnostic::new_bug(format!("unexpected bound variable: `{}`", var));
-                match span {
-                    None => base,
-                    Some(span) => base.with_label(
-                        Label::new_primary(span).with_message("bound variable encountered here"),
-                    ),
-                }
+                Diagnostic::new_bug(format!("unexpected bound variable: `{}`", var)).with_label(
+                    Label::new_primary(span).with_message("bound variable encountered here"),
+                )
             },
             InternalError::Unimplemented { span, ref message } => {
                 let base = Diagnostic::new_bug(format!("not yet implemented: {}", message));
