@@ -1,7 +1,7 @@
 //! The REPL (Read-Eval-Print-Loop)
 
 extern crate codespan;
-extern crate codespan_reporting;
+extern crate combine;
 #[macro_use]
 extern crate failure;
 extern crate linefeed;
@@ -12,15 +12,13 @@ extern crate pikelet_driver;
 extern crate structopt;
 extern crate term_size;
 
-use codespan::{CodeMap, FileMap, FileName};
-use codespan_reporting::termcolor::StandardStream;
-use codespan_reporting::{ColorArg, Diagnostic};
 use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
+use std::str::FromStr;
 
-use pikelet_concrete::parse;
-use pikelet_driver::Driver;
+use pikelet_driver::termcolor::StandardStream;
+use pikelet_driver::{ColorArg, Diagnostic, Driver, FileName};
 
 /// Options for the `repl` subcommand
 #[derive(Debug, StructOpt)]
@@ -86,9 +84,8 @@ fn print_help_text() {
         "",
         "Command       Arguments        Purpose",
         "",
-        "<term>                         evaluate a term",
+        "<term>                         normalize a term",
         ":? :h :help                    display this help text",
-        ":raw          <term>           print the raw representation of a term",
         ":core         <term>           print the core representation of a term",
         ":let          <name> = <term>  add a named term to the REPL context",
         ":q :quit                       quit the repl",
@@ -103,10 +100,12 @@ fn print_help_text() {
 
 /// Run the `repl` subcommand with the given options
 pub fn run(opts: Opts) -> Result<(), Error> {
+    use std::fs::File;
+    use std::io::Read;
+
     let interface = Interface::new("repl")?;
-    let mut codemap = CodeMap::new();
     let writer = StandardStream::stderr(opts.color.into());
-    let mut pikelet = Driver::with_prelude();
+    let mut driver = Driver::with_prelude();
 
     interface.set_prompt(&opts.prompt)?;
     interface.set_report_signal(Signal::Interrupt, true);
@@ -121,24 +120,17 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     }
 
     // preload specified files
-    {
-        let mut is_error = false;
+    for path in &opts.files {
+        // FIXME: allow for customization of internal path
+        let internal_path = path.to_str().unwrap().to_owned();
+        let external_path = FileName::Real(path.clone());
 
-        for path in &opts.files {
-            // FIXME: allow for customization of internal path
-            let internal_path = path.to_str().unwrap().to_owned();
-            let file_map = codemap.add_filemap_from_disk(path)?;
+        let mut file = File::open(path)?;
+        let mut src = String::new();
+        file.read_to_string(&mut src)?;
 
-            if let Err(diagnostics) = pikelet.load_file(internal_path, file_map) {
-                for diagnostic in diagnostics {
-                    codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
-                }
-                is_error = true;
-                continue;
-            }
-        }
-
-        if is_error {
+        if let Err(diagnostics) = driver.register_file(internal_path, external_path, src) {
+            driver.emit(writer.lock(), &diagnostics).unwrap();
             return Err(format_err!("encountered an error!"));
         }
     }
@@ -150,15 +142,18 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                     interface.add_history_unique(line.clone());
                 }
 
-                let filename = FileName::virtual_("repl");
-                match eval_print(&mut pikelet, &codemap.add_filemap(filename, line)) {
+                let repl_command = match line.parse() {
+                    Ok(repl_command) => repl_command,
+                    Err(diagnostics) => {
+                        driver.emit(writer.lock(), &diagnostics).unwrap();
+                        continue;
+                    },
+                };
+
+                match eval_print(&mut driver, repl_command) {
                     Ok(ControlFlow::Continue) => {},
                     Ok(ControlFlow::Break) => break,
-                    Err(diagnostics) => {
-                        for diagnostic in diagnostics {
-                            codespan_reporting::emit(&mut writer.lock(), &codemap, &diagnostic)?;
-                        }
-                    },
+                    Err(diagnostics) => driver.emit(writer.lock(), &diagnostics).unwrap(),
                 }
             },
             ReadResult::Signal(Signal::Quit) | ReadResult::Eof => break,
@@ -176,10 +171,134 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     Ok(())
 }
 
-fn eval_print(pikelet: &mut Driver, filemap: &FileMap) -> Result<ControlFlow, Vec<Diagnostic>> {
+#[derive(Clone)]
+enum ControlFlow {
+    Break,
+    Continue,
+}
+
+/// Commands entered in the REPL
+#[derive(Debug, Clone)]
+pub enum ReplCommand {
+    /// Normalize a term
+    ///
+    /// ```text
+    /// <term>
+    /// ```
+    Normalize(String),
+    /// Show the core representation of a term
+    ///
+    /// ```text
+    /// :core <term>
+    /// ```
+    Core(String),
+    /// Print some help about using the REPL
+    ///
+    /// ```text
+    /// :?
+    /// :h
+    /// :help
+    /// ```
+    Help,
+    /// Add a declaration to the REPL environment
+    ///
+    /// ```text
+    /// :let <name> = <term>
+    /// ```
+    Let(String, String),
+    ///  No command
+    NoOp,
+    /// Quit the REPL
+    ///
+    /// ```text
+    /// :q
+    /// :quit
+    /// ```
+    Quit,
+    /// Print the type of the term
+    ///
+    /// ```text
+    /// :t <term>
+    /// :type <term>
+    /// ```
+    TypeOf(String),
+}
+
+impl FromStr for ReplCommand {
+    type Err = Vec<Diagnostic>;
+
+    fn from_str(src: &str) -> Result<ReplCommand, Vec<Diagnostic>> {
+        use combine::char::*;
+        use combine::*;
+
+        let anys1 = || many1(any());
+        let spaces1 = || skip_many1(space());
+        let ident = || {
+            value(())
+                .with(letter())
+                .and(many::<String, _>(alpha_num()))
+                .map(|(hd, tl)| format!("{}{}", hd, tl))
+        };
+
+        let cmd = choice((
+            token(':').with(choice((
+                attempt(
+                    choice((
+                        attempt(string("help")),
+                        attempt(string("?")),
+                        attempt(string("h")),
+                    ))
+                    .map(|_| ReplCommand::Help),
+                ),
+                attempt(
+                    choice((attempt(string("quit")), attempt(string("q"))))
+                        .map(|_| ReplCommand::Quit),
+                ),
+                attempt(
+                    string("core")
+                        .with(spaces1())
+                        .with(anys1())
+                        .map(ReplCommand::Core),
+                ),
+                attempt(
+                    choice((attempt(string("type")), string("t")))
+                        .with(spaces1())
+                        .with(anys1())
+                        .map(ReplCommand::TypeOf),
+                ),
+                attempt(
+                    string("let")
+                        .with(spaces1())
+                        .with(ident())
+                        .skip(spaces())
+                        .skip(string("="))
+                        .skip(spaces())
+                        .and(anys1())
+                        .map(|(ident, src)| ReplCommand::Let(ident, src)),
+                ),
+            ))),
+            anys1().map(ReplCommand::Normalize),
+        ));
+
+        let mut parser = spaces().with(cmd).skip(spaces());
+
+        match parser.parse(src) {
+            Ok((cmd, _)) => Ok(cmd),
+            Err(_) => {
+                // TODO: better errors here!
+                Err(vec![Diagnostic::new_error("malformed REPL command")])
+            },
+        }
+    }
+}
+
+fn eval_print(
+    driver: &mut Driver,
+    repl_command: ReplCommand,
+) -> Result<ControlFlow, Vec<Diagnostic>> {
     use codespan::ByteSpan;
 
-    use pikelet_concrete::syntax::concrete::{ReplCommand, Term};
+    use pikelet_concrete::syntax::concrete::Term;
 
     fn term_width() -> usize {
         term_size::dimensions()
@@ -187,75 +306,53 @@ fn eval_print(pikelet: &mut Driver, filemap: &FileMap) -> Result<ControlFlow, Ve
             .unwrap_or(1_000_000)
     }
 
-    let (repl_command, _import_paths, parse_errors) = parse::repl_command(filemap);
-    if !parse_errors.is_empty() {
-        return Err(parse_errors
-            .iter()
-            .map(|error| error.to_diagnostic())
-            .collect());
-    }
+    let file_name = FileName::virtual_("repl");
 
     match repl_command {
         ReplCommand::Help => print_help_text(),
 
-        ReplCommand::Eval(concrete_term) => {
-            let raw_term = pikelet.desugar(&*concrete_term)?;
-            let (term, inferred) = pikelet.infer_term(&raw_term)?;
-            let evaluated = pikelet.nf_term(&term)?;
+        ReplCommand::Normalize(term_src) => {
+            let (term, inferred) = driver.infer_file(file_name, term_src)?;
+            let evaluated = driver.normalize_term(&term)?;
 
             let ann_term = Term::Ann(
-                Box::new(pikelet.resugar(&evaluated)),
-                Box::new(pikelet.resugar(&inferred)),
+                Box::new(driver.resugar(&evaluated)),
+                Box::new(driver.resugar(&inferred)),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
-        ReplCommand::Core(concrete_term) => {
+        ReplCommand::Core(term_src) => {
             use pikelet_core::syntax::core::{RcTerm, Term};
 
-            let raw_term = pikelet.desugar(&*concrete_term)?;
-            let (term, inferred) = pikelet.infer_term(&raw_term)?;
-
+            let (term, inferred) = driver.infer_file(file_name, term_src)?;
             let ann_term = Term::Ann(term, RcTerm::from(Term::from(&*inferred)));
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
         },
-        ReplCommand::Raw(concrete_term) => {
-            let raw_term = pikelet.desugar(&*concrete_term)?;
-
-            println!("{}", raw_term.to_doc().group().pretty(term_width()));
-        },
-        ReplCommand::Let(name, concrete_term) => {
-            let raw_term = pikelet.desugar(&*concrete_term)?;
-            let (_, inferred) = pikelet.infer_bind_term(&name, &raw_term)?;
+        ReplCommand::Let(name, term_src) => {
+            let (term, inferred) = driver.infer_file(file_name, term_src)?;
+            driver.add_binding(&name, term.clone(), inferred.clone());
 
             let ann_term = Term::Ann(
-                Box::new(Term::Name(ByteSpan::default(), name.clone(), None)),
-                Box::new(pikelet.resugar(&inferred)),
+                Box::new(Term::Name(ByteSpan::default(), name, None)),
+                Box::new(driver.resugar(&inferred)),
             );
 
             println!("{}", ann_term.to_doc().group().pretty(term_width()));
 
             return Ok(ControlFlow::Continue);
         },
-        ReplCommand::TypeOf(concrete_term) => {
-            let raw_term = pikelet.desugar(&*concrete_term)?;
-            let (_, inferred) = pikelet.infer_term(&raw_term)?;
-
-            let inferred = pikelet.resugar(&inferred);
+        ReplCommand::TypeOf(term_src) => {
+            let (_, inferred) = driver.infer_file(file_name, term_src)?;
+            let inferred = driver.resugar(&inferred);
 
             println!("{}", inferred.to_doc().group().pretty(term_width()));
         },
 
-        ReplCommand::NoOp | ReplCommand::Error(_) => {},
+        ReplCommand::NoOp => {},
         ReplCommand::Quit => return Ok(ControlFlow::Break),
     }
 
     Ok(ControlFlow::Continue)
-}
-
-#[derive(Clone)]
-enum ControlFlow {
-    Break,
-    Continue,
 }

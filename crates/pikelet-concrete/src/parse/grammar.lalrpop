@@ -1,9 +1,9 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use parse::{LalrpopError, ParseError, Token};
+use parse::{ParseError, Token};
 use syntax::{FloatFormat, IntFormat};
-use syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordIntroField, ReplCommand};
+use syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordIntroField};
 
 #[LALR]
 grammar<'err, 'input>(
@@ -20,7 +20,6 @@ extern {
         // Data
         "identifier" => Token::Ident(<&'input str>),
         "doc comment" => Token::DocComment(<&'input str>),
-        "REPL command" => Token::ReplCommand(<&'input str>),
         "string literal" => Token::StringLiteral(<String>),
         "character literal" => Token::CharLiteral(<char>),
         "binary literal" => Token::BinIntLiteral(<u64>),
@@ -65,38 +64,6 @@ extern {
         "]" => Token::RBracket,
     }
 }
-
-pub ReplCommand: ReplCommand = {
-    => ReplCommand::NoOp,
-    <term: Term> => ReplCommand::Eval(Box::new(term)),
-    <start: @L> <command: "REPL command"> <end: @R> =>? match command {
-        "?" | "h" | "help" => Ok(ReplCommand::Help),
-        "q" | "quit" => Ok(ReplCommand::Quit),
-        command => {
-            let span = ByteSpan::new(start, end);
-            let command = command.to_owned();
-            Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
-        },
-    },
-    <start: @L> <command: "REPL command"> <end: @R> <term: Term> =>? match command {
-        "raw" => Ok(ReplCommand::Raw(Box::new(term))),
-        "core" => Ok(ReplCommand::Core(Box::new(term))),
-        "t" | "type" => Ok(ReplCommand::TypeOf(Box::new(term))),
-        command => {
-            let span = ByteSpan::new(start, end);
-            let command = command.to_owned();
-            Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
-        },
-    },
-    <start: @L> <command: "REPL command"> <end: @R> <ident: Ident> "=" <term: Term> =>? match command {
-        "let" => Ok(ReplCommand::Let(ident, Box::new(term))),
-        command => {
-            let span = ByteSpan::new(start, end);
-            let command = command.to_owned();
-            Err(LalrpopError::User { error: ParseError::UnknownReplCommand { span, command} })
-        },
-    },
-};
 
 Item: Item = {
     <_comment: "doc comment"*> <name: IndexedIdent> ":" <ann: Term> ";" => {

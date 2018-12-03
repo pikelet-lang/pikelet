@@ -32,7 +32,6 @@ macro_rules! parser {
     };
 }
 
-parser!(repl_command, ReplCommand, ReplCommandParser);
 parser!(pattern, Pattern, PatternParser);
 parser!(term, Term, TermParser);
 

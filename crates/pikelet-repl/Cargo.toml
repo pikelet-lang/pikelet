@@ -10,7 +10,7 @@ publish = false
 
 [dependencies]
 codespan = "0.2.0"
-codespan-reporting = "0.2.0"
+combine = "3.6.3"
 failure = "0.1.2"
 linefeed = "0.5.3"
 pikelet-concrete = { version = "0.1.0", path = "../pikelet-concrete" }
