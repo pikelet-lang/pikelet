@@ -7,10 +7,10 @@ use moniker::{Binder, FreeVar, Var};
 use pikelet_core::nbe::NbeError;
 use pikelet_core::syntax;
 
-use syntax::{concrete, raw};
+use crate::syntax::{concrete, raw};
 
 /// An internal error. These are bugs!
-#[derive(Debug, Fail, Clone, PartialEq)]
+#[derive(Debug, failure::Fail, Clone, PartialEq)]
 pub enum InternalError {
     #[fail(display = "Unexpected bound variable: `{}`.", var)]
     UnexpectedBoundVar { span: ByteSpan, var: Var<String> },
@@ -55,7 +55,7 @@ impl InternalError {
 }
 
 /// An error produced during type checking
-#[derive(Debug, Fail, Clone, PartialEq)]
+#[derive(Debug, failure::Fail, Clone, PartialEq)]
 pub enum TypeError {
     #[fail(
         display = "Name had more than one declaration associated with it: `{}`",

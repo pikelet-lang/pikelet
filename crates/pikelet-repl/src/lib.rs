@@ -1,17 +1,5 @@
 //! The REPL (Read-Eval-Print-Loop)
 
-extern crate codespan;
-extern crate combine;
-#[macro_use]
-extern crate failure;
-extern crate linefeed;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-extern crate pikelet_driver;
-#[macro_use]
-extern crate structopt;
-extern crate term_size;
-
 use failure::Error;
 use linefeed::{Interface, ReadResult, Signal};
 use std::path::PathBuf;
@@ -21,7 +9,7 @@ use pikelet_driver::termcolor::StandardStream;
 use pikelet_driver::{ColorArg, Diagnostic, Driver, FileName};
 
 /// Options for the `repl` subcommand
-#[derive(Debug, StructOpt)]
+#[derive(Debug, structopt::StructOpt)]
 pub struct Opts {
     /// Configure coloring of output
     #[structopt(
@@ -131,7 +119,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 
         if let Err(diagnostics) = driver.register_file(internal_path, external_path, src) {
             driver.emit(writer.lock(), &diagnostics).unwrap();
-            return Err(format_err!("encountered an error!"));
+            return Err(failure::format_err!("encountered an error!"));
         }
     }
 

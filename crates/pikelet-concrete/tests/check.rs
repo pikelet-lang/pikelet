@@ -1,9 +1,3 @@
-extern crate codespan;
-extern crate codespan_reporting;
-extern crate moniker;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-
 use codespan::CodeMap;
 
 use pikelet_concrete::desugar::{Desugar, DesugarEnv};

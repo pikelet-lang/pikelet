@@ -125,12 +125,6 @@
 //! - [Queries: demand-driven compilation (Rustc Book)](https://rust-lang-nursery.github.io/rustc-guide/query.html)
 //! - [Anders Hejlsberg on Modern Compiler Construction (YouTube)](https://www.youtube.com/watch?v=wSdV1M7n4gQ)
 
-extern crate codespan;
-extern crate codespan_reporting;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-extern crate pikelet_library;
-
 use codespan::CodeMap;
 pub use codespan::FileName;
 pub use codespan_reporting::{termcolor, ColorArg, Diagnostic};

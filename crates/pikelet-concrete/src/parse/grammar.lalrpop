@@ -1,9 +1,9 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 
-use parse::{ParseError, Token};
-use syntax::{FloatFormat, IntFormat};
-use syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordIntroField};
+use crate::parse::{ParseError, Token};
+use crate::syntax::{FloatFormat, IntFormat};
+use crate::syntax::concrete::{Item, Literal, Pattern, Term, RecordTypeField, RecordIntroField};
 
 #[LALR]
 grammar<'err, 'input>(

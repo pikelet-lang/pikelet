@@ -1,6 +1,3 @@
-extern crate pikelet_driver;
-extern crate pikelet_library;
-
 use pikelet_driver::termcolor::{ColorChoice, StandardStream};
 use pikelet_driver::{Driver, FileName};
 

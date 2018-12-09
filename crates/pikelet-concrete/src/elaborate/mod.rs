@@ -12,7 +12,7 @@ use pikelet_core::syntax::core::{Pattern, RcPattern, RcTerm, Term};
 use pikelet_core::syntax::domain::{RcType, RcValue, Value};
 use pikelet_core::syntax::{Level, Literal};
 
-use syntax::raw;
+use crate::syntax::raw;
 
 mod context;
 mod errors;

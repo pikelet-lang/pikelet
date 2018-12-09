@@ -5,7 +5,7 @@ use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use pikelet_core::syntax::{core, domain};
 use pikelet_core::syntax::{Label, Level, LevelShift};
 
-use syntax::{concrete, FloatFormat, IntFormat};
+use crate::syntax::{concrete, FloatFormat, IntFormat};
 
 /// The environment used when resugaring from the core to the concrete syntax
 #[derive(Debug, Clone)]
@@ -158,8 +158,8 @@ fn resugar_pattern(
         core::Pattern::Literal(ref literal) => {
             use pikelet_core::syntax::Literal;
 
-            use syntax::concrete::Literal::*;
-            use syntax::concrete::Pattern;
+            use crate::syntax::concrete::Literal::*;
+            use crate::syntax::concrete::Pattern;
 
             let span = ByteSpan::default();
 
@@ -486,8 +486,8 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
         core::Term::Literal(ref literal) => {
             use pikelet_core::syntax::Literal;
 
-            use syntax::concrete::Literal::*;
-            use syntax::concrete::Term;
+            use crate::syntax::concrete::Literal::*;
+            use crate::syntax::concrete::Term;
 
             let span = ByteSpan::default();
 
@@ -566,12 +566,10 @@ fn resugar_term(env: &ResugarEnv, term: &core::Term, prec: Prec) -> concrete::Te
             concrete::Term::RecordType(ByteSpan::default(), fields)
         },
         core::Term::RecordIntro(ref fields) => {
-            let mut env = env.clone();
-
             let fields = fields
                 .iter()
                 .map(|&(ref label, ref term)| {
-                    let (term_params, term_body) = match resugar_term(&env, &term, Prec::NO_WRAP) {
+                    let (term_params, term_body) = match resugar_term(env, &term, Prec::NO_WRAP) {
                         concrete::Term::FunIntro(_, params, term_body) => (params, *term_body),
                         term_body => (vec![], term_body),
                     };

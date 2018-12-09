@@ -7,7 +7,7 @@ use pikelet_core::syntax::core::RcTerm;
 use pikelet_core::syntax::domain::{RcType, RcValue, Value};
 use pikelet_core::syntax::{Import, Literal};
 
-use resugar::{Resugar, ResugarEnv};
+use crate::resugar::{Resugar, ResugarEnv};
 
 // Some helper traits for marshalling between Rust and Pikelet values
 //

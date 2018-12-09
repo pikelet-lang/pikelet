@@ -6,10 +6,10 @@ use std::fmt;
 use std::ops;
 use std::rc::Rc;
 
-use syntax::domain::{Head, Neutral, Value};
-use syntax::{Label, Level, LevelShift, Literal, PRETTY_FALLBACK_WIDTH};
+use crate::syntax::domain::{Head, Neutral, Value};
+use crate::syntax::{Label, Level, LevelShift, Literal, PRETTY_FALLBACK_WIDTH};
 
-#[derive(Debug, Clone, PartialEq, BoundPattern)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundPattern)]
 pub enum Pattern {
     /// Patterns annotated with types
     Ann(RcPattern, Embed<RcTerm>),
@@ -51,7 +51,7 @@ impl fmt::Display for Pattern {
 }
 
 /// Reference counted patterns
-#[derive(Debug, Clone, PartialEq, BoundPattern)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundPattern)]
 pub struct RcPattern {
     pub inner: Rc<Pattern>,
 }
@@ -79,7 +79,7 @@ impl fmt::Display for RcPattern {
 }
 
 /// The core term syntax
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
     Ann(RcTerm, RcTerm),
@@ -287,7 +287,7 @@ impl fmt::Display for Term {
 }
 
 /// Reference counted terms
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
 pub struct RcTerm {
     pub inner: Rc<Term>,
 }

@@ -1,21 +1,9 @@
-extern crate codespan;
-extern crate codespan_reporting;
-#[macro_use]
-extern crate im;
-#[macro_use]
-extern crate moniker;
-extern crate goldenfile;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
-
 use codespan::{ByteSpan, CodeMap, FileName};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use goldenfile::Mint;
-use moniker::{Binder, Embed, FreeVar, Scope, Var};
+use moniker::{assert_term_eq, Binder, Embed, FreeVar, Scope, Var};
 use std::io::Write;
+use pretty_assertions::assert_eq;
 
 use pikelet_concrete::desugar::{Desugar, DesugarEnv, DesugarError};
 use pikelet_concrete::parse;
@@ -505,7 +493,7 @@ mod sugar {
 
     #[test]
     fn if_then_else() {
-        let env = DesugarEnv::new(hashmap! {
+        let env = DesugarEnv::new(im::hashmap! {
             "true".to_owned() => FreeVar::fresh_named("true"),
             "false".to_owned() => FreeVar::fresh_named("false"),
         });
@@ -518,7 +506,7 @@ mod sugar {
 
     #[test]
     fn record_field_puns() {
-        let env = DesugarEnv::new(hashmap! {
+        let env = DesugarEnv::new(im::hashmap! {
             "x".to_owned() => FreeVar::fresh_named("x"),
             "y".to_owned() => FreeVar::fresh_named("y"),
         });

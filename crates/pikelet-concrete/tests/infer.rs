@@ -1,15 +1,6 @@
-extern crate codespan;
-extern crate codespan_reporting;
-#[macro_use]
-extern crate moniker;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
-
 use codespan::{ByteIndex, ByteSpan, CodeMap};
-use moniker::{FreeVar, Var};
+use moniker::{assert_term_eq, FreeVar, Var};
+use pretty_assertions::assert_eq;
 
 use pikelet_concrete::desugar::{Desugar, DesugarEnv};
 use pikelet_concrete::elaborate::{self, Context, TypeError};

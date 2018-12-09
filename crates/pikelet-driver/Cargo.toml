@@ -6,6 +6,7 @@ readme = "README.md"
 authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
 homepage = "https://github.com/pikelet-lang/pikelet"
 repository = "https://github.com/pikelet-lang/pikelet"
+edition = "2018"
 publish = false
 
 [dependencies]

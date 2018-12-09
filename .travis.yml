@@ -5,7 +5,7 @@ cache:
     - book/highlight.js/node_modules
     - editors/code/node_modules
 rust:
-  - 1.28.0
+  - 1.31.0
   - stable
   - beta
   - nightly

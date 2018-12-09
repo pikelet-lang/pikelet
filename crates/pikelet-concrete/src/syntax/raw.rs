@@ -10,10 +10,10 @@ use std::rc::Rc;
 
 use pikelet_core::syntax::{Label, Level, LevelShift};
 
-use syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH};
+use crate::syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH};
 
 /// Literals
-#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, moniker::BoundTerm, moniker::BoundPattern)]
 pub enum Literal {
     String(ByteSpan, String),
     Char(ByteSpan, char),
@@ -51,7 +51,7 @@ impl fmt::Display for Literal {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, BoundPattern)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundPattern)]
 pub enum Pattern {
     /// Patterns annotated with types
     Ann(RcPattern, Embed<RcTerm>),
@@ -102,7 +102,7 @@ impl fmt::Display for Pattern {
 }
 
 /// Reference counted patterns
-#[derive(Debug, Clone, PartialEq, BoundPattern)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundPattern)]
 pub struct RcPattern {
     pub inner: Rc<Pattern>,
 }
@@ -133,7 +133,7 @@ impl fmt::Display for RcPattern {
 ///
 /// For now the only implicit syntax we have is holes and lambdas that lack a
 /// type annotation.
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
     Ann(RcTerm, RcTerm),
@@ -362,7 +362,7 @@ impl fmt::Display for Term {
 }
 
 /// Reference counted terms
-#[derive(Debug, Clone, PartialEq, BoundTerm)]
+#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
 pub struct RcTerm {
     pub inner: Rc<Term>,
 }
