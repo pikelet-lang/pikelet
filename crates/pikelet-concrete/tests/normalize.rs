@@ -1,15 +1,6 @@
-extern crate codespan;
-extern crate codespan_reporting;
-#[macro_use]
-extern crate moniker;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
-
 use codespan::CodeMap;
-use moniker::{Binder, Embed, FreeVar, Scope, Var};
+use moniker::{assert_term_eq, Binder, Embed, FreeVar, Scope, Var};
+use pretty_assertions::assert_eq;
 
 use pikelet_concrete::elaborate::Context;
 use pikelet_core::syntax::core::{RcTerm, Term};

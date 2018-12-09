@@ -4,7 +4,7 @@ use codespan::{ByteIndex, ByteSpan};
 use pretty::{BoxDoc, Doc};
 use std::fmt;
 
-use syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH, PRETTY_INDENT_WIDTH};
+use crate::syntax::{FloatFormat, IntFormat, PRETTY_FALLBACK_WIDTH, PRETTY_INDENT_WIDTH};
 
 /// A group of lambda parameters that share an annotation
 pub type FunIntroParamGroup = (Vec<(ByteIndex, String)>, Option<Box<Term>>);

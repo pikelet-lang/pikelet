@@ -1,16 +1,10 @@
 //! The command line interface for Pikelet
 
-extern crate failure;
-extern crate pikelet_language_server;
-extern crate pikelet_repl;
-#[macro_use]
-extern crate structopt;
-
 use failure::Error;
 
 // TODO: test using https://github.com/killercup/assert_cli
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, structopt::StructOpt)]
 #[structopt(name = "pikelet")]
 pub struct Opts {
     /// Subcommand to run
@@ -18,7 +12,7 @@ pub struct Opts {
     pub command: Command,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, structopt::StructOpt)]
 pub enum Command {
     /// A REPL for running expressions
     #[structopt(name = "repl")]

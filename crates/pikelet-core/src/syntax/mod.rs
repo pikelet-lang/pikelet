@@ -31,7 +31,7 @@ impl fmt::Debug for Import {
 /// Literals
 ///
 /// We could church encode all the things, but that would be prohibitively expensive!
-#[derive(Debug, Clone, PartialEq, PartialOrd, BoundTerm, BoundPattern)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, moniker::BoundTerm, moniker::BoundPattern)]
 pub enum Literal {
     Bool(bool),
     String(String),
@@ -76,7 +76,7 @@ impl fmt::Display for Literal {
 }
 
 /// A universe level
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, BoundTerm)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, moniker::BoundTerm)]
 pub struct Level(pub u32);
 
 impl Level {
@@ -98,7 +98,7 @@ impl fmt::Display for Level {
 }
 
 /// A shift in universe level
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, BoundTerm, BoundPattern)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, moniker::BoundTerm, moniker::BoundPattern)]
 pub struct LevelShift(pub u32);
 
 impl From<u32> for LevelShift {
@@ -144,7 +144,7 @@ impl AddAssign<LevelShift> for Level {
 /// A label that describes the name of a field in a record
 ///
 /// Labels are significant when comparing for alpha-equality
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, BoundPattern, BoundTerm)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, moniker::BoundPattern, moniker::BoundTerm)]
 pub struct Label(pub String);
 
 impl From<String> for Label {

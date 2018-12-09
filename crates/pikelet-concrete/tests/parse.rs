@@ -1,11 +1,7 @@
-extern crate codespan;
-extern crate pikelet_concrete;
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
-
 use codespan::{ByteIndex, ByteSpan};
 use codespan::{CodeMap, FileName};
+use pretty_assertions::assert_eq;
+
 use pikelet_concrete::parse::{self, LexerError, ParseError};
 use pikelet_concrete::syntax::concrete;
 

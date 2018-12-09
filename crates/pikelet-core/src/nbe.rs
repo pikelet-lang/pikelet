@@ -1,14 +1,14 @@
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
-use syntax::core::{Pattern, RcPattern, RcTerm, Term};
-use syntax::domain::{Head, Neutral, RcNeutral, RcValue, Value};
-use syntax::Import;
+use crate::syntax::core::{Pattern, RcPattern, RcTerm, Term};
+use crate::syntax::domain::{Head, Neutral, RcNeutral, RcValue, Value};
+use crate::syntax::Import;
 
 /// An error produced during normalization
 ///
 /// If a term has been successfully type checked prior to evaluation or
 /// normalization, then this error should never be produced.
-#[derive(Debug, Clone, PartialEq, Fail)]
+#[derive(Debug, Clone, PartialEq, failure::Fail)]
 #[fail(display = "{}", message)]
 pub struct NbeError {
     pub message: String,

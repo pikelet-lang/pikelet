@@ -5,8 +5,8 @@ use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use pikelet_core::syntax::{Label, Level, LevelShift};
 
-use syntax::concrete;
-use syntax::raw;
+use crate::syntax::concrete;
+use crate::syntax::raw;
 
 /// The environment used when desugaring from the concrete to raw syntax
 #[derive(Debug, Clone)]
@@ -51,7 +51,7 @@ impl DesugarEnv {
 }
 
 /// An error produced during resugaring
-#[derive(Debug, Fail, Clone, PartialEq)]
+#[derive(Debug, failure::Fail, Clone, PartialEq)]
 pub enum DesugarError {
     #[fail(
         display = "Name had more than one declaration associated with it: `{}`",
@@ -389,7 +389,7 @@ fn desugar_record_intro(
     span: ByteSpan,
     fields: &[concrete::RecordIntroField],
 ) -> Result<raw::RcTerm, DesugarError> {
-    use syntax::concrete::RecordIntroField;
+    use crate::syntax::concrete::RecordIntroField;
 
     let fields = fields
         .iter()

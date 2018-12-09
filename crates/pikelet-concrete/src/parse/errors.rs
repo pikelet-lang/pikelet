@@ -4,9 +4,9 @@ use codespan_reporting::{Diagnostic, Label};
 use lalrpop_util::ParseError as LalrpopError;
 use std::fmt;
 
-use parse::{LexerError, Token};
+use crate::parse::{LexerError, Token};
 
-#[derive(Fail, Debug, Clone, PartialEq)]
+#[derive(failure::Fail, Debug, Clone, PartialEq)]
 pub enum ParseError {
     #[fail(display = "{}", _0)]
     Lexer(#[cause] LexerError),

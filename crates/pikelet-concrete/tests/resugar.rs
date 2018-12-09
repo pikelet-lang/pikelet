@@ -1,13 +1,6 @@
-extern crate codespan;
-extern crate moniker;
-extern crate pikelet_concrete;
-extern crate pikelet_core;
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
-
 use codespan::{ByteIndex, ByteSpan};
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
+use pretty_assertions::assert_eq;
 
 use pikelet_concrete::resugar::{Resugar, ResugarEnv};
 use pikelet_concrete::syntax::concrete;
