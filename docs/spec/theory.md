@@ -55,6 +55,82 @@ etc. If you would like to discuss this with us, please check out
 
 ## Syntax
 
+<!-- <div style="display:none;"> -->
+$$
+% Haskell-style append https://tex.stackexchange.com/questions/4194/how-to-typeset-haskell-operator-and-friends
+\gdef{\doubleplus}{+\kern-1.3ex+\kern0.8ex}
+% Small caps https://github.com/mathjax/MathJax-docs/wiki/Small-caps-%5Ctextsc-in-MathJaxx
+\gdef{\sc}#1{\dosc#1\csod}
+\gdef{\dosc}#1#2\csod{{\rm #1{\small #2}}}
+
+\gdef{\rule}{ \dfrac{ ~~#2~~ }{ ~~#3~~ } & \Tiny{\text{(#1)}}
+% \gdef{\inferrule}[]{\cfrac{#2}{#3}\;{#1}}
+
+\gdef{\max}{\text{max}}
+\gdef{\field}{\text{field}}
+\gdef{\fieldty}{\text{fieldty}}
+\gdef{\fieldsubst}{\text{fieldsubst}}
+\gdef{\Match}{\text{\sc{MATCH}}}
+\gdef{\shift}{\text{shift}}
+
+% Judgments
+\gdef{\eval}{ #1 \vdash #2 \hookrightarrow #3 }
+\gdef{\check}{ #1 \vdash #2 \uparrow #3 \leadsto #4 }
+\gdef{\infer}{ #1 \vdash #2 \downarrow #3 \leadsto #4 }
+\gdef{\subty}{ #1 \vdash #2 \preccurlyeq #3 }
+\gdef{\match}{ \Match(#1,#2) \Longrightarrow #3 }
+\gdef{\checkpat}{ #1 \vdash #2 \uparrow #3 \leadsto #4 \Longrightarrow #5 }
+\gdef{\inferpat}{ #1 \vdash #2 \downarrow #3 \leadsto #4 \Longrightarrow #5 }
+
+% Metavariables
+\gdef{\rexpr}{r} % raw expressions
+\gdef{\rtype}{R} % raw types
+\gdef{\rpat}{s}  % raw patterns
+
+\gdef{\texpr}{t} % expressions
+\gdef{\ttype}{T} % types
+\gdef{\tpat}{p}  % patterns
+
+\gdef{\vexpr}{v} % value expressions
+\gdef{\vtype}{V} % value types
+\gdef{\wexpr}{w} % whnf expressions
+\gdef{\wtype}{W} % whnf types
+\gdef{\nexpr}{n} % neutral expressions
+\gdef{\ntype}{N} % neutral types
+
+\gdef{\ctx}{\Gamma} % contexts
+
+% Keywords
+\gdef{\kw}{ \mathsf{#1} }
+
+% Term and Type constructors
+\gdef{\label}{l}
+\gdef{\binder}{x}
+\gdef{\var}{x^\wedge{#1}}
+\gdef{\Type}{\kw{Type}^\wedge{#1}}
+\gdef{\Arrow}{ #1 \rightarrow #2 }
+\gdef{\Pi}{ \Arrow{(#1)}{#2} }
+\gdef{\lam}{ \kw{\lambda} #1 . #2 }
+\gdef{\app}{ #1 ~ #2 }
+\gdef{\case}{ \kw{case} ~ #1 \left\{ #2 \right\} }
+\gdef{\RecordCons}{ \kw{Record} \left\{ #1; #2 \right\} }
+\gdef{\RecordEmpty}{ \kw{Record} \left\{\right\} }
+\gdef{\as}{ ~ \kw{as} ~ }
+\gdef{\record}{ \kw{record} \left\{ #1 \right\} }
+\gdef{\proj}{ #1.#2^\wedge{#3} }
+\gdef{\subst}{ #1 ~ [#2 \rightarrow #3] }
+
+% Items
+\gdef{\declItem}{ #1 : #2 }
+\gdef{\defnItem}{ #1 = #2 }
+
+% Contexts
+\gdef{\emptyCtx}{ \varnothing }
+\gdef{\composeCtx}{ #1 \sim #2 }
+\gdef{\extendCtx}{ #1, #2 }
+$$
+<!-- </div> -->
+
 ### Raw terms
 
 $$
