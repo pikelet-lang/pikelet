@@ -1,6 +1,6 @@
 //! The core syntax of the language
 
-use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use pretty::{BoxDoc, Doc};
 use std::fmt;
 use std::ops;
@@ -9,7 +9,7 @@ use std::rc::Rc;
 use crate::syntax::domain::{Head, Neutral, Value};
 use crate::syntax::{Label, Level, LevelShift, Literal, PRETTY_FALLBACK_WIDTH};
 
-#[derive(Debug, Clone, PartialEq, moniker::BoundPattern)]
+#[derive(Debug, Clone, PartialEq, BoundPattern)]
 pub enum Pattern {
     /// Patterns annotated with types
     Ann(RcPattern, Embed<RcTerm>),
@@ -51,7 +51,7 @@ impl fmt::Display for Pattern {
 }
 
 /// Reference counted patterns
-#[derive(Debug, Clone, PartialEq, moniker::BoundPattern)]
+#[derive(Debug, Clone, PartialEq, BoundPattern)]
 pub struct RcPattern {
     pub inner: Rc<Pattern>,
 }
@@ -79,7 +79,7 @@ impl fmt::Display for RcPattern {
 }
 
 /// The core term syntax
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Term {
     /// A term annotated with a type
     Ann(RcTerm, RcTerm),
@@ -287,7 +287,7 @@ impl fmt::Display for Term {
 }
 
 /// Reference counted terms
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct RcTerm {
     pub inner: Rc<Term>,
 }

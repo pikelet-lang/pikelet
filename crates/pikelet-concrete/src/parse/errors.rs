@@ -1,12 +1,13 @@
 use codespan::FileMap;
 use codespan::{ByteIndex, ByteSpan};
 use codespan_reporting::{Diagnostic, Label};
+use failure::Fail;
 use lalrpop_util::ParseError as LalrpopError;
 use std::fmt;
 
 use crate::parse::{LexerError, Token};
 
-#[derive(failure::Fail, Debug, Clone, PartialEq)]
+#[derive(Debug, Fail, Clone, PartialEq)]
 pub enum ParseError {
     #[fail(display = "{}", _0)]
     Lexer(#[cause] LexerError),
