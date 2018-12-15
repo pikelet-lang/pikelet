@@ -36,7 +36,7 @@ parser!(pattern, Pattern, PatternParser);
 parser!(term, Term, TermParser);
 
 mod grammar {
-    #![cfg_attr(feature = "cargo-clippy", allow(clippy))]
+    #![allow(clippy::all)]
 
     include!(concat!(env!("OUT_DIR"), "/parse/grammar.rs"));
 }
