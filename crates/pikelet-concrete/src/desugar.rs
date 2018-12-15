@@ -1,6 +1,7 @@
 use codespan::{ByteIndex, ByteOffset, ByteSpan};
 use codespan_reporting::{Diagnostic, Label as DiagnosticLabel};
 use im;
+use failure::Fail;
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use pikelet_core::syntax::{Label, Level, LevelShift};
@@ -51,7 +52,7 @@ impl DesugarEnv {
 }
 
 /// An error produced during resugaring
-#[derive(Debug, failure::Fail, Clone, PartialEq)]
+#[derive(Debug, Fail, Clone, PartialEq)]
 pub enum DesugarError {
     #[fail(
         display = "Name had more than one declaration associated with it: `{}`",

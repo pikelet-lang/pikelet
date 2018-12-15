@@ -211,20 +211,17 @@ fn resugar_fun_ty(
             resugar_term(&env, &ann, Prec::APP),
         )];
 
-        // Argument resugaring
-        #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))] // Need NLL in stable!
-        loop {
-            // Share a parameter list if another pi is nested directly inside.
-            // For example:
-            //
-            // ```
-            // (a : Type) -> (b : Type -> Type) -> ...
-            // (a : Type) (b : Type -> Type) -> ...
-            // ```
-            let ((next_binder, Embed(next_ann)), next_body) = match *body {
-                core::Term::FunType(ref scope) => scope.clone().unbind(),
-                _ => break,
-            };
+        // Parameter resugaring
+        //
+        // Share a parameter list if another pi is nested directly inside.
+        // For example:
+        //
+        // ```
+        // (a : Type) -> (b : Type -> Type) -> ...
+        // (a : Type) (b : Type -> Type) -> ...
+        // ```
+        while let core::Term::FunType(ref scope) = *body {
+            let ((next_binder, Embed(next_ann)), next_body) = scope.clone().unbind();
 
             if core::Term::term_eq(&ann, &next_ann) && next_binder.0.pretty_name.is_some() {
                 // Combine the parameters if the type annotations are
@@ -307,20 +304,17 @@ fn resugar_fun_intro(
         Some(Box::new(resugar_term(&env, &ann, Prec::LAM))),
     )];
 
-    // Argument resugaring
-    #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
-    loop {
-        // Share a parameter list if another lambda is nested directly inside.
-        // For example:
-        //
-        // ```
-        // \(a : Type) => \(b : Type -> Type) => ...
-        // \(a : Type) (b : Type -> Type) => ...
-        // ```
-        let ((next_binder, Embed(next_ann)), next_body) = match *body {
-            core::Term::FunIntro(ref scope) => scope.clone().unbind(),
-            _ => break,
-        };
+    // Parameter resugaring
+    //
+    // Share a parameter list if another lambda is nested directly inside.
+    // For example:
+    //
+    // ```
+    // \(a : Type) => \(b : Type -> Type) => ...
+    // \(a : Type) (b : Type -> Type) => ...
+    // ```
+    while let core::Term::FunIntro(ref scope) = *body {
+        let ((next_binder, Embed(next_ann)), next_body) = scope.clone().unbind();
 
         // Combine the parameters if the type annotations are alpha-equivalent.
         // For example:
@@ -405,12 +399,8 @@ fn resugar_let(
         }
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
-    loop {
-        let (bindings, next_body) = match *body {
-            core::Term::Let(ref scope) => scope.clone().unbind(),
-            _ => break,
-        };
+    while let core::Term::Let(ref scope) = *body {
+        let (bindings, next_body) = scope.clone().unbind();
 
         for (binder, Embed(term)) in bindings.unnest() {
             let next_name = env.on_binder(&binder);

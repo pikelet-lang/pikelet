@@ -1,6 +1,6 @@
 //! The semantic domain of the language
 
-use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use std::ops;
 use std::rc::Rc;
 
@@ -12,7 +12,7 @@ use crate::syntax::{Label, Level, LevelShift, Literal};
 /// These are either in _normal form_ (they cannot be reduced further) or are
 /// _neutral terms_ (there is a possibility of reducing further depending
 /// on the bindings given in the context)
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Value {
     /// Universes
     Universe(Level),
@@ -99,7 +99,7 @@ impl Value {
 }
 
 /// Reference counted values
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct RcValue {
     pub inner: Rc<Value>,
 }
@@ -155,7 +155,7 @@ impl ops::Deref for RcValue {
 }
 
 /// The head of an application
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Head {
     /// Variables that have not yet been replaced with a definition
     Var(Var<String>, LevelShift),
@@ -173,7 +173,7 @@ pub type Spine = Vec<RcValue>;
 ///
 /// These might be able to be reduced further depending on the bindings in the
 /// context
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub enum Neutral {
     /// Head of an application
     Head(Head),
@@ -190,7 +190,7 @@ impl Neutral {
 }
 
 /// Reference counted neutral values
-#[derive(Debug, Clone, PartialEq, moniker::BoundTerm)]
+#[derive(Debug, Clone, PartialEq, BoundTerm)]
 pub struct RcNeutral {
     pub inner: Rc<Neutral>,
 }

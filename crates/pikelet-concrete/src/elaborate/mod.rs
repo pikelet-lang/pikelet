@@ -353,7 +353,7 @@ pub fn check_term(
                     span: Some(span),
                     message: "unexpected arguments to `Array`".to_owned(),
                 })),
-            }
+            };
         },
 
         (&raw::Term::Hole(span), _) => {

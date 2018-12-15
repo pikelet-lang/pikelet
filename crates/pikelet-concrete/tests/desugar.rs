@@ -2,8 +2,8 @@ use codespan::{ByteSpan, CodeMap, FileName};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use goldenfile::Mint;
 use moniker::{assert_term_eq, Binder, Embed, FreeVar, Scope, Var};
-use std::io::Write;
 use pretty_assertions::assert_eq;
+use std::io::Write;
 
 use pikelet_concrete::desugar::{Desugar, DesugarEnv, DesugarError};
 use pikelet_concrete::parse;

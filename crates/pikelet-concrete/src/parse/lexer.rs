@@ -1,5 +1,6 @@
 use codespan::{ByteSpan, FileMap};
 use codespan_reporting::{Diagnostic, Label};
+use failure::Fail;
 
 use std::fmt;
 use std::str::{CharIndices, FromStr};
@@ -40,7 +41,7 @@ fn is_hex_digit(ch: char) -> bool {
 }
 
 /// An error that occurred while lexing the source file
-#[derive(failure::Fail, Debug, Clone, PartialEq, Eq)]
+#[derive(Fail, Debug, Clone, PartialEq, Eq)]
 pub enum LexerError {
     #[fail(display = "An unexpected character {:?} was found.", found)]
     UnexpectedCharacter { start: ByteIndex, found: char },
@@ -434,7 +435,7 @@ impl<'input> Lexer<'input> {
             Some((next, '\'')) => {
                 return Err(LexerError::EmptyCharLiteral {
                     span: ByteSpan::new(start, next + ByteOffset::from_char_utf8('\'')),
-                })
+                });
             },
             Some((_, ch)) => ch,
             None => return Err(LexerError::UnexpectedEof { end: start }),
@@ -533,7 +534,7 @@ pub type SpannedToken<'input> = (ByteIndex, Token<&'input str>, ByteIndex);
 impl<'input> Iterator for Lexer<'input> {
     type Item = Result<(ByteIndex, Token<&'input str>, ByteIndex), LexerError>;
 
-    #[cfg_attr(feature = "cargo-clippy", allow(cyclomatic_complexity))]
+    #[allow(clippy::cyclomatic_complexity)]
     fn next(&mut self) -> Option<Result<SpannedToken<'input>, LexerError>> {
         while let Some((start, ch)) = self.bump() {
             let end = start + ByteOffset::from_char_utf8(ch);

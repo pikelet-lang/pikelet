@@ -1,3 +1,4 @@
+use failure::Fail;
 use moniker::{Binder, Embed, FreeVar, Nest, Scope, Var};
 
 use crate::syntax::core::{Pattern, RcPattern, RcTerm, Term};
@@ -8,7 +9,7 @@ use crate::syntax::Import;
 ///
 /// If a term has been successfully type checked prior to evaluation or
 /// normalization, then this error should never be produced.
-#[derive(Debug, Clone, PartialEq, failure::Fail)]
+#[derive(Debug, Clone, PartialEq, Fail)]
 #[fail(display = "{}", message)]
 pub struct NbeError {
     pub message: String,
