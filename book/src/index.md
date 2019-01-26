@@ -15,10 +15,10 @@ Definitions:
 
 ```pikelet
 let
-    id : (a : Type) -> a -> a;
+    id : Fun (a : Type) -> a -> a;
     id a x = x;
 
-    const : (a b : Type) -> a -> b -> a;
+    const : Fun (a b : Type) -> a -> b -> a;
     const a b x y = x;
 in
     record {
@@ -37,7 +37,7 @@ $ cargo run repl
  / ____/ / ,< /  __/ /  __/ /_      https://github.com/pikelet-lang/pikelet
 /_/   /_/_/|_|\___/_/\___/\__/      :? for help
 
-Pikelet> (\(a : Type) (x : a) => x) String "hello"
+Pikelet> (fun (a : Type) (x : a) => x) String "hello"
 "hello" : String
 Pikelet> :t Type
 Type^1

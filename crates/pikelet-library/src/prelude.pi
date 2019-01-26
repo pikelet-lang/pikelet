@@ -63,19 +63,19 @@ record {
     prim = import "prim";
 
     ||| The polymorphic identity function
-    id : (a : Type) -> a -> a;
+    id : Fun (a : Type) -> a -> a;
     id a x = x;
 
     ||| Creates a function that always returns the same value
-    const : (a b : Type) -> a -> b -> a;
+    const : Fun (a b : Type) -> a -> b -> a;
     const a b x y = x;
 
     ||| Function composition
-    compose : (a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c);
+    compose : Fun (a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c);
     compose a b c f g x = f (g x);
 
     ||| Flip the order of the first two arguments to a function
-    flip : (a b c : Type) -> (a -> b -> c) -> (b -> a -> c);
+    flip : Fun (a b c : Type) -> (a -> b -> c) -> (b -> a -> c);
     flip a b c f x y = f y x;
 
 
@@ -92,11 +92,11 @@ record {
 
 
     ||| Dependent products
-    Prod : (A : Type) (B : A -> Type) -> Type;
-    Prod A B = (a : A) -> B a;
+    Prod : Fun (A : Type) (B : A -> Type) -> Type;
+    Prod A B = Fun (a : A) -> B a;
 
     ||| Dependent sums (subtypes)
-    Sum : (A : Type) (B : A -> Type) -> Type;
+    Sum : Fun (A : Type) (B : A -> Type) -> Type;
     Sum A B = Record {
         val : A;
         proof : B val;
@@ -110,7 +110,7 @@ record {
     };
 
     ||| Compare two terms for equality
-    eq : (a : Type) (EQ : Eq a) -> a -> a -> Bool;
+    eq : Fun (a : Type) (EQ : Eq a) -> a -> a -> Bool;
     eq _ EQ = EQ.eq;
 
     Eq-String : Eq String = record { eq = prim.string.eq };
@@ -139,10 +139,10 @@ record {
         append : a -> a -> a;
 
         -- TODO: Laws via property testing or proofs?
-        -- append-assoc : (x y z : a) -> append x (append y z) = append (append x y) z
+        -- append-assoc : Fun (x y z : a) -> append x (append y z) = append (append x y) z
     };
 
-    append : (a : Type) (S : Semigroup a) -> a -> a -> a;
+    append : Fun (a : Type) (S : Semigroup a) -> a -> a -> a;
     append _ S = S.append;
 
 
@@ -183,11 +183,11 @@ record {
         empty : a;
 
         -- TODO: Laws via property testing or proofs?
-        -- append-empty : (x : a) -> semigroup.append x empty = x
-        -- empty-append : (x : a) -> semigroup.append empty x = x
+        -- append-empty : Fun (x : a) -> semigroup.append x empty = x
+        -- empty-append : Fun (x : a) -> semigroup.append empty x = x
     };
 
-    empty : (a : Type) (M : Monoid a) -> a;
+    empty : Fun (a : Type) (M : Monoid a) -> a;
     empty _ M = M.empty;
 
 
@@ -229,7 +229,7 @@ record {
         inverse : a -> a;
 
         -- TODO: Laws via property testing or proofs?
-        -- append-left-inverse : (a : Type) -> monoid.semigroup.append (inverse a) a = monoid.empty
+        -- append-left-inverse : Fun (a : Type) -> monoid.semigroup.append (inverse a) a = monoid.empty
     };
 
 
@@ -245,16 +245,16 @@ record {
         -- TODO: Lawfulness?
     };
 
-    add : (a : Type) (N : Num a) -> a -> a -> a;
+    add : Fun (a : Type) (N : Num a) -> a -> a -> a;
     add a N = append a N.add.semigroup;
 
-    zero : (a : Type) (N : Num a) -> a;
+    zero : Fun (a : Type) (N : Num a) -> a;
     zero a N = empty a N.add;
 
-    mul : (a : Type) (N : Num a) -> a -> a -> a;
+    mul : Fun (a : Type) (N : Num a) -> a -> a -> a;
     mul a N = append a N.mul.semigroup;
 
-    one : (a : Type) (N : Num a) -> a;
+    one : Fun (a : Type) (N : Num a) -> a;
     one a N = empty a N.mul;
 
 
@@ -285,29 +285,29 @@ record {
         ||| Arrows between the objects in the category
         Arrow : Object -> Object -> Type;
         ||| The identity arrow
-        id : (a : Object) -> Arrow a a;
+        id : Fun (a : Object) -> Arrow a a;
         ||| The sequencing of two arrows
-        seq : (a b c : Object) -> Arrow a b -> Arrow b c -> Arrow a c;
+        seq : Fun (a b c : Object) -> Arrow a b -> Arrow b c -> Arrow a c;
 
         -- TODO: Laws via property testing or proofs?
         -- TODO: E-Category - ie. equivalence relation on morphisms?
         -- https://gist.github.com/brendanzab/9285eb8dfef5b6d6ccd87d90d6579590#gistcomment-2401643
-        -- id-left : (a b : Object) (f : Arrow a b) -> seq id f = f;
-        -- id-right : (a b : Object) (f : Arrow a b) -> seq f id = f;
-        -- seq-assoc : (a b c d : Object) (f : Arrow a b) (g : Arrow b c) (h : Arrow c d) -> seq (seq f g) h = seq f (seq g h);
-        -- seq-cong : (a b c : Object) (f0 f1 : Arrow a b) (g0 g1 : Arrow b c) (p : rel f0 f1) (q : g0 = g1) -> seq f0 g0 = seq f1 g1;
+        -- id-left : Fun (a b : Object) (f : Arrow a b) -> seq id f = f;
+        -- id-right : Fun (a b : Object) (f : Arrow a b) -> seq f id = f;
+        -- seq-assoc : Fun (a b c d : Object) (f : Arrow a b) (g : Arrow b c) (h : Arrow c d) -> seq (seq f g) h = seq f (seq g h);
+        -- seq-cong : Fun (a b c : Object) (f0 f1 : Arrow a b) (g0 g1 : Arrow b c) (p : rel f0 f1) (q : g0 = g1) -> seq f0 g0 = seq f1 g1;
     };
 
     -- ||| The identity arrow
-    -- id : (C : Category) (a : C.Object) -> C.Arrow a a;
+    -- id : Fun (C : Category) (a : C.Object) -> C.Arrow a a;
     -- id C = C.id;
 
     ||| The sequencing of two arrows
-    seq : (C : Category) (a b c : C.Object) -> C.Arrow a b -> C.Arrow b c -> C.Arrow a c;
+    seq : Fun (C : Category) (a b c : C.Object) -> C.Arrow a b -> C.Arrow b c -> C.Arrow a c;
     seq C = C.seq;
 
     -- ||| The composition of two arrows
-    -- compose : (C : Category) (a b c : C.Object) -> C.Arrow b c -> C.Arrow a b -> C.Arrow a c;
+    -- compose : Fun (C : Category) (a b c : C.Object) -> C.Arrow b c -> C.Arrow a b -> C.Arrow a c;
     -- compose C a b c f g = seq C a b c g f;
 
 
@@ -336,13 +336,13 @@ record {
         ||| Maps an object in `Source` to an object in `Target`
         Map : Source.Object -> Target.Object;
         ||| Maps an arrow in `Source` into an arrow in `Target`
-        map : (a b : Source.Object) -> Source.Arrow a b -> Target.Arrow (Map a) (Map b);
+        map : Fun (a b : Source.Object) -> Source.Arrow a b -> Target.Arrow (Map a) (Map b);
 
         -- TODO: Laws via property testing or proofs?
     };
 
     ||| Maps an arrow in `F.Source` into an arrow in `F.Target`
-    map : (F : Functor) (a b : F.Source.Object) -> F.Source.Arrow a b -> F.Target.Arrow (F.Map a) (F.Map b);
+    map : Fun (F : Functor) (a b : F.Source.Object) -> F.Source.Arrow a b -> F.Target.Arrow (F.Map a) (F.Map b);
     map F = F.map;
 
 

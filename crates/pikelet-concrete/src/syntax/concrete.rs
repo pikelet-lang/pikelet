@@ -412,13 +412,16 @@ impl Term {
                 .append(Doc::space())
                 .append(format!("{:?}", name)),
             Term::FunIntro(_, ref params, ref body) => Doc::nil()
-                .append("\\")
+                .append("fun")
+                .append(Doc::space())
                 .append(pretty_fun_intro_params(params))
                 .append(Doc::space())
                 .append("=>")
                 .append(Doc::space())
                 .append(body.to_doc()),
             Term::FunType(_, ref params, ref body) => Doc::nil()
+                .append("Fun")
+                .append(Doc::space())
                 .append(pretty_fun_ty_params(params))
                 .append(Doc::space())
                 .append("->")

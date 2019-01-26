@@ -11,8 +11,6 @@ use crate::parse::{LexerError, Token};
 pub enum ParseError {
     #[fail(display = "{}", _0)]
     Lexer(#[cause] LexerError),
-    #[fail(display = "An identifier was expected when parsing a pi type.")]
-    IdentifierExpectedInPiType { span: ByteSpan },
     #[fail(display = "Unknown repl command `:{}` found.", command)]
     UnknownReplCommand { span: ByteSpan, command: String },
     #[fail(display = "Unexpected EOF, expected one of: {}.", expected)]
@@ -73,8 +71,7 @@ impl ParseError {
     pub fn span(&self) -> ByteSpan {
         match *self {
             ParseError::Lexer(ref err) => err.span(),
-            ParseError::IdentifierExpectedInPiType { span }
-            | ParseError::UnknownReplCommand { span, .. }
+            ParseError::UnknownReplCommand { span, .. }
             | ParseError::UnexpectedToken { span, .. }
             | ParseError::ExtraToken { span, .. } => span,
             ParseError::UnexpectedEof { end, .. } => ByteSpan::new(end, end),
@@ -85,12 +82,6 @@ impl ParseError {
     pub fn to_diagnostic(&self) -> Diagnostic {
         match *self {
             ParseError::Lexer(ref err) => err.to_diagnostic(),
-            ParseError::IdentifierExpectedInPiType { span } => {
-                Diagnostic::new_error("identifier expected when parsing dependent function type")
-                    .with_label(
-                        Label::new_primary(span).with_message("ill-formed dependent function type"),
-                    )
-            },
             ParseError::UnknownReplCommand { span, ref command } => {
                 Diagnostic::new_error(format!("unknown repl command `:{}`", command))
                     .with_label(Label::new_primary(span).with_message("unexpected command"))

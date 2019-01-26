@@ -40,7 +40,7 @@ fn fun_intro() {
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
-        support::parse_nf_term(&mut codemap, &context, r"\x : Type => x"),
+        support::parse_nf_term(&mut codemap, &context, r"fun (x : Type) => x"),
         RcValue::from(Value::FunIntro(Scope::new(
             (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
             RcValue::from(Value::var(Var::Free(x), 0)),
@@ -56,7 +56,7 @@ fn fun_ty() {
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
-        support::parse_nf_term(&mut codemap, &context, r"(x : Type) -> x"),
+        support::parse_nf_term(&mut codemap, &context, r"Fun (x : Type) -> x"),
         RcValue::from(Value::FunType(Scope::new(
             (Binder(x.clone()), Embed(RcValue::from(Value::universe(0)))),
             RcValue::from(Value::var(Var::Free(x), 0)),
@@ -69,7 +69,7 @@ fn fun_intro_fun_app() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"\(x : Type -> Type) (y : Type) => x y";
+    let given_expr = r"fun (x : Type -> Type) (y : Type) => x y";
 
     let x = FreeVar::fresh_named("x");
     let y = FreeVar::fresh_named("y");
@@ -101,7 +101,7 @@ fn fun_ty_fun_app() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"(x : Type -> Type) -> (y : Type) -> x y";
+    let given_expr = r"Fun (x : Type -> Type) (y : Type) -> x y";
 
     let x = FreeVar::fresh_named("x");
     let y = FreeVar::fresh_named("y");
@@ -135,8 +135,8 @@ fn id_fun_app_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"(\(a : Type^1) (x : a) => x) Type";
-    let expected_expr = r"\x : Type => x";
+    let given_expr = r"(fun (a : Type^1) (x : a) => x) Type";
+    let expected_expr = r"fun (x : Type) => x";
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, given_expr),
@@ -150,7 +150,7 @@ fn id_fun_app_ty_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) Type";
+    let given_expr = r"(fun (a : Type^2) (x : a) => x) (Type^1) Type";
     let expected_expr = r"Type";
 
     assert_term_eq!(
@@ -166,7 +166,7 @@ fn id_fun_app_ty_arr_ty() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
+    let given_expr = r"(fun (a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
     let expected_expr = r"Type -> Type";
 
     assert_term_eq!(
@@ -182,11 +182,11 @@ fn id_fun_app_id() {
     let context = Context::default();
 
     let given_expr = r"
-            (\(a : Type^1) (x : a) => x)
-                ((a : Type) -> a -> a)
-                (\(a : Type) (x : a) => x)
+            (fun (a : Type^1) (x : a) => x)
+                (Fun (a : Type) -> a -> a)
+                (fun (a : Type) (x : a) => x)
         ";
-    let expected_expr = r"\(a : Type) (x : a) => x";
+    let expected_expr = r"fun (a : Type) (x : a) => x";
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, given_expr),
@@ -202,13 +202,13 @@ fn const_fun_app_id_ty() {
     let context = Context::default();
 
     let given_expr = r"
-        (\(a : Type^1) (b : Type^2) (x : a) (y : b) => x)
-            ((a : Type) -> a -> a)
+        (fun (a : Type^1) (b : Type^2) (x : a) (y : b) => x)
+            (Fun (a : Type) -> a -> a)
             (Type^1)
-            (\(a : Type) (x : a) => x)
+            (fun (a : Type) (x : a) => x)
             Type
     ";
-    let expected_expr = r"\(a : Type) (x : a) => x";
+    let expected_expr = r"fun (a : Type) (x : a) => x";
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, given_expr),
@@ -221,7 +221,9 @@ fn horrifying_fun_app_1() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"(\(t : Type) (f : (a : Type) -> Type) => f t) String (\(a : Type) => a)";
+    let given_expr = r"
+        (fun (t : Type) (f : Fun (a : Type) -> Type) => f t) String (fun (a : Type) => a)
+    ";
     let expected_expr = r"String";
 
     assert_term_eq!(
@@ -235,8 +237,8 @@ fn horrifying_fun_app_2() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r#"(\(t: String) (f: String -> String) => f t) "hello""#;
-    let expected_expr = r#"\(f : String -> String) => f "hello""#;
+    let given_expr = r#"(fun (t: String) (f: String -> String) => f t) "hello""#;
+    let expected_expr = r#"fun (f : String -> String) => f "hello""#;
 
     assert_term_eq!(
         support::parse_nf_term(&mut codemap, &context, given_expr),
@@ -385,7 +387,7 @@ fn record_ty_shadow() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let given_expr = r"(\t : Type => Record { String : Type; x : t; y : String }) String";
+    let given_expr = r"(fun (t : Type) => Record { String : Type; x : t; y : String }) String";
     let expected_expr = r#"Record { String as String1 : Type; x : String; y : String1 }"#;
 
     assert_term_eq!(

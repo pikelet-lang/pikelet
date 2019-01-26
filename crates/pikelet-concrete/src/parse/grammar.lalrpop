@@ -32,6 +32,8 @@ extern {
         "as" => Token::As,
         "case" => Token::Case,
         "else" => Token::Else,
+        "fun" => Token::Fun,
+        "Fun" => Token::FunType,
         "if" => Token::If,
         "import" => Token::Import,
         "in" => Token::In,
@@ -43,7 +45,6 @@ extern {
         "where" => Token::Where,
 
         // Symbols
-        "\\" => Token::BSlash,
         "^" => Token::Caret,
         ":" => Token::Colon,
         "," => Token::Comma,
@@ -127,10 +128,10 @@ ExprTerm: Term = {
         import_paths.push(path.clone());
         Term::Import(ByteSpan::new(start, end), ByteSpan::new(path_start, end), path)
     },
-    <start: @L> "\\" <name: IndexedIdent> ":" <ann: ArrowTerm> "=>" <body: ExprTerm> => {
-        Term::FunIntro(start, vec![(vec![name], Some(Box::new(ann)))], Box::new(body))
+    <start: @L> "Fun" <params: ("(" <IndexedIdent+> ":" <ExprTerm> ")")+> "->" <body: ExprTerm> => {
+        Term::FunType(start, params, Box::new(body))
     },
-    <start: @L> "\\" <params: AtomicLamParam+> "=>" <body: ExprTerm> => {
+    <start: @L> "fun" <params: AtomicLamParam+> "=>" <body: ExprTerm> => {
         Term::FunIntro(start, params, Box::new(body))
     },
     <start: @L> "if" <cond: AppTerm> "then" <if_true: AppTerm> "else" <if_false: AppTerm> => {
@@ -148,21 +149,8 @@ ExprTerm: Term = {
 
 ArrowTerm: Term = {
     AppTerm,
-    // Naively we would want to write the following rules:
-    //
-    // ```lalrpop
-    // <params: ("(" <IndexedIdent+> ":" <ArrowTerm> ")")+> "->" <body: ExprTerm> => {
-    //      Term::FunType(params, Box::new(body))
-    //  },
-    //  <ann: AppTerm> "->" <body: ExprTerm> => {
-    //      Term::Arrow(Box::new(ann), Box::new(body))
-    //  },
-    // ```
-    //
-    // Alas this causes an ambiguity with the `AtomicTerm` rule. Therefore we
-    // have to hack this in by reparsing the binder:
-    <start: @L> <binder: AppTerm> "->" <body: ExprTerm> <end: @R> =>? {
-        super::reparse_fun_ty_hack(ByteSpan::new(start, end), binder, body)
+    <start: @L> <param_ty: AppTerm> "->" <body_ty: ExprTerm> <end: @R> => {
+        Term::FunArrow(Box::new(param_ty), Box::new(body_ty))
     },
 };
 
@@ -207,7 +195,7 @@ AtomicTerm: Term = {
 
 AtomicLamParam: (Vec<(ByteIndex, String)>, Option<Box<Term>>) = {
     <name: IndexedIdent> => (vec![name], None),
-    "(" <names: IndexedIdent+> <ann: (":" <ArrowTerm>)?> ")" => (names, ann.map(Box::new)),
+    "(" <names: IndexedIdent+> <ann: (":" <ExprTerm>)?> ")" => (names, ann.map(Box::new)),
 };
 
 RecordTypeField: RecordTypeField = {

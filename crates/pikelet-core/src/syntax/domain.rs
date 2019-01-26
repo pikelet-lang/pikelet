@@ -1,6 +1,6 @@
 //! The semantic domain of the language
 
-use moniker::{Binder, BoundPattern, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
+use moniker::{Binder, BoundTerm, Embed, FreeVar, Nest, Scope, Var};
 use std::ops;
 use std::rc::Rc;
 

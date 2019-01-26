@@ -77,7 +77,7 @@ pub fn recv_content(reader: &mut impl BufRead) -> Result<String, io::Error> {
                 // Content-Length header
                 (Some("Content-Length"), Some(value)) => {
                     if content_len.is_none() {
-                        content_len = Some(value.trim_right().parse().map_err(|err| {
+                        content_len = Some(value.trim_end().parse().map_err(|err| {
                             io::Error::new(
                                 io::ErrorKind::InvalidData,
                                 format!("`Content-Length` was not a valid number: {:?}", err),

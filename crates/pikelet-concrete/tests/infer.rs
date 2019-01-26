@@ -83,7 +83,7 @@ fn ann_ty_id() {
     let context = Context::default();
 
     let expected_ty = r"Type -> Type";
-    let given_expr = r"(\a => a) : Type -> Type";
+    let given_expr = r"(fun a => a) : Type -> Type";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -97,7 +97,7 @@ fn ann_arrow_ty_id() {
     let context = Context::default();
 
     let expected_ty = r"(Type -> Type) -> (Type -> Type)";
-    let given_expr = r"(\a => a) : (Type -> Type) -> (Type -> Type)";
+    let given_expr = r"(fun a => a) : (Type -> Type) -> (Type -> Type)";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -111,7 +111,7 @@ fn ann_id_as_ty() {
     let context = Context::default();
     let desugar_env = DesugarEnv::new(context.mappings());
 
-    let given_expr = r"(\a => a) : Type";
+    let given_expr = r"(fun a => a) : Type";
 
     let raw_term = support::parse_term(&mut codemap, given_expr)
         .desugar(&desugar_env)
@@ -129,7 +129,7 @@ fn fun_app() {
     let context = Context::default();
 
     let expected_ty = r"Type^1";
-    let given_expr = r"(\a : Type^1 => a) Type";
+    let given_expr = r"(fun (a : Type^1) => a) Type";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -164,8 +164,8 @@ fn fun_intro() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a : Type) -> Type";
-    let given_expr = r"\a : Type => a";
+    let expected_ty = r"Fun (a : Type) -> Type";
+    let given_expr = r"fun (a : Type) => a";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -179,7 +179,7 @@ fn fun_ty() {
     let context = Context::default();
 
     let expected_ty = r"Type^1";
-    let given_expr = r"(a : Type) -> a";
+    let given_expr = r"Fun (a : Type) -> a";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -192,8 +192,8 @@ fn id() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a : Type) -> a -> a";
-    let given_expr = r"\(a : Type) (x : a) => x";
+    let expected_ty = r"Fun (a : Type) -> a -> a";
+    let given_expr = r"fun (a : Type) (x : a) => x";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -206,8 +206,8 @@ fn id_ann() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a : Type) -> a -> a";
-    let given_expr = r"(\a (x : a) => x) : (A : Type) -> A -> A";
+    let expected_ty = r"Fun (a : Type) -> a -> a";
+    let given_expr = r"(fun a (x : a) => x) : Fun (A : Type) -> A -> A";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -223,7 +223,7 @@ fn id_fun_app_ty() {
     let context = Context::default();
 
     let expected_ty = r"Type -> Type";
-    let given_expr = r"(\(a : Type^1) (x : a) => x) Type";
+    let given_expr = r"(fun (a : Type^1) (x : a) => x) Type";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -238,7 +238,7 @@ fn id_fun_app_ty_ty() {
     let context = Context::default();
 
     let expected_ty = r"Type^1";
-    let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) Type";
+    let given_expr = r"(fun (a : Type^2) (x : a) => x) (Type^1) Type";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -252,7 +252,7 @@ fn id_fun_app_ty_arr_ty() {
     let context = Context::default();
 
     let expected_ty = r"Type^1";
-    let given_expr = r"(\(a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
+    let given_expr = r"(fun (a : Type^2) (x : a) => x) (Type^1) (Type -> Type)";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -266,7 +266,7 @@ fn id_fun_app_arr_fun_ty() {
     let context = Context::default();
 
     let expected_ty = r"Type -> Type";
-    let given_expr = r"(\(a : Type^1) (x : a) => x) (Type -> Type) (\x => x)";
+    let given_expr = r"(fun (a : Type^1) (x : a) => x) (Type -> Type) (fun x => x)";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -279,8 +279,8 @@ fn apply() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a b : Type) -> (a -> b) -> a -> b";
-    let given_expr = r"\(a b : Type) (f : a -> b) (x : a) => f x";
+    let expected_ty = r"Fun (a b : Type) -> (a -> b) -> a -> b";
+    let given_expr = r"fun (a b : Type) (f : a -> b) (x : a) => f x";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -293,8 +293,8 @@ fn const_() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a b : Type) -> a -> b -> a";
-    let given_expr = r"\(a b : Type) (x : a) (y : b) => x";
+    let expected_ty = r"Fun (a b : Type) -> a -> b -> a";
+    let given_expr = r"fun (a b : Type) (x : a) (y : b) => x";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -307,8 +307,8 @@ fn const_flipped() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a b : Type) -> a -> b -> b";
-    let given_expr = r"\(a b : Type) (x : a) (y : b) => y";
+    let expected_ty = r"Fun (a b : Type) -> a -> b -> b";
+    let given_expr = r"fun (a b : Type) (x : a) (y : b) => y";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -321,8 +321,8 @@ fn flip() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a b c : Type) -> (a -> b -> c) -> (b -> a -> c)";
-    let given_expr = r"\(a b c : Type) (f : a -> b -> c) (y : b) (x : a) => f x y";
+    let expected_ty = r"Fun (a b c : Type) -> (a -> b -> c) -> (b -> a -> c)";
+    let given_expr = r"fun (a b c : Type) (f : a -> b -> c) (y : b) (x : a) => f x y";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -335,8 +335,8 @@ fn compose() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c)";
-    let given_expr = r"\(a b c : Type) (f : b -> c) (g : a -> b) (x : a) => f (g x)";
+    let expected_ty = r"Fun (a b c : Type) -> (b -> c) -> (a -> b) -> (a -> c)";
+    let given_expr = r"fun (a b c : Type) (f : b -> c) (g : a -> b) (x : a) => f (g x)";
 
     assert_term_eq!(
         support::parse_infer_term(&mut codemap, &context, given_expr).1,
@@ -388,7 +388,7 @@ fn let_shift_universes() {
 
     let given_expr = r#"
         let
-            id : (a : Type) -> a -> a;
+            id : Fun (a : Type) -> a -> a;
             id a x = x;
 
             test1 = id String "hello";
@@ -398,10 +398,10 @@ fn let_shift_universes() {
             test5 = id^2 Type^1 String;
             test6 = id^2 Type^1 Type;
 
-            id1 : (a : Type^1) -> a -> a = id^1;
-            id2 : (a : Type^2) -> a -> a = id^2;
-            id11 : (a : Type^2) -> a -> a = id1^1;
-            id22 : (a : Type^4) -> a -> a = id2^2;
+            id1 : Fun (a : Type^1) -> a -> a = id^1;
+            id2 : Fun (a : Type^2) -> a -> a = id^2;
+            id11 : Fun (a : Type^2) -> a -> a = id1^1;
+            id22 : Fun (a : Type^4) -> a -> a = id2^2;
         in
             record {}
     "#;
@@ -430,11 +430,11 @@ fn let_shift_universes_id_self_application() {
 
     let given_expr = r#"
         let
-            id : (a : Type) -> a -> a;
+            id : Fun (a : Type) -> a -> a;
             id a x = x;
 
-            id-id : (a : Type) -> a -> a;
-            id-id = id^1 ((a : Type) -> a -> a) id;
+            id-id : Fun (a : Type) -> a -> a;
+            id-id = id^1 (Fun (a : Type) -> a -> a) id;
         in
             record {}
     "#;
@@ -449,7 +449,7 @@ fn let_shift_universes_literals() {
 
     let given_expr = r#"
         let
-            id : (a : Type) -> a -> a;
+            id : Fun (a : Type) -> a -> a;
             id a x = x;
 
             test2 = "hello" : id^1 Type String;
@@ -468,7 +468,7 @@ fn let_shift_universes_literals_bad() {
 
     let given_expr = r#"
         let
-            id : (a : Type) -> a -> a;
+            id : Fun (a : Type) -> a -> a;
             id a x = x;
 
             test2 = "hello" : id^2 Type^1 String^1;
@@ -495,7 +495,7 @@ fn let_shift_universes_too_little() {
 
     let given_expr = r#"
         let
-            id : (a : Type) -> a -> a;
+            id : Fun (a : Type) -> a -> a;
             id a x = x;
 
             test1 = id^1 Type^1 Type;
@@ -521,7 +521,7 @@ fn let_shift_universes_too_much() {
 
     let given_expr = r#"
         let
-            id : (a : Type) -> a -> a;
+            id : Fun (a : Type) -> a -> a;
             id a x = x;
 
             test1 = id^2 Type String;
@@ -637,7 +637,7 @@ mod church_encodings {
         } where {
             ||| Logical absurdity
             void : Type^1;
-            void = (a : Type) -> a;
+            void = Fun (a : Type) -> a;
 
 
             ||| Logical negation
@@ -659,12 +659,12 @@ mod church_encodings {
             unit; unit-intro; unit-elim;
         } where {
             unit : Type^1;
-            unit = (a : Type) -> a -> a;
+            unit = Fun (a : Type) -> a -> a;
 
             unit-intro : unit;
             unit-intro a x = x;
 
-            unit-elim : (a : Type) -> unit -> a -> a;
+            unit-elim : Fun (a : Type) -> unit -> a -> a;
             unit-elim a f x = f a x;
         }
     ";
@@ -685,17 +685,17 @@ mod church_encodings {
                 |||
                 ||| You could also interpret this as a product type
                 and : Type -> Type -> Type^1;
-                and p q = (c : Type) -> (p -> q -> c) -> c;
+                and p q = Fun (c : Type) -> (p -> q -> c) -> c;
 
                 ||| Introduce a logical conjunction between two types
-                and-intro : (p q : Type) -> p -> q -> and p q;
+                and-intro : Fun (p q : Type) -> p -> q -> and p q;
                 and-intro p q x y c f = f x y;
 
-                and-elim-left : (p q : Type) -> and p q -> p;
-                and-elim-left p q (pq : and p q) = pq p (\x y => x);
+                and-elim-left : Fun (p q : Type) -> and p q -> p;
+                and-elim-left p q (pq : and p q) = pq p (fun x y => x);
 
-                and-elim-right : (p q : Type) -> and p q -> q;
-                and-elim-right p q (pq : and p q) = pq q (\x y => y);
+                and-elim-right : Fun (p q : Type) -> and p q -> q;
+                and-elim-right p q (pq : and p q) = pq q (fun x y => y);
             }
         ";
 
@@ -715,15 +715,15 @@ mod church_encodings {
                 |||
                 ||| You could also interpret this as a sum type
                 or : Type -> Type -> Type^1;
-                or p q = (c : Type) -> (p -> c) -> (q -> c) -> c;
+                or p q = Fun (c : Type) -> (p -> c) -> (q -> c) -> c;
 
-                or-intro-left : (p q : Type) -> p -> or p q;
+                or-intro-left : Fun (p q : Type) -> p -> or p q;
                 or-intro-left p q x =
-                    \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-p x;
+                    fun (c : Type) (on-p : p -> c) (on-q : q -> c) => on-p x;
 
-                or-intro-right : (p q : Type) -> q -> or p q;
+                or-intro-right : Fun (p q : Type) -> q -> or p q;
                 or-intro-right p q y =
-                    \(c : Type) (on-p : p -> c) (on-q : q -> c) => on-q y;
+                    fun (c : Type) (on-p : p -> c) (on-q : q -> c) => on-q y;
             }
         ";
 
@@ -850,7 +850,7 @@ fn record_proj_weird2() {
     let given_expr = r"Record {
         Array : U16 -> Type -> Type;
         t : Record { n : U16; x : Array n S8; y : Array n S8 };
-        inner-prod : (len : U16) -> Array len S8 -> Array len S8 -> S32;
+        inner-prod : Fun (len : U16) -> Array len S8 -> Array len S8 -> S32;
 
         test1 : S32 -> Type;
         test2 : test1 (inner-prod t.n t.x t.y);
@@ -867,9 +867,9 @@ fn record_proj_shift() {
     let mut codemap = CodeMap::new();
     let context = Context::default();
 
-    let expected_ty = r"(a : Type^1) -> a -> a";
+    let expected_ty = r"Fun (a : Type^1) -> a -> a";
     let given_expr = r"record {
-        id = \(a : Type) (x : a) => x;
+        id = fun (a : Type) (x : a) => x;
     }.id^1";
 
     assert_term_eq!(

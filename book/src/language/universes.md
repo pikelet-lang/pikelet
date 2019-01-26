@@ -105,8 +105,8 @@ universe levels. For example the identity function can be defined with a type
 parameter in the universe of `Type`:
 
 ```pikelet-repl
-Pikelet> :let id = \(a : Type) (x : a) => x
-id : (a : Type) (x : a) -> a
+Pikelet> :let id = fun (a : Type) (x : a) => x
+id : Fun (a : Type) (x : a) -> a
 ```
 
 This then allows us to use it with values:
@@ -121,7 +121,7 @@ the type level!
 
 ```pikelet-repl
 Pikelet> id Type String                 -- error!
-Pikelet> id ((a : Type) -> a -> a) id   -- error!
+Pikelet> id (Fun (a : Type) -> a -> a) id   -- error!
 Pikelet> id Type^1 Type                 -- error!
 ```
 
@@ -133,14 +133,14 @@ level:
 
 ```pikelet-repl
 Pikelet> :t id^1
-(a : Type^1) -> a -> a
+Fun (a : Type^1) -> a -> a
 ```
 
 We can then use the shifted identity functions like so:
 
 ```pikelet-repl
 Pikelet> id^1 Type String                    -- ok
-Pikelet> id^1 ((a : Type) -> a -> a) id      -- ok
+Pikelet> id^1 (Fun (a : Type) -> a -> a) id  -- ok
 Pikelet> id^2 Type^1 Type                    -- ok
 ```
 

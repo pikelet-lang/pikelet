@@ -112,7 +112,7 @@ fn fun_intro_ann() {
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"\x : Type -> Type => x"),
+        parse_desugar_term(&env, r"fun (x : Type -> Type) => x"),
         RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
@@ -138,7 +138,7 @@ fn fun_intro() {
     let hole = || RcTerm::from(Term::Hole(ByteSpan::default()));
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"\x : (\y => y) => x"),
+        parse_desugar_term(&env, r"fun (x : fun y => y) => x"),
         RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
@@ -163,7 +163,7 @@ fn fun_intro2_ann() {
     let y = FreeVar::fresh_named("y");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"\(x y : Type) => x"),
+        parse_desugar_term(&env, r"fun (x y : Type) => x"),
         RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
@@ -197,7 +197,7 @@ fn fun_ty() {
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"(x : Type -> Type) -> x"),
+        parse_desugar_term(&env, r"Fun (x : Type -> Type) -> x"),
         RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
@@ -222,7 +222,7 @@ fn fun_ty2() {
     let y = FreeVar::fresh_named("y");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"(x y : Type) -> x"),
+        parse_desugar_term(&env, r"Fun (x y : Type) -> x"),
         RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
@@ -243,7 +243,7 @@ fn fun_ty_arrow() {
     let x = FreeVar::fresh_named("x");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"(x : Type) -> x -> x"),
+        parse_desugar_term(&env, r"Fun (x : Type) -> x -> x"),
         RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
@@ -265,7 +265,7 @@ fn fun_intro_fun_app() {
     let y = FreeVar::fresh_named("y");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"\(x : Type -> Type) (y : Type) => x y"),
+        parse_desugar_term(&env, r"fun (x : Type -> Type) (y : Type) => x y"),
         RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
@@ -296,7 +296,7 @@ fn id() {
     let a = FreeVar::fresh_named("a");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"\(a : Type) (x : a) => x"),
+        parse_desugar_term(&env, r"fun (a : Type) (x : a) => x"),
         RcTerm::from(Term::FunIntro(
             ByteSpan::default(),
             Scope::new(
@@ -317,7 +317,7 @@ fn id_ty() {
     let a = FreeVar::fresh_named("a");
 
     assert_term_eq!(
-        parse_desugar_term(&env, r"(a : Type) -> a -> a"),
+        parse_desugar_term(&env, r"Fun (a : Type) -> a -> a"),
         RcTerm::from(Term::FunType(
             ByteSpan::default(),
             Scope::new(
@@ -443,8 +443,8 @@ mod sugar {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
-            parse_desugar_term(&env, r"\x (y : Type) z => x"),
-            parse_desugar_term(&env, r"\x => \y : Type => \z => x"),
+            parse_desugar_term(&env, r"fun x (y : Type) z => x"),
+            parse_desugar_term(&env, r"fun x => fun (y : Type) => fun z => x"),
         );
     }
 
@@ -453,8 +453,8 @@ mod sugar {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
-            parse_desugar_term(&env, r"\(x : Type) (y : Type) z => x"),
-            parse_desugar_term(&env, r"\(x y : Type) z => x"),
+            parse_desugar_term(&env, r"fun (x : Type) (y : Type) z => x"),
+            parse_desugar_term(&env, r"fun (x y : Type) z => x"),
         );
     }
 
@@ -463,8 +463,11 @@ mod sugar {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
-            parse_desugar_term(&env, r"(a : Type) -> (x y z : a) -> x"),
-            parse_desugar_term(&env, r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> x"),
+            parse_desugar_term(&env, r"Fun (a : Type) -> Fun (x y z : a) -> x"),
+            parse_desugar_term(
+                &env,
+                r"Fun (a : Type) -> Fun (x : a) -> Fun (y : a) -> Fun (z : a) -> x"
+            ),
         );
     }
 
@@ -473,10 +476,10 @@ mod sugar {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
-            parse_desugar_term(&env, r"(a : Type) (x y z : a) (w : x) -> x"),
+            parse_desugar_term(&env, r"Fun (a : Type) (x y z : a) (w : x) -> x"),
             parse_desugar_term(
                 &env,
-                r"(a : Type) -> (x : a) -> (y : a) -> (z : a) -> (w : x) -> x"
+                r"Fun (a : Type) -> Fun (x : a) -> Fun (y : a) -> Fun (z : a) -> Fun (w : x) -> x"
             ),
         );
     }
@@ -486,8 +489,8 @@ mod sugar {
         let env = DesugarEnv::new(im::HashMap::new());
 
         assert_term_eq!(
-            parse_desugar_term(&env, r"(a : Type) -> a -> a"),
-            parse_desugar_term(&env, r"(a : Type) -> (x : a) -> a"),
+            parse_desugar_term(&env, r"Fun (a : Type) -> a -> a"),
+            parse_desugar_term(&env, r"Fun (a : Type) -> Fun (x : a) -> a"),
         )
     }
 

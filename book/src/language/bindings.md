@@ -55,8 +55,8 @@ We have some nice syntactic sugar for defining functions. For example:
 
 ```pikelet
 let
-    const : (a b : Type) -> a -> b -> a;
-    const = \a b x y => x;
+    const : Fun (a b : Type) -> a -> b -> a;
+    const = fun a b x y => x;
 in
     const String I32 "hello" 1
 ```
@@ -65,7 +65,7 @@ Could be expressed more cleanly as:
 
 ```pikelet
 let
-    const : (a b : Type) -> a -> b -> a;
+    const : Fun (a b : Type) -> a -> b -> a;
     const a b x y = x;
 in
     const String I32 "hello" 1

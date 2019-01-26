@@ -138,13 +138,30 @@ impl Term {
                 .append("import")
                 .append(Doc::space())
                 .append(format!("{:?}", name)),
-            Term::FunIntro(ref scope) => Doc::nil()
-                .append("\\")
+            Term::FunType(ref scope) => Doc::nil()
+                .append("Fun")
+                .append(Doc::space())
+                .append("(")
                 .append(Doc::as_string(&scope.unsafe_pattern.0))
                 .append(Doc::space())
                 .append(":")
                 .append(Doc::space())
-                .append((scope.unsafe_pattern.1).0.to_doc_arrow())
+                .append((scope.unsafe_pattern.1).0.to_doc_expr())
+                .append(")")
+                .append(Doc::space())
+                .append("->")
+                .append(Doc::space())
+                .append(scope.unsafe_body.to_doc_expr()),
+            Term::FunIntro(ref scope) => Doc::nil()
+                .append("fun")
+                .append(Doc::space())
+                .append("(")
+                .append(Doc::as_string(&scope.unsafe_pattern.0))
+                .append(Doc::space())
+                .append(":")
+                .append(Doc::space())
+                .append((scope.unsafe_pattern.1).0.to_doc_expr())
+                .append(")")
                 .append(Doc::space())
                 .append("=>")
                 .append(Doc::space())
@@ -188,24 +205,6 @@ impl Term {
                 ))
                 .append(Doc::space())
                 .append("in")
-                .append(Doc::space())
-                .append(scope.unsafe_body.to_doc_expr()),
-            ref term => term.to_doc_arrow(),
-        }
-    }
-
-    fn to_doc_arrow(&self) -> Doc<BoxDoc<()>> {
-        match *self {
-            Term::FunType(ref scope) => Doc::nil()
-                .append("(")
-                .append(Doc::as_string(&scope.unsafe_pattern.0))
-                .append(Doc::space())
-                .append(":")
-                .append(Doc::space())
-                .append((scope.unsafe_pattern.1).0.to_doc_arrow())
-                .append(")")
-                .append(Doc::space())
-                .append("->")
                 .append(Doc::space())
                 .append(scope.unsafe_body.to_doc_expr()),
             ref term => term.to_doc_app(),

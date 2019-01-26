@@ -45,8 +45,8 @@ Pikelet> Type^2
 Pikelet> record { name = "Jane" }
 Pikelet> Record { name : String }
 Pikelet> record { x = 3.0 : F32; y = 3.0 : F32 }
-Pikelet> \x : Int => x
-Pikelet> (a : Type) -> a
+Pikelet> fun (x : Int) => x
+Pikelet> Fun (a : Type) -> a
 ```
 
 ### Checkable terms
@@ -60,14 +60,14 @@ information can be supplied.
 Pikelet> 1
 Pikelet> 2.0
 Pikelet> record { x = 3.0; y = 3.0 }
-Pikelet> \x => x
+Pikelet> fun x => x
 ```
 
 ```pikelet-repl
 Pikelet> 1 : S32
 Pikelet> 2.0 : F32
 Pikelet> record { x = 3.0; y = 3.0 } : Record { x : F32; y : F32 }
-Pikelet> \x => x : S32 -> S32
+Pikelet> fun x => x : S32 -> S32
 ```
 
 ## Further reading

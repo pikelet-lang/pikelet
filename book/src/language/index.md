@@ -67,12 +67,14 @@ error: found a floating point literal, but expected a type `U64`
 > TODO
 
 ## Keywords
+
 | Keyword  | Documentation                             |
 |----------|-------------------------------------------|
 | `as`     | [internal field names]                    |
 | `case`   | [case expressions]                        |
 | `else`   | [if-then-else-expressions]                |
-| `extern` |                                           |
+| `fun`    | [function] values                         |
+| `Fun`    | [function] types                          |
 | `if`     | [if-then-else-expressions]                |
 | `import` |                                           |
 | `in`     | [bindings]                                |
@@ -85,6 +87,7 @@ error: found a floating point literal, but expected a type `U64`
 
 [if-then-else-expressions]: conditionals.html#if-then-else-expressions
 [case expressions]: conditionals.html#case-expressions
+[function]: functions.html
 [bindings]: bindings.html
 [record]: records.html
 [polymorphic functions]: functions.html

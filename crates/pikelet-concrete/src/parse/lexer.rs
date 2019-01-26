@@ -151,6 +151,8 @@ pub enum Token<S> {
     As,         // as
     Case,       // case
     Else,       // else
+    Fun,        // fun
+    FunType,    // Fun
     If,         // if
     Import,     // import
     In,         // in
@@ -198,6 +200,8 @@ impl<S: fmt::Display> fmt::Display for Token<S> {
             Token::As => write!(f, "as"),
             Token::Case => write!(f, "case"),
             Token::Else => write!(f, "else"),
+            Token::Fun => write!(f, "fun"),
+            Token::FunType => write!(f, "Fun"),
             Token::If => write!(f, "if"),
             Token::Import => write!(f, "import"),
             Token::In => write!(f, "in"),
@@ -243,6 +247,8 @@ impl<'input> From<Token<&'input str>> for Token<String> {
             Token::As => Token::As,
             Token::Case => Token::Case,
             Token::Else => Token::Else,
+            Token::Fun => Token::Fun,
+            Token::FunType => Token::FunType,
             Token::If => Token::If,
             Token::Import => Token::Import,
             Token::In => Token::In,
@@ -378,6 +384,8 @@ impl<'input> Lexer<'input> {
             "as" => Token::As,
             "case" => Token::Case,
             "else" => Token::Else,
+            "fun" => Token::Fun,
+            "Fun" => Token::FunType,
             "if" => Token::If,
             "import" => Token::Import,
             "in" => Token::In,
@@ -695,19 +703,21 @@ mod tests {
     #[test]
     fn keywords() {
         test! {
-            "  as case else if import in let record Record then Type where  ",
-            "  ~~                                                              " => Token::As,
-            "     ~~~~                                                         " => Token::Case,
-            "          ~~~~                                                    " => Token::Else,
-            "               ~~                                                 " => Token::If,
-            "                  ~~~~~~                                          " => Token::Import,
-            "                         ~~                                       " => Token::In,
-            "                            ~~~                                   " => Token::Let,
-            "                                ~~~~~~                            " => Token::Record,
-            "                                       ~~~~~~                     " => Token::RecordType,
-            "                                              ~~~~                " => Token::Then,
-            "                                                   ~~~~           " => Token::Type,
-            "                                                        ~~~~~     " => Token::Where,
+            "  as case fun Fun else if import in let record Record then Type where  ",
+            "  ~~                                                                   " => Token::As,
+            "     ~~~~                                                              " => Token::Case,
+            "          ~~~                                                          " => Token::Fun,
+            "              ~~~                                                      " => Token::FunType,
+            "                  ~~~~                                                 " => Token::Else,
+            "                       ~~                                              " => Token::If,
+            "                          ~~~~~~                                       " => Token::Import,
+            "                                 ~~                                    " => Token::In,
+            "                                    ~~~                                " => Token::Let,
+            "                                        ~~~~~~                         " => Token::Record,
+            "                                               ~~~~~~                  " => Token::RecordType,
+            "                                                      ~~~~             " => Token::Then,
+            "                                                           ~~~~        " => Token::Type,
+            "                                                                ~~~~~  " => Token::Where,
         };
     }
 

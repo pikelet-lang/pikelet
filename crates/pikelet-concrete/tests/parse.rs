@@ -25,46 +25,6 @@ fn imports() {
 }
 
 #[test]
-fn fun_ty_bad_ident() {
-    let src = "((x : Type) : Type) -> Type";
-    let mut codemap = CodeMap::new();
-    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
-
-    let parse_result = parse::term(&filemap);
-
-    assert_eq!(
-        parse_result,
-        (
-            concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(28))),
-            vec![],
-            vec![ParseError::IdentifierExpectedInPiType {
-                span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
-            }],
-        )
-    );
-}
-
-#[test]
-fn fun_ty_bad_ident_multi() {
-    let src = "((x : Type) : Type) (x : Type) -> Type";
-    let mut codemap = CodeMap::new();
-    let filemap = codemap.add_filemap(FileName::virtual_("test"), src.into());
-
-    let parse_result = parse::term(&filemap);
-
-    assert_eq!(
-        parse_result,
-        (
-            concrete::Term::Error(ByteSpan::new(ByteIndex(1), ByteIndex(39))),
-            vec![],
-            vec![ParseError::IdentifierExpectedInPiType {
-                span: ByteSpan::new(ByteIndex(2), ByteIndex(12)),
-            }],
-        )
-    );
-}
-
-#[test]
 fn integer_overflow() {
     let src = "Type^111111111111111111111111111111";
     let mut codemap = CodeMap::new();
