@@ -18,6 +18,9 @@ support for [projectional editing][structure-editor-wikipedia] in the future.
 [dhall]: https://dhall-lang.org/
 [structure-editor-wikipedia]: https://en.wikipedia.org/wiki/Structure_editor
 
+<details>
+  <summary>Full Roadmap</summary>
+
 ### Language
 
 - Basic config language
@@ -108,3 +111,5 @@ support for [projectional editing][structure-editor-wikipedia] in the future.
 - [ ] References
   - [ ] Papers
   - [ ] Languages
+
+</details>
