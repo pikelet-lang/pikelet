@@ -1,0 +1,13 @@
+[package]
+name = "pikelet-cli"
+version = "0.1.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+edition = "2018"
+publish = false
+description = "Command line interface for interacting with the Pikelet programming language"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pikelet = { path = "../pikelet" }
