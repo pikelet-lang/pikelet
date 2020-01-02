@@ -1,0 +1,47 @@
+use crate::surface::{Term, Literal};
+
+grammar;
+
+pub Term: Term<&'input str> = {
+    TermAtomic,
+    <start: @L> "Array" <arg0: TermAtomic> <arg1: TermAtomic> <end: @R> => Term::ArrayType(start..end, Box::new(arg0), Box::new(arg1)),
+    <start: @L> "List" <arg: TermAtomic> <end: @R> => Term::ListType(start..end, Box::new(arg)),
+    <term: Term> ":" <ty: TermAtomic> => Term::Ann(Box::new(term), Box::new(ty)),
+};
+
+TermAtomic: Term<&'input str> = {
+    "(" <term: Term> ")" => term,
+    <start: @L> <name: Name> <end: @R> => Term::Name(start..end, name),
+    <start: @L> <literal: Literal> <end: @R> => Term::Literal(start..end, literal),
+    <start: @L> "[" <entries: List<Term>> "]" <end: @R> => Term::Sequence(start..end, entries),
+    <start: @L> "Record" "{" <entries: List<TypeEntry>> "}" <end: @R> => Term::RecordType(start..end, entries),
+    <start: @L> "record" "{" <entries: List<TermEntry>> "}" <end: @R> => Term::RecordTerm(start..end, entries),
+    <start: @L> <term: TermAtomic> <shift: r"\^[0-9]+(\.[0-9]+)?"> <end: @R> => {
+        Term::Lift(start..end, Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
+    },
+};
+
+List<Entry>: Vec<Entry> = {
+    <mut entries: (<Entry> ",")*> <last: Entry?> => {
+        entries.extend(last);
+        entries
+    }
+}
+
+TypeEntry: (&'input str, Term<&'input str>) = {
+    <Name> ":" <Term> => (<>),
+};
+
+TermEntry: (&'input str, Term<&'input str>) = {
+    <Name> "=" <Term> => (<>),
+};
+
+Name: &'input str = {
+    r"[a-zA-Z][a-zA-Z0-9\-]*" => <>,
+};
+
+Literal: Literal<&'input str> = {
+    r#"'(.|\\"|\\')*'"# => Literal::Char(<>),
+    r#""(.|\\"|\\')*""# => Literal::String(<>),
+    r"[-+]?[0-9]+(\.[0-9]+)?" => Literal::Number(<>),
+};
