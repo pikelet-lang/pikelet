@@ -53,20 +53,20 @@ fn run_test(input: &str) {
 
 #[test]
 fn cube() {
-    run_test(include_str!("../samples/cube.pi"));
+    run_test(include_str!("../../examples/cube.pi"));
 }
 
 #[test]
 fn hello_world() {
-    run_test(include_str!("../samples/hello-world.pi"));
+    run_test(include_str!("../../examples/hello-world.pi"));
 }
 
 #[test]
 fn universes() {
-    run_test(include_str!("../samples/universes.pi"));
+    run_test(include_str!("../../examples/universes.pi"));
 }
 
 #[test]
 fn window_settings() {
-    run_test(include_str!("../samples/window-settings.pi"));
+    run_test(include_str!("../../examples/window-settings.pi"));
 }

@@ -76,6 +76,7 @@ support for [projectional editing][structure-editor-wikipedia] in the future.
 - [ ] REPL
 - [ ] Package manager
 - [ ] Auto-formatter for surface language
+- [ ] Structured editor
 
 ### Testing
 
