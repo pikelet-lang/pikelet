@@ -9,7 +9,7 @@ We'll aim to provide multiple levels of documentation for different purposes:
 
 - [Guide][guide]: For people new to the language
 - [Reference][reference]: For people wanting to learn more about individual language features
-- [Contibuting][contributing]: For people wanting to contribute to the language
+- [Contributing][contributing]: For people wanting to contribute to the language
 - [Specification][specification]: For Pikelet developers and researchers
 
 [guide]: ./guide
