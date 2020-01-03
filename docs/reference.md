@@ -14,13 +14,17 @@ Topics might include:
   - introduction
   - elimination
 - sequences
-  - lists
-  - arrays
 - literals
   - numbers
   - strings
   - characters
 - builtin types
+  - floating point
+  - signed/unsigned integers
+  - strings
+  - characters
+  - lists
+  - arrays
 - universes
   - cumulativity
   - lifting operator
