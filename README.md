@@ -98,19 +98,4 @@ support for [projectional editing][structure-editor-wikipedia] in the future.
 - [ ] Derive macro for generating marshalling trait implementations
 - [ ] More efficient, visitor based marshalling
 
-### Documentation
-
-- [ ] Guide
-- [ ] Specification
-  - [ ] Surface
-    - [ ] Syntax
-    - [ ] Elaboration
-  - [ ] Core
-    - [ ] Syntax
-    - [ ] Typing
-    - [ ] Operational semantics
-- [ ] References
-  - [ ] Papers
-  - [ ] Languages
-
 </details>
