@@ -6,6 +6,11 @@ edition = "2018"
 publish = false
 description = "The Pikelet programming language"
 readme = "../README.md"
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 lalrpop-util = "0.17"
