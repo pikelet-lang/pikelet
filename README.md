@@ -1,11 +1,29 @@
-# Pikelet
+# Pikelet!
 
-A simple language.
+![Pikelet Mascot][pikelet-mascot]
 
-This is planned to meet the demands of the 'next version of Pikelet', as
-described in [_Pondering the next version of Pikelet_][next-pikelet].
+[pikelet-mascot]: assets/pikelet.png
 
-[next-pikelet]: https://gist.github.com/brendanzab/eba7015e6345abe79a57a704091820bb/.
+[![Build Status][travis-badge]][travis-url]
+[![Gitter][gitter-badge]][gitter-lobby]
+
+[travis-badge]: https://travis-ci.org/pikelet-lang/pikelet.svg?branch=master
+[travis-url]: https://travis-ci.org/pikelet-lang/pikelet
+[gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
+[gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
+
+Pikelet is a small, functional, dependently typed programming language.
+
+Dependent types allow us to do a bunch of really interesting things, like using
+records for modules, declaring the length of arrays at the type level, and
+much more — many of great utility for low-level and high-level code alike!
+
+We hope to one day grow Pikelet into fully-fledged systems programming language,
+with support for unboxed data types, control over memory layout and allocation
+strategy, linear types, and a flexible phase distinction and support for calling
+other languages. At the moment however we've only implemented a type checker and
+very slow  interpreter, so don't get your hopes up too much yet! There's still a
+whole lot to do before it is even remotely useful to anyone! 😅
 
 ## Roadmap
 
@@ -17,6 +35,10 @@ support for [projectional editing][structure-editor-wikipedia] in the future.
 
 [dhall]: https://dhall-lang.org/
 [structure-editor-wikipedia]: https://en.wikipedia.org/wiki/Structure_editor
+
+You can read more about what we hope to achieve in [_Pondering the next version of Pikelet_][next-pikelet].
+
+[next-pikelet]: https://gist.github.com/brendanzab/eba7015e6345abe79a57a704091820bb/.
 
 <details>
   <summary>Full Roadmap</summary>
