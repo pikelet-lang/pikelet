@@ -47,12 +47,12 @@ pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Value {
                 Some(value) => (**value).clone(), // TODO: return `Arc<Value>`?
                 None => Value::Error,
             },
-            Value::Neutral(head, mut elims, r#type) => match r#type.as_ref() {
+            Value::Elim(head, mut elims, r#type) => match r#type.as_ref() {
                 Value::RecordType(type_entries) => {
                     match type_entries.iter().find(|(n, _)| n == name) {
                         Some((_, entry_type)) => {
                             elims.push(Elim::Record(name.clone()));
-                            Value::Neutral(head, elims, entry_type.clone())
+                            Value::Elim(head, elims, entry_type.clone())
                         }
                         None => Value::Error,
                     }
@@ -77,8 +77,8 @@ pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Value {
     }
 }
 
-/// Read-back a neutral value into the term syntax.
-pub fn read_back_neutral(/* TODO: level, */ head: &Head, spine: &[Elim]) -> Term {
+/// Read-back an eliminator into the term syntax.
+pub fn read_back_elim(/* TODO: level, */ head: &Head, spine: &[Elim]) -> Term {
     let head = match head {
         Head::Global(name, shift) => Term::Global(name.clone()).lift(*shift),
     };
@@ -90,11 +90,13 @@ pub fn read_back_neutral(/* TODO: level, */ head: &Head, spine: &[Elim]) -> Term
 
 /// Read-back a normal form into the term syntax.
 ///
-/// This is type-directed to allow us to perform eta-conversion.
+/// This is type-directed to allow us to perform [eta-conversion].
+///
+/// [eta-conversion]: https://ncatlab.org/nlab/show/eta-conversion
 pub fn read_back_nf(/* TODO: level, */ value: &Value, r#type: &Value) -> Term {
     match (value, r#type) {
         (Value::Universe(level), Value::Universe(_)) => Term::Universe(*level),
-        (Value::Neutral(head, spine, _), _) => read_back_neutral(head, spine),
+        (Value::Elim(head, spine, _), _) => read_back_elim(head, spine),
         (Value::Constant(constant), _) => Term::Constant(constant.clone()),
         (Value::Sequence(value_entries), Value::ArrayType(_, entry_type)) => Term::Sequence(
             value_entries
@@ -161,8 +163,8 @@ pub fn normalize(globals: &Globals, locals: &mut Locals, term: &Term, r#type: &V
 pub fn is_subtype(value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Universe(level0), Value::Universe(level1)) => level0 <= level1,
-        (Value::Neutral(head0, spine0, type0), Value::Neutral(head1, spine1, type1)) => {
-            read_back_neutral(head0, spine0) == read_back_neutral(head1, spine1)
+        (Value::Elim(head0, spine0, type0), Value::Elim(head1, spine1, type1)) => {
+            read_back_elim(head0, spine0) == read_back_elim(head1, spine1)
                 && is_subtype(type0, type1)
         }
         (Value::Constant(constant0), Value::Constant(constant1)) => constant0 == constant1,

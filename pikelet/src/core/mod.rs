@@ -69,7 +69,7 @@ impl From<u32> for UniverseOffset {
 pub enum Term {
     /// The type of types.
     Universe(UniverseLevel),
-    /// References to globals.
+    /// References to global variables.
     Global(String),
     /// Constants.
     Constant(Constant),
@@ -139,8 +139,17 @@ impl Locals {
 pub enum Value {
     /// The type of types.
     Universe(UniverseLevel),
-    /// Neutral values.
-    Neutral(Head, Vec<Elim>, Arc<Value>),
+    /// A suspended elimination (neutral value).
+    ///
+    /// This is a value that cannot be reduced further as a result of being
+    /// stuck on some head. Instead we maintain a 'spine' of eliminators so that
+    /// we may perform further reduction later on.
+    ///
+    /// A type annotation is maintained in order to allow for type-directed
+    /// [eta-conversion] to take place during read-back.
+    ///
+    /// [eta-conversion]: https://ncatlab.org/nlab/show/eta-conversion
+    Elim(Head, Vec<Elim>, Arc<Value>),
     /// Constants.
     Constant(Constant),
     /// Ordered sequences.
@@ -163,13 +172,13 @@ impl Value {
         Value::Universe(level.into())
     }
 
-    /// Create a reference to global.
+    /// Create a reference to global variable.
     pub fn global(
         name: impl Into<String>,
         level: impl Into<UniverseOffset>,
         r#type: impl Into<Arc<Value>>,
     ) -> Value {
-        Value::Neutral(
+        Value::Elim(
             Head::Global(name.into(), level.into()),
             Vec::new(),
             r#type.into(),
@@ -180,7 +189,7 @@ impl Value {
 /// The head of an elimination.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Head {
-    /// References to globals.
+    /// References to global variables.
     Global(String, UniverseOffset),
 }
 
