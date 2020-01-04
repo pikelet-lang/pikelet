@@ -43,16 +43,16 @@ pub enum TypeError {
     MissingNamesInRecordTerm(Vec<String>),
     UnexpectedNamesInRecordTerm(Vec<String>),
     FieldNotFoundInRecord(String),
-    ExpectedRecord(core::Value),
+    ExpectedRecord(Arc<core::Value>),
     InvalidNumberLiteral,
     InvalidCharLiteral,
     InvalidStringLiteral,
-    NoLiteralConversion(core::Value),
+    NoLiteralConversion(Arc<core::Value>),
     AmbiguousLiteral,
     AmbiguousSequence,
     UnexpectedSequenceLength(usize, Arc<core::Value>),
-    ExpectedType(core::Value),
-    MismatchedTypes(core::Value, core::Value),
+    ExpectedType(Arc<core::Value>),
+    MismatchedTypes(Arc<core::Value>, Arc<core::Value>),
 }
 
 /// Check that a term is a universe and return its level.
@@ -60,9 +60,10 @@ pub fn check_type<S: AsRef<str>>(
     state: &mut State<'_>,
     term: &Term<S>,
 ) -> (core::Term, Option<core::UniverseLevel>) {
-    match synth_term(state, term) {
-        (term, core::Value::Universe(level)) => (term, Some(level)),
-        (_, r#type) => {
+    let (term, r#type) = synth_term(state, term);
+    match r#type.as_ref() {
+        core::Value::Universe(level) => (term, Some(*level)),
+        _ => {
             state.report(TypeError::ExpectedType(r#type));
             (core::Term::Error, None)
         }
@@ -73,37 +74,35 @@ pub fn check_type<S: AsRef<str>>(
 pub fn check_term<S: AsRef<str>>(
     state: &mut State<'_>,
     term: &Term<S>,
-    expected_type: &core::Value,
+    expected_type: &Arc<core::Value>,
 ) -> core::Term {
-    match (term, expected_type) {
-        (Term::Literal(_, literal), _) => match expected_type {
-            core::Value::Elim(core::Head::Global(name, _), spine, _) => {
-                use crate::core::Constant::*;
+    match (term, expected_type.as_ref()) {
+        (Term::Literal(_, literal), core::Value::Elim(core::Head::Global(name, _), spine, _)) => {
+            use crate::core::Constant::*;
 
-                match (literal, name.as_ref(), spine.as_slice()) {
-                    (Literal::Number(data), "U8", []) => parse_number(state, data, U8),
-                    (Literal::Number(data), "U16", []) => parse_number(state, data, U16),
-                    (Literal::Number(data), "U32", []) => parse_number(state, data, U32),
-                    (Literal::Number(data), "U64", []) => parse_number(state, data, U64),
-                    (Literal::Number(data), "S8", []) => parse_number(state, data, S8),
-                    (Literal::Number(data), "S16", []) => parse_number(state, data, S16),
-                    (Literal::Number(data), "S32", []) => parse_number(state, data, S32),
-                    (Literal::Number(data), "S64", []) => parse_number(state, data, S64),
-                    (Literal::Number(data), "F32", []) => parse_number(state, data, F32),
-                    (Literal::Number(data), "F64", []) => parse_number(state, data, F64),
-                    (Literal::Char(data), "Char", []) => parse_char(state, data),
-                    (Literal::String(data), "String", []) => parse_string(state, data),
-                    (_, _, _) => {
-                        state.report(TypeError::NoLiteralConversion(expected_type.clone()));
-                        core::Term::Error
-                    }
+            match (literal, name.as_ref(), spine.as_slice()) {
+                (Literal::Number(data), "U8", []) => parse_number(state, data, U8),
+                (Literal::Number(data), "U16", []) => parse_number(state, data, U16),
+                (Literal::Number(data), "U32", []) => parse_number(state, data, U32),
+                (Literal::Number(data), "U64", []) => parse_number(state, data, U64),
+                (Literal::Number(data), "S8", []) => parse_number(state, data, S8),
+                (Literal::Number(data), "S16", []) => parse_number(state, data, S16),
+                (Literal::Number(data), "S32", []) => parse_number(state, data, S32),
+                (Literal::Number(data), "S64", []) => parse_number(state, data, S64),
+                (Literal::Number(data), "F32", []) => parse_number(state, data, F32),
+                (Literal::Number(data), "F64", []) => parse_number(state, data, F64),
+                (Literal::Char(data), "Char", []) => parse_char(state, data),
+                (Literal::String(data), "String", []) => parse_string(state, data),
+                (_, _, _) => {
+                    state.report(TypeError::NoLiteralConversion(expected_type.clone()));
+                    core::Term::Error
                 }
             }
-            _ => {
-                state.report(TypeError::NoLiteralConversion(expected_type.clone()));
-                core::Term::Error
-            }
-        },
+        }
+        (Term::Literal(_, _), _) => {
+            state.report(TypeError::NoLiteralConversion(expected_type.clone()));
+            core::Term::Error
+        }
         (Term::Sequence(_, entry_terms), core::Value::ArrayType(len, core_entry_type)) => {
             let core_entry_terms = entry_terms
                 .iter()
@@ -175,7 +174,7 @@ pub fn check_term<S: AsRef<str>>(
 
             core::Term::RecordTerm(core_term_entries)
         }
-        (term, expected_type) => match synth_term(state, term) {
+        (term, _) => match synth_term(state, term) {
             (term, ty) if core::semantics::is_subtype(&ty, expected_type) => term,
             (_, ty) => {
                 state.report(TypeError::MismatchedTypes(ty, expected_type.clone()));
@@ -189,7 +188,7 @@ pub fn check_term<S: AsRef<str>>(
 pub fn synth_term<S: AsRef<str>>(
     state: &mut State<'_>,
     term: &Term<S>,
-) -> (core::Term, core::Value) {
+) -> (core::Term, Arc<core::Value>) {
     use std::collections::{BTreeMap, BTreeSet};
 
     match term {
@@ -200,7 +199,7 @@ pub fn synth_term<S: AsRef<str>>(
             ),
             None => {
                 state.report(TypeError::UnboundName(name.as_ref().to_owned()));
-                (core::Term::Error, core::Value::Error)
+                (core::Term::Error, Arc::new(core::Value::Error))
             }
         },
         Term::Ann(term, r#type) => {
@@ -216,20 +215,20 @@ pub fn synth_term<S: AsRef<str>>(
         Term::Literal(_, literal) => match literal {
             Literal::Number(_) => {
                 state.report(TypeError::AmbiguousLiteral);
-                (core::Term::Error, core::Value::Error)
+                (core::Term::Error, Arc::new(core::Value::Error))
             }
             Literal::Char(data) => (
                 parse_char(state, data),
-                core::Value::global("Char", 0, core::Value::universe(0)),
+                Arc::new(core::Value::global("Char", 0, core::Value::universe(0))),
             ),
             Literal::String(data) => (
                 parse_string(state, data),
-                core::Value::global("String", 0, core::Value::universe(0)),
+                Arc::new(core::Value::global("String", 0, core::Value::universe(0))),
             ),
         },
         Term::Sequence(_, _) => {
             state.report(TypeError::AmbiguousSequence);
-            (core::Term::Error, core::Value::Error)
+            (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::RecordTerm(_, term_entries) => {
             let mut duplicate_names = Vec::new();
@@ -245,7 +244,7 @@ pub fn synth_term<S: AsRef<str>>(
                     Entry::Occupied(_) => duplicate_names.push(name.as_ref().to_owned()),
                     Entry::Vacant(entry) => {
                         entry.insert(Arc::new(term));
-                        core_type_entries.push((name.as_ref().to_owned(), Arc::new(r#type)));
+                        core_type_entries.push((name.as_ref().to_owned(), r#type));
                     }
                 }
             }
@@ -256,7 +255,7 @@ pub fn synth_term<S: AsRef<str>>(
 
             (
                 core::Term::RecordTerm(core_term_entries),
-                core::Value::RecordType(core_type_entries),
+                Arc::new(core::Value::RecordType(core_type_entries)),
             )
         }
         Term::RecordType(_, type_entries) => {
@@ -270,7 +269,7 @@ pub fn synth_term<S: AsRef<str>>(
                     let (core_type, level) = check_type(state, r#type);
                     max_level = match level {
                         Some(level) => std::cmp::max(max_level, level),
-                        None => return (core::Term::Error, core::Value::Error),
+                        None => return (core::Term::Error, Arc::new(core::Value::Error)),
                     };
                     core_type_entries.push((name.as_ref().to_owned(), Arc::new(core_type)));
                 } else {
@@ -285,38 +284,42 @@ pub fn synth_term<S: AsRef<str>>(
 
             (
                 core::Term::RecordType(core_type_entries),
-                core::Value::Universe(max_level),
+                Arc::new(core::Value::Universe(max_level)),
             )
         }
-        Term::RecordElim(_, head, name) => match synth_term(state, head) {
-            (core_head, core::Value::RecordType(type_entries)) => {
-                match type_entries.iter().find(|(n, _)| n == name.as_ref()) {
-                    Some((_, r#type)) => (
-                        core::Term::RecordElim(Arc::new(core_head), name.as_ref().to_owned()),
-                        (**r#type).clone(), // TODO: return `Arc<Value>`?
-                    ),
-                    None => {
-                        state.report(TypeError::FieldNotFoundInRecord(name.as_ref().to_owned()));
-                        (core::Term::Error, core::Value::Error)
+        Term::RecordElim(_, head, name) => {
+            let (core_head, head_type) = synth_term(state, head);
+            match head_type.as_ref() {
+                core::Value::RecordType(type_entries) => {
+                    match type_entries.iter().find(|(n, _)| n == name.as_ref()) {
+                        Some((_, r#type)) => (
+                            core::Term::RecordElim(Arc::new(core_head), name.as_ref().to_owned()),
+                            r#type.clone(),
+                        ),
+                        None => {
+                            state
+                                .report(TypeError::FieldNotFoundInRecord(name.as_ref().to_owned()));
+                            (core::Term::Error, Arc::new(core::Value::Error))
+                        }
                     }
                 }
+                _ => {
+                    state.report(TypeError::ExpectedRecord(head_type));
+                    (core::Term::Error, Arc::new(core::Value::Error))
+                }
             }
-            (_, head_type) => {
-                state.report(TypeError::ExpectedRecord(head_type));
-                (core::Term::Error, core::Value::Error)
-            }
-        },
+        }
         Term::ArrayType(_, len, entry_type) => {
-            let u32_type = core::Value::global("U32", 0, core::Value::universe(0));
+            let u32_type = Arc::new(core::Value::global("U32", 0, core::Value::universe(0)));
             let core_len = Arc::new(check_term(state, len, &u32_type));
             let (core_entry_type, level) = check_type(state, entry_type);
 
             match level {
                 Some(level) => (
                     core::Term::ArrayType(core_len, Arc::new(core_entry_type)),
-                    core::Value::Universe(level),
+                    Arc::new(core::Value::Universe(level)),
                 ),
-                None => (core::Term::Error, core::Value::Error),
+                None => (core::Term::Error, Arc::new(core::Value::Error)),
             }
         }
         Term::ListType(_, entry_type) => {
@@ -325,9 +328,9 @@ pub fn synth_term<S: AsRef<str>>(
             match level {
                 Some(level) => (
                     core::Term::ListType(Arc::new(core_entry_type)),
-                    core::Value::Universe(level),
+                    Arc::new(core::Value::Universe(level)),
                 ),
-                None => (core::Term::Error, core::Value::Error),
+                None => (core::Term::Error, Arc::new(core::Value::Error)),
             }
         }
         Term::Lift(_, term, offset) => {
@@ -340,11 +343,11 @@ pub fn synth_term<S: AsRef<str>>(
                 }
                 None => {
                     state.report(TypeError::MaximumUniverseLevelReached);
-                    (core::Term::Error, core::Value::Error)
+                    (core::Term::Error, Arc::new(core::Value::Error))
                 }
             }
         }
-        Term::Error(_) => (core::Term::Error, core::Value::Error),
+        Term::Error(_) => (core::Term::Error, Arc::new(core::Value::Error)),
     }
 }
 
