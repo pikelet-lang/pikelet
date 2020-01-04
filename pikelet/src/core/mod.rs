@@ -138,7 +138,7 @@ pub enum Value {
     /// The type of types.
     Universe(UniverseLevel),
     /// Neutral values.
-    Neutral(Neutral, Arc<Value>),
+    Neutral(Head, Arc<Value>),
     /// Constants.
     Constant(Constant),
     /// Ordered sequences.
@@ -167,15 +167,13 @@ impl Value {
         level: impl Into<UniverseOffset>,
         r#type: impl Into<Arc<Value>>,
     ) -> Value {
-        Value::Neutral(Neutral::Global(name.into(), level.into()), r#type.into())
+        Value::Neutral(Head::Global(name.into(), level.into()), r#type.into())
     }
 }
 
-/// Neutral values.
-///
-/// These are values that are 'stuck' on a
+/// The head of an elimination.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Neutral {
+pub enum Head {
     /// References to globals.
     Global(String, UniverseOffset),
 }

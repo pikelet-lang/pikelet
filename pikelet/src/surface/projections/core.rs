@@ -294,7 +294,7 @@ fn check_literal<S: AsRef<str>>(
     literal: &Literal<S>,
     expected_type: &core::Value,
 ) -> core::Term {
-    if let core::Value::Neutral(core::Neutral::Global(name, _), _) = expected_type {
+    if let core::Value::Neutral(core::Head::Global(name, _), _) = expected_type {
         match (literal, name.as_ref()) {
             (Literal::Number(data), "U8") => parse_number(state, data, core::Constant::U8),
             (Literal::Number(data), "U16") => parse_number(state, data, core::Constant::U16),
