@@ -49,19 +49,20 @@ pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Arc<Val
                 Some(value) => value.clone(),
                 None => Arc::new(Value::Error),
             },
-            Value::Elim(head, elims, r#type) => match r#type.as_ref() {
-                Value::RecordType(type_entries) => {
-                    match type_entries.iter().find(|(n, _)| n == name) {
-                        Some((_, entry_type)) => {
-                            let mut elims = elims.clone(); // TODO: avoid cloning
-                            elims.push(Elim::Record(name.clone()));
-                            Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()))
-                        }
-                        None => Arc::new(Value::Error),
-                    }
-                }
-                _ => Arc::new(Value::Error),
-            },
+            Value::Elim(head, elims, r#type) => {
+                let type_entries = match r#type.as_ref() {
+                    Value::RecordType(type_entries) => type_entries,
+                    _ => return Arc::new(Value::Error),
+                };
+                let entry_type = match type_entries.iter().find(|(n, _)| n == name) {
+                    Some((_, entry_type)) => entry_type,
+                    None => return Arc::new(Value::Error),
+                };
+
+                let mut elims = elims.clone(); // TODO: Avoid clone?
+                elims.push(Elim::Record(name.clone()));
+                Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()))
+            }
             _ => Arc::new(Value::Error),
         },
         Term::ArrayType(len, entry_type) => Arc::new(Value::ArrayType(
