@@ -2,7 +2,7 @@
 //!
 //! This is a user-friendly concrete syntax for the language.
 
-use std::ops::Range;
+use std::ops::{Range, RangeTo};
 
 pub mod projections;
 
@@ -23,6 +23,8 @@ pub enum Term<S> {
     RecordType(Range<usize>, Vec<(S, Term<S>)>),
     /// Record terms.
     RecordTerm(Range<usize>, Vec<(S, Term<S>)>),
+    /// Record eliminations (field access).
+    RecordElim(RangeTo<usize>, Box<Term<S>>, S),
     /// Array types.
     ArrayType(Range<usize>, Box<Term<S>>, Box<Term<S>>),
     /// List types.
@@ -52,6 +54,7 @@ impl<'input> Term<&'input str> {
             | Term::Lift(span, _, _)
             | Term::Error(span) => span.clone(),
             Term::Ann(term, r#type) => term.span().start..r#type.span().end,
+            Term::RecordElim(span, term, _) => term.span().start..span.end,
         }
     }
 }

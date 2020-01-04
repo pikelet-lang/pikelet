@@ -6,13 +6,12 @@ use crate::surface::{Literal, Term};
 
 pub fn pretty_term<'term, D, S>(alloc: &'term D, term: &'term Term<S>) -> DocBuilder<'term, D>
 where
-    S: 'term,
-    &'term S: ToString,
+    S: 'term + AsRef<str>,
     D: DocAllocator<'term>,
     D::Doc: Clone,
 {
     match term {
-        Term::Name(_, name) => alloc.as_string(name),
+        Term::Name(_, name) => alloc.text(name.as_ref()),
         Term::Ann(term, r#type) => (alloc.nil())
             .append(pretty_term(alloc, term))
             .append(alloc.space())
@@ -45,7 +44,7 @@ where
             .append(alloc.concat(ty_entries.iter().map(|(name, r#type)| {
                 (alloc.nil())
                     .append(alloc.hardline())
-                    .append(alloc.as_string(name))
+                    .append(alloc.text(name.as_ref()))
                     .append(":")
                     .append(
                         (alloc.space())
@@ -66,7 +65,7 @@ where
             .append(alloc.concat(term_entries.iter().map(|(name, term)| {
                 (alloc.nil())
                     .append(alloc.hardline())
-                    .append(alloc.as_string(name))
+                    .append(alloc.text(name.as_ref()))
                     .append("=")
                     .append(
                         (alloc.space())
@@ -79,6 +78,10 @@ where
                     .group()
             })))
             .append("}"),
+        Term::RecordElim(_, head, name) => (alloc.nil())
+            .append(pretty_term(alloc, head))
+            .append(".")
+            .append(name.as_ref()),
         Term::ArrayType(_, len, entry_type) => alloc.text("Array").append(
             (alloc.nil())
                 .append(alloc.space())
@@ -109,13 +112,13 @@ pub fn pretty_literal<'term, D, S>(
 ) -> DocBuilder<'term, D>
 where
     S: 'term,
-    &'term S: ToString,
+    S: 'term + AsRef<str>,
     D: DocAllocator<'term>,
     D::Doc: Clone,
 {
     match literal {
         Literal::Char(text) | Literal::String(text) | Literal::Number(text) => {
-            alloc.as_string(text)
+            alloc.text(text.as_ref())
         }
     }
 }

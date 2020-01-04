@@ -16,6 +16,7 @@ TermAtomic: Term<&'input str> = {
     <start: @L> "[" <entries: List<Term>> "]" <end: @R> => Term::Sequence(start..end, entries),
     <start: @L> "Record" "{" <entries: List<TypeEntry>> "}" <end: @R> => Term::RecordType(start..end, entries),
     <start: @L> "record" "{" <entries: List<TermEntry>> "}" <end: @R> => Term::RecordTerm(start..end, entries),
+    <start: @L> <head: TermAtomic> "." <name: Name> <end: @R> => Term::RecordElim(..end, Box::new(head), name),
     <start: @L> <term: TermAtomic> <shift: r"\^[0-9]+(\.[0-9]+)?"> <end: @R> => {
         Term::Lift(start..end, Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
     },

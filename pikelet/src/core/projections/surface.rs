@@ -40,6 +40,9 @@ pub fn delaborate_term(term: &Term) -> surface::Term<String> {
 
             surface::Term::RecordTerm(0..0, core_term_entries)
         }
+        Term::RecordElim(head, name) => {
+            surface::Term::RecordElim(..0, Box::new(delaborate_term(head)), name.clone())
+        }
         Term::ArrayType(len, entry_type) => surface::Term::ArrayType(
             0..0,
             Box::new(delaborate_term(len)),

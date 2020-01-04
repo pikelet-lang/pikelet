@@ -42,6 +42,8 @@ pub enum TypeError {
     DuplicateNamesInRecordType(Vec<String>),
     MissingNamesInRecordTerm(Vec<String>),
     UnexpectedNamesInRecordTerm(Vec<String>),
+    FieldNotFoundInRecord(String),
+    ExpectedRecord(core::Value),
     InvalidNumberLiteral,
     InvalidCharLiteral,
     InvalidStringLiteral,
@@ -246,6 +248,24 @@ pub fn synth_term<S: AsRef<str>>(
                 core::Value::Universe(max_level),
             )
         }
+        Term::RecordElim(_, head, name) => match synth_term(state, head) {
+            (core_head, core::Value::RecordType(type_entries)) => {
+                match type_entries.iter().find(|(n, _)| n == name.as_ref()) {
+                    Some((_, r#type)) => (
+                        core::Term::RecordElim(Arc::new(core_head), name.as_ref().to_owned()),
+                        (**r#type).clone(), // TODO: return `Arc<Value>`?
+                    ),
+                    None => {
+                        state.report(TypeError::FieldNotFoundInRecord(name.as_ref().to_owned()));
+                        (core::Term::Error, core::Value::Error)
+                    }
+                }
+            }
+            (_, head_type) => {
+                state.report(TypeError::ExpectedRecord(head_type));
+                (core::Term::Error, core::Value::Error)
+            }
+        },
         Term::ArrayType(_, len, entry_type) => {
             let u32_type = core::Value::global("U32", 0, core::Value::universe(0));
             let core_len = Arc::new(check_term(state, len, &u32_type));
@@ -294,21 +314,21 @@ fn check_literal<S: AsRef<str>>(
     literal: &Literal<S>,
     expected_type: &core::Value,
 ) -> core::Term {
-    if let core::Value::Neutral(core::Head::Global(name, _), _) = expected_type {
-        match (literal, name.as_ref()) {
-            (Literal::Number(data), "U8") => parse_number(state, data, core::Constant::U8),
-            (Literal::Number(data), "U16") => parse_number(state, data, core::Constant::U16),
-            (Literal::Number(data), "U32") => parse_number(state, data, core::Constant::U32),
-            (Literal::Number(data), "U64") => parse_number(state, data, core::Constant::U64),
-            (Literal::Number(data), "S8") => parse_number(state, data, core::Constant::S8),
-            (Literal::Number(data), "S16") => parse_number(state, data, core::Constant::S16),
-            (Literal::Number(data), "S32") => parse_number(state, data, core::Constant::S32),
-            (Literal::Number(data), "S64") => parse_number(state, data, core::Constant::S64),
-            (Literal::Number(data), "F32") => parse_number(state, data, core::Constant::F32),
-            (Literal::Number(data), "F64") => parse_number(state, data, core::Constant::F64),
-            (Literal::Char(data), "Char") => parse_char(state, data),
-            (Literal::String(data), "String") => parse_string(state, data),
-            (_, _) => {
+    if let core::Value::Neutral(core::Head::Global(name, _), spine, _) = expected_type {
+        match (literal, name.as_ref(), spine.as_slice()) {
+            (Literal::Number(data), "U8", []) => parse_number(state, data, core::Constant::U8),
+            (Literal::Number(data), "U16", []) => parse_number(state, data, core::Constant::U16),
+            (Literal::Number(data), "U32", []) => parse_number(state, data, core::Constant::U32),
+            (Literal::Number(data), "U64", []) => parse_number(state, data, core::Constant::U64),
+            (Literal::Number(data), "S8", []) => parse_number(state, data, core::Constant::S8),
+            (Literal::Number(data), "S16", []) => parse_number(state, data, core::Constant::S16),
+            (Literal::Number(data), "S32", []) => parse_number(state, data, core::Constant::S32),
+            (Literal::Number(data), "S64", []) => parse_number(state, data, core::Constant::S64),
+            (Literal::Number(data), "F32", []) => parse_number(state, data, core::Constant::F32),
+            (Literal::Number(data), "F64", []) => parse_number(state, data, core::Constant::F64),
+            (Literal::Char(data), "Char", []) => parse_char(state, data),
+            (Literal::String(data), "String", []) => parse_string(state, data),
+            (_, _, _) => {
                 state.report(TypeError::NoLiteralConversion(expected_type.clone()));
                 core::Term::Error
             }

@@ -81,6 +81,8 @@ pub enum Term {
     RecordType(Vec<(String, Arc<Term>)>),
     /// Record terms.
     RecordTerm(BTreeMap<String, Arc<Term>>),
+    /// Record eliminations (field access).
+    RecordElim(Arc<Term>, String),
     /// Array types.
     ArrayType(Arc<Term>, Arc<Term>),
     /// List types.
@@ -138,7 +140,7 @@ pub enum Value {
     /// The type of types.
     Universe(UniverseLevel),
     /// Neutral values.
-    Neutral(Head, Arc<Value>),
+    Neutral(Head, Vec<Elim>, Arc<Value>),
     /// Constants.
     Constant(Constant),
     /// Ordered sequences.
@@ -167,7 +169,11 @@ impl Value {
         level: impl Into<UniverseOffset>,
         r#type: impl Into<Arc<Value>>,
     ) -> Value {
-        Value::Neutral(Head::Global(name.into(), level.into()), r#type.into())
+        Value::Neutral(
+            Head::Global(name.into(), level.into()),
+            Vec::new(),
+            r#type.into(),
+        )
     }
 }
 
@@ -176,6 +182,13 @@ impl Value {
 pub enum Head {
     /// References to globals.
     Global(String, UniverseOffset),
+}
+
+/// An eliminator, to be used in the spine of an elimination.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Elim {
+    /// Record eliminators (field access).
+    Record(String),
 }
 
 /// An environment of global definitions.
