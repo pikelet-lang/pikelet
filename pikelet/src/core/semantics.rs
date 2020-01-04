@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::core::{Globals, Locals, Neutral, Term, Value};
+use crate::core::{Globals, Head, Locals, Term, Value};
 
 /// Evaluate a term into a value in weak-head normal form.
 pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Value {
@@ -59,9 +59,9 @@ pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Value {
 }
 
 /// Read-back a neutral value into the term syntax.
-pub fn read_back_neutral(/* TODO: level, */ neutral: &Neutral) -> Term {
-    match neutral {
-        Neutral::Global(name, shift) => Term::Global(name.clone()).lift(*shift),
+pub fn read_back_neutral(/* TODO: level, */ head: &Head) -> Term {
+    match head {
+        Head::Global(name, shift) => Term::Global(name.clone()).lift(*shift),
     }
 }
 
@@ -71,7 +71,7 @@ pub fn read_back_neutral(/* TODO: level, */ neutral: &Neutral) -> Term {
 pub fn read_back_nf(/* TODO: level, */ value: &Value, r#type: &Value) -> Term {
     match (value, r#type) {
         (Value::Universe(level), Value::Universe(_)) => Term::Universe(*level),
-        (Value::Neutral(neutral, _), _) => read_back_neutral(neutral),
+        (Value::Neutral(head, _), _) => read_back_neutral(head),
         (Value::Constant(constant), _) => Term::Constant(constant.clone()),
         (Value::Sequence(value_entries), Value::ArrayType(_, entry_type)) => Term::Sequence(
             value_entries
@@ -138,8 +138,8 @@ pub fn normalize(globals: &Globals, locals: &mut Locals, term: &Term, r#type: &V
 pub fn is_subtype(value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Universe(level0), Value::Universe(level1)) => level0 <= level1,
-        (Value::Neutral(neutral0, type0), Value::Neutral(neutral1, type1)) => {
-            read_back_neutral(neutral0) == read_back_neutral(neutral1) && is_subtype(type0, type1)
+        (Value::Neutral(head0, type0), Value::Neutral(head1, type1)) => {
+            read_back_neutral(head0) == read_back_neutral(head1) && is_subtype(type0, type1)
         }
         (Value::Constant(constant0), Value::Constant(constant1)) => constant0 == constant1,
         (Value::Sequence(value_entries0), Value::Sequence(value_entries1)) => {
