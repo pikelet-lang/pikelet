@@ -21,6 +21,7 @@ While the hopes behind this are ambitious, we will need to proceed carefully, ta
 - [MPS](https://www.jetbrains.com/mps/)
 - [Pharo](https://pharo.org/)
 - [Self](https://www.jetbrains.com/mps/)
+- [Symbolics Lisp](https://twitter.com/RainerJoswig/status/1213528401774071813)
 
 ### Collections
 
