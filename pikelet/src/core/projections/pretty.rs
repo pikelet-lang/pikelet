@@ -48,7 +48,7 @@ where
             .append(alloc.concat(ty_entries.iter().map(|(name, r#type)| {
                 (alloc.nil())
                     .append(alloc.hardline())
-                    .append(alloc.as_string(name))
+                    .append(alloc.text(name))
                     .append(":")
                     .append(
                         (alloc.space())
@@ -69,7 +69,7 @@ where
             .append(alloc.concat(term_entries.iter().map(|(name, term)| {
                 (alloc.nil())
                     .append(alloc.hardline())
-                    .append(alloc.as_string(name))
+                    .append(alloc.text(name))
                     .append("=")
                     .append(
                         (alloc.space())
@@ -82,6 +82,10 @@ where
                     .group()
             })))
             .append("}"),
+        Term::RecordElim(head, name) => (alloc.nil())
+            .append(pretty_term(alloc, head))
+            .append(".")
+            .append(alloc.text(name)),
         Term::ArrayType(len, entry_type) => alloc.text("Array").append(
             (alloc.nil())
                 .append(alloc.space())

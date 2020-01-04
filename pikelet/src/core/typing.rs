@@ -42,6 +42,8 @@ pub enum TypeError {
     DuplicateNamesInRecordType(Vec<String>),
     MissingNamesInRecordTerm(Vec<String>),
     UnexpectedNamesInRecordTerm(Vec<String>),
+    FieldNotFoundInRecord(String),
+    ExpectedRecord(Value),
     AmbiguousSequence,
     UnexpectedSequenceLength(usize, Arc<Value>),
     ExpectedType(Value),
@@ -179,6 +181,21 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Value {
 
             Value::Universe(max_level)
         }
+        Term::RecordElim(head, name) => match synth_term(state, head) {
+            Value::RecordType(type_entries) => {
+                match type_entries.iter().find(|(n, _)| n == name) {
+                    Some((_, r#type)) => (**r#type).clone(), // TODO: return `Arc<Value>`?
+                    None => {
+                        state.report(TypeError::FieldNotFoundInRecord(name.clone()));
+                        Value::Error
+                    }
+                }
+            }
+            head_type => {
+                state.report(TypeError::ExpectedRecord(head_type));
+                Value::Error
+            }
+        },
         Term::ArrayType(len, entry_type) => {
             let u32_type = Value::global("U32", 0, Value::universe(0));
             check_term(state, len, &u32_type);

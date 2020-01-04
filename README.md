@@ -60,7 +60,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [ ] Improved literal parsing
   - [x] Annotated terms
   - [ ] Let expressions
-  - [ ] Record field lookups
+  - [x] Record field lookups
   - [ ] Import expressions
   - [ ] Function terms
   - [ ] Non-dependent function types
