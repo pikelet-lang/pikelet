@@ -5,67 +5,70 @@ use std::sync::Arc;
 use crate::core::{Elim, Globals, Head, Locals, Term, Value};
 
 /// Evaluate a term into a value in weak-head normal form.
-pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Value {
+pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Arc<Value> {
     match term {
-        Term::Universe(level) => Value::universe((*level + locals.universe_offset()).unwrap()), // FIXME: Handle overflow
+        Term::Universe(level) => Arc::new(Value::universe(
+            (*level + locals.universe_offset()).unwrap(), // FIXME: Handle overflow
+        )),
         Term::Global(name) => match globals.get(name) {
             Some((_, Some(term))) => eval_term(globals, locals, term),
             Some((r#type, None)) => {
                 let r#type = eval_term(globals, locals, r#type);
-                Value::global(name, locals.universe_offset(), r#type)
+                Arc::new(Value::global(name, locals.universe_offset(), r#type))
             }
-            None => Value::Error,
+            None => Arc::new(Value::Error),
         },
-        Term::Constant(constant) => Value::Constant(constant.clone()),
+        Term::Constant(constant) => Arc::new(Value::Constant(constant.clone())),
         Term::Sequence(term_entries) => {
             let value_entries = term_entries
                 .iter()
-                .map(|entry_term| Arc::new(eval_term(globals, locals, entry_term)))
+                .map(|entry_term| eval_term(globals, locals, entry_term))
                 .collect();
 
-            Value::Sequence(value_entries)
+            Arc::new(Value::Sequence(value_entries))
         }
         Term::Ann(term, _) => eval_term(globals, locals, term),
         Term::RecordType(type_entries) => {
             let type_entries = type_entries
                 .iter()
-                .map(|(name, r#type)| (name.clone(), Arc::new(eval_term(globals, locals, r#type))))
+                .map(|(name, r#type)| (name.clone(), eval_term(globals, locals, r#type)))
                 .collect();
 
-            Value::RecordType(type_entries)
+            Arc::new(Value::RecordType(type_entries))
         }
         Term::RecordTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
-                .map(|(name, term)| (name.clone(), Arc::new(eval_term(globals, locals, term))))
+                .map(|(name, term)| (name.clone(), eval_term(globals, locals, term)))
                 .collect();
 
-            Value::RecordTerm(value_entries)
+            Arc::new(Value::RecordTerm(value_entries))
         }
-        Term::RecordElim(head, name) => match eval_term(globals, locals, head) {
+        Term::RecordElim(head, name) => match eval_term(globals, locals, head).as_ref() {
             Value::RecordTerm(term_entries) => match term_entries.get(name) {
-                Some(value) => (**value).clone(), // TODO: return `Arc<Value>`?
-                None => Value::Error,
+                Some(value) => value.clone(),
+                None => Arc::new(Value::Error),
             },
-            Value::Elim(head, mut elims, r#type) => match r#type.as_ref() {
+            Value::Elim(head, elims, r#type) => match r#type.as_ref() {
                 Value::RecordType(type_entries) => {
                     match type_entries.iter().find(|(n, _)| n == name) {
                         Some((_, entry_type)) => {
+                            let mut elims = elims.clone(); // TODO: avoid cloning
                             elims.push(Elim::Record(name.clone()));
-                            Value::Elim(head, elims, entry_type.clone())
+                            Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()))
                         }
-                        None => Value::Error,
+                        None => Arc::new(Value::Error),
                     }
                 }
-                _ => Value::Error,
+                _ => Arc::new(Value::Error),
             },
-            _ => Value::Error,
+            _ => Arc::new(Value::Error),
         },
-        Term::ArrayType(len, entry_type) => Value::ArrayType(
-            Arc::new(eval_term(globals, locals, len)),
-            Arc::new(eval_term(globals, locals, entry_type)),
-        ),
-        Term::ListType(r#type) => Value::ListType(Arc::new(eval_term(globals, locals, r#type))),
+        Term::ArrayType(len, entry_type) => Arc::new(Value::ArrayType(
+            eval_term(globals, locals, len),
+            eval_term(globals, locals, entry_type),
+        )),
+        Term::ListType(r#type) => Arc::new(Value::ListType(eval_term(globals, locals, r#type))),
         Term::Lift(term, offset) => {
             let previous_offset = locals.universe_offset();
             locals.set_universe_offset((previous_offset + *offset).unwrap()); // FIXME: Handle overflow
@@ -73,7 +76,7 @@ pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Value {
             locals.set_universe_offset(previous_offset);
             value
         }
-        Term::Error => Value::Error,
+        Term::Error => Arc::new(Value::Error),
     }
 }
 

@@ -253,14 +253,14 @@ impl Default for Globals {
 }
 
 pub trait HasType {
-    fn r#type() -> Value;
+    fn r#type() -> Arc<Value>;
 }
 
 macro_rules! impl_has_type {
     ($Self:ty, $term:expr) => {
         impl HasType for $Self {
-            fn r#type() -> Value {
-                $term
+            fn r#type() -> Arc<Value> {
+                Arc::new($term)
             }
         }
     };
@@ -282,19 +282,19 @@ impl_has_type!(String, Value::global("String", 0, Value::universe(0)));
 impl_has_type!(str, Value::global("String", 0, Value::universe(0)));
 
 impl<T: HasType> HasType for Vec<T> {
-    fn r#type() -> Value {
-        Value::ListType(Arc::new(T::r#type()))
+    fn r#type() -> Arc<Value> {
+        Arc::new(Value::ListType(T::r#type()))
     }
 }
 
 macro_rules! impl_has_type_array {
     ($($len:expr),*) => {
         $(impl<T: HasType> HasType for [T; $len] {
-            fn r#type() -> Value {
-                Value::ArrayType(
+            fn r#type() -> Arc<Value> {
+                Arc::new(Value::ArrayType(
                     Arc::new(Value::Constant(Constant::U32($len as u32))),
-                    Arc::new(T::r#type()),
-                )
+                    T::r#type(),
+                ))
             }
         })*
     };
