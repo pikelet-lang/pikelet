@@ -76,7 +76,34 @@ pub fn check_term<S: AsRef<str>>(
     expected_type: &core::Value,
 ) -> core::Term {
     match (term, expected_type) {
-        (Term::Literal(_, literal), _) => check_literal(state, literal, expected_type),
+        (Term::Literal(_, literal), _) => match expected_type {
+            core::Value::Elim(core::Head::Global(name, _), spine, _) => {
+                use crate::core::Constant::*;
+
+                match (literal, name.as_ref(), spine.as_slice()) {
+                    (Literal::Number(data), "U8", []) => parse_number(state, data, U8),
+                    (Literal::Number(data), "U16", []) => parse_number(state, data, U16),
+                    (Literal::Number(data), "U32", []) => parse_number(state, data, U32),
+                    (Literal::Number(data), "U64", []) => parse_number(state, data, U64),
+                    (Literal::Number(data), "S8", []) => parse_number(state, data, S8),
+                    (Literal::Number(data), "S16", []) => parse_number(state, data, S16),
+                    (Literal::Number(data), "S32", []) => parse_number(state, data, S32),
+                    (Literal::Number(data), "S64", []) => parse_number(state, data, S64),
+                    (Literal::Number(data), "F32", []) => parse_number(state, data, F32),
+                    (Literal::Number(data), "F64", []) => parse_number(state, data, F64),
+                    (Literal::Char(data), "Char", []) => parse_char(state, data),
+                    (Literal::String(data), "String", []) => parse_string(state, data),
+                    (_, _, _) => {
+                        state.report(TypeError::NoLiteralConversion(expected_type.clone()));
+                        core::Term::Error
+                    }
+                }
+            }
+            _ => {
+                state.report(TypeError::NoLiteralConversion(expected_type.clone()));
+                core::Term::Error
+            }
+        },
         (Term::Sequence(_, entry_terms), core::Value::ArrayType(len, core_entry_type)) => {
             let core_entry_terms = entry_terms
                 .iter()
@@ -186,7 +213,20 @@ pub fn synth_term<S: AsRef<str>>(
                 core_type_value,
             )
         }
-        Term::Literal(_, literal) => synth_literal(state, literal),
+        Term::Literal(_, literal) => match literal {
+            Literal::Number(_) => {
+                state.report(TypeError::AmbiguousLiteral);
+                (core::Term::Error, core::Value::Error)
+            }
+            Literal::Char(data) => (
+                parse_char(state, data),
+                core::Value::global("Char", 0, core::Value::universe(0)),
+            ),
+            Literal::String(data) => (
+                parse_string(state, data),
+                core::Value::global("String", 0, core::Value::universe(0)),
+            ),
+        },
         Term::Sequence(_, _) => {
             state.report(TypeError::AmbiguousSequence);
             (core::Term::Error, core::Value::Error)
@@ -305,58 +345,6 @@ pub fn synth_term<S: AsRef<str>>(
             }
         }
         Term::Error(_) => (core::Term::Error, core::Value::Error),
-    }
-}
-
-/// Check that a literal matches the expected type.
-fn check_literal<S: AsRef<str>>(
-    state: &mut State<'_>,
-    literal: &Literal<S>,
-    expected_type: &core::Value,
-) -> core::Term {
-    if let core::Value::Elim(core::Head::Global(name, _), spine, _) = expected_type {
-        match (literal, name.as_ref(), spine.as_slice()) {
-            (Literal::Number(data), "U8", []) => parse_number(state, data, core::Constant::U8),
-            (Literal::Number(data), "U16", []) => parse_number(state, data, core::Constant::U16),
-            (Literal::Number(data), "U32", []) => parse_number(state, data, core::Constant::U32),
-            (Literal::Number(data), "U64", []) => parse_number(state, data, core::Constant::U64),
-            (Literal::Number(data), "S8", []) => parse_number(state, data, core::Constant::S8),
-            (Literal::Number(data), "S16", []) => parse_number(state, data, core::Constant::S16),
-            (Literal::Number(data), "S32", []) => parse_number(state, data, core::Constant::S32),
-            (Literal::Number(data), "S64", []) => parse_number(state, data, core::Constant::S64),
-            (Literal::Number(data), "F32", []) => parse_number(state, data, core::Constant::F32),
-            (Literal::Number(data), "F64", []) => parse_number(state, data, core::Constant::F64),
-            (Literal::Char(data), "Char", []) => parse_char(state, data),
-            (Literal::String(data), "String", []) => parse_string(state, data),
-            (_, _, _) => {
-                state.report(TypeError::NoLiteralConversion(expected_type.clone()));
-                core::Term::Error
-            }
-        }
-    } else {
-        state.report(TypeError::NoLiteralConversion(expected_type.clone()));
-        core::Term::Error
-    }
-}
-
-/// Check that a literal matches the expected type.
-fn synth_literal<S: AsRef<str>>(
-    state: &mut State<'_>,
-    literal: &Literal<S>,
-) -> (core::Term, core::Value) {
-    match literal {
-        Literal::Number(_) => {
-            state.report(TypeError::AmbiguousLiteral);
-            (core::Term::Error, core::Value::Error)
-        }
-        Literal::Char(data) => (
-            parse_char(state, data),
-            core::Value::global("Char", 0, core::Value::universe(0)),
-        ),
-        Literal::String(data) => (
-            parse_string(state, data),
-            core::Value::global("String", 0, core::Value::universe(0)),
-        ),
     }
 }
 
