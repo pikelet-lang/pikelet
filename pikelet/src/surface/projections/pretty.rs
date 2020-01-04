@@ -111,7 +111,6 @@ pub fn pretty_literal<'term, D, S>(
     literal: &'term Literal<S>,
 ) -> DocBuilder<'term, D>
 where
-    S: 'term,
     S: 'term + AsRef<str>,
     D: DocAllocator<'term>,
     D::Doc: Clone,
