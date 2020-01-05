@@ -1,3 +1,6 @@
+use iced::{Sandbox, Settings};
+use pikelet_gui::Workspace;
+
 fn main() {
-    println!("Hello, world!");
+    Workspace::run(Settings::default())
 }
