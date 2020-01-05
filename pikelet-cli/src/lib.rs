@@ -6,10 +6,10 @@ pub mod repl;
 #[derive(structopt::StructOpt)]
 #[structopt(name = "mltt")]
 pub enum Options {
-    /// Type check some files.
+    /// Type check some files (not yet implemented).
     #[structopt(name = "check")]
     Check,
-    /// Runs the language server/IDE support.
+    /// Runs the language server/IDE support (not yet implemented).
     #[structopt(name = "ide")]
     Ide,
     /// Runs the REPL/interactive mode.
