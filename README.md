@@ -95,7 +95,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
 
 ### Tooling
 
-- [ ] REPL
+- [x] REPL
 - [ ] Package manager
 - [ ] Auto-formatter for surface language
 - [ ] Structured editor
