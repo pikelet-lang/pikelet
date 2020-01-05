@@ -19,9 +19,6 @@ fn run_test(input: &str) {
         eprintln!();
     }
 
-    eprintln!("{:?}", core_term);
-    eprintln!("{:?}", r#type);
-
     let mut state = core::typing::State::new(&globals);
     core::typing::synth_term(&mut state, &core_term);
     if !state.errors.is_empty() {
@@ -43,8 +40,6 @@ fn run_test(input: &str) {
         }
         eprintln!();
     }
-
-    eprintln!("{:?}", r#type);
 
     if is_failed {
         panic!("failed sample");
