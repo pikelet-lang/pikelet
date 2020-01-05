@@ -159,7 +159,7 @@ pub fn read_back_nf(/* TODO: level, */ value: &Value, r#type: &Value) -> Term {
 }
 
 /// Fully normalize a term.
-pub fn normalize(globals: &Globals, locals: &mut Locals, term: &Term, r#type: &Value) -> Term {
+pub fn normalize_term(globals: &Globals, locals: &mut Locals, term: &Term, r#type: &Value) -> Term {
     read_back_nf(&eval_term(globals, locals, term), r#type)
 }
 
