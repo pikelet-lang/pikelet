@@ -1,4 +1,8 @@
-use iced::{Column, Container, Element, Row, Sandbox, Text};
+use iced::{Column, Container, Element, Row, Sandbox, Settings, Text};
+
+pub fn run() {
+    Workspace::run(Settings::default())
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {}
