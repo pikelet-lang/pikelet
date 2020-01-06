@@ -35,18 +35,46 @@ impl Sandbox for Workspace {
                     globals
                         .entries()
                         .fold(Column::new(), |column, (name, (r#type, term))| {
-                            column.push(
-                                Row::new()
+                            column.push({
+                                let entry = Row::new()
                                     .push(Text::new(name))
-                                    .push(Text::new(format!(" : {:?}", r#type))) // TODO: pretty print?
-                                    .push(match term {
-                                        None => Text::new(""),
-                                        Some(term) => Text::new(format!(" = {:?}", term)), // TODO: pretty print?
-                                    }),
-                            )
+                                    .push(Text::new(" : "))
+                                    .push(view_term(r#type));
+
+                                match term {
+                                    None => entry.push(Text::new("")).push(Text::new("")),
+                                    Some(term) => {
+                                        entry.push(Text::new(" = ")).push(view_term(term))
+                                    }
+                                }
+                            })
                         }),
                 ),
         )
         .into()
+    }
+}
+
+fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
+    use pikelet::core::Term;
+
+    match term {
+        Term::Universe(level) => Row::new()
+            .push(Text::new(format!("Type^{}", level.0))) // TODO: superscript?
+            .into(),
+        Term::Global(name) => Text::new(name).into(),
+        Term::Constant(_) => Text::new("todo").into(),
+        Term::Sequence(_) => Text::new("todo").into(),
+        Term::Ann(_, _) => Text::new("todo").into(),
+        Term::RecordTerm(_) => Text::new("todo").into(),
+        Term::RecordType(_) => Text::new("todo").into(),
+        Term::RecordElim(_, _) => Text::new("todo").into(),
+        Term::ArrayType(_, _) => Text::new("todo").into(),
+        Term::ListType(_) => Text::new("todo").into(),
+        Term::Lift(term, shift) => Row::new()
+            .push(view_term(term))
+            .push(Text::new(format!("^{}", shift.0)))
+            .into(),
+        Term::Error => Text::new("ERROR!").into(),
     }
 }
