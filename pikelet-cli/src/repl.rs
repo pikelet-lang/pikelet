@@ -82,6 +82,8 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                     editor.add_history_entry(&line);
                 }
 
+                // TODO: Parse REPL commands
+
                 let surface_term = match surface::Term::from_str(&line) {
                     Ok(surface_term) => surface_term,
                     Err(error) => {
