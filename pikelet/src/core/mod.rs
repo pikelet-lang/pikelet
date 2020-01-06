@@ -99,6 +99,11 @@ impl Term {
         Term::Universe(level.into())
     }
 
+    /// Create a reference to global variable.
+    pub fn global(name: impl Into<String>) -> Term {
+        Term::Global(name.into())
+    }
+
     pub fn lift(self, offset: impl Into<UniverseOffset>) -> Term {
         match offset.into() {
             UniverseOffset(0) => self,
@@ -230,27 +235,21 @@ impl Default for Globals {
                 Some(Arc::new(Term::universe(0))),
             ),
         );
-        entries.insert("Bool".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("U8".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("U16".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("U32".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("U64".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("S8".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("S16".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("S32".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("S64".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("F32".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("F64".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("Char".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert("String".to_owned(), (Arc::new(Term::universe(0)), None));
-        entries.insert(
-            "true".to_owned(),
-            (Arc::new(Term::Global("Bool".to_owned())), None),
-        );
-        entries.insert(
-            "false".to_owned(),
-            (Arc::new(Term::Global("Bool".to_owned())), None),
-        );
+        entries.insert("Bool".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("U8".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("U16".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("U32".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("U64".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("S8".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("S16".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("S32".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("S64".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("F32".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("F64".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("Char".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("String".to_owned(), (Arc::new(Term::global("Type")), None));
+        entries.insert("true".to_owned(), (Arc::new(Term::global("Bool")), None));
+        entries.insert("false".to_owned(), (Arc::new(Term::global("Bool")), None));
 
         Globals::new(entries)
     }

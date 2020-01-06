@@ -56,11 +56,11 @@ impl Sandbox for Workspace {
 }
 
 fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
-    use pikelet::core::Term;
+    use pikelet::core::{Term, UniverseLevel, UniverseOffset};
 
     match term {
-        Term::Universe(level) => Row::new()
-            .push(Text::new(format!("Type^{}", level.0))) // TODO: superscript?
+        Term::Universe(UniverseLevel(level)) => Row::new()
+            .push(Text::new(format!("Univ^{}", level))) // TODO: superscript?
             .into(),
         Term::Global(name) => Text::new(name).into(),
         Term::Constant(_) => Text::new("todo").into(),
@@ -71,9 +71,9 @@ fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
         Term::RecordElim(_, _) => Text::new("todo").into(),
         Term::ArrayType(_, _) => Text::new("todo").into(),
         Term::ListType(_) => Text::new("todo").into(),
-        Term::Lift(term, shift) => Row::new()
+        Term::Lift(term, UniverseOffset(offset)) => Row::new()
             .push(view_term(term))
-            .push(Text::new(format!("^{}", shift.0)))
+            .push(Text::new(format!("^{}", offset)))
             .into(),
         Term::Error => Text::new("ERROR!").into(),
     }
