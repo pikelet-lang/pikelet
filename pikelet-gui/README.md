@@ -1,9 +1,12 @@
 # pikelet-gui
 
 This is intended to provided the basis for a structured programming environment for Pikelet.
-It should both be natively compiled, be able to be run in a browser, or embedded in other applications, like game engines.
-
 While the hopes behind this are ambitious, we will need to proceed carefully, taking care to avoid getting trapped down rabbit holes.
+
+It should both be natively compiled, be able to be run in a browser, or embedded in other applications, like game engines.
+For this, libraries like [Iced](https://github.com/hecrj/iced) could prove useful.
+Another possibility could be to embed this within Electron-based IDEs like VS Code.
+We might also want to eventually investigate implementing the programming environment using platform-specific GUI toolkits.
 
 ## Inspiration
 
