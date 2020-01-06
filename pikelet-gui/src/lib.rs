@@ -1,4 +1,4 @@
-use iced::{Column, Container, Element, Sandbox, Text};
+use iced::{Column, Container, Element, Row, Sandbox, Text};
 
 #[derive(Debug, Clone)]
 pub enum Message {}
@@ -30,22 +30,20 @@ impl Sandbox for Workspace {
         Container::new(
             Column::new()
                 .push(Text::new("Hi this is Pikelet!"))
-                .push(Text::new(""))
+                .push(Text::new("Globals:"))
                 .push(
                     globals
                         .entries()
-                        .fold(Column::new(), |column, (name, (r#type, term))| match term {
-                            None => column.push(Text::new(format!(
-                                "{} : {type:?}", // TODO: pretty print?
-                                name,
-                                r#type = r#type,
-                            ))),
-                            Some(term) => column.push(Text::new(format!(
-                                "{} : {type:?} = {term:?}", // TODO: pretty print?
-                                name,
-                                r#type = r#type,
-                                term = term,
-                            ))),
+                        .fold(Column::new(), |column, (name, (r#type, term))| {
+                            column.push(
+                                Row::new()
+                                    .push(Text::new(name))
+                                    .push(Text::new(format!(" : {:?}", r#type))) // TODO: pretty print?
+                                    .push(match term {
+                                        None => Text::new(""),
+                                        Some(term) => Text::new(format!(" = {:?}", term)), // TODO: pretty print?
+                                    }),
+                            )
                         }),
                 ),
         )
