@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// The Pikelet REPL/interactive mode.
 #[derive(structopt::StructOpt)]
@@ -46,20 +47,20 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                         continue;
                     }
                 };
-                let (core_term, _type) =
+                let (core_term, r#type) =
                     surface::projections::core::synth_term(&mut state, &surface_term);
 
                 if !state.errors.is_empty() {
                     for error in &state.errors {
                         println!("error: {:?}", error);
                     }
-                    println!();
                     state.errors.clear();
                 } else {
-                    println!("{:?}", core_term);
+                    let core_term = state.normalize_term(&core_term, &r#type);
+                    let r#type = state.read_back_type(&r#type);
+                    let ann_term = core::Term::Ann(Arc::new(core_term), Arc::new(r#type));
 
-                    // TODO: normalize term
-                    // TODO: print `{term} : {type}`
+                    println!("{:?}", ann_term); // TODO: pretty print
                 }
             }
             Err(ReadlineError::Interrupted) => println!("Interrupted!"),

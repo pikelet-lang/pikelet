@@ -153,8 +153,31 @@ pub fn read_back_nf(/* TODO: level, */ value: &Value, r#type: &Value) -> Term {
         | (Value::RecordType(_), _)
         | (Value::RecordTerm(_), _)
         | (Value::ArrayType(_, _), _)
-        | (Value::ListType(_), _)
-        | (Value::Error, _) => Term::Error,
+        | (Value::ListType(_), _) => Term::Error, // TODO: Report error
+        (Value::Error, _) => Term::Error,
+    }
+}
+
+/// Read-back a type into the term syntax.
+pub fn read_back_type(/* TODO: level, */ r#type: &Value) -> Term {
+    match r#type {
+        Value::Universe(level) => Term::Universe(*level),
+        Value::Elim(head, spine, _) => read_back_elim(head, spine),
+        Value::RecordType(type_entries) => {
+            let type_entries = type_entries
+                .iter()
+                .map(|(name, r#type)| (name.clone(), Arc::new(read_back_type(r#type))))
+                .collect();
+
+            Term::RecordType(type_entries)
+        }
+        Value::ArrayType(len, entry_type) => Term::ArrayType(
+            Arc::new(read_back_type(len)),
+            Arc::new(read_back_type(entry_type)),
+        ),
+        Value::ListType(entry_type) => Term::ListType(Arc::new(read_back_type(entry_type))),
+        Value::Constant(_) | Value::Sequence(_) | Value::RecordTerm(_) => Term::Error, // TODO: Report error
+        Value::Error => Term::Error,
     }
 }
 
