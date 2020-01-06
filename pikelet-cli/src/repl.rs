@@ -36,7 +36,7 @@ fn print_welcome_banner() {
             2 => println!("{}Version {}", line, env!("CARGO_PKG_VERSION")),
             3 => println!("{}{}", line, env!("CARGO_PKG_HOMEPAGE")),
             4 => println!("{}:? for help", line),
-            _ => println!("{}", line),
+            _ => println!("{}", line.trim_end()),
         }
     }
 }
