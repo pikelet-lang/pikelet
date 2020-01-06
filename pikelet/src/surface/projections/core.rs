@@ -32,6 +32,14 @@ impl<'me> State<'me> {
     pub fn clear(&mut self) {
         self.errors.clear();
     }
+
+    pub fn normalize_term(&mut self, term: &core::Term, r#type: &core::Value) -> core::Term {
+        core::semantics::normalize_term(self.globals, &mut self.locals, term, r#type)
+    }
+
+    pub fn read_back_type(&mut self, r#type: &core::Value) -> core::Term {
+        core::semantics::read_back_type(r#type)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
