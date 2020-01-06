@@ -76,7 +76,11 @@ fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
         Term::Constant(Constant::Char(data)) => Text::new(format!("{:?}", data)).into(),
         Term::Constant(Constant::String(data)) => Text::new(format!("{:?}", data)).into(),
         Term::Sequence(_) => Text::new("todo").into(),
-        Term::Ann(_, _) => Text::new("todo").into(),
+        Term::Ann(term, r#type) => Row::new()
+            .push(view_term(term))
+            .push(Text::new(" : "))
+            .push(view_term(r#type))
+            .into(),
         Term::RecordTerm(_) => Text::new("todo").into(),
         Term::RecordType(_) => Text::new("todo").into(),
         Term::RecordElim(_, _) => Text::new("todo").into(),
