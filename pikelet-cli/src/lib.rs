@@ -15,6 +15,10 @@ pub enum Options {
     /// Runs the REPL/interactive mode.
     #[structopt(name = "repl")]
     Repl(repl::Options),
+    /// Runs the GUI mode.
+    #[cfg(feature = "gui")]
+    #[structopt(name = "gui")]
+    Gui,
 }
 
 /// Run the CLI with the given options
@@ -23,5 +27,10 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
         Options::Check => Err("not yet implemented".into()),
         Options::Ide => Err("not yet implemented".into()),
         Options::Repl(options) => repl::run(options),
+        #[cfg(feature = "gui")]
+        Options::Gui => {
+            pikelet_gui::run();
+            Ok(())
+        }
     }
 }

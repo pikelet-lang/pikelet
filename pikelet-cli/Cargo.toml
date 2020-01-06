@@ -14,7 +14,12 @@ license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["gui"]
+gui = ["pikelet-gui"]
+
 [dependencies]
 pikelet = { path = "../pikelet" }
+pikelet-gui = { path = "../pikelet-gui", optional = true }
 rustyline = "5.0"
 structopt = "0.3"
