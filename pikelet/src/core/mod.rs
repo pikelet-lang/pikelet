@@ -213,6 +213,10 @@ impl Globals {
     pub fn get(&self, name: &str) -> Option<&(Arc<Term>, Option<Arc<Term>>)> {
         self.entries.get(name)
     }
+
+    pub fn entries(&self) -> impl Iterator<Item = (&String, &(Arc<Term>, Option<Arc<Term>>))> {
+        self.entries.iter()
+    }
 }
 
 impl Default for Globals {
