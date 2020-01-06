@@ -56,14 +56,25 @@ impl Sandbox for Workspace {
 }
 
 fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
-    use pikelet::core::{Term, UniverseLevel, UniverseOffset};
+    use pikelet::core::{Constant, Term, UniverseLevel, UniverseOffset};
 
     match term {
         Term::Universe(UniverseLevel(level)) => Row::new()
             .push(Text::new(format!("Univ^{}", level))) // TODO: superscript?
             .into(),
         Term::Global(name) => Text::new(name).into(),
-        Term::Constant(_) => Text::new("todo").into(),
+        Term::Constant(Constant::U8(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::U16(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::U32(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::U64(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::S8(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::S16(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::S32(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::S64(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::F32(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::F64(data)) => Text::new(data.to_string()).into(),
+        Term::Constant(Constant::Char(data)) => Text::new(format!("{:?}", data)).into(),
+        Term::Constant(Constant::String(data)) => Text::new(format!("{:?}", data)).into(),
         Term::Sequence(_) => Text::new("todo").into(),
         Term::Ann(_, _) => Text::new("todo").into(),
         Term::RecordTerm(_) => Text::new("todo").into(),
