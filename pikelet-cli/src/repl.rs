@@ -32,6 +32,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
         // No previous REPL history!
     }
 
+    let pretty_alloc = pretty::BoxAllocator;
     let globals = core::Globals::default();
     let mut state = surface::projections::core::State::new(&globals);
 
@@ -58,9 +59,21 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                 } else {
                     let core_term = state.normalize_term(&core_term, &r#type);
                     let r#type = state.read_back_type(&r#type);
-                    let ann_term = core::Term::Ann(Arc::new(core_term), Arc::new(r#type));
 
-                    println!("{:?}", ann_term); // TODO: pretty print
+                    let ann_term = core::projections::surface::delaborate_term(&core::Term::Ann(
+                        Arc::new(core_term),
+                        Arc::new(r#type),
+                    ));
+                    let ann_term_doc =
+                        surface::projections::pretty::pretty_term(&pretty_alloc, &ann_term);
+
+                    println!(
+                        "{term}",
+                        term = ann_term_doc.1.pretty(match term_size::dimensions() {
+                            Some((width, _)) => width,
+                            None => std::usize::MAX,
+                        }),
+                    );
                 }
             }
             Err(ReadlineError::Interrupted) => println!("Interrupted!"),
