@@ -3,8 +3,15 @@ use crate::surface::{Term, Literal};
 grammar;
 
 pub Term: Term<&'input str> = {
+    ExprTerm,
+    <term: ExprTerm> ":" <ty: Term> => Term::Ann(Box::new(term), Box::new(ty)),
+};
+
+ExprTerm: Term<&'input str> = {
     ArrowTerm,
-    <term: ArrowTerm> ":" <ty: Term> => Term::Ann(Box::new(term), Box::new(ty)),
+    <start: @L> "fun" <param_names: Name+> "=>" <body: ExprTerm> => {
+        Term::FunctionTerm(start.., param_names, Box::new(body))
+    },
 };
 
 ArrowTerm: Term<&'input str> = {

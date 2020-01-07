@@ -6,15 +6,21 @@ use std::sync::Arc;
 
 use crate::core::semantics;
 use crate::core::{
-    Constant, Elim, Globals, Head, Locals, Term, UniverseLevel, UniverseOffset, Value,
+    Constant, Elim, Globals, Head, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset, Value,
 };
 
 /// The state of the type checker.
 pub struct State<'me> {
+    /// Global variables.
     globals: &'me Globals,
+    /// The current universe offset.
     universe_offset: UniverseOffset,
-    locals: Locals,
-    pub errors: Vec<TypeError>,
+    /// Types of the locals currently bound.
+    types: Locals<Arc<Value>>,
+    /// Values to be used during evaluation.
+    values: Locals<Arc<Value>>,
+    /// The errors accumulated during elaboration.
+    errors: Vec<TypeError>,
 }
 
 impl<'me> State<'me> {
@@ -23,36 +29,76 @@ impl<'me> State<'me> {
         State {
             globals,
             universe_offset: UniverseOffset(0),
-            locals: Locals::new(),
+            types: Locals::new(),
+            values: Locals::new(),
             errors: Vec::new(),
         }
     }
 
-    /// Evaluate a term using the current state of the type checker.
-    pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
-        semantics::eval_term(self.globals, self.universe_offset, &mut self.locals, term)
+    /// Get the next level to be used for a local entry.
+    fn next_level(&self) -> LocalLevel {
+        self.values.size().next_level()
+    }
+
+    /// Push a local entry.
+    fn push_local(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
+        self.types.push(value);
+        self.values.push(r#type);
+    }
+
+    /// Push a local parameter.
+    fn push_param(&mut self, r#type: Arc<Value>) -> Arc<Value> {
+        let value = Arc::new(Value::local(self.next_level(), r#type.clone()));
+        self.push_local(value.clone(), r#type);
+        value
+    }
+
+    /// Pop a local entry.
+    fn pop_local(&mut self) {
+        self.types.pop();
+        self.values.pop();
     }
 
     /// Report an error.
-    pub fn report(&mut self, error: TypeError) {
+    fn report(&mut self, error: TypeError) {
         self.errors.push(error);
+    }
+
+    /// Drain the current errors.
+    pub fn drain_errors(&mut self) -> std::vec::Drain<TypeError> {
+        self.errors.drain(..)
     }
 
     /// Reset the type checker state while retaining existing allocations.
     pub fn clear(&mut self) {
+        self.universe_offset = UniverseOffset(0);
+        self.types.clear();
+        self.values.clear();
         self.errors.clear();
+    }
+
+    /// Evaluate a term using the current state of the type checker.
+    pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
+        semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
+    }
+
+    pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
+        semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum TypeError {
     MaximumUniverseLevelReached,
-    UnboundName(String),
+    UnboundGlobal(String),
+    UnboundLocal,
     DuplicateNamesInRecordType(Vec<String>),
     MissingNamesInRecordTerm(Vec<String>),
     UnexpectedNamesInRecordTerm(Vec<String>),
     FieldNotFoundInRecord(String),
-    ExpectedRecord(Arc<Value>),
+    NotARecord(Arc<Value>),
+    TooManyParametersForFunctionTerm { expected_type: Arc<Value> },
+    AmbiguousFunctionTerm,
     NotAFunction(Arc<Value>),
     AmbiguousSequence,
     UnexpectedSequenceLength(usize, Arc<Value>),
@@ -76,8 +122,8 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
 /// Check that a term matches the expected type.
 pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) {
     match (term, expected_type.as_ref()) {
-        (Term::Sequence(entry_terms), Value::Elim(head, elims, _)) => match head {
-            Head::Global(name, _) => match (name.as_ref(), elims.as_slice()) {
+        (Term::Sequence(entry_terms), Value::Elim(Head::Global(name, _), elims, _)) => {
+            match (name.as_ref(), elims.as_slice()) {
                 ("Array", [Elim::Function(len, _), Elim::Function(entry_type, _)]) => {
                     for entry_term in entry_terms {
                         check_term(state, entry_term, entry_type);
@@ -98,8 +144,8 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                     }
                 }
                 _ => state.report(TypeError::NoSequenceConversion(expected_type.clone())),
-            },
-        },
+            }
+        }
         (Term::Sequence(_), Value::Error) => {}
         (Term::Sequence(_), _) => {
             state.report(TypeError::NoSequenceConversion(expected_type.clone()))
@@ -125,8 +171,18 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 state.report(TypeError::UnexpectedNamesInRecordTerm(unexpected_names));
             }
         }
+        (Term::FunctionTerm(_, body), Value::FunctionType(param_type, body_type)) => {
+            state.push_param(param_type.clone());
+            check_term(state, body, body_type);
+            state.pop_local();
+        }
+        (Term::FunctionTerm(_, _), _) => {
+            state.report(TypeError::TooManyParametersForFunctionTerm {
+                expected_type: expected_type.clone(),
+            });
+        }
         (term, _) => match synth_term(state, term) {
-            ty if semantics::is_subtype(&ty, expected_type) => {}
+            ty if state.is_subtype(&ty, expected_type) => {}
             ty => state.report(TypeError::MismatchedTypes(ty, expected_type.clone())),
         },
     }
@@ -145,7 +201,14 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Global(name) => match state.globals.get(name) {
             Some((r#type, _)) => state.eval_term(r#type),
             None => {
-                state.report(TypeError::UnboundName(name.to_owned()));
+                state.report(TypeError::UnboundGlobal(name.to_owned()));
+                Arc::new(Value::Error)
+            }
+        },
+        Term::Local(index) => match state.types.get(*index) {
+            Some(r#type) => r#type.clone(),
+            None => {
+                state.report(TypeError::UnboundLocal);
                 Arc::new(Value::Error)
             }
         },
@@ -217,7 +280,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                     }
                 }
                 _ => {
-                    state.report(TypeError::ExpectedRecord(head_type));
+                    state.report(TypeError::NotARecord(head_type));
                     Arc::new(Value::Error)
                 }
             }
@@ -229,6 +292,10 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
                 (_, _) => Arc::new(Value::Error),
             }
+        }
+        Term::FunctionTerm(_, _) => {
+            state.report(TypeError::AmbiguousFunctionTerm);
+            Arc::new(Value::Error)
         }
         Term::FunctionElim(head, argument) => {
             let head_type = synth_term(state, head);

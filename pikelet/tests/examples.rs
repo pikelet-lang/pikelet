@@ -10,10 +10,11 @@ fn run_test(input: &str) {
     let globals = core::Globals::default();
     let mut state = surface::projections::core::State::new(&globals);
     let (core_term, r#type) = surface::projections::core::synth_term(&mut state, &surface_term);
-    if !state.errors.is_empty() {
+    let errors = state.drain_errors().collect::<Vec<_>>();
+    if !errors.is_empty() {
         is_failed = true;
         eprintln!("surface::projections::core::synth_term errors:");
-        for error in state.errors {
+        for error in errors {
             eprintln!("  {:?}", error);
         }
         eprintln!();
@@ -21,10 +22,11 @@ fn run_test(input: &str) {
 
     let mut state = core::typing::State::new(&globals);
     core::typing::synth_term(&mut state, &core_term);
-    if !state.errors.is_empty() {
+    let errors = state.drain_errors().collect::<Vec<_>>();
+    if !errors.is_empty() {
         is_failed = true;
         eprintln!("core::typing::synth_term errors:");
-        for error in state.errors {
+        for error in errors {
             eprintln!("  {:?}", error);
         }
         eprintln!();
@@ -32,10 +34,11 @@ fn run_test(input: &str) {
 
     let mut state = core::typing::State::new(&globals);
     core::typing::check_term(&mut state, &core_term, &r#type);
-    if !state.errors.is_empty() {
+    let errors = state.drain_errors().collect::<Vec<_>>();
+    if !errors.is_empty() {
         is_failed = true;
         eprintln!("core::typing::check_term errors:");
-        for error in state.errors {
+        for error in errors {
             eprintln!("  {:?}", error);
         }
         eprintln!();

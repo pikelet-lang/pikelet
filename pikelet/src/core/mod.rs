@@ -69,8 +69,10 @@ impl From<u32> for UniverseOffset {
 pub enum Term {
     /// The type of types.
     Universe(UniverseLevel),
-    /// References to global variables.
+    /// Global variables.
     Global(String),
+    /// Local variables.
+    Local(LocalIndex),
     /// Constants.
     Constant(Constant),
     /// Ordered sequences.
@@ -85,6 +87,8 @@ pub enum Term {
     RecordElim(Arc<Term>, String),
     /// Function types.
     FunctionType(Arc<Term>, Arc<Term>),
+    /// Function terms (lambda abstractions).
+    FunctionTerm(String, Arc<Term>),
     /// Function eliminations (function application).
     FunctionElim(Arc<Term>, Arc<Term>),
     /// Lift a term by the given number of universe levels.
@@ -99,11 +103,12 @@ impl Term {
         Term::Universe(level.into())
     }
 
-    /// Create a reference to global variable.
+    /// Create a global variable.
     pub fn global(name: impl Into<String>) -> Term {
         Term::Global(name.into())
     }
 
+    /// Lift a term by the given offset.
     pub fn lift(self, offset: impl Into<UniverseOffset>) -> Term {
         match offset.into() {
             UniverseOffset(0) => self,
@@ -113,7 +118,7 @@ impl Term {
 }
 
 /// Values in the core language.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Value {
     /// The type of types.
     Universe(UniverseLevel),
@@ -138,6 +143,8 @@ pub enum Value {
     RecordTerm(BTreeMap<String, Arc<Value>>),
     /// Function types.
     FunctionType(Arc<Value>, Arc<Value>),
+    /// Function terms (lambda abstractions).
+    FunctionTerm(String, Closure),
     /// Error sentinel.
     Error,
 }
@@ -148,34 +155,63 @@ impl Value {
         Value::Universe(level.into())
     }
 
-    /// Create a reference to global variable.
+    /// Create a global variable.
     pub fn global(
         name: impl Into<String>,
-        level: impl Into<UniverseOffset>,
+        offset: impl Into<UniverseOffset>,
         r#type: impl Into<Arc<Value>>,
     ) -> Value {
         Value::Elim(
-            Head::Global(name.into(), level.into()),
+            Head::Global(name.into(), offset.into()),
             Vec::new(),
             r#type.into(),
         )
     }
+
+    /// Create a local variable.
+    pub fn local(level: impl Into<LocalLevel>, r#type: impl Into<Arc<Value>>) -> Value {
+        Value::Elim(Head::Local(level.into()), Vec::new(), r#type.into())
+    }
 }
 
 /// The head of an elimination.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Head {
-    /// References to global variables.
+    /// Global variables.
     Global(String, UniverseOffset),
+    /// Local variables.
+    Local(LocalLevel),
 }
 
 /// An eliminator, to be used in the spine of an elimination.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Elim {
     /// Record eliminators (field access).
     Record(String),
     /// Function eliminatiors (function application).
     Function(Arc<Value>, Arc<Value>),
+}
+
+/// Closure, which captures a local environment.
+#[derive(Clone, Debug)]
+pub struct Closure {
+    pub universe_offset: UniverseOffset,
+    pub values: Locals<Arc<Value>>,
+    pub term: Arc<Term>,
+}
+
+impl Closure {
+    pub fn new(
+        universe_offset: UniverseOffset,
+        values: Locals<Arc<Value>>,
+        term: Arc<Term>,
+    ) -> Closure {
+        Closure {
+            universe_offset,
+            values,
+            term,
+        }
+    }
 }
 
 /// An environment of global definitions.
@@ -251,15 +287,72 @@ impl Default for Globals {
     }
 }
 
-/// The local value environment.
-pub struct Locals {
-    // TODO: values,
+/// An index into the local environment.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LocalIndex(u32);
+
+/// An level into the local environment.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LocalLevel(u32);
+
+/// The size of the local environment.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LocalSize(u32);
+
+impl LocalSize {
+    /// Return the level of the next variable to be added to the environment.
+    pub fn next_level(self) -> LocalLevel {
+        LocalLevel(self.0)
+    }
+
+    /// Convert a variable level to a variable index in the current environment.
+    pub fn index(self, level: LocalLevel) -> LocalIndex {
+        LocalIndex(self.0 - (level.0 + 1)) // FIXME: Check for over/underflow?
+    }
 }
 
-impl Locals {
+/// A local environment.
+#[derive(Clone, Debug)]
+pub struct Locals<Entry> {
+    /// The local values that are currently defined in the environment.
+    values: Vec<Entry>,
+}
+
+impl<Entry> Locals<Entry> {
     /// Create a new local environment.
-    pub fn new() -> Locals {
-        Locals {}
+    pub fn new() -> Locals<Entry> {
+        Locals { values: Vec::new() }
+    }
+
+    /// Get the size of the environment.
+    pub fn size(&self) -> LocalSize {
+        LocalSize(self.values.len() as u32) // FIXME: Check for overflow?
+    }
+
+    /// Lookup an entry in the environment.
+    pub fn get(&self, index: LocalIndex) -> Option<&Entry> {
+        self.values
+            .get(self.values.len().checked_sub(index.0 as usize + 1)?)
+    }
+
+    /// Push an entry onto the environment.
+    pub fn push(&mut self, entry: Entry) {
+        self.values.push(entry);
+    }
+
+    /// Pop an entry off the environment.
+    pub fn pop(&mut self) {
+        self.values.pop();
+    }
+
+    /// Pop a number of entries off the environment.
+    pub fn pop_many(&mut self, count: usize) {
+        crate::pop_many(&mut self.values, count);
+    }
+
+    /// Clear the entries from the environment.
+    pub fn clear(&mut self) {
+        self.values.clear();
     }
 }
 

@@ -67,6 +67,7 @@ fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
             .push(Text::new(format!("Univ^{}", level))) // TODO: superscript?
             .into(),
         Term::Global(name) => Text::new(name).into(),
+        Term::Local(_) => Text::new("todo").into(),
         Term::Constant(Constant::U8(data)) => Text::new(data.to_string()).into(),
         Term::Constant(Constant::U16(data)) => Text::new(data.to_string()).into(),
         Term::Constant(Constant::U32(data)) => Text::new(data.to_string()).into(),
@@ -89,6 +90,7 @@ fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
         Term::RecordType(_) => Text::new("todo").into(),
         Term::RecordElim(_, _) => Text::new("todo").into(),
         Term::FunctionType(_, _) => Text::new("todo").into(),
+        Term::FunctionTerm(_, _) => Text::new("todo").into(),
         Term::FunctionElim(_, _) => Text::new("todo").into(),
         Term::Lift(term, UniverseOffset(offset)) => Row::new()
             .push(view_term(term))

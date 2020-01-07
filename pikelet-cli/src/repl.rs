@@ -91,20 +91,22 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                         continue;
                     }
                 };
+
                 let (core_term, r#type) =
                     surface::projections::core::synth_term(&mut state, &surface_term);
+                let errors = state.drain_errors().collect::<Vec<_>>();
 
-                if !state.errors.is_empty() {
-                    for error in &state.errors {
+                if !errors.is_empty() {
+                    for error in &errors {
                         println!("error: {:?}", error);
                     }
-                    state.errors.clear();
                 } else {
-                    let ann_term = core::projections::surface::delaborate_term(&core::Term::Ann(
+                    let ann_term = core::Term::Ann(
                         Arc::new(state.normalize_term(&core_term, &r#type)),
                         Arc::new(state.read_back_type(&r#type)),
-                    ));
-                    let doc = surface::projections::pretty::pretty_term(&pretty_alloc, &ann_term);
+                    );
+                    let term = state.delaborate_term(&ann_term);
+                    let doc = surface::projections::pretty::pretty_term(&pretty_alloc, &term);
 
                     println!("{}", doc.1.pretty(term_width()));
                 }
