@@ -20,15 +20,14 @@ where
         Term::Sequence(term_entries) => (alloc.nil())
             .append("[")
             .group()
-            .append(alloc.intersperse(
-                term_entries.iter().map(|term| {
-                    (alloc.space())
-                        .append(pretty_term(alloc, term))
-                        .group()
-                        .nest(4)
-                }),
-                alloc.text(",").append(alloc.space()),
-            ))
+            .append(
+                alloc.intersperse(
+                    term_entries
+                        .iter()
+                        .map(|term| pretty_term(alloc, term).group().nest(4)),
+                    alloc.text(",").append(alloc.space()),
+                ),
+            )
             .append("]"),
         Term::Ann(term, r#type) => (alloc.nil())
             .append(pretty_term(alloc, term))
@@ -86,19 +85,15 @@ where
             .append(pretty_term(alloc, head))
             .append(".")
             .append(alloc.text(name)),
-        Term::ArrayType(len, entry_type) => alloc.text("Array").append(
+        Term::FunctionType(param_type, body_type) => (alloc.nil())
+            .append(pretty_term(alloc, param_type))
+            .append(alloc.space())
+            .append("->")
+            .append(alloc.space())
+            .append(pretty_term(alloc, body_type)),
+        Term::FunctionElim(head, argument) => pretty_term(alloc, head).append(
             (alloc.nil())
-                .append(alloc.space())
-                .append(pretty_term(alloc, len))
-                .append(alloc.space())
-                .append(pretty_term(alloc, entry_type))
-                .group()
-                .nest(4),
-        ),
-        Term::ListType(entry_type) => alloc.text("List").append(
-            (alloc.nil())
-                .append(alloc.space())
-                .append(pretty_term(alloc, entry_type))
+                .append(pretty_term(alloc, argument))
                 .group()
                 .nest(4),
         ),

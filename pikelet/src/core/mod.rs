@@ -83,10 +83,10 @@ pub enum Term {
     RecordTerm(BTreeMap<String, Arc<Term>>),
     /// Record eliminations (field access).
     RecordElim(Arc<Term>, String),
-    /// Array types.
-    ArrayType(Arc<Term>, Arc<Term>),
-    /// List types.
-    ListType(Arc<Term>),
+    /// Function types.
+    FunctionType(Arc<Term>, Arc<Term>),
+    /// Function eliminations (function application).
+    FunctionElim(Arc<Term>, Arc<Term>),
     /// Lift a term by the given number of universe levels.
     Lift(Arc<Term>, UniverseOffset),
     /// Error sentinel.
@@ -163,10 +163,8 @@ pub enum Value {
     RecordType(Vec<(String, Arc<Value>)>),
     /// Record terms.
     RecordTerm(BTreeMap<String, Arc<Value>>),
-    /// Array types.
-    ArrayType(Arc<Value>, Arc<Value>),
-    /// List types.
-    ListType(Arc<Value>),
+    /// Function types.
+    FunctionType(Arc<Value>, Arc<Value>),
     /// Error sentinel.
     Error,
 }
@@ -203,6 +201,8 @@ pub enum Head {
 pub enum Elim {
     /// Record eliminators (field access).
     Record(String),
+    /// Function eliminatiors (function application).
+    Function(Arc<Value>, Arc<Value>),
 }
 
 /// An environment of global definitions.
@@ -250,6 +250,29 @@ impl Default for Globals {
         entries.insert("String".to_owned(), (Arc::new(Term::global("Type")), None));
         entries.insert("true".to_owned(), (Arc::new(Term::global("Bool")), None));
         entries.insert("false".to_owned(), (Arc::new(Term::global("Bool")), None));
+        entries.insert(
+            "Array".to_owned(),
+            (
+                Arc::new(Term::FunctionType(
+                    Arc::new(Term::Global("U32".to_owned())),
+                    Arc::new(Term::FunctionType(
+                        Arc::new(Term::universe(0)),
+                        Arc::new(Term::universe(0)),
+                    )),
+                )),
+                None,
+            ),
+        );
+        entries.insert(
+            "List".to_owned(),
+            (
+                Arc::new(Term::FunctionType(
+                    Arc::new(Term::universe(0)),
+                    Arc::new(Term::universe(0)),
+                )),
+                None,
+            ),
+        );
 
         Globals::new(entries)
     }
@@ -286,7 +309,11 @@ impl_has_type!(str, Value::global("String", 0, Value::universe(0)));
 
 impl<T: HasType> HasType for Vec<T> {
     fn r#type() -> Arc<Value> {
-        Arc::new(Value::ListType(T::r#type()))
+        Arc::new(Value::Elim(
+            Head::Global("List".to_owned(), UniverseOffset(0)),
+            vec![Elim::Function(T::r#type(), Arc::new(Value::universe(0)))],
+            Arc::new(Value::universe(0)),
+        ))
     }
 }
 
@@ -294,9 +321,16 @@ macro_rules! impl_has_type_array {
     ($($len:expr),*) => {
         $(impl<T: HasType> HasType for [T; $len] {
             fn r#type() -> Arc<Value> {
-                Arc::new(Value::ArrayType(
-                    Arc::new(Value::Constant(Constant::U32($len as u32))),
-                    T::r#type(),
+                Arc::new(Value::Elim(
+                    Head::Global("Array".to_owned(), UniverseOffset(0)),
+                    vec![
+                        Elim::Function(
+                            Arc::new(Value::Constant(Constant::U32($len as u32))),
+                            Arc::new(Value::global("U32", 0, Value::universe(0))),
+                        ),
+                        Elim::Function(T::r#type(), Arc::new(Value::universe(0))),
+                    ],
+                    Arc::new(Value::universe(0)),
                 ))
             }
         })*
@@ -412,8 +446,6 @@ impl_try_from_term_array!(
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     26, 27, 28, 29, 30, 31, 32
 );
-
-// TODO: Fixed-size arrays
 
 /// Serialize something to a `Term`.
 ///

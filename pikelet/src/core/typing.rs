@@ -5,7 +5,9 @@
 use std::sync::Arc;
 
 use crate::core::semantics;
-use crate::core::{Constant, Globals, Locals, Term, UniverseLevel, UniverseOffset, Value};
+use crate::core::{
+    Constant, Elim, Globals, Head, Locals, Term, UniverseLevel, UniverseOffset, Value,
+};
 
 /// The state of the type checker.
 pub struct State<'me> {
@@ -44,8 +46,10 @@ pub enum TypeError {
     UnexpectedNamesInRecordTerm(Vec<String>),
     FieldNotFoundInRecord(String),
     ExpectedRecord(Arc<Value>),
+    NotAFunction(Arc<Value>),
     AmbiguousSequence,
     UnexpectedSequenceLength(usize, Arc<Value>),
+    NoSequenceConversion(Arc<Value>),
     ExpectedType(Arc<Value>),
     MismatchedTypes(Arc<Value>, Arc<Value>),
 }
@@ -65,22 +69,33 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
 /// Check that a term matches the expected type.
 pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) {
     match (term, expected_type.as_ref()) {
-        (Term::Sequence(entry_terms), Value::ArrayType(len, entry_type)) => {
-            for entry_term in entry_terms {
-                check_term(state, entry_term, entry_type);
-            }
-            match **len {
-                Value::Constant(Constant::U32(len)) if len as usize == entry_terms.len() => {}
-                _ => state.report(TypeError::UnexpectedSequenceLength(
-                    entry_terms.len(),
-                    len.clone(),
-                )),
-            }
-        }
-        (Term::Sequence(entry_terms), Value::ListType(entry_type)) => {
-            for entry_term in entry_terms {
-                check_term(state, entry_term, entry_type);
-            }
+        (Term::Sequence(entry_terms), Value::Elim(head, elims, _)) => match head {
+            Head::Global(name, _) => match (name.as_ref(), elims.as_slice()) {
+                ("Array", [Elim::Function(len, _), Elim::Function(entry_type, _)]) => {
+                    for entry_term in entry_terms {
+                        check_term(state, entry_term, entry_type);
+                    }
+
+                    match **len {
+                        Value::Constant(Constant::U32(len))
+                            if len as usize == entry_terms.len() => {}
+                        _ => state.report(TypeError::UnexpectedSequenceLength(
+                            entry_terms.len(),
+                            len.clone(),
+                        )),
+                    }
+                }
+                ("List", [Elim::Function(entry_type, _)]) => {
+                    for entry_term in entry_terms {
+                        check_term(state, entry_term, entry_type);
+                    }
+                }
+                _ => state.report(TypeError::NoSequenceConversion(expected_type.clone())),
+            },
+        },
+        (Term::Sequence(_), Value::Error) => {}
+        (Term::Sequence(_), _) => {
+            state.report(TypeError::NoSequenceConversion(expected_type.clone()))
         }
         (Term::RecordTerm(term_entries), Value::RecordType(type_entries)) => {
             let mut missing_names = Vec::new();
@@ -200,22 +215,26 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
             }
         }
-        Term::ArrayType(len, entry_type) => {
-            let u32_type = Arc::new(Value::global("U32", 0, Value::universe(0)));
-            check_term(state, len, &u32_type);
-            let level = check_type(state, entry_type);
-
-            match level {
-                Some(level) => Arc::new(Value::Universe(level)),
-                None => Arc::new(Value::Error),
+        Term::FunctionType(param_type, body_type) => {
+            match (check_type(state, param_type), check_type(state, body_type)) {
+                (Some(param_level), Some(body_level)) => {
+                    Arc::new(Value::Universe(std::cmp::max(param_level, body_level)))
+                }
+                (_, _) => Arc::new(Value::Error),
             }
         }
-        Term::ListType(entry_type) => {
-            let level = check_type(state, entry_type);
-
-            match level {
-                Some(level) => Arc::new(Value::Universe(level)),
-                None => Arc::new(Value::Error),
+        Term::FunctionElim(head, argument) => {
+            let head_type = synth_term(state, head);
+            match head_type.as_ref() {
+                Value::FunctionType(param_type, body_type) => {
+                    check_term(state, argument, &param_type);
+                    body_type.clone()
+                }
+                Value::Error => Arc::new(Value::Error),
+                _ => {
+                    state.report(TypeError::NotAFunction(head_type));
+                    Arc::new(Value::Error)
+                }
             }
         }
         Term::Lift(term, shift) => match state.locals.universe_offset() + *shift {

@@ -25,10 +25,10 @@ pub enum Term<S> {
     RecordTerm(Range<usize>, Vec<(S, Term<S>)>),
     /// Record eliminations (field access).
     RecordElim(RangeTo<usize>, Box<Term<S>>, S),
-    /// Array types.
-    ArrayType(Range<usize>, Box<Term<S>>, Box<Term<S>>),
-    /// List types.
-    ListType(Range<usize>, Box<Term<S>>),
+    /// Function types.
+    FunctionType(Box<Term<S>>, Box<Term<S>>),
+    /// Function eliminations (function application).
+    FunctionElim(Box<Term<S>>, Vec<Term<S>>),
     /// Lift a term by the given number of universe levels.
     Lift(Range<usize>, Box<Term<S>>, u32),
     /// Error sentinel.
@@ -49,12 +49,21 @@ impl<'input> Term<&'input str> {
             | Term::Sequence(span, _)
             | Term::RecordType(span, _)
             | Term::RecordTerm(span, _)
-            | Term::ArrayType(span, _, _)
-            | Term::ListType(span, _)
             | Term::Lift(span, _, _)
             | Term::Error(span) => span.clone(),
             Term::Ann(term, r#type) => term.span().start..r#type.span().end,
             Term::RecordElim(span, term, _) => term.span().start..span.end,
+            Term::FunctionType(param_type, body_type) => {
+                param_type.span().start..body_type.span().end
+            }
+            Term::FunctionElim(head, arguments) => {
+                let head_span = head.span();
+                head_span.start
+                    ..arguments
+                        .last()
+                        .map(|argument| argument.span().end)
+                        .unwrap_or(head_span.end)
+            }
         }
     }
 }

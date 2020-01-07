@@ -63,7 +63,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [x] Record field lookups
   - [ ] Import expressions
   - [ ] Function terms
-  - [ ] Non-dependent function types
+  - [x] Non-dependent function types
   - [ ] Pattern matching
   - [ ] Recursive terms
   - [ ] Opaque (abstract) terms
