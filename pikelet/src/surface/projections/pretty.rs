@@ -87,6 +87,18 @@ where
             .append("->")
             .append(alloc.space())
             .append(pretty_term(alloc, body_type)),
+        Term::FunctionTerm(_, param_names, body) => (alloc.nil())
+            .append("fun")
+            .append(alloc.space())
+            .append(alloc.intersperse(param_names.iter().map(S::as_ref), alloc.space()))
+            .append(alloc.space())
+            .append("=>")
+            .group()
+            .append(
+                (alloc.nil())
+                    .append(alloc.space())
+                    .append(pretty_term(alloc, body).group().nest(4)),
+            ),
         Term::FunctionElim(head, arguments) => pretty_term(alloc, head).append(
             (alloc.nil())
                 .append(

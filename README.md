@@ -62,7 +62,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [ ] Let expressions
   - [x] Record field lookups
   - [ ] Import expressions
-  - [ ] Function terms
+  - [x] Function terms
   - [x] Non-dependent function types
   - [ ] Pattern matching
   - [ ] Recursive terms
@@ -72,7 +72,6 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [ ] Dependent record types
   - [ ] Dependent function types
   - [ ] Equality types
-  - [ ] Fixed-size arrays
   - [x] Universe levels
     - [x] Stratified
     - [x] Cumulative

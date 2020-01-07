@@ -2,7 +2,7 @@
 //!
 //! This is a user-friendly concrete syntax for the language.
 
-use std::ops::{Range, RangeTo};
+use std::ops::{Range, RangeFrom, RangeTo};
 
 pub mod projections;
 
@@ -27,6 +27,8 @@ pub enum Term<S> {
     RecordElim(RangeTo<usize>, Box<Term<S>>, S),
     /// Function types.
     FunctionType(Box<Term<S>>, Box<Term<S>>),
+    /// Function terms (lambda abstractions).
+    FunctionTerm(RangeFrom<usize>, Vec<S>, Box<Term<S>>),
     /// Function eliminations (function application).
     FunctionElim(Box<Term<S>>, Vec<Term<S>>),
     /// Lift a term by the given number of universe levels.
@@ -56,6 +58,7 @@ impl<'input> Term<&'input str> {
             Term::FunctionType(param_type, body_type) => {
                 param_type.span().start..body_type.span().end
             }
+            Term::FunctionTerm(span, _, body) => span.start..body.span().end,
             Term::FunctionElim(head, arguments) => match arguments.last() {
                 Some(argument) => head.span().start..argument.span().end,
                 None => head.span(),

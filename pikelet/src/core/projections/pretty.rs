@@ -15,7 +15,14 @@ where
             .append("Type")
             .append("^")
             .append(alloc.as_string(level.0)),
-        Term::Global(name) => alloc.text(name),
+        Term::Global(name) => (alloc.nil())
+            .append(alloc.text("global"))
+            .append(alloc.space())
+            .append(alloc.text(name)),
+        Term::Local(index) => (alloc.nil())
+            .append(alloc.text("local"))
+            .append(alloc.space())
+            .append(alloc.as_string(index.0)),
         Term::Constant(constant) => pretty_constant(alloc, constant),
         Term::Sequence(term_entries) => (alloc.nil())
             .append("[")
@@ -91,6 +98,15 @@ where
             .append("->")
             .append(alloc.space())
             .append(pretty_term(alloc, body_type)),
+        Term::FunctionTerm(_, body) => (alloc.nil())
+            .append("fun")
+            .append(alloc.space())
+            .append("_")
+            .append(alloc.space())
+            .append("=>")
+            .group()
+            .append(alloc.space())
+            .append(pretty_term(alloc, body).nest(4)),
         Term::FunctionElim(head, argument) => pretty_term(alloc, head).append(
             (alloc.nil())
                 .append(pretty_term(alloc, argument))

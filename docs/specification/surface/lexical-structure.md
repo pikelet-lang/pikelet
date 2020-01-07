@@ -87,6 +87,7 @@ For convenience, we define a number of special values within the above <a href="
 > **Grammar**:
 >
 > <a href="#var:keyword"><var id="var:keyword">keyword</var></a> ::=\
+> &emsp;|&ensp;`fun`\
 > &emsp;|&ensp;`Record`\
 > &emsp;|&ensp;`record`
 >
@@ -112,6 +113,7 @@ For convenience, we define a number of special values within the above <a href="
 > &emsp;|&ensp;`:`\
 > &emsp;|&ensp;`,`\
 > &emsp;|&ensp;`=`\
+> &emsp;|&ensp;`=>`\
 > &emsp;|&ensp;`->`\
 > &emsp;|&ensp;`;`
 >

@@ -4,11 +4,17 @@ This defines the grammar of the surface language.
 
 ## Terms
 
+Precedence climbing is used to define the syntax of terms:
+
 > **Grammar**:
 >
 > <a href="#var:term"><var id="var:term">term</var></a> ::=\
+> &emsp;|&ensp;<a href="#var:expr-term"><var>expr-term</var></a>\
+> &emsp;|&ensp;<a href="#var:expr-term"><var>expr-term</var></a> `:` <a href="#var:term"><var>term</var></a>
+>
+> <a href="#var:expr-term"><var id="var:expr-term">expr-term</var></a> ::=\
 > &emsp;|&ensp;<a href="#var:arrow-term"><var>arrow-term</var></a>\
-> &emsp;|&ensp;<a href="#var:arrow-term"><var>arrow-term</var></a> `:` <a href="#var:term"><var>term</var></a>
+> &emsp;|&ensp;`fun` <var>name</var><sup>+</sup> `=>` <a href="#var:expr-term"><var>expr-term</var></a>
 >
 > <a href="#var:arrow-term"><var id="var:arrow-term">arrow-term</var></a> ::=\
 > &emsp;|&ensp;<a href="#var:app-term"><var>app-term</var></a>\

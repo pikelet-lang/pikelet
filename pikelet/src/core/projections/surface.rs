@@ -1,9 +1,21 @@
 //! Delaborate the core language into the surface language.
 
-use crate::core::{Constant, Term, UniverseLevel, UniverseOffset};
+use crate::core::{Constant, Locals, Term, UniverseLevel, UniverseOffset};
 use crate::surface;
 
-pub fn delaborate_term(term: &Term) -> surface::Term<String> {
+pub struct State<'me> {
+    // TODO: global names
+    // TODO: used names
+    names: &'me mut Locals<String>,
+}
+
+impl<'me> State<'me> {
+    pub fn new(names: &'me mut Locals<String>) -> State<'me> {
+        State { names }
+    }
+}
+
+pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<String> {
     match term {
         Term::Universe(UniverseLevel(0)) => surface::Term::Name(0..0, "Type".to_owned()),
         Term::Universe(UniverseLevel(level)) => {
@@ -11,23 +23,24 @@ pub fn delaborate_term(term: &Term) -> surface::Term<String> {
             surface::Term::Lift(0..0, universe0, *level)
         }
         Term::Global(name) => surface::Term::Name(0..0, name.to_owned()),
+        Term::Local(index) => surface::Term::Name(0..0, state.names.get(*index).cloned().unwrap()), // FIXME: unwrap
         Term::Constant(constant) => delaborate_constant(constant),
         Term::Sequence(entry_terms) => {
             let core_entry_terms = entry_terms
                 .iter()
-                .map(|entry_term| delaborate_term(entry_term))
+                .map(|entry_term| delaborate_term(state, entry_term))
                 .collect();
 
             surface::Term::Sequence(0..0, core_entry_terms)
         }
         Term::Ann(term, r#type) => surface::Term::Ann(
-            Box::new(delaborate_term(term)),
-            Box::new(delaborate_term(r#type)),
+            Box::new(delaborate_term(state, term)),
+            Box::new(delaborate_term(state, r#type)),
         ),
         Term::RecordType(type_entries) => {
             let core_type_entries = type_entries
                 .iter()
-                .map(|(name, r#type)| (name.clone(), delaborate_term(r#type)))
+                .map(|(name, r#type)| (name.clone(), delaborate_term(state, r#type)))
                 .collect();
 
             surface::Term::RecordType(0..0, core_type_entries)
@@ -35,24 +48,50 @@ pub fn delaborate_term(term: &Term) -> surface::Term<String> {
         Term::RecordTerm(term_entries) => {
             let core_term_entries = term_entries
                 .iter()
-                .map(|(name, term)| (name.clone(), delaborate_term(term)))
+                .map(|(name, term)| (name.clone(), delaborate_term(state, term)))
                 .collect();
 
             surface::Term::RecordTerm(0..0, core_term_entries)
         }
         Term::RecordElim(head, name) => {
-            surface::Term::RecordElim(..0, Box::new(delaborate_term(head)), name.clone())
+            surface::Term::RecordElim(..0, Box::new(delaborate_term(state, head)), name.clone())
         }
         Term::FunctionType(param_type, body_type) => surface::Term::FunctionType(
-            Box::new(delaborate_term(param_type)),
-            Box::new(delaborate_term(body_type)),
+            Box::new(delaborate_term(state, param_type)),
+            Box::new(delaborate_term(state, body_type)),
         ),
-        Term::FunctionElim(head, argument) => surface::Term::FunctionElim(
-            Box::new(delaborate_term(head)),
-            vec![delaborate_term(argument)], // TODO: flatten arguments
-        ),
+        Term::FunctionTerm(param_name_hint, body) => {
+            let mut current_body = body;
+
+            let mut param_names = vec![param_name_hint.clone()]; // FIXME: Name avoidance
+            state.names.push(param_name_hint.clone());
+
+            while let Term::FunctionTerm(param_name_hint, body) = current_body.as_ref() {
+                param_names.push(param_name_hint.clone()); // FIXME: Name avoidance
+                state.names.push(param_name_hint.clone());
+                current_body = body;
+            }
+
+            let body = delaborate_term(state, current_body);
+            state.names.pop_many(param_names.len());
+
+            surface::Term::FunctionTerm(0.., param_names, Box::new(body))
+        }
+        Term::FunctionElim(head, argument) => {
+            let mut current_head = head;
+
+            let mut arguments = vec![delaborate_term(state, argument)];
+            while let Term::FunctionElim(head, argument) = current_head.as_ref() {
+                arguments.push(delaborate_term(state, argument));
+                current_head = head;
+            }
+            arguments.reverse();
+
+            let head = delaborate_term(state, current_head);
+            surface::Term::FunctionElim(Box::new(head), arguments)
+        }
         Term::Lift(term, UniverseOffset(offset)) => {
-            surface::Term::Lift(0..0, Box::new(delaborate_term(term)), *offset)
+            surface::Term::Lift(0..0, Box::new(delaborate_term(state, term)), *offset)
         }
         Term::Error => surface::Term::Error(0..0),
     }
