@@ -52,6 +52,7 @@ pub enum TypeError {
     UnexpectedNamesInRecordTerm(Vec<String>),
     FieldNotFoundInRecord(String),
     ExpectedRecord(Arc<core::Value>),
+    NotAFunction(Arc<core::Value>),
     InvalidNumberLiteral,
     InvalidCharLiteral,
     InvalidStringLiteral,
@@ -59,6 +60,7 @@ pub enum TypeError {
     AmbiguousLiteral,
     AmbiguousSequence,
     UnexpectedSequenceLength(usize, Arc<core::Value>),
+    NoSequenceConversion(Arc<core::Value>),
     ExpectedType(Arc<core::Value>),
     MismatchedTypes(Arc<core::Value>, Arc<core::Value>),
 }
@@ -107,39 +109,56 @@ pub fn check_term<S: AsRef<str>>(
                 }
             }
         }
+        (Term::Literal(_, _), core::Value::Error) => core::Term::Error,
         (Term::Literal(_, _), _) => {
             state.report(TypeError::NoLiteralConversion(expected_type.clone()));
             core::Term::Error
         }
-        (Term::Sequence(_, entry_terms), core::Value::ArrayType(len, core_entry_type)) => {
-            let core_entry_terms = entry_terms
-                .iter()
-                .map(|entry_term| Arc::new(check_term(state, entry_term, core_entry_type)))
-                .collect();
+        (Term::Sequence(_, entry_terms), core::Value::Elim(head, elims, _)) => match head {
+            core::Head::Global(name, _) => match (name.as_ref(), elims.as_slice()) {
+                (
+                    "Array",
+                    [core::Elim::Function(len, _), core::Elim::Function(core_entry_type, _)],
+                ) => {
+                    let core_entry_terms = entry_terms
+                        .iter()
+                        .map(|entry_term| Arc::new(check_term(state, entry_term, core_entry_type)))
+                        .collect();
 
-            match **len {
-                core::Value::Constant(core::Constant::U32(len))
-                    if len as usize == entry_terms.len() =>
-                {
+                    match **len {
+                        core::Value::Constant(core::Constant::U32(len))
+                            if len as usize == entry_terms.len() =>
+                        {
+                            core::Term::Sequence(core_entry_terms)
+                        }
+                        _ => {
+                            state.report(TypeError::UnexpectedSequenceLength(
+                                entry_terms.len(),
+                                len.clone(),
+                            ));
+
+                            core::Term::Error
+                        }
+                    }
+                }
+                ("List", [core::Elim::Function(core_entry_type, _)]) => {
+                    let core_entry_terms = entry_terms
+                        .iter()
+                        .map(|entry_term| Arc::new(check_term(state, entry_term, core_entry_type)))
+                        .collect();
+
                     core::Term::Sequence(core_entry_terms)
                 }
                 _ => {
-                    state.report(TypeError::UnexpectedSequenceLength(
-                        entry_terms.len(),
-                        len.clone(),
-                    ));
-
+                    state.report(TypeError::NoSequenceConversion(expected_type.clone()));
                     core::Term::Error
                 }
-            }
-        }
-        (Term::Sequence(_, entry_terms), core::Value::ListType(core_entry_type)) => {
-            core::Term::Sequence(
-                entry_terms
-                    .iter()
-                    .map(|entry_term| Arc::new(check_term(state, entry_term, core_entry_type)))
-                    .collect(),
-            )
+            },
+        },
+        (Term::Sequence(_, _), core::Value::Error) => core::Term::Error,
+        (Term::Sequence(_, _), _) => {
+            state.report(TypeError::NoSequenceConversion(expected_type.clone()));
+            core::Term::Error
         }
         (Term::RecordTerm(_, term_entries), core::Value::RecordType(core_type_entries)) => {
             use std::collections::btree_map::Entry;
@@ -317,29 +336,39 @@ pub fn synth_term<S: AsRef<str>>(
                 }
             }
         }
-        Term::ArrayType(_, len, entry_type) => {
-            let u32_type = Arc::new(core::Value::global("U32", 0, core::Value::universe(0)));
-            let core_len = Arc::new(check_term(state, len, &u32_type));
-            let (core_entry_type, level) = check_type(state, entry_type);
-
-            match level {
-                Some(level) => (
-                    core::Term::ArrayType(core_len, Arc::new(core_entry_type)),
-                    Arc::new(core::Value::Universe(level)),
+        Term::FunctionType(param_type, body_type) => {
+            match (check_type(state, param_type), check_type(state, body_type)) {
+                ((core_param_type, Some(param_level)), (core_body_type, Some(body_level))) => (
+                    core::Term::FunctionType(Arc::new(core_param_type), Arc::new(core_body_type)),
+                    Arc::new(core::Value::Universe(std::cmp::max(
+                        param_level,
+                        body_level,
+                    ))),
                 ),
-                None => (core::Term::Error, Arc::new(core::Value::Error)),
+                (_, _) => (core::Term::Error, Arc::new(core::Value::Error)),
             }
         }
-        Term::ListType(_, entry_type) => {
-            let (core_entry_type, level) = check_type(state, entry_type);
+        Term::FunctionElim(head, arguments) => {
+            let (mut core_head, mut head_type) = synth_term(state, head);
 
-            match level {
-                Some(level) => (
-                    core::Term::ListType(Arc::new(core_entry_type)),
-                    Arc::new(core::Value::Universe(level)),
-                ),
-                None => (core::Term::Error, Arc::new(core::Value::Error)),
+            for argument in arguments {
+                match head_type.as_ref() {
+                    core::Value::FunctionType(param_type, body_type) => {
+                        core_head = core::Term::FunctionElim(
+                            Arc::new(core_head),
+                            Arc::new(check_term(state, argument, &param_type)),
+                        );
+                        head_type = body_type.clone();
+                    }
+                    core::Value::Error => return (core::Term::Error, Arc::new(core::Value::Error)),
+                    _ => {
+                        state.report(TypeError::NotAFunction(head_type));
+                        return (core::Term::Error, Arc::new(core::Value::Error));
+                    }
+                }
             }
+
+            (core_head, head_type)
         }
         Term::Lift(_, term, offset) => {
             match state.locals.universe_offset() + core::UniverseOffset(*offset) {

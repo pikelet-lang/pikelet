@@ -3,10 +3,22 @@ use crate::surface::{Term, Literal};
 grammar;
 
 pub Term: Term<&'input str> = {
+    ArrowTerm,
+    <term: ArrowTerm> ":" <ty: Term> => Term::Ann(Box::new(term), Box::new(ty)),
+};
+
+ArrowTerm: Term<&'input str> = {
+    AppTerm,
+    <param_type: AppTerm> "->" <body_type: ArrowTerm> => {
+        Term::FunctionType(Box::new(param_type), Box::new(body_type))
+    },
+};
+
+AppTerm: Term<&'input str> = {
     TermAtomic,
-    <start: @L> "Array" <arg0: TermAtomic> <arg1: TermAtomic> <end: @R> => Term::ArrayType(start..end, Box::new(arg0), Box::new(arg1)),
-    <start: @L> "List" <arg: TermAtomic> <end: @R> => Term::ListType(start..end, Box::new(arg)),
-    <term: Term> ":" <ty: TermAtomic> => Term::Ann(Box::new(term), Box::new(ty)),
+    <head: TermAtomic> <arguments: TermAtomic+> => {
+        Term::FunctionElim(Box::new(head), arguments)
+    },
 };
 
 TermAtomic: Term<&'input str> = {

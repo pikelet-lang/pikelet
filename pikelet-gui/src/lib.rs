@@ -88,8 +88,8 @@ fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
         Term::RecordTerm(_) => Text::new("todo").into(),
         Term::RecordType(_) => Text::new("todo").into(),
         Term::RecordElim(_, _) => Text::new("todo").into(),
-        Term::ArrayType(_, _) => Text::new("todo").into(),
-        Term::ListType(_) => Text::new("todo").into(),
+        Term::FunctionType(_, _) => Text::new("todo").into(),
+        Term::FunctionElim(_, _) => Text::new("todo").into(),
         Term::Lift(term, UniverseOffset(offset)) => Row::new()
             .push(view_term(term))
             .push(Text::new(format!("^{}", offset)))

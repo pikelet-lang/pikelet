@@ -65,11 +65,29 @@ pub fn eval_term(globals: &Globals, locals: &mut Locals, term: &Term) -> Arc<Val
             }
             _ => Arc::new(Value::Error),
         },
-        Term::ArrayType(len, entry_type) => Arc::new(Value::ArrayType(
-            eval_term(globals, locals, len),
-            eval_term(globals, locals, entry_type),
-        )),
-        Term::ListType(r#type) => Arc::new(Value::ListType(eval_term(globals, locals, r#type))),
+        Term::FunctionType(param_type, body_type) => {
+            let param_type = eval_term(globals, locals, param_type);
+            let body_type = eval_term(globals, locals, body_type);
+
+            Arc::new(Value::FunctionType(param_type, body_type))
+        }
+        Term::FunctionElim(head, argument) => match eval_term(globals, locals, head).as_ref() {
+            // TODO: Value::FunctionTerm(body)
+            Value::Elim(head, elims, r#type) => {
+                let (param_type, body_type) = match r#type.as_ref() {
+                    Value::FunctionType(param_type, body_type) => (param_type, body_type),
+                    _ => return Arc::new(Value::Error),
+                };
+
+                let mut elims = elims.clone(); // TODO: Avoid clone?
+                elims.push(Elim::Function(
+                    eval_term(globals, locals, argument),
+                    param_type.clone(),
+                ));
+                Arc::new(Value::Elim(head.clone(), elims, body_type.clone()))
+            }
+            _ => Arc::new(Value::Error),
+        },
         Term::Lift(term, offset) => {
             let previous_offset = locals.universe_offset();
             locals.set_universe_offset((previous_offset + *offset).unwrap()); // FIXME: Handle overflow
@@ -89,6 +107,10 @@ pub fn read_back_elim(/* TODO: level, */ head: &Head, spine: &[Elim]) -> Term {
 
     spine.iter().fold(head, |head, elim| match elim {
         Elim::Record(name) => Term::RecordElim(Arc::new(head), name.clone()),
+        Elim::Function(argument, argument_type) => Term::FunctionElim(
+            Arc::new(head),
+            Arc::new(read_back_nf(argument, argument_type)),
+        ),
     })
 }
 
@@ -102,25 +124,25 @@ pub fn read_back_nf(/* TODO: level, */ value: &Value, r#type: &Value) -> Term {
         (Value::Universe(level), Value::Universe(_)) => Term::Universe(*level),
         (Value::Elim(head, spine, _), _) => read_back_elim(head, spine),
         (Value::Constant(constant), _) => Term::Constant(constant.clone()),
-        (Value::Sequence(value_entries), Value::ArrayType(_, entry_type)) => Term::Sequence(
-            value_entries
-                .iter()
-                .map(|value_entry| Arc::new(read_back_nf(value_entry, entry_type)))
-                .collect(),
-        ),
-        (Value::Sequence(value_entries), Value::ListType(entry_type)) => {
-            let term_entries = value_entries
-                .iter()
-                .map(|value_entry| Arc::new(read_back_nf(value_entry, entry_type)))
-                .collect();
+        (Value::Sequence(value_entries), Value::Elim(head, elims, _)) => match head {
+            Head::Global(name, _) => match (name.as_ref(), elims.as_slice()) {
+                ("Array", [Elim::Function(_, _), Elim::Function(entry_type, _)])
+                | ("List", [Elim::Function(entry_type, _)]) => {
+                    let term_entries = value_entries
+                        .iter()
+                        .map(|value_entry| Arc::new(read_back_nf(value_entry, entry_type)))
+                        .collect();
 
-            Term::Sequence(term_entries)
-        }
-        (Value::RecordType(type_entries), Value::Universe(level)) => {
+                    Term::Sequence(term_entries)
+                }
+                _ => Term::Error, // TODO: Report error
+            },
+        },
+        (Value::RecordType(type_entries), Value::Universe(_)) => {
             let type_entries = type_entries
                 .iter()
                 .map(|(name, r#type)| {
-                    let r#type = Arc::new(read_back_nf(r#type, &Value::Universe(*level)));
+                    let r#type = Arc::new(read_back_type(r#type));
                     (name.clone(), r#type)
                 })
                 .collect();
@@ -138,22 +160,15 @@ pub fn read_back_nf(/* TODO: level, */ value: &Value, r#type: &Value) -> Term {
 
             Term::RecordTerm(term_entries)
         }
-        (Value::ArrayType(len, entry_type), Value::Universe(level)) => {
-            let u32_type = Value::global("U32", 0, Value::universe(0));
-            Term::ArrayType(
-                Arc::new(read_back_nf(len, &u32_type)),
-                Arc::new(read_back_nf(entry_type, &Value::Universe(*level))),
-            )
-        }
-        (Value::ListType(entry_type), Value::Universe(level)) => {
-            Term::ListType(Arc::new(read_back_nf(entry_type, &Value::Universe(*level))))
-        }
+        (Value::FunctionType(param_type, body_type), Value::Universe(_)) => Term::FunctionType(
+            Arc::new(read_back_type(param_type)),
+            Arc::new(read_back_type(body_type)),
+        ),
         (Value::Universe(_), _)
         | (Value::Sequence(_), _)
         | (Value::RecordType(_), _)
         | (Value::RecordTerm(_), _)
-        | (Value::ArrayType(_, _), _)
-        | (Value::ListType(_), _) => Term::Error, // TODO: Report error
+        | (Value::FunctionType(_, _), _) => Term::Error, // TODO: Report error
         (Value::Error, _) => Term::Error,
     }
 }
@@ -171,11 +186,10 @@ pub fn read_back_type(/* TODO: level, */ r#type: &Value) -> Term {
 
             Term::RecordType(type_entries)
         }
-        Value::ArrayType(len, entry_type) => Term::ArrayType(
-            Arc::new(read_back_type(len)),
-            Arc::new(read_back_type(entry_type)),
+        Value::FunctionType(param_type, body_type) => Term::FunctionType(
+            Arc::new(read_back_type(param_type)),
+            Arc::new(read_back_type(body_type)),
         ),
-        Value::ListType(entry_type) => Term::ListType(Arc::new(read_back_type(entry_type))),
         Value::Constant(_) | Value::Sequence(_) | Value::RecordTerm(_) => Term::Error, // TODO: Report error
         Value::Error => Term::Error,
     }
@@ -211,12 +225,6 @@ pub fn is_subtype(value0: &Value, value1: &Value) -> bool {
                 && Iterator::zip(value_entries0.iter(), value_entries1.iter()).all(
                     |((name0, term0), (name1, term1))| name0 == name1 && is_subtype(term0, term1),
                 )
-        }
-        (Value::ArrayType(len0, entry_type0), Value::ArrayType(len1, entry_type1)) => {
-            is_subtype(len0, len1) && is_subtype(entry_type0, entry_type1)
-        }
-        (Value::ListType(entry_type0), Value::ListType(entry_type1)) => {
-            is_subtype(entry_type0, entry_type1)
         }
         // Errors are always treated as subtypes, regardless of what they are compared with.
         (Value::Error, _) | (_, Value::Error) => true,

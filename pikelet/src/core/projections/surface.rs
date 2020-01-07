@@ -43,14 +43,14 @@ pub fn delaborate_term(term: &Term) -> surface::Term<String> {
         Term::RecordElim(head, name) => {
             surface::Term::RecordElim(..0, Box::new(delaborate_term(head)), name.clone())
         }
-        Term::ArrayType(len, entry_type) => surface::Term::ArrayType(
-            0..0,
-            Box::new(delaborate_term(len)),
-            Box::new(delaborate_term(entry_type)),
+        Term::FunctionType(param_type, body_type) => surface::Term::FunctionType(
+            Box::new(delaborate_term(param_type)),
+            Box::new(delaborate_term(body_type)),
         ),
-        Term::ListType(entry_type) => {
-            surface::Term::ListType(0..0, Box::new(delaborate_term(entry_type)))
-        }
+        Term::FunctionElim(head, argument) => surface::Term::FunctionElim(
+            Box::new(delaborate_term(head)),
+            vec![delaborate_term(argument)], // TODO: flatten arguments
+        ),
         Term::Lift(term, UniverseOffset(offset)) => {
             surface::Term::Lift(0..0, Box::new(delaborate_term(term)), *offset)
         }
