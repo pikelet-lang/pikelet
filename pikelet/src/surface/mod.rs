@@ -56,14 +56,10 @@ impl<'input> Term<&'input str> {
             Term::FunctionType(param_type, body_type) => {
                 param_type.span().start..body_type.span().end
             }
-            Term::FunctionElim(head, arguments) => {
-                let head_span = head.span();
-                head_span.start
-                    ..arguments
-                        .last()
-                        .map(|argument| argument.span().end)
-                        .unwrap_or(head_span.end)
-            }
+            Term::FunctionElim(head, arguments) => match arguments.last() {
+                Some(argument) => head.span().start..argument.span().end,
+                None => head.span(),
+            },
         }
     }
 }
