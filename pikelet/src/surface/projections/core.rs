@@ -9,6 +9,7 @@ use crate::surface::{Literal, Term};
 /// The state of the elaborator.
 pub struct State<'me> {
     globals: &'me core::Globals,
+    universe_offset: core::UniverseOffset,
     locals: core::Locals,
     pub errors: Vec<TypeError>,
 }
@@ -18,6 +19,7 @@ impl<'me> State<'me> {
     pub fn new(globals: &'me core::Globals) -> State<'me> {
         State {
             globals,
+            universe_offset: core::UniverseOffset(0),
             locals: core::Locals::new(),
             errors: Vec::new(),
         }
@@ -33,8 +35,18 @@ impl<'me> State<'me> {
         self.errors.clear();
     }
 
+    pub fn eval_term(&mut self, term: &core::Term) -> Arc<core::Value> {
+        core::semantics::eval_term(self.globals, self.universe_offset, &mut self.locals, term)
+    }
+
     pub fn normalize_term(&mut self, term: &core::Term, r#type: &core::Value) -> core::Term {
-        core::semantics::normalize_term(self.globals, &mut self.locals, term, r#type)
+        core::semantics::normalize_term(
+            self.globals,
+            self.universe_offset,
+            &mut self.locals,
+            term,
+            r#type,
+        )
     }
 
     pub fn read_back_type(&mut self, r#type: &core::Value) -> core::Term {
@@ -221,8 +233,8 @@ pub fn synth_term<S: AsRef<str>>(
     match term {
         Term::Name(_, name) => match state.globals.get(name.as_ref()) {
             Some((r#type, _)) => (
-                core::Term::Global(name.as_ref().to_owned()).lift(state.locals.universe_offset()),
-                core::semantics::eval_term(state.globals, &mut state.locals, r#type),
+                core::Term::Global(name.as_ref().to_owned()).lift(state.universe_offset),
+                state.eval_term(r#type),
             ),
             None => {
                 state.report(TypeError::UnboundName(name.as_ref().to_owned()));
@@ -231,8 +243,7 @@ pub fn synth_term<S: AsRef<str>>(
         },
         Term::Ann(term, r#type) => {
             let (core_type, _) = check_type(state, r#type);
-            let core_type_value =
-                core::semantics::eval_term(state.globals, &mut state.locals, &core_type);
+            let core_type_value = state.eval_term(&core_type);
             let core_term = check_term(state, term, &core_type_value);
             (
                 core::Term::Ann(Arc::new(core_term), Arc::new(core_type.clone())),
@@ -371,11 +382,11 @@ pub fn synth_term<S: AsRef<str>>(
             (core_head, head_type)
         }
         Term::Lift(_, term, offset) => {
-            match state.locals.universe_offset() + core::UniverseOffset(*offset) {
-                Some(lifted_level) => {
-                    let previous_level = state.locals.set_universe_offset(lifted_level);
+            match state.universe_offset + core::UniverseOffset(*offset) {
+                Some(new_offset) => {
+                    let previous_offset = std::mem::replace(&mut state.universe_offset, new_offset);
                     let (core_term, r#type) = synth_term(state, term);
-                    state.locals.set_universe_offset(previous_level);
+                    state.universe_offset = previous_offset;
                     (core_term, r#type)
                 }
                 None => {
