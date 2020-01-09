@@ -112,18 +112,6 @@ impl Term {
     }
 }
 
-/// The local value environment.
-pub struct Locals {
-    // TODO: values,
-}
-
-impl Locals {
-    /// Create a new local environment.
-    pub fn new() -> Locals {
-        Locals {}
-    }
-}
-
 /// Values in the core language.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -260,6 +248,18 @@ impl Default for Globals {
         );
 
         Globals::new(entries)
+    }
+}
+
+/// The local value environment.
+pub struct Locals {
+    // TODO: values,
+}
+
+impl Locals {
+    /// Create a new local environment.
+    pub fn new() -> Locals {
+        Locals {}
     }
 }
 
