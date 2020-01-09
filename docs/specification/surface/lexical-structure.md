@@ -118,10 +118,10 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > **Grammar**:
 >
 > <a href="#var:character-literal"><var id="var:character-literal">character-literal</var></a> ::=\
-> &emsp;|&ensp;`"` (`\"` | ~`"` <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>)<sup>*</sup>  `"`
+> &emsp;|&ensp;`"` (`\"` | ~`"` <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>)<sup>\*</sup>  `"`
 >
 > <a href="#var:string-literal"><var id="var:string-literal">string-literal</var></a> ::=\
-> &emsp;|&ensp;`'` (`\'` | ~`'` <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>)<sup>*</sup>  `'`
+> &emsp;|&ensp;`'` (`\'` | ~`'` <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>)<sup>\*</sup>  `'`
 
 ### Tokens
 
