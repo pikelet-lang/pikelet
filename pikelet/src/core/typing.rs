@@ -28,6 +28,7 @@ impl<'me> State<'me> {
         }
     }
 
+    /// Evaluate a term using the current state of the type checker.
     pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.locals, term)
     }
