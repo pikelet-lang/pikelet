@@ -2,9 +2,12 @@
 
 The _lexical structure_ of the Pikelet programming langues is a description of what constitutes a valid sequence of tokens in the programming language.
 
-## Whitespace and comments
+## Unicode
 
 > **Grammar**:
+>
+> <a href="#var:any-unicode-scalar"><var id="var:any-unicode-scalar">any-unicode-scalar</var></a> ::=\
+> &emsp;|&ensp;<kbd>U+0000</kbd>&hellip;<kbd>U+7FFF</kbd>
 >
 > <a href="#var:horizontal-tab"><var id="var:horizontal-tab">horizontal-tab</var></a> ::=\
 > &emsp;|&ensp;<kbd>U+0009</kbd>
@@ -35,6 +38,10 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 >
 > <a href="#var:paragraph-separator"><var id="var:paragraph-separator">paragraph-separator</var></a> ::=\
 > &emsp;|&ensp;<kbd>U+2029</kbd>
+
+## Whitespace and comments
+
+> **Grammar**:
 >
 > <a href="#var:line-break"><var id="var:line-break">line-break</var></a> ::=\
 > &emsp;|&ensp;<a href="#var:line-feed"><var>line-feed</var></a>\
@@ -42,7 +49,7 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > &emsp;|&ensp;<a href="#var:carriage-return"><var>carriage-return</var></a> <a href="#var:line-feed"><var>line-feed</var></a>
 >
 > <a href="#var:comment-text"><var id="var:comment-text">comment-text</var></a> ::=\
-> &emsp;|&ensp;~(<a href="#var:line-feed"><var>line-feed</var></a> | <a href="#var:carriage-return"><var>carriage-return</var></a>) Any Unicode scalar value
+> &emsp;|&ensp;~(<a href="#var:line-feed"><var>line-feed</var></a> | <a href="#var:carriage-return"><var>carriage-return</var></a>) <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>
 >
 > <a href="#var:comment"><var id="var:comment">comment</var></a> ::=\
 > &emsp;|&ensp;`--` <a href="comment-text"><var>comment-text</var></a> <a href="#var:line-break"><var>line-break</var></a>
@@ -103,10 +110,10 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > **Grammar**:
 >
 > <a href="#var:character-literal"><var id="var:character-literal">character-literal</var></a> ::=\
-> &emsp;|&ensp;`"` (`\"` | ~`"` Any Unicode scalar value)<sup>*</sup>  `"`
+> &emsp;|&ensp;`"` (`\"` | ~`"` <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>)<sup>*</sup>  `"`
 >
 > <a href="#var:string-literal"><var id="var:string-literal">string-literal</var></a> ::=\
-> &emsp;|&ensp;`'` (`\'` | ~`'` Any Unicode scalar value)<sup>*</sup>  `'`
+> &emsp;|&ensp;`'` (`\'` | ~`'` <a href="#var:any-unicode-scalar"><var>any-unicode-scalar</var></a>)<sup>*</sup>  `'`
 
 ### Tokens
 
