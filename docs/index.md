@@ -18,4 +18,3 @@ We'll aim to provide multiple levels of documentation for different purposes:
 [specification]: ./specification
 
 More sections might be added later, for example tutorials and cookbooks.
-
