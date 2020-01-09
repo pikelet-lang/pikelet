@@ -42,7 +42,7 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > &emsp;|&ensp;<a href="#var:carriage-return"><var>carriage-return</var></a> <a href="#var:line-feed"><var>line-feed</var></a>
 >
 > <a href="#var:comment-text"><var id="var:comment-text">comment-text</var></a> ::=\
-> &emsp;|&ensp;Any Unicode scalar value except <a href="#var:line-feed"><var>line-feed</var></a> or <a href="#var:carriage-return"><var>carriage-return</var></a>
+> &emsp;|&ensp;~(<a href="#var:line-feed"><var>line-feed</var></a> | <a href="#var:carriage-return"><var>carriage-return</var></a>) Any Unicode scalar value
 >
 > <a href="#var:comment"><var id="var:comment">comment</var></a> ::=\
 > &emsp;|&ensp;`--` <a href="comment-text"><var>comment-text</var></a> <a href="#var:line-break"><var>line-break</var></a>
@@ -74,7 +74,7 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > &emsp;|&ensp;(`a`&hellip;`z` | `A`&hellip;`Z`) (`a`&hellip;`z` | `A`&hellip;`Z` | `0`&hellip;`9` | `-`)<sup>\*</sup>
 >
 > <a href="#var:ident"><var id="var:ident">ident</var></a> ::=\
-> &emsp;|&ensp;Any <a href="#var:ident-or-keyword"><var>ident-or-keyword</var></a> except <a href="#var:keyword"><var>keyword</var></a>
+> &emsp;|&ensp;~<a href="#var:keyword"><var>keyword</var></a> <a href="#var:ident-or-keyword"><var>ident-or-keyword</var></a>
 
 ### Punctuation
 
@@ -91,23 +91,22 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > &emsp;|&ensp;`->`\
 > &emsp;|&ensp;`;`
 
-### Literals
+### Numeric literals
 
 > **Grammar**:
 >
 > <a href="#var:number-literal"><var id="var:number-literal">number-literal</var></a> ::=\
 > &emsp;|&ensp;(`+` | `-`)<sup>?</sup> (`0`&hellip;`9`)<sup>+</sup> `.`<sup>?</sup> (`0`&hellip;`9`)<sup>+</sup>
+
+### Character and string literals
+
+> **Grammar**:
 >
 > <a href="#var:character-literal"><var id="var:character-literal">character-literal</var></a> ::=\
-> &emsp;|&ensp;`"` TODO `"`
+> &emsp;|&ensp;`"` (`\"` | ~`"` Any Unicode scalar value)<sup>*</sup>  `"`
 >
 > <a href="#var:string-literal"><var id="var:string-literal">string-literal</var></a> ::=\
-> &emsp;|&ensp;`'` TODO `'`
->
-> <a href="#var:literal"><var id="var:literal">literal</var></a> ::=\
-> &emsp;|&ensp;<a href="#var:number-literal"><var>number-literal</var></a>\
-> &emsp;|&ensp;<a href="#var:character-literal"><var>character-literal</var></a>\
-> &emsp;|&ensp;<a href="#var:string-literal"><var>string-literal</var></a>
+> &emsp;|&ensp;`'` (`\'` | ~`'` Any Unicode scalar value)<sup>*</sup>  `'`
 
 ### Tokens
 
@@ -119,5 +118,6 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > &emsp;|&ensp;<a href="#var:keyword"><var>keyword</var></a>\
 > &emsp;|&ensp;<a href="#var:ident"><var>ident</var></a>\
 > &emsp;|&ensp;<a href="#var:punctuation"><var>punctuation</var></a>\
-> &emsp;|&ensp;<a href="#var:literal"><var>literal</var></a>\
-> &emsp;|&ensp;<a href="#var:literal"><var>literal</var></a>
+> &emsp;|&ensp;<a href="#var:number-literal"><var>number-literal</var></a>\
+> &emsp;|&ensp;<a href="#var:character-literal"><var>character-literal</var></a>\
+> &emsp;|&ensp;<a href="#var:string-literal"><var>string-literal</var></a>

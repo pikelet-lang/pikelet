@@ -12,7 +12,7 @@
 
 > **Specification**:
 >
-> - [Surface language - Lexical syntax - Literals](../specification/surface/lexical-structure#Literals): <a href="../specification/surface/lexical-structure#var:number-literal"><var>number-literal</var></a>
+> - [Surface language - Lexical syntax - Numeric literals](../specification/surface/lexical-structure#Numeric-literals): <a href="../specification/surface/lexical-structure#var:number-literal"><var>number-literal</var></a>
 
 ### Supported types
 
@@ -42,7 +42,7 @@ Overloaded character literals are not yet supported, but _are_ planned.
 
 > **Specification**:
 >
-> - [Surface language - Lexical syntax - Literals](../specification/surface/lexical-structure#Literals): <a href="../specification/surface/lexical-structure#var:character-literal"><var>character-literal</var></a>
+> - [Surface language - Lexical syntax - Character and string literals](../specification/surface/lexical-structure#Character-and-string-literals): <a href="../specification/surface/lexical-structure#var:character-literal"><var>character-literal</var></a>
 
 ## Strings
 
@@ -60,4 +60,4 @@ Overloaded string literals are not yet supported, but _are_ planned.
 
 > **Specification**:
 >
-> - [Surface language - Lexical syntax - Literals](../specification/surface/lexical-structure#Literals): <a href="../specification/surface/lexical-structure#var:string-literal"><var>string-literal</var></a>
+> - [Surface language - Lexical syntax - Character and string literals](../specification/surface/lexical-structure#Character-and-string-literals): <a href="../specification/surface/lexical-structure#var:string-literal"><var>string-literal</var></a>
