@@ -7,34 +7,34 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > **Grammar**:
 >
 > <a href="#var:horizontal-tab"><var id="var:horizontal-tab">horizontal-tab</var></a> ::=\
-> &emsp;|&ensp;U+0009
+> &emsp;|&ensp;<kbd>U+0009</kbd>
 >
 > <a href="#var:line-feed"><var id="var:line-feed">line-feed</var></a> ::=\
-> &emsp;|&ensp;U+000A
+> &emsp;|&ensp;<kbd>U+000A</kbd>
 >
 > <a href="#var:vertical-tab"><var id="var:vertical-tab">vertical-tab</var></a> ::=\
-> &emsp;|&ensp;U+000B
+> &emsp;|&ensp;<kbd>U+000B</kbd>
 >
 > <a href="#var:form-feed"><var id="var:form-feed">form-feed</var></a> ::=\
-> &emsp;|&ensp;U+000C
+> &emsp;|&ensp;<kbd>U+000C</kbd>
 >
 > <a href="#var:carriage-return"><var id="var:carriage-return">carriage-return</var></a> ::=\
-> &emsp;|&ensp;U+000D
+> &emsp;|&ensp;<kbd>U+000D</kbd>
 >
 > <a href="#var:next-line"><var id="var:next-line">next-line</var></a> ::=\
-> &emsp;|&ensp;U+0085
+> &emsp;|&ensp;<kbd>U+0085</kbd>
 >
 > <a href="#var:left-to-right-mark"><var id="var:left-to-right-mark">left-to-right-mark</var></a> ::=\
-> &emsp;|&ensp;U+200E
+> &emsp;|&ensp;<kbd>U+200E</kbd>
 >
 > <a href="#var:right-to-left-mark"><var id="var:right-to-left-mark">right-to-left-mark</var></a> ::=\
-> &emsp;|&ensp;U+200F
+> &emsp;|&ensp;<kbd>U+200F</kbd>
 >
 > <a href="#var:line-separator"><var id="var:line-separator">line-separator</var></a> ::=\
-> &emsp;|&ensp;U+2028
+> &emsp;|&ensp;<kbd>U+2028</kbd>
 >
 > <a href="#var:paragraph-separator"><var id="var:paragraph-separator">paragraph-separator</var></a> ::=\
-> &emsp;|&ensp;U+2029
+> &emsp;|&ensp;<kbd>U+2029</kbd>
 >
 > <a href="#var:line-break"><var id="var:line-break">line-break</var></a> ::=\
 > &emsp;|&ensp;<a href="#var:line-feed"><var>line-feed</var></a>\
@@ -71,7 +71,7 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > &emsp;|&ensp;`record`
 >
 > <a href="#var:ident-or-keyword"><var id="var:ident-or-keyword">ident-or-keyword</var></a> ::=\
-> &emsp;|&ensp;[`a`-`z` `A`-`Z`] [`a`-`z` `A`-`Z` `0`-`9` `-`]<sup>\*</sup>
+> &emsp;|&ensp;(`a`&hellip;`z` | `A`&hellip;`Z`) (`a`&hellip;`z` | `A`&hellip;`Z` | `0`&hellip;`9` | `-`)<sup>\*</sup>
 >
 > <a href="#var:ident"><var id="var:ident">ident</var></a> ::=\
 > &emsp;|&ensp;Any <a href="#var:ident-or-keyword"><var>ident-or-keyword</var></a> except <a href="#var:keyword"><var>keyword</var></a>
@@ -96,7 +96,7 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 > **Grammar**:
 >
 > <a href="#var:number-literal"><var id="var:number-literal">number-literal</var></a> ::=\
-> &emsp;|&ensp;[`+` `-`]<sup>?</sup> [`0`-`9`]<sup>\+</sup> (`.` [`0`-`9`]+)<sup>?</sup>
+> &emsp;|&ensp;(`+` | `-`)<sup>?</sup> (`0`&hellip;`9`)<sup>+</sup> `.`<sup>?</sup> (`0`&hellip;`9`)<sup>+</sup>
 >
 > <a href="#var:character-literal"><var id="var:character-literal">character-literal</var></a> ::=\
 > &emsp;|&ensp;`"` TODO `"`
