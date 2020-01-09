@@ -13,7 +13,7 @@ This will be where we give a comprehensive, formally described specification of 
   - serialization format
 - environment
 
-We may want to create some form of markup language for this, similar to OTT.
+We may want to create [some form of markup language for this](https://gist.github.com/brendanzab/47fac049f8b40e449db6a9bd60efa57f), similar to OTT.
 
 ## Inspiration
 
