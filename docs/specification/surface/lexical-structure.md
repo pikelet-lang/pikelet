@@ -87,16 +87,24 @@ The _lexical structure_ of the Pikelet programming langues is a description of w
 
 > **Grammar**:
 >
-> <a href="#var:punctuation"><var id="var:punctuation">punctuation</var></a> ::=\
+> <a href="#var:delimiter"><var id="var:delimiter">delimiter</var></a> ::=\
 > &emsp;|&ensp;`{`\
 > &emsp;|&ensp;`}`\
+> &emsp;|&ensp;`[`\
+> &emsp;|&ensp;`]`\
 > &emsp;|&ensp;`(`\
-> &emsp;|&ensp;`)`\
+> &emsp;|&ensp;`)`
+>
+> <a href="#var:symbol"><var id="var:symbol">symbol</var></a> ::=\
 > &emsp;|&ensp;`:`\
 > &emsp;|&ensp;`,`\
 > &emsp;|&ensp;`=`\
 > &emsp;|&ensp;`->`\
 > &emsp;|&ensp;`;`
+>
+> <a href="#var:punctuation"><var id="var:punctuation">punctuation</var></a> ::=\
+> &emsp;|&ensp;<a href="#var:delimiter"><var>delimiter</var></a>\
+> &emsp;|&ensp;<a href="#var:symbol"><var>symbol</var></a>
 
 ### Numeric literals
 
