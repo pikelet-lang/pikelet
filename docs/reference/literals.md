@@ -10,6 +10,10 @@
 1_000_000
 ```
 
+> **Specification**:
+>
+> - [Surface language - Lexical syntax - Literals](../specification/surface/lexical-structure#Literals): <a href="../specification/surface/lexical-structure#var:number-literal"><var>number-literal</var></a>
+
 ### Supported types
 
 - Unsigned integers: `U8`, `U16`, `U32`, `U64`
@@ -19,20 +23,6 @@
 ### Overloading
 
 Overloaded number literals are not yet supported, but _are_ planned.
-
-## Strings
-
-```pikelet
-"hello"
-```
-
-### Supported types
-
-- `String`
-
-### Overloading
-
-Overloaded string literals are not yet supported, but _are_ planned.
 
 ## Characters
 
@@ -49,3 +39,25 @@ Overloaded string literals are not yet supported, but _are_ planned.
 ### Overloading
 
 Overloaded character literals are not yet supported, but _are_ planned.
+
+> **Specification**:
+>
+> - [Surface language - Lexical syntax - Literals](../specification/surface/lexical-structure#Literals): <a href="../specification/surface/lexical-structure#var:character-literal"><var>character-literal</var></a>
+
+## Strings
+
+```pikelet
+"hello"
+```
+
+### Supported types
+
+- `String`
+
+### Overloading
+
+Overloaded string literals are not yet supported, but _are_ planned.
+
+> **Specification**:
+>
+> - [Surface language - Lexical syntax - Literals](../specification/surface/lexical-structure#Literals): <a href="../specification/surface/lexical-structure#var:string-literal"><var>string-literal</var></a>

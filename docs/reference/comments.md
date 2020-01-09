@@ -10,7 +10,7 @@ Line comments are preceded by a double dash (`--`):
 
 > **Specification**:
 >
-> - [Surface language - Lexical syntax - Whitespace and comments][whitespace-and-comments]
+> - [Surface language - Lexical syntax - Whitespace and comments](../specification/surface/lexical-structure): <a href="../specification/surface/lexical-structure#var:comment"><var>comment</var></a>
 
 ## Doc comments
 
@@ -22,6 +22,4 @@ Documentation comments are preceded by three pipes (`|||`):
 
 > **Specification**:
 >
-> - [Surface language - Lexical syntax - Whitespace and comments][whitespace-and-comments]
-
-[whitespace-and-comments]: ../specification/surface/lexical-syntax#Whitespace-and-comments
+> - [Surface language - Lexical syntax - Whitespace and comments](../specification/surface/lexical-structure): <a href="../specification/surface/lexical-structure#var:doc-comment"><var>doc-comment</var></a>
