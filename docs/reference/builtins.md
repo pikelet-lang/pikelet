@@ -2,6 +2,19 @@
 
 Pikelet has a number of builtin types, which we now describe here:
 
+## Booleans
+
+```pikelet
+Bool : Type
+```
+
+Booleans have two constructors, `true` and `false`:
+
+```pikelet
+true : Type
+false : Type
+```
+
 ## Unsigned integers
 
 Unsigned integers are defined via the following built-ins:
@@ -41,7 +54,7 @@ Signed integers can be constructed using numeric literals:
 0x2F : S16
 ```
 
-## Floating point
+## Floating point numbers
 
 ```pikelet
 F32 : Type
