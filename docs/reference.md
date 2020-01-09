@@ -5,6 +5,8 @@ This will cover all language features, but not necessarily describe how they fit
 
 Topics might include:
 
+- comments
+- names
 - records
   - formation
   - introduction
