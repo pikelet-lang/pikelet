@@ -35,10 +35,12 @@ impl<'me> State<'me> {
         self.errors.clear();
     }
 
+    /// Evaluate a term using the current state of the elaborator.
     pub fn eval_term(&mut self, term: &core::Term) -> Arc<core::Value> {
         core::semantics::eval_term(self.globals, self.universe_offset, &mut self.locals, term)
     }
 
+    /// Normalize a term using the current state of the elaborator.
     pub fn normalize_term(&mut self, term: &core::Term, r#type: &core::Value) -> core::Term {
         core::semantics::normalize_term(
             self.globals,
