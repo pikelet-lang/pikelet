@@ -200,7 +200,7 @@ pub fn normalize_term(globals: &Globals, locals: &mut Locals, term: &Term, r#typ
     read_back_nf(&eval_term(globals, locals, term), r#type)
 }
 
-/// Check that two values are equal.
+/// Check that one type is a subtype of another type.
 pub fn is_subtype(value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Universe(level0), Value::Universe(level1)) => level0 <= level1,
@@ -208,24 +208,16 @@ pub fn is_subtype(value0: &Value, value1: &Value) -> bool {
             read_back_elim(head0, spine0) == read_back_elim(head1, spine1)
                 && is_subtype(type0, type1)
         }
-        (Value::Constant(constant0), Value::Constant(constant1)) => constant0 == constant1,
-        (Value::Sequence(value_entries0), Value::Sequence(value_entries1)) => {
-            value_entries0.len() == value_entries1.len()
-                && Iterator::zip(value_entries0.iter(), value_entries1.iter())
-                    .all(|(term0, term1)| is_subtype(term0, term1))
-        }
         (Value::RecordType(type_entries0), Value::RecordType(type_entries1)) => {
             type_entries0.len() == type_entries1.len()
                 && Iterator::zip(type_entries0.iter(), type_entries1.iter()).all(
                     |((name0, type0), (name1, type1))| name0 == name1 && is_subtype(type0, type1),
                 )
         }
-        (Value::RecordTerm(value_entries0), Value::RecordTerm(value_entries1)) => {
-            value_entries0.len() == value_entries1.len()
-                && Iterator::zip(value_entries0.iter(), value_entries1.iter()).all(
-                    |((name0, term0), (name1, term1))| name0 == name1 && is_subtype(term0, term1),
-                )
-        }
+        (
+            Value::FunctionType(param_type0, body_type0),
+            Value::FunctionType(param_type1, body_type1),
+        ) => is_subtype(param_type1, param_type0) && is_subtype(body_type0, body_type1),
         // Errors are always treated as subtypes, regardless of what they are compared with.
         (Value::Error, _) | (_, Value::Error) => true,
         // Anything else is not equal!
