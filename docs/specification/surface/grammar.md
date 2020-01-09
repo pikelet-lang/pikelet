@@ -21,7 +21,9 @@ This defines the grammar of the surface language.
 > <a href="#var:atomic-term"><var id="var:atomic-term">atomic-term</var></a> ::=\
 > &emsp;|&ensp;`(` <a href="#var:term"><var>term</var></a> `)`\
 > &emsp;|&ensp;<var>name</var>\
-> &emsp;|&ensp;<var>literal</var>\
+> &emsp;|&ensp;<var>number-literal</var>\
+> &emsp;|&ensp;<var>character-literal</var>\
+> &emsp;|&ensp;<var>string-literal</var>\
 > &emsp;|&ensp;`[` (<a href="#var:term"><var>term</var></a> `,`)<sup>\*</sup> <a href="#var:term"><var>term</var></a><sup>?</sup> `]`\
 > &emsp;|&ensp;`Record` `{` (<a href="#var:type-field"><var>type-field</var></a> `,`)<sup>\*</sup> <a href="#var:type-field"><var>type-field</var></a><sup>?</sup>  `}`\
 > &emsp;|&ensp;`record` `{` (<a href="#var:term-field"><var>term-field</var></a> `,`)<sup>\*</sup> <a href="#var:term-field"><var>term-field</var></a><sup>?</sup> `}`\
