@@ -114,28 +114,13 @@ impl Term {
 
 /// The local value environment.
 pub struct Locals {
-    /// The universe level of the environment.
-    offset: UniverseOffset,
     // TODO: values,
 }
 
 impl Locals {
     /// Create a new local environment.
     pub fn new() -> Locals {
-        Locals {
-            offset: UniverseOffset(0),
-        }
-    }
-
-    /// Lookup the current universe level offset of the environment.
-    pub fn universe_offset(&self) -> UniverseOffset {
-        self.offset
-    }
-
-    /// Set the current universe level offset of the environment, returning the
-    /// previous level offset.
-    pub fn set_universe_offset(&mut self, offset: UniverseOffset) -> UniverseOffset {
-        std::mem::replace(&mut self.offset, offset)
+        Locals {}
     }
 }
 

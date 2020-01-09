@@ -12,6 +12,7 @@ use crate::core::{
 /// The state of the type checker.
 pub struct State<'me> {
     globals: &'me Globals,
+    universe_offset: UniverseOffset,
     locals: Locals,
     pub errors: Vec<TypeError>,
 }
@@ -21,9 +22,14 @@ impl<'me> State<'me> {
     pub fn new(globals: &'me Globals) -> State<'me> {
         State {
             globals,
+            universe_offset: UniverseOffset(0),
             locals: Locals::new(),
             errors: Vec::new(),
         }
+    }
+
+    pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
+        semantics::eval_term(self.globals, self.universe_offset, &mut self.locals, term)
     }
 
     /// Report an error.
@@ -136,7 +142,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
         },
         Term::Global(name) => match state.globals.get(name) {
-            Some((r#type, _)) => semantics::eval_term(state.globals, &mut state.locals, r#type),
+            Some((r#type, _)) => state.eval_term(r#type),
             None => {
                 state.report(TypeError::UnboundName(name.to_owned()));
                 Arc::new(Value::Error)
@@ -162,7 +168,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         }
         Term::Ann(term, r#type) => {
             check_type(state, r#type);
-            let r#type = semantics::eval_term(state.globals, &mut state.locals, r#type);
+            let r#type = state.eval_term(r#type);
             check_term(state, term, &r#type);
             r#type
         }
@@ -237,11 +243,11 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
             }
         }
-        Term::Lift(term, shift) => match state.locals.universe_offset() + *shift {
-            Some(lifted_level) => {
-                let offset = state.locals.set_universe_offset(lifted_level);
+        Term::Lift(term, offset) => match state.universe_offset + *offset {
+            Some(new_offset) => {
+                let previous_offset = std::mem::replace(&mut state.universe_offset, new_offset);
                 let r#type = synth_term(state, term);
-                state.locals.set_universe_offset(offset);
+                state.universe_offset = previous_offset;
                 r#type
             }
             None => {
