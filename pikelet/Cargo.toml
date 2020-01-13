@@ -16,7 +16,7 @@ license = "Apache-2.0"
 
 [dependencies]
 lalrpop-util = "0.17"
-pretty = "0.8"
+pretty = "0.9"
 regex = "1.3"
 
 [build-dependencies]
