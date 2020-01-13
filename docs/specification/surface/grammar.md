@@ -25,17 +25,17 @@ This defines the grammar of the surface language.
 > &emsp;|&ensp;<var>character-literal</var>\
 > &emsp;|&ensp;<var>string-literal</var>\
 > &emsp;|&ensp;`[` (<a href="#var:term"><var>term</var></a> `,`)<sup>\*</sup> <a href="#var:term"><var>term</var></a><sup>?</sup> `]`\
-> &emsp;|&ensp;`Record` `{` (<a href="#var:type-field"><var>type-field</var></a> `,`)<sup>\*</sup> <a href="#var:type-field"><var>type-field</var></a><sup>?</sup>  `}`\
-> &emsp;|&ensp;`record` `{` (<a href="#var:term-field"><var>term-field</var></a> `,`)<sup>\*</sup> <a href="#var:term-field"><var>term-field</var></a><sup>?</sup> `}`\
+> &emsp;|&ensp;`Record` `{` (<a href="#var:type-entry"><var>type-entry</var></a> `,`)<sup>\*</sup> <a href="#var:type-entry"><var>type-entry</var></a><sup>?</sup>  `}`\
+> &emsp;|&ensp;`record` `{` (<a href="#var:term-entry"><var>term-entry</var></a> `,`)<sup>\*</sup> <a href="#var:term-entry"><var>term-entry</var></a><sup>?</sup> `}`\
 > &emsp;|&ensp;<a href="#var:atomic-term"><var>atomic-term</var></a> `.` <var>name</var>\
 > &emsp;|&ensp;<a href="#var:atomic-term"><var>atomic-term</var></a> `^` <var>number-literal</var>
 
-## Fields
+## Entries
 
 > **Grammar**:
 >
-> <a href="#var:type-field"><var id="var:type-field">type-field</var></a> ::=\
+> <a href="#var:type-entry"><var id="var:type-entry">type-entry</var></a> ::=\
 > &emsp;|&ensp;<var>doc-comment</var><sup>\*</sup> <var>name</var> `:` <a href="#var:term"><var>term</var></a>
 >
-> <a href="#var:term-field"><var id="var:term-field">term-field</var></a> ::=\
+> <a href="#var:term-entry"><var id="var:term-entry">term-entry</var></a> ::=\
 > &emsp;|&ensp;<var>doc-comment</var><sup>\*</sup> <var>name</var> `=` <a href="#var:term"><var>term</var></a>
