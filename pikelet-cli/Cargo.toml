@@ -21,7 +21,7 @@ gui = ["pikelet-gui"]
 [dependencies]
 pikelet = { path = "../pikelet" }
 pikelet-gui = { path = "../pikelet-gui", optional = true }
-pretty = "0.8"
-rustyline = "5.0"
+pretty = "0.9"
+rustyline = "6.0"
 structopt = "0.3"
 term_size = "0.3.1"
