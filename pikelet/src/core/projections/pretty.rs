@@ -108,7 +108,7 @@ where
             .append(alloc.space())
             .append(pretty_term(alloc, body).nest(4)),
         Term::FunctionElim(head, argument) => pretty_term(alloc, head).append(
-            (alloc.nil())
+            (alloc.space())
                 .append(pretty_term(alloc, argument))
                 .group()
                 .nest(4),
