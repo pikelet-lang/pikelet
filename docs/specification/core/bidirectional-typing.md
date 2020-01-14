@@ -1,3 +1,0 @@
-# Bidirectional typing
-
-TODO

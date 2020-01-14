@@ -1,3 +1,0 @@
-# Declarative typing
-
-TODO
