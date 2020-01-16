@@ -23,7 +23,7 @@ pub struct State<'me> {
     types: Locals<Arc<Value>>,
     /// Values to be used during evaluation.
     values: Locals<Arc<Value>>,
-    /// The errors accumulated during elaboration.
+    /// The errors accumulated during type checking.
     errors: Vec<TypeError>,
 }
 
@@ -95,21 +95,48 @@ impl<'me> State<'me> {
 #[derive(Clone, Debug)]
 pub enum TypeError {
     MaximumUniverseLevelReached,
-    UnboundGlobal(String),
+    UnboundGlobal {
+        name: String,
+    },
     UnboundLocal,
-    DuplicateNamesInRecordType(Vec<String>),
-    MissingNamesInRecordTerm(Vec<String>),
-    UnexpectedNamesInRecordTerm(Vec<String>),
-    FieldNotFoundInRecord(String),
-    NotARecord(Arc<Value>),
-    TooManyParametersForFunctionTerm { expected_type: Arc<Value> },
+    DuplicateNamesInRecordType {
+        duplicate_names: Vec<String>,
+    },
+    MissingNamesInRecordTerm {
+        missing_names: Vec<String>,
+    },
+    UnexpectedNamesInRecordTerm {
+        unexpected_names: Vec<String>,
+    },
+    FieldNotFoundInRecord {
+        expected_field_name: String,
+        head_type: Arc<Value>,
+    },
+    NotARecord {
+        head_type: Arc<Value>,
+    },
+    TooManyParametersForFunctionTerm {
+        expected_type: Arc<Value>,
+    },
     AmbiguousFunctionTerm,
-    NotAFunction(Arc<Value>),
+    NotAFunction {
+        head_type: Arc<Value>,
+    },
     AmbiguousSequence,
-    UnexpectedSequenceLength(usize, Arc<Value>),
-    NoSequenceConversion(Arc<Value>),
-    ExpectedType(Arc<Value>),
-    MismatchedTypes(Arc<Value>, Arc<Value>),
+    MismatchedSequenceLength {
+        found_len: usize,
+        expected_len: Arc<Value>,
+    },
+    NoSequenceConversion {
+        expected_type: Arc<Value>,
+    },
+    ExpectedType {
+        found_type: Arc<Value>,
+    },
+    MismatchedTypes {
+        found_type: Arc<Value>,
+        expected_type: Arc<Value>,
+    },
 }
 
 /// Check that a term is a universe and return its level.
@@ -118,7 +145,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
     match r#type.as_ref() {
         Value::Universe(level) => Some(*level),
         _ => {
-            state.report(TypeError::ExpectedType(r#type));
+            state.report(TypeError::ExpectedType { found_type: r#type });
             None
         }
     }
@@ -137,10 +164,10 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                     match **len {
                         Value::Constant(Constant::U32(len))
                             if len as usize == entry_terms.len() => {}
-                        _ => state.report(TypeError::UnexpectedSequenceLength(
-                            entry_terms.len(),
-                            len.clone(),
-                        )),
+                        _ => state.report(TypeError::MismatchedSequenceLength {
+                            found_len: entry_terms.len(),
+                            expected_len: len.clone(),
+                        }),
                     }
                 }
                 ("List", [Elim::Function(entry_type, _)]) => {
@@ -148,13 +175,15 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         check_term(state, entry_term, entry_type);
                     }
                 }
-                _ => state.report(TypeError::NoSequenceConversion(expected_type.clone())),
+                _ => state.report(TypeError::NoSequenceConversion {
+                    expected_type: expected_type.clone(),
+                }),
             }
         }
         (Term::Sequence(_), Value::Error) => {}
-        (Term::Sequence(_), _) => {
-            state.report(TypeError::NoSequenceConversion(expected_type.clone()))
-        }
+        (Term::Sequence(_), _) => state.report(TypeError::NoSequenceConversion {
+            expected_type: expected_type.clone(),
+        }),
         (Term::RecordTerm(term_entries), Value::RecordType(type_entries)) => {
             let mut missing_names = Vec::new();
             let mut term_entries = term_entries.clone();
@@ -167,13 +196,13 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             }
 
             if !missing_names.is_empty() {
-                state.report(TypeError::MissingNamesInRecordTerm(missing_names));
+                state.report(TypeError::MissingNamesInRecordTerm { missing_names });
             }
             if !term_entries.is_empty() {
                 let unexpected_names = (term_entries.into_iter())
                     .map(|(name, _)| name.to_owned())
                     .collect();
-                state.report(TypeError::UnexpectedNamesInRecordTerm(unexpected_names));
+                state.report(TypeError::UnexpectedNamesInRecordTerm { unexpected_names });
             }
         }
         (Term::FunctionTerm(_, body), Value::FunctionType(param_type, body_type)) => {
@@ -187,8 +216,11 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             });
         }
         (term, _) => match synth_term(state, term) {
-            ty if state.is_subtype(&ty, expected_type) => {}
-            ty => state.report(TypeError::MismatchedTypes(ty, expected_type.clone())),
+            found_type if state.is_subtype(&found_type, expected_type) => {}
+            found_type => state.report(TypeError::MismatchedTypes {
+                found_type,
+                expected_type: expected_type.clone(),
+            }),
         },
     }
 }
@@ -206,7 +238,9 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Global(name) => match state.globals.get(name) {
             Some((r#type, _)) => state.eval_term(r#type),
             None => {
-                state.report(TypeError::UnboundGlobal(name.to_owned()));
+                state.report(TypeError::UnboundGlobal {
+                    name: name.to_owned(),
+                });
                 Arc::new(Value::Error)
             }
         },
@@ -267,7 +301,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
 
             if !duplicate_names.is_empty() {
-                state.report(TypeError::DuplicateNamesInRecordType(duplicate_names));
+                state.report(TypeError::DuplicateNamesInRecordType { duplicate_names });
             }
 
             Arc::new(Value::Universe(max_level))
@@ -279,13 +313,16 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                     match type_entries.iter().find(|(n, _)| n == name) {
                         Some((_, r#type)) => r#type.clone(),
                         None => {
-                            state.report(TypeError::FieldNotFoundInRecord(name.clone()));
+                            state.report(TypeError::FieldNotFoundInRecord {
+                                expected_field_name: name.clone(),
+                                head_type,
+                            });
                             Arc::new(Value::Error)
                         }
                     }
                 }
                 _ => {
-                    state.report(TypeError::NotARecord(head_type));
+                    state.report(TypeError::NotARecord { head_type });
                     Arc::new(Value::Error)
                 }
             }
@@ -311,7 +348,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
                 Value::Error => Arc::new(Value::Error),
                 _ => {
-                    state.report(TypeError::NotAFunction(head_type));
+                    state.report(TypeError::NotAFunction { head_type });
                     Arc::new(Value::Error)
                 }
             }
