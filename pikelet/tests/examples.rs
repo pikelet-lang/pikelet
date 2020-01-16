@@ -55,6 +55,11 @@ fn cube() {
 }
 
 #[test]
+fn functions() {
+    run_test(include_str!("../../examples/functions.pi"));
+}
+
+#[test]
 fn hello_world() {
     run_test(include_str!("../../examples/hello-world.pi"));
 }

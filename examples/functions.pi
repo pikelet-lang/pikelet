@@ -1,0 +1,4 @@
+record {
+    id-String = (fun a => a) : String -> String,
+    const-String-S32 = (fun a b => a) : String -> S32 -> String,
+}
