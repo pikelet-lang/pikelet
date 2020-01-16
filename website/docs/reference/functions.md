@@ -21,23 +21,41 @@ For example, the function type for adding two 32-bit signed integers together is
 S32 -> S32 -> S32
 ```
 
-## Introduction
+## Construction
 
-:::warning
-This section is a work in progress.
-:::
+Functions are constructed by specifying a list of one-or-more parameter names after a `fun` token,
+and then a body term after a `=>` token.
+The parameters can then be referred to in the body of the function.
 
-:::warning
-This feature is not yet implemented!
+```pikelet
+fun param-1 param-2 => body
+```
+
+Note that functions must always be constructed in a position where they can find a type annotation.
+For example, the following function is ambiguous:
+
+```pikelet
+fun x y => x
+```
+
+This, however is not, because the function type pulled from the record annotation:
+
+```pikelet
+record {
+    const = fun x y => x,
+} : Record {
+    const : S32 -> String -> S32,
+}
+```
+
+:::note
+These are sometimes called _lambda abstractions_ in type theory,
+ore _anonymous functions_ in programming languages.
 :::
 
 ## Elimination
 
-:::warning
-This section is a work in progress.
-:::
-
-Functions are applied to arguments via [_juxtaposition_][juxtaposition-wikipedia].
+Functions can be applied to arguments via [_juxtaposition_][juxtaposition-wikipedia].
 
 For example, this is how the identity function might be applied:
 
@@ -48,6 +66,12 @@ id String "hello!"
 ```pikelet
 Array 3 String
 ```
+
+### Computation
+
+:::warning
+This section is a work in progress.
+:::
 
 [currying-wikipedia]: https://en.wikipedia.org/wiki/Currying
 [juxtaposition-wikipedia]: https://en.wikipedia.org/wiki/Juxtaposition#Mathematics
