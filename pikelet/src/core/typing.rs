@@ -42,8 +42,8 @@ impl<'me> State<'me> {
 
     /// Push a local entry.
     fn push_local(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
-        self.types.push(value);
-        self.values.push(r#type);
+        self.types.push(r#type);
+        self.values.push(value);
     }
 
     /// Push a local parameter.
