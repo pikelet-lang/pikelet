@@ -38,7 +38,8 @@ For example, the following function is ambiguous:
 fun x y => x
 ```
 
-This, however is not, because the function type pulled from the record annotation:
+The following function passes the type checker,
+because the function type is pulled from the record annotation:
 
 ```pikelet
 record {
@@ -72,6 +73,8 @@ Array 3 String
 :::warning
 This section is a work in progress.
 :::
+
+(describe beta-reduction)
 
 [currying-wikipedia]: https://en.wikipedia.org/wiki/Currying
 [juxtaposition-wikipedia]: https://en.wikipedia.org/wiki/Juxtaposition#Mathematics
