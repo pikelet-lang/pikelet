@@ -3,7 +3,7 @@
 //! This is a simpler implementation of type checking than the one found in
 //! `surface::projections::core`,
 //! because it only needs to check the (much simpler) core language,
-//! and doesn't need to perform any additional elaboaration.
+//! and doesn't need to perform any additional elaboration.
 //! We can use it as a way to validate that elaborated terms are well-formed.
 
 use std::sync::Arc;
