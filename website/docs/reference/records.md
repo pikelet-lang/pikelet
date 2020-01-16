@@ -15,11 +15,35 @@ Records provide a way of grouping together data.
 This section is a work in progress.
 :::
 
+```pikelet
+Record {
+    width : U32,
+    height : U32,
+}
+```
+
 ## Construction
 
 :::warning
 This section is a work in progress.
 :::
+
+```pikelet
+record {
+    width = 24,
+    height = 33,
+} : Record {
+    width : U32,
+    height : U32,
+}
+```
+
+```pikelet
+record {
+    width = 24 : U32,
+    height = 33 : U32,
+}
+```
 
 ## Elimination
 
@@ -27,9 +51,9 @@ This section is a work in progress.
 This section is a work in progress.
 :::
 
-:::warning
-This feature is not yet implemented!
-:::
+```pikelet
+extents.width
+```
 
 ### Computation
 
