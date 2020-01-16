@@ -32,7 +32,7 @@ Prism.languages.pikelet = {
     alias: "string"
   },
   // Keywords
-  keyword: /\b(?:Record|record)\b/,
+  keyword: /\b(?:fun|Record|record)\b/,
   // Builtins
   builtin: /\b(?:Type|Bool|true|false|U8|U16|U32|U64|S8|S16|S32|S64|F32|F64|String|Char|Array|List)\b/,
   // Numeric literals
@@ -47,6 +47,6 @@ Prism.languages.pikelet = {
     pattern: /\[|\]|\(|\)|\{|\}/,
     alias: "punctuation"
   },
-  punctuation: /;|,|:|=/,
+  punctuation: /;|,|:|=>?/,
   operator: /->|\.|\^/
 };
