@@ -15,7 +15,7 @@ Records provide a way of grouping together data.
 This section is a work in progress.
 :::
 
-## Introduction
+## Construction
 
 :::warning
 This section is a work in progress.
@@ -29,4 +29,10 @@ This section is a work in progress.
 
 :::warning
 This feature is not yet implemented!
+:::
+
+### Computation
+
+:::warning
+This section is a work in progress.
 :::
