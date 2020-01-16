@@ -98,20 +98,20 @@ pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<Stri
 }
 
 pub fn delaborate_constant(constant: &Constant) -> surface::Term<String> {
-    use crate::surface::Literal;
+    use crate::surface::Literal::{Char, Number, String};
 
     match constant {
-        Constant::U8(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::U16(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::U32(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::U64(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::S8(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::S16(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::S32(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::S64(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::F32(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::F64(value) => surface::Term::Literal(0..0, Literal::Number(value.to_string())),
-        Constant::Char(value) => surface::Term::Literal(0..0, Literal::Char(value.to_string())),
-        Constant::String(value) => surface::Term::Literal(0..0, Literal::String(value.to_string())),
+        Constant::U8(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::U16(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::U32(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::U64(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::S8(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::S16(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::S32(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::S64(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::F32(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::F64(value) => surface::Term::Literal(0..0, Number(value.to_string())),
+        Constant::Char(value) => surface::Term::Literal(0..0, Char(format!("{:?}", value))),
+        Constant::String(value) => surface::Term::Literal(0..0, String(format!("{:?}", value))),
     }
 }
