@@ -139,29 +139,58 @@ impl<'me> State<'me> {
 #[derive(Clone, Debug)]
 pub enum TypeError {
     MaximumUniverseLevelReached,
-    UnboundName(String),
-    DuplicateNamesInRecordTerm(Vec<String>),
-    DuplicateNamesInRecordType(Vec<String>),
-    MissingNamesInRecordTerm(Vec<String>),
-    UnexpectedNamesInRecordTerm(Vec<String>),
-    FieldNotFoundInRecord(String),
-    NotARecord(Arc<core::Value>),
+    UnboundName {
+        name: String,
+    },
+    DuplicateNamesInRecordTerm {
+        duplicate_names: Vec<String>,
+    },
+    DuplicateNamesInRecordType {
+        duplicate_names: Vec<String>,
+    },
+    MissingNamesInRecordTerm {
+        missing_names: Vec<String>,
+    },
+    UnexpectedNamesInRecordTerm {
+        unexpected_names: Vec<String>,
+    },
+    FieldNotFoundInRecord {
+        expected_field_name: String,
+        head_type: Arc<core::Value>,
+    },
+    NotARecord {
+        head_type: Arc<core::Value>,
+    },
     TooManyParametersForFunctionTerm {
         excess_parameters: Vec<String>,
         expected_type: Arc<core::Value>,
     },
     AmbiguousFunctionTerm,
-    NotAFunction(Arc<core::Value>),
+    NotAFunction {
+        head_type: Arc<core::Value>,
+    },
     InvalidNumberLiteral,
     InvalidCharLiteral,
     InvalidStringLiteral,
-    NoLiteralConversion(Arc<core::Value>),
+    NoLiteralConversion {
+        expected_type: Arc<core::Value>,
+    },
     AmbiguousLiteral,
     AmbiguousSequence,
-    UnexpectedSequenceLength(usize, Arc<core::Value>),
-    NoSequenceConversion(Arc<core::Value>),
-    ExpectedType(Arc<core::Value>),
-    MismatchedTypes(Arc<core::Value>, Arc<core::Value>),
+    MismatchedSequenceLength {
+        found_len: usize,
+        expected_len: Arc<core::Value>,
+    },
+    NoSequenceConversion {
+        expected_type: Arc<core::Value>,
+    },
+    ExpectedType {
+        found_type: Arc<core::Value>,
+    },
+    MismatchedTypes {
+        found_type: Arc<core::Value>,
+        expected_type: Arc<core::Value>,
+    },
 }
 
 /// Check that a term is a universe and return its level.
@@ -173,7 +202,7 @@ pub fn check_type<S: AsRef<str>>(
     match r#type.as_ref() {
         core::Value::Universe(level) => (term, Some(*level)),
         _ => {
-            state.report(TypeError::ExpectedType(r#type));
+            state.report(TypeError::ExpectedType { found_type: r#type });
             (core::Term::Error, None)
         }
     }
@@ -203,14 +232,18 @@ pub fn check_term<S: AsRef<str>>(
                 (Literal::Char(data), "Char", []) => parse_char(state, data),
                 (Literal::String(data), "String", []) => parse_string(state, data),
                 (_, _, _) => {
-                    state.report(TypeError::NoLiteralConversion(expected_type.clone()));
+                    state.report(TypeError::NoLiteralConversion {
+                        expected_type: expected_type.clone(),
+                    });
                     core::Term::Error
                 }
             }
         }
         (Term::Literal(_, _), core::Value::Error) => core::Term::Error,
         (Term::Literal(_, _), _) => {
-            state.report(TypeError::NoLiteralConversion(expected_type.clone()));
+            state.report(TypeError::NoLiteralConversion {
+                expected_type: expected_type.clone(),
+            });
             core::Term::Error
         }
         (
@@ -230,10 +263,10 @@ pub fn check_term<S: AsRef<str>>(
                         core::Term::Sequence(core_entry_terms)
                     }
                     _ => {
-                        state.report(TypeError::UnexpectedSequenceLength(
-                            entry_terms.len(),
-                            len.clone(),
-                        ));
+                        state.report(TypeError::MismatchedSequenceLength {
+                            found_len: entry_terms.len(),
+                            expected_len: len.clone(),
+                        });
 
                         core::Term::Error
                     }
@@ -248,13 +281,17 @@ pub fn check_term<S: AsRef<str>>(
                 core::Term::Sequence(core_entry_terms)
             }
             _ => {
-                state.report(TypeError::NoSequenceConversion(expected_type.clone()));
+                state.report(TypeError::NoSequenceConversion {
+                    expected_type: expected_type.clone(),
+                });
                 core::Term::Error
             }
         },
         (Term::Sequence(_, _), core::Value::Error) => core::Term::Error,
         (Term::Sequence(_, _), _) => {
-            state.report(TypeError::NoSequenceConversion(expected_type.clone()));
+            state.report(TypeError::NoSequenceConversion {
+                expected_type: expected_type.clone(),
+            });
             core::Term::Error
         }
         (Term::RecordTerm(_, term_entries), core::Value::RecordType(core_type_entries)) => {
@@ -284,16 +321,16 @@ pub fn check_term<S: AsRef<str>>(
             }
 
             if !duplicate_names.is_empty() {
-                state.report(TypeError::DuplicateNamesInRecordTerm(duplicate_names));
+                state.report(TypeError::DuplicateNamesInRecordTerm { duplicate_names });
             }
             if !missing_names.is_empty() {
-                state.report(TypeError::MissingNamesInRecordTerm(missing_names));
+                state.report(TypeError::MissingNamesInRecordTerm { missing_names });
             }
             if !term_entries.is_empty() {
                 let unexpected_names = (term_entries.into_iter())
                     .map(|(name, _)| name.to_owned())
                     .collect();
-                state.report(TypeError::UnexpectedNamesInRecordTerm(unexpected_names));
+                state.report(TypeError::UnexpectedNamesInRecordTerm { unexpected_names });
             }
 
             core::Term::RecordTerm(core_term_entries)
@@ -327,9 +364,12 @@ pub fn check_term<S: AsRef<str>>(
             })
         }
         (term, _) => match synth_term(state, term) {
-            (term, ty) if state.is_subtype(&ty, expected_type) => term,
-            (_, ty) => {
-                state.report(TypeError::MismatchedTypes(ty, expected_type.clone()));
+            (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
+            (_, found_type) => {
+                state.report(TypeError::MismatchedTypes {
+                    found_type,
+                    expected_type: expected_type.clone(),
+                });
                 core::Term::Error
             }
         },
@@ -354,7 +394,9 @@ pub fn synth_term<S: AsRef<str>>(
                 return (global.lift(state.universe_offset), state.eval_term(r#type));
             }
 
-            state.report(TypeError::UnboundName(name.as_ref().to_owned()));
+            state.report(TypeError::UnboundName {
+                name: name.as_ref().to_owned(),
+            });
             (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::Ann(term, r#type) => {
@@ -404,7 +446,7 @@ pub fn synth_term<S: AsRef<str>>(
             }
 
             if !duplicate_names.is_empty() {
-                state.report(TypeError::DuplicateNamesInRecordTerm(duplicate_names));
+                state.report(TypeError::DuplicateNamesInRecordTerm { duplicate_names });
             }
 
             (
@@ -433,7 +475,7 @@ pub fn synth_term<S: AsRef<str>>(
             }
 
             if !duplicate_names.is_empty() {
-                state.report(TypeError::DuplicateNamesInRecordType(duplicate_names));
+                state.report(TypeError::DuplicateNamesInRecordType { duplicate_names });
             }
 
             (
@@ -451,14 +493,16 @@ pub fn synth_term<S: AsRef<str>>(
                             r#type.clone(),
                         ),
                         None => {
-                            state
-                                .report(TypeError::FieldNotFoundInRecord(name.as_ref().to_owned()));
+                            state.report(TypeError::FieldNotFoundInRecord {
+                                expected_field_name: name.as_ref().to_owned(),
+                                head_type,
+                            });
                             (core::Term::Error, Arc::new(core::Value::Error))
                         }
                     }
                 }
                 _ => {
-                    state.report(TypeError::NotARecord(head_type));
+                    state.report(TypeError::NotARecord { head_type });
                     (core::Term::Error, Arc::new(core::Value::Error))
                 }
             }
@@ -493,7 +537,7 @@ pub fn synth_term<S: AsRef<str>>(
                     }
                     core::Value::Error => return (core::Term::Error, Arc::new(core::Value::Error)),
                     _ => {
-                        state.report(TypeError::NotAFunction(head_type));
+                        state.report(TypeError::NotAFunction { head_type });
                         return (core::Term::Error, Arc::new(core::Value::Error));
                     }
                 }
