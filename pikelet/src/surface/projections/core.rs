@@ -122,10 +122,12 @@ impl<'me> State<'me> {
         core::semantics::read_back_type(self.globals, self.values.size(), r#type)
     }
 
+    /// Check if `value0` is a subtype of `value1`.
     pub fn is_subtype(&self, value0: &core::Value, value1: &core::Value) -> bool {
         core::semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
 
+    /// Delaborate a `core::Term` into a `surface::Term`.
     pub fn delaborate_term(&mut self, core_term: &core::Term) -> Term<String> {
         core::projections::surface::delaborate_term(
             &mut core::projections::surface::State::new(&mut self.names),

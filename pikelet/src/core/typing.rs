@@ -1,6 +1,10 @@
 //! Bidirectional type checker for the core language.
 //!
-//! This is used to validate that terms are well-formed.
+//! This is a simpler implementation of type checking than the one found in
+//! `surface::projections::core`,
+//! because it only needs to check the (much simpler) core language,
+//! and doesn't need to perform any additional elaboaration.
+//! We can use it as a way to validate that elaborated terms are well-formed.
 
 use std::sync::Arc;
 
@@ -82,6 +86,7 @@ impl<'me> State<'me> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
+    /// Check if `value0` is a subtype of `value1`.
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
