@@ -15,13 +15,13 @@ use crate::core::{
 
 /// The state of the type checker.
 pub struct State<'me> {
-    /// Global variables.
+    /// Global definition environment.
     globals: &'me Globals,
     /// The current universe offset.
     universe_offset: UniverseOffset,
-    /// Types of the locals currently bound.
+    /// Local type environment (used for getting the types of local variables).
     types: Locals<Arc<Value>>,
-    /// Values to be used during evaluation.
+    /// Local value environment (used for evaluation).
     values: Locals<Arc<Value>>,
     /// The errors accumulated during type checking.
     errors: Vec<TypeError>,
