@@ -9,6 +9,24 @@ keywords:
 
 The following resources where helpful when designing and building Pikelet.
 
+### How to implement dependent type theory I
+
+Andrej Bauer<br/>
+Blog Post, 2012.<br/>
+[blog](http://math.andrej.com/2012/11/08/how-to-implement-dependent-type-theory-i/)
+
+### How to implement dependent type theory II
+
+Andrej Bauer<br/>
+Blog Post, 2012.<br/>
+[blog](http://math.andrej.com/2012/11/11/how-to-implement-dependent-type-theory-ii/)
+
+### How to implement dependent type theory III
+
+Andrej Bauer<br/>
+Blog Post, 2012.<br/>
+[blog](http://math.andrej.com/2012/11/29/how-to-implement-dependent-type-theory-iii/)
+
 ### A simple type-theoretic language: Mini-TT
 
 Thierry Coquand, Yoshiki Kinoshita, Bengt Nordström, and Makoto Takeyama<br/>
