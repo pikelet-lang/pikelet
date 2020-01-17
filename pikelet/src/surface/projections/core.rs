@@ -8,17 +8,17 @@ use crate::surface::{Literal, Term};
 
 /// The state of the elaborator.
 pub struct State<'me> {
-    /// Global variables.
+    /// Global definition environment.
     globals: &'me core::Globals,
     /// The current universe offset.
     universe_offset: core::UniverseOffset,
     /// Substitutions from the user-defined names to the level in which they were bound.
     names_to_levels: Vec<(String, core::LocalLevel)>,
-    /// Names of the entries in the context (used for pretty printing).
+    /// Local name environment (used for pretty printing).
     names: core::Locals<String>,
-    /// Types of the locals currently bound.
+    /// Local type environment (used for getting the types of local variables).
     types: core::Locals<Arc<core::Value>>,
-    /// Values to be used during evaluation.
+    /// Local value environment (used for evaluation).
     values: core::Locals<Arc<core::Value>>,
     /// The errors accumulated during elaboration.
     errors: Vec<TypeError>,
