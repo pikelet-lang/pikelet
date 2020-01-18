@@ -7,7 +7,7 @@ keywords:
   - pikelet
 ---
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 

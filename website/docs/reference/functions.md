@@ -70,7 +70,7 @@ Array 3 String
 
 ### Computation
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 

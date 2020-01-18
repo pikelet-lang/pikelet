@@ -4,7 +4,6 @@ title: Roadmap
 sidebar_label: Roadmap
 keywords:
   - docs
-  - roadmap
   - pikelet
 ---
 

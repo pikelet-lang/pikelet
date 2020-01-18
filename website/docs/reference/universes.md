@@ -9,7 +9,7 @@ keywords:
 
 ## Universe levels
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
@@ -42,12 +42,12 @@ This section is a work in progress.
 
 ## Cumulativity
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
 ## Lifting terms
 
-:::warning
+:::note
 This section is a work in progress.
 :::

@@ -11,7 +11,7 @@ Records provide a way of grouping together data.
 
 ## Formation
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
@@ -24,7 +24,7 @@ Record {
 
 ## Construction
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
@@ -47,7 +47,7 @@ record {
 
 ## Elimination
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
@@ -57,6 +57,6 @@ extents.width
 
 ### Computation
 
-:::warning
+:::note
 This section is a work in progress.
 :::
