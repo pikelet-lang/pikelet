@@ -9,18 +9,18 @@ keywords:
 
 ## The need for modularity
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
 ## Describing interfaces
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
 ## Parameterised modules
 
-:::warning
+:::note
 This section is a work in progress.
 :::

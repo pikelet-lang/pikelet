@@ -9,18 +9,18 @@ keywords:
 
 ## Lists
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
 ## Arrays
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
 ## Records
 
-:::warning
+:::note
 This section is a work in progress.
 :::

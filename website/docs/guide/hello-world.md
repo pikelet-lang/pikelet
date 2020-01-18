@@ -20,6 +20,7 @@ pikelet repl
 The REPL should appear in the terminal like so:
 
 ```
+$ pikelet repl
     ____  _ __        __     __
    / __ \(_) /_____  / /__  / /_
   / /_/ / / //_/ _ \/ / _ \/ __/    Version 0.1.0
@@ -45,7 +46,7 @@ By pressing <kbd>Enter</kbd>, you can 'normalize' the term, and see its type:
 
 ## Effects
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
@@ -65,7 +66,7 @@ Hello world!
 
 ## Compiling a standalone executable
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 

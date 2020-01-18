@@ -1,6 +1,6 @@
 # Pikelet Documentation
 
-:::warning
+:::note
 This section is a work in progress.
 :::
 
