@@ -50,7 +50,8 @@ module.exports = {
         "specification/core/declarative-typing",
         "specification/core/bidirectional-typing"
       ]
-    }
+    },
+    "specification/inspiration"
   ],
   contributingSidebar: ["contributing", "contributing/roadmap"]
 };
