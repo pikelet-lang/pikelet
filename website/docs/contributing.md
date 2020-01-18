@@ -15,6 +15,14 @@ discussions, but we're always more than happy to spend time explaining things.
 
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
 
+
+## Code of Conduct
+
+Please note that this project is released with a [Code of Conduct][code-of-conduct].
+By participating in this project you agree to abide by its terms.
+
+[code-of-conduct]: https://github.com/pikelet-lang/pikelet/blob/master/CODE_OF_CONDUCT.md
+
 :::note
 Topics might include:
 
