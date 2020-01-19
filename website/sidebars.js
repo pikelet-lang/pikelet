@@ -8,7 +8,7 @@
 module.exports = {
   guideSidebar: [
     "guide",
-    "guide/installation",
+    "guide/getting-started",
     "guide/hello-world",
     "guide/data-structures",
     "guide/modular-programming"
