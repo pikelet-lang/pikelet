@@ -27,8 +27,9 @@ whole lot to do before it is even remotely useful to anyone! 😅
 
 ## Roadmap
 
-Check out our plans in [the roadmap](./website/docs/contributing/roadmap).
+Check out our plans in [the roadmap](./website/docs/contributing/roadmap.md).
 
 ## Code of Conduct
 
-Please note that this project is released with a [Code of Conduct](./CODE_OF_CONDUCT). By participating in this project you agree to abide by its terms.
+Please note that this project is released with a [Code of Conduct](./CODE_OF_CONDUCT.md).
+By participating in this project you agree to abide by its terms.
