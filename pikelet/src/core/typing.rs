@@ -199,9 +199,7 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 state.report(TypeError::MissingNamesInRecordTerm { missing_names });
             }
             if !term_entries.is_empty() {
-                let unexpected_names = (term_entries.into_iter())
-                    .map(|(name, _)| name.to_owned())
-                    .collect();
+                let unexpected_names = (term_entries.into_iter()).map(|(name, _)| name).collect();
                 state.report(TypeError::UnexpectedNamesInRecordTerm { unexpected_names });
             }
         }

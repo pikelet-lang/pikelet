@@ -21,7 +21,7 @@ impl Sandbox for Workspace {
     }
 
     fn title(&self) -> String {
-        format!("Pikelet")
+        "Pikelet".to_owned()
     }
 
     fn update(&mut self, message: Message) {

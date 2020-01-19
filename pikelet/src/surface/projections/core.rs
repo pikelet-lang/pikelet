@@ -404,7 +404,7 @@ pub fn synth_term<S: AsRef<str>>(
             let core_type_value = state.eval_term(&core_type);
             let core_term = check_term(state, term, &core_type_value);
             (
-                core::Term::Ann(Arc::new(core_term), Arc::new(core_type.clone())),
+                core::Term::Ann(Arc::new(core_term), Arc::new(core_type)),
                 core_type_value,
             )
         }
