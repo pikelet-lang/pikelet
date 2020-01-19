@@ -1,8 +1,15 @@
-// Check out some other Prism highlighters for inspiration:
-//
-// https://github.com/PrismJS/prism/blob/master/components/prism-haskell.js
-// https://github.com/PrismJS/prism/blob/master/components/prism-rust.js
-// https://github.com/SassDoc/prism-scss-sassdoc/blob/master/prism-scss-sassdoc.js
+/**
+ * Pikelet Prism syntax highlighting.
+ *
+ * Check out the Prism language definition docs for more help in extending this:
+ * https://prismjs.com/extending.html#language-definitions
+ *
+ * It might also be helpful to look at some other Prism highlighters for inspiration:
+ *
+ * - https://github.com/PrismJS/prism/blob/master/components/prism-haskell.js
+ * - https://github.com/PrismJS/prism/blob/master/components/prism-rust.js
+ * - https://github.com/SassDoc/prism-scss-sassdoc/blob/master/prism-scss-sassdoc.js
+ */
 
 Prism.languages.pikelet = {
   // Comments.
@@ -31,10 +38,17 @@ Prism.languages.pikelet = {
     pattern: /b?'(?:\\(?:x[0-7][\da-fA-F]|u{(?:[\da-fA-F]_*){1,6}|.)|[^\\\r\n\t'])'/,
     alias: "string"
   },
-  // Keywords
-  keyword: /\b(?:fun|Record|record)\b/,
-  // Builtins
-  builtin: /\b(?:Type|Bool|true|false|U8|U16|U32|U64|S8|S16|S32|S64|F32|F64|String|Char|Array|List)\b/,
+  // Identifiers
+  identifier: {
+    pattern: /\b(?:[a-zA-Z][a-zA-Z0-9\-]*)\b/,
+    greedy: true,
+    inside: {
+      // Keywords
+      keyword: /^(?:fun|Record|record)$/,
+      // Builtins
+      builtin: /^(?:Type|Bool|true|false|U8|U16|U32|U64|S8|S16|S32|S64|F32|F64|String|Char|Array|List)$/
+    }
+  },
   // Numeric literals
   number: [
     /(-|\+)?\b(?:0b[01](?:_?[01])*)(?:_)?\b/,
