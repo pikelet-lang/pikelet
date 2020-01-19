@@ -7,7 +7,7 @@ keywords:
   - pikelet
 ---
 
-This defines the grammar of the surface language.
+This section defines the grammar of the surface language.
 
 ## Terms
 
