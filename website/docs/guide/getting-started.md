@@ -1,6 +1,6 @@
 ---
-id: installation
-title: Installation
+id: getting-started
+title: Getting Started
 keywords:
   - docs
   - guide
