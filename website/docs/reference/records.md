@@ -7,13 +7,14 @@ keywords:
   - pikelet
 ---
 
-Records provide a way of grouping together data.
+Records provide a way of grouping together data into [composite data types][composite-data-types-wikipedia].
+
+[composite-data-types-wikipedia]: https://en.wikipedia.org/wiki/Composite_data_type
 
 ## Formation
 
-:::note
-This section is a work in progress.
-:::
+A record type is a list of entries, consisting of an entry name, and an entry type.
+For example, this is a record that defines `width` and `height` extents:
 
 ```pikelet
 Record {
@@ -21,6 +22,23 @@ Record {
     height : U32,
 }
 ```
+
+### Field order
+
+Note that the order of the fields matters, so this would be a different type to
+the one defined above:
+
+```pikelet
+Record {
+    height : U32,
+    width : U32,
+}
+```
+
+:::note
+The field order seems annoying!
+It would be nice not to require this in the future.
+:::
 
 ## Construction
 
