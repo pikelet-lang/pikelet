@@ -21,27 +21,27 @@ module.exports = {
         {
           label: "Guide",
           to: "docs/guide",
-          position: "left"
+          position: "right"
         },
         {
           label: "Reference",
           to: "docs/reference",
-          position: "left"
+          position: "right"
         },
         {
           label: "Specification",
           to: "docs/specification",
-          position: "left"
+          position: "right"
         },
         {
           label: "Contributing",
           to: "docs/contributing",
-          position: "left"
+          position: "right"
         },
         // {
         //   label: "Blog",
         //   to: "blog",
-        //   position: "left"
+        //   position: "right"
         // },
         {
           label: "GitHub",
