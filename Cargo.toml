@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "./crates/pikelet",
-    "./crates/pikelet-cli",
-    "./crates/pikelet-gui",
+    "./pikelet",
+    "./pikelet-cli",
+    "./pikelet-gui",
 ]
