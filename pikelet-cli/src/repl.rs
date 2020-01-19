@@ -31,7 +31,7 @@ fn print_welcome_banner() {
 
     for (i, line) in WELCOME_BANNER.iter().enumerate() {
         // warning on `env!` is a known issue
-        #[cfg_attr(feature = "cargo-clippy", allow(print_literal))]
+        #[allow(clippy::print_literal)]
         match i {
             2 => println!("{}Version {}", line, env!("CARGO_PKG_VERSION")),
             3 => println!("{}{}", line, env!("CARGO_PKG_HOMEPAGE")),

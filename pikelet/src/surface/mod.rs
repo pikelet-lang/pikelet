@@ -6,6 +6,7 @@ use std::ops::{Range, RangeFrom, RangeTo};
 
 pub mod projections;
 
+#[allow(clippy::all)]
 mod grammar {
     include!(concat!(env!("OUT_DIR"), "/surface/grammar.rs"));
 }
@@ -40,6 +41,7 @@ pub enum Term<S> {
 type ParseError<'input> = lalrpop_util::ParseError<usize, grammar::Token<'input>, &'static str>;
 
 impl<'input> Term<&'input str> {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
         grammar::TermParser::new().parse(input)
     }
