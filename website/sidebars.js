@@ -6,52 +6,70 @@
  */
 
 module.exports = {
-  guideSidebar: [
-    "guide",
-    "guide/getting-started",
-    "guide/hello-world",
-    "guide/data-structures",
-    "guide/modular-programming"
-  ],
-  referenceSidebar: [
-    "reference",
+  docsSidebar: [
     {
       type: "category",
-      label: "Language Features",
-      items: [
-        "reference/comments",
-        "reference/names",
-        "reference/literals",
-        "reference/builtins",
-        "reference/functions",
-        "reference/records",
-        "reference/universes"
-      ]
+      label: "Pikelet",
+      items: ["pikelet/introduction", "pikelet/roadmap", "pikelet/contributing"]
     },
-    "reference/bibliography",
-    "reference/influences"
-  ],
-  specificationSidebar: [
-    "specification",
     {
       type: "category",
-      label: "Surface Language",
+      label: "Guide",
       items: [
-        "specification/surface/lexical-structure",
-        "specification/surface/grammar",
-        "specification/surface/elaboration"
+        "guide",
+        "guide/getting-started",
+        "guide/hello-world",
+        "guide/data-structures",
+        "guide/modular-programming"
       ]
     },
     {
       type: "category",
-      label: "Core Language",
+      label: "Reference",
       items: [
-        "specification/core/operational-semantics",
-        "specification/core/declarative-typing",
-        "specification/core/bidirectional-typing"
+        "reference",
+        {
+          type: "category",
+          label: "Language Features",
+          items: [
+            "reference/comments",
+            "reference/names",
+            "reference/literals",
+            "reference/builtins",
+            "reference/functions",
+            "reference/records",
+            "reference/universes"
+          ]
+        },
+        "reference/bibliography",
+        "reference/influences"
       ]
     },
-    "specification/inspiration"
-  ],
-  contributingSidebar: ["contributing", "contributing/roadmap"]
+    {
+      type: "category",
+      label: "Specification",
+      items: [
+        "specification",
+        {
+          type: "category",
+          label: "Surface Language",
+          items: [
+            "specification/surface/lexical-structure",
+            "specification/surface/grammar",
+            "specification/surface/elaboration"
+          ]
+        },
+        {
+          type: "category",
+          label: "Core Language",
+          items: [
+            "specification/core/operational-semantics",
+            "specification/core/declarative-typing",
+            "specification/core/bidirectional-typing"
+          ]
+        },
+        "specification/inspiration"
+      ]
+    }
+  ]
 };

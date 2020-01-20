@@ -7,7 +7,7 @@ module.exports = {
   organizationName: "pikelet-lang", // Usually your GitHub org/user name.
   projectName: "pikelet", // Usually your repo name.
   themeConfig: {
-    sidebarCollapsible: false,
+    // sidebarCollapsible: false,
     prism: {
       theme: require("prism-react-renderer/themes/palenight")
     },
@@ -19,23 +19,8 @@ module.exports = {
       },
       links: [
         {
-          label: "Guide",
-          to: "docs/guide",
-          position: "right"
-        },
-        {
-          label: "Reference",
-          to: "docs/reference",
-          position: "right"
-        },
-        {
-          label: "Specification",
-          to: "docs/specification",
-          position: "right"
-        },
-        {
-          label: "Contributing",
-          to: "docs/contributing",
+          label: "Docs",
+          to: "docs/pikelet/introduction",
           position: "right"
         },
         // {
