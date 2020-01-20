@@ -1,7 +1,7 @@
 ---
 id: contributing
 title: Contributing to Pikelet
-sidebar_label: Introduction
+sidebar_label: Contributing
 keywords:
   - docs
   - contributing
@@ -24,4 +24,3 @@ Please note that this project is released with a [Code of Conduct][code-of-condu
 By participating in this project you agree to abide by its terms.
 
 [code-of-conduct]: https://github.com/pikelet-lang/pikelet/blob/master/CODE_OF_CONDUCT.md
-
