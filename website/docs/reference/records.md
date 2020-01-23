@@ -23,6 +23,27 @@ Record {
 }
 ```
 
+### Universes
+
+Record types are also types:
+
+```
+Record {
+  first : U32,
+} : Type
+```
+
+In order to find the universe level of a record type,
+we use the universe level the largest entry type:
+
+```
+Record {
+  first : U32,
+  second : Type^2,
+  third : Type,
+} : Type^3
+```
+
 ### Field order
 
 Note that the order of the fields matters, so this would be a different type to
