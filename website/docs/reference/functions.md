@@ -21,6 +21,21 @@ For example, the function type for adding two 32-bit signed integers together is
 S32 -> S32 -> S32
 ```
 
+### Universes
+
+Function types are also types:
+
+```
+U32 -> U32 : Type
+```
+
+In order to find the universe level of a function type,
+we use the universe level the largest input or output:
+
+```
+U32 -> Type^2 : Type^3
+```
+
 ## Construction
 
 Functions are constructed by specifying a list of one-or-more parameter names after a `fun` token,
