@@ -4,45 +4,43 @@ use pretty::{DocAllocator, DocBuilder};
 
 use crate::surface::{Literal, Term};
 
-pub mod prec {
-    pub const TERM: u8 = 0;
-    pub const EXPR: u8 = TERM + 1;
-    pub const ARROW: u8 = EXPR + 1;
-    pub const APP: u8 = ARROW + 1;
-    pub const ATOMIC: u8 = APP + 1;
+/// The precedence of a term.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Prec {
+    Term = 0,
+    Expr,
+    Arrow,
+    App,
+    Atomic,
 }
 
-pub fn pretty_term<'term, D, S>(alloc: &'term D, term: &'term Term<S>) -> DocBuilder<'term, D>
+pub fn pretty_term<'a, D, S>(alloc: &'a D, term: &'a Term<S>) -> DocBuilder<'a, D>
 where
-    S: 'term + AsRef<str>,
-    D: DocAllocator<'term>,
+    S: 'a + AsRef<str>,
+    D: DocAllocator<'a>,
     D::Doc: Clone,
 {
-    pretty_term_prec(alloc, term, prec::TERM)
+    pretty_term_prec(alloc, term, Prec::Term)
 }
 
-pub fn pretty_term_prec<'term, D, S>(
-    alloc: &'term D,
-    term: &'term Term<S>,
-    prec: u8,
-) -> DocBuilder<'term, D>
+pub fn pretty_term_prec<'a, D, S>(alloc: &'a D, term: &'a Term<S>, prec: Prec) -> DocBuilder<'a, D>
 where
-    S: 'term + AsRef<str>,
-    D: DocAllocator<'term>,
+    S: 'a + AsRef<str>,
+    D: DocAllocator<'a>,
     D::Doc: Clone,
 {
     match term {
         Term::Name(_, name) => alloc.text(name.as_ref()),
         Term::Ann(term, r#type) => pretty_paren(
             alloc,
-            prec > prec::TERM,
+            prec > Prec::Term,
             (alloc.nil())
-                .append(pretty_term_prec(alloc, term, prec::EXPR))
+                .append(pretty_term_prec(alloc, term, Prec::Expr))
                 .append(alloc.space())
                 .append(":")
                 .append(
                     (alloc.space())
-                        .append(pretty_term_prec(alloc, r#type, prec::TERM))
+                        .append(pretty_term_prec(alloc, r#type, Prec::Term))
                         .group()
                         .nest(4),
                 ),
@@ -55,7 +53,7 @@ where
                 alloc.intersperse(
                     term_entries
                         .iter()
-                        .map(|term| pretty_term_prec(alloc, term, prec::TERM).group().nest(4)),
+                        .map(|term| pretty_term_prec(alloc, term, Prec::Term).group().nest(4)),
                     alloc.text(",").append(alloc.space()),
                 ),
             )
@@ -72,7 +70,7 @@ where
                     .append(":")
                     .append(
                         (alloc.space())
-                            .append(pretty_term_prec(alloc, r#type, prec::TERM))
+                            .append(pretty_term_prec(alloc, r#type, Prec::Term))
                             .append(",")
                             .group()
                             .nest(4),
@@ -93,7 +91,7 @@ where
                     .append("=")
                     .append(
                         (alloc.space())
-                            .append(pretty_term_prec(alloc, term, prec::TERM))
+                            .append(pretty_term_prec(alloc, term, Prec::Term))
                             .append(",")
                             .group()
                             .nest(4),
@@ -103,22 +101,22 @@ where
             })))
             .append("}"),
         Term::RecordElim(_, head, name) => (alloc.nil())
-            .append(pretty_term_prec(alloc, head, prec::ATOMIC))
+            .append(pretty_term_prec(alloc, head, Prec::Atomic))
             .append(".")
             .append(name.as_ref()),
         Term::FunctionType(param_type, body_type) => pretty_paren(
             alloc,
-            prec > prec::ARROW,
+            prec > Prec::Arrow,
             (alloc.nil())
-                .append(pretty_term_prec(alloc, param_type, prec::APP))
+                .append(pretty_term_prec(alloc, param_type, Prec::App))
                 .append(alloc.space())
                 .append("->")
                 .append(alloc.space())
-                .append(pretty_term_prec(alloc, body_type, prec::ARROW)),
+                .append(pretty_term_prec(alloc, body_type, Prec::Arrow)),
         ),
         Term::FunctionTerm(_, param_names, body) => pretty_paren(
             alloc,
-            prec > prec::EXPR,
+            prec > Prec::Expr,
             (alloc.nil())
                 .append("fun")
                 .append(alloc.space())
@@ -129,38 +127,35 @@ where
                 .append(
                     (alloc.nil())
                         .append(alloc.space())
-                        .append(pretty_term_prec(alloc, body, prec::EXPR).group().nest(4)),
+                        .append(pretty_term_prec(alloc, body, Prec::Expr).group().nest(4)),
                 ),
         ),
         Term::FunctionElim(head, arguments) => pretty_paren(
             alloc,
-            prec > prec::APP,
-            pretty_term_prec(alloc, head, prec::APP).append(
+            prec > Prec::App,
+            pretty_term_prec(alloc, head, Prec::App).append(
                 (alloc.nil())
                     .append(alloc.concat(arguments.iter().map(|argument| {
                         alloc
                             .space()
-                            .append(pretty_term_prec(alloc, argument, prec::ARROW))
+                            .append(pretty_term_prec(alloc, argument, Prec::Arrow))
                     })))
                     .group()
                     .nest(4),
             ),
         ),
         Term::Lift(_, term, shift) => (alloc.nil())
-            .append(pretty_term_prec(alloc, term, prec::ATOMIC))
+            .append(pretty_term_prec(alloc, term, Prec::Atomic))
             .append("^")
             .append(shift.to_string()),
         Term::Error(_) => alloc.text("!"),
     }
 }
 
-pub fn pretty_literal<'term, D, S>(
-    alloc: &'term D,
-    literal: &'term Literal<S>,
-) -> DocBuilder<'term, D>
+pub fn pretty_literal<'a, D, S>(alloc: &'a D, literal: &'a Literal<S>) -> DocBuilder<'a, D>
 where
-    S: 'term + AsRef<str>,
-    D: DocAllocator<'term>,
+    S: 'a + AsRef<str>,
+    D: DocAllocator<'a>,
     D::Doc: Clone,
 {
     match literal {
@@ -170,13 +165,9 @@ where
     }
 }
 
-fn pretty_paren<'term, D>(
-    alloc: &'term D,
-    b: bool,
-    doc: DocBuilder<'term, D>,
-) -> DocBuilder<'term, D>
+fn pretty_paren<'a, D>(alloc: &'a D, b: bool, doc: DocBuilder<'a, D>) -> DocBuilder<'a, D>
 where
-    D: DocAllocator<'term>,
+    D: DocAllocator<'a>,
     D::Doc: Clone,
 {
     if b {
