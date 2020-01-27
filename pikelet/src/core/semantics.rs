@@ -286,7 +286,7 @@ pub fn read_back_type(globals: &Globals, local_size: LocalSize, r#type: &Value) 
     }
 }
 
-/// Check that one elimination is a subtype of another elimination.
+/// Check that one elimination is equal to another elimination.
 pub fn is_equal_elim(
     globals: &Globals,
     local_size: LocalSize,
@@ -318,7 +318,7 @@ pub fn is_equal_nf(
         == read_back_nf(globals, local_size, value1, type1)
 }
 
-/// Check that one type is a subtype of another type.
+/// Compare two types.
 fn compare_types(
     globals: &Globals,
     local_size: LocalSize,
