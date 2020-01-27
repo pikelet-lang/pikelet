@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use crate::core::{Closure, Elim, Globals, Head, LocalSize, Locals, Term, UniverseOffset, Value};
+use crate::core::{
+    Closure, Elim, Globals, Head, LocalSize, Locals, Term, UniverseLevel, UniverseOffset, Value,
+};
 
 /// Fully normalize a term.
 pub fn normalize_term(
@@ -317,14 +319,15 @@ pub fn is_equal_nf(
 }
 
 /// Check that one type is a subtype of another type.
-pub fn is_subtype(
+fn compare_types(
     globals: &Globals,
     local_size: LocalSize,
     value0: &Value,
     value1: &Value,
+    compare: &impl Fn(UniverseLevel, UniverseLevel) -> bool,
 ) -> bool {
     match (value0, value1) {
-        (Value::Universe(level0), Value::Universe(level1)) => level0 <= level1,
+        (Value::Universe(level0), Value::Universe(level1)) => compare(*level0, *level1),
         (Value::Elim(head0, spine0, _), Value::Elim(head1, spine1, _)) => {
             is_equal_elim(globals, local_size, (head0, spine0), (head1, spine1))
         }
@@ -332,7 +335,7 @@ pub fn is_subtype(
             type_entries0.len() == type_entries1.len()
                 && Iterator::zip(type_entries0.iter(), type_entries1.iter()).all(
                     |((name0, type0), (name1, type1))| {
-                        name0 == name1 && is_subtype(globals, local_size, type0, type1)
+                        name0 == name1 && compare_types(globals, local_size, type0, type1, compare)
                     },
                 )
         }
@@ -340,12 +343,32 @@ pub fn is_subtype(
             Value::FunctionType(param_type0, body_type0),
             Value::FunctionType(param_type1, body_type1),
         ) => {
-            is_subtype(globals, local_size, param_type1, param_type0)
-                && is_subtype(globals, local_size, body_type0, body_type1)
+            compare_types(globals, local_size, param_type1, param_type0, compare)
+                && compare_types(globals, local_size, body_type0, body_type1, compare)
         }
         // Errors are always treated as subtypes, regardless of what they are compared with.
         (Value::Error, _) | (_, Value::Error) => true,
         // Anything else is not equal!
         (_, _) => false,
     }
+}
+
+/// Check that one type is a equal to another type.
+pub fn is_equal_type(
+    globals: &Globals,
+    local_size: LocalSize,
+    value0: &Value,
+    value1: &Value,
+) -> bool {
+    compare_types(globals, local_size, value0, value1, &|l0, l1| l0 == l1)
+}
+
+/// Check that one type is a subtype of another type.
+pub fn is_subtype(
+    globals: &Globals,
+    local_size: LocalSize,
+    value0: &Value,
+    value1: &Value,
+) -> bool {
+    compare_types(globals, local_size, value0, value1, &|l0, l1| l0 <= l1)
 }
