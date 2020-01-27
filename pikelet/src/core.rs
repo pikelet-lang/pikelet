@@ -175,7 +175,7 @@ impl Value {
 }
 
 /// The head of an elimination.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Head {
     /// Global variables.
     Global(String, UniverseOffset),
