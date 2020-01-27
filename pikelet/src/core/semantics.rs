@@ -284,6 +284,38 @@ pub fn read_back_type(globals: &Globals, local_size: LocalSize, r#type: &Value) 
     }
 }
 
+/// Check that one elimination is a subtype of another elimination.
+pub fn is_equal_elim(
+    globals: &Globals,
+    local_size: LocalSize,
+    (head0, spine0): (&Head, &[Elim]),
+    (head1, spine1): (&Head, &[Elim]),
+) -> bool {
+    head0 == head1
+        && spine0.len() == spine1.len()
+        && Iterator::zip(spine0.iter(), spine1.iter()).all(|(elim0, elim1)| match (elim0, elim1) {
+            (Elim::Function(argument0, type0), Elim::Function(argument1, type1)) => {
+                is_equal_nf(globals, local_size, (argument0, type0), (argument1, type1))
+            }
+            (Elim::Record(field0), Elim::Record(field1)) => field0 == field1,
+            (_, _) => false,
+        })
+}
+
+/// Check that one normal form is a equal of another normal form.
+pub fn is_equal_nf(
+    globals: &Globals,
+    local_size: LocalSize,
+    (value0, type0): (&Value, &Value),
+    (value1, type1): (&Value, &Value),
+) -> bool {
+    // TODO: avoid allocation of intermediate term, as in smalltt and blott,
+    // for example, see: https://github.com/jozefg/blott/blob/9eadd6f1eb3ecb28fd66a25bc56c19041d98f722/src/lib/nbe.ml#L200-L242
+
+    read_back_nf(globals, local_size, value0, type0)
+        == read_back_nf(globals, local_size, value1, type1)
+}
+
 /// Check that one type is a subtype of another type.
 pub fn is_subtype(
     globals: &Globals,
@@ -293,10 +325,8 @@ pub fn is_subtype(
 ) -> bool {
     match (value0, value1) {
         (Value::Universe(level0), Value::Universe(level1)) => level0 <= level1,
-        (Value::Elim(head0, spine0, type0), Value::Elim(head1, spine1, type1)) => {
-            read_back_elim(globals, local_size, head0, spine0)
-                == read_back_elim(globals, local_size, head1, spine1)
-                && is_subtype(globals, local_size, type0, type1)
+        (Value::Elim(head0, spine0, _), Value::Elim(head1, spine1, _)) => {
+            is_equal_elim(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::RecordType(type_entries0), Value::RecordType(type_entries1)) => {
             type_entries0.len() == type_entries1.len()
