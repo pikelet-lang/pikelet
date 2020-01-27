@@ -73,28 +73,9 @@ pub fn eval_term(
 
             Arc::new(Value::RecordTerm(value_entries))
         }
-        Term::RecordElim(head, name) => {
-            match eval_term(globals, universe_offset, values, head).as_ref() {
-                Value::RecordTerm(term_entries) => match term_entries.get(name) {
-                    Some(value) => value.clone(),
-                    None => Arc::new(Value::Error),
-                },
-                Value::Elim(head, elims, r#type) => {
-                    let type_entries = match r#type.as_ref() {
-                        Value::RecordType(type_entries) => type_entries,
-                        _ => return Arc::new(Value::Error),
-                    };
-                    let entry_type = match type_entries.iter().find(|(n, _)| n == name) {
-                        Some((_, entry_type)) => entry_type,
-                        None => return Arc::new(Value::Error),
-                    };
-
-                    let mut elims = elims.clone(); // TODO: Avoid clone?
-                    elims.push(Elim::Record(name.clone()));
-                    Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()))
-                }
-                _ => Arc::new(Value::Error),
-            }
+        Term::RecordElim(head, field_name) => {
+            let head = eval_term(globals, universe_offset, values, head);
+            eval_record_elim(&head, field_name)
         }
         Term::FunctionType(param_type, body_type) => {
             let param_type = eval_term(globals, universe_offset, values, param_type);
@@ -111,26 +92,9 @@ pub fn eval_term(
             ),
         )),
         Term::FunctionElim(head, argument) => {
-            match eval_term(globals, universe_offset, values, head).as_ref() {
-                Value::FunctionTerm(_, body_closure) => {
-                    let argument = eval_term(globals, universe_offset, values, argument);
-                    apply_closure(globals, body_closure, argument)
-                }
-                Value::Elim(head, elims, r#type) => {
-                    let (param_type, body_type) = match r#type.as_ref() {
-                        Value::FunctionType(param_type, body_type) => (param_type, body_type),
-                        _ => return Arc::new(Value::Error),
-                    };
-
-                    let mut elims = elims.clone(); // TODO: Avoid clone?
-                    elims.push(Elim::Function(
-                        eval_term(globals, universe_offset, values, argument),
-                        param_type.clone(),
-                    ));
-                    Arc::new(Value::Elim(head.clone(), elims, body_type.clone()))
-                }
-                _ => Arc::new(Value::Error),
-            }
+            let head = eval_term(globals, universe_offset, values, head);
+            let argument = eval_term(globals, universe_offset, values, argument);
+            eval_fun_elim(globals, &head, argument)
         }
         Term::Lift(term, offset) => {
             let universe_offset = (universe_offset + *offset).unwrap(); // FIXME: Handle overflow
@@ -138,13 +102,6 @@ pub fn eval_term(
         }
         Term::Error => Arc::new(Value::Error),
     }
-}
-
-/// Apply a closure to an argument.
-pub fn apply_closure(globals: &Globals, closure: &Closure, argument: Arc<Value>) -> Arc<Value> {
-    let mut values = closure.values.clone();
-    values.push(argument);
-    eval_term(globals, closure.universe_offset, &mut values, &closure.term)
 }
 
 /// Instantiate a closure in an environment of the given size.
@@ -155,7 +112,57 @@ pub fn instantiate_closure(
     closure: &Closure,
 ) -> Arc<Value> {
     let argument = Arc::from(Value::local(local_size.next_level(), r#type));
-    apply_closure(globals, closure, argument)
+    eval_closure_elim(globals, closure, argument)
+}
+
+/// Eliminate a closure.
+pub fn eval_closure_elim(globals: &Globals, closure: &Closure, argument: Arc<Value>) -> Arc<Value> {
+    let mut values = closure.values.clone();
+    values.push(argument);
+    eval_term(globals, closure.universe_offset, &mut values, &closure.term)
+}
+
+/// Eliminate a record term.
+pub fn eval_record_elim(head: &Value, name: &str) -> Arc<Value> {
+    match head {
+        Value::RecordTerm(term_entries) => match term_entries.get(name) {
+            Some(value) => value.clone(),
+            None => Arc::new(Value::Error),
+        },
+        Value::Elim(head, elims, r#type) => {
+            let type_entries = match r#type.as_ref() {
+                Value::RecordType(type_entries) => type_entries,
+                _ => return Arc::new(Value::Error),
+            };
+            let entry_type = match type_entries.iter().find(|(n, _)| n == name) {
+                Some((_, entry_type)) => entry_type,
+                None => return Arc::new(Value::Error),
+            };
+
+            let mut elims = elims.clone(); // TODO: Avoid clone?
+            elims.push(Elim::Record(name.to_owned()));
+            Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()))
+        }
+        _ => Arc::new(Value::Error),
+    }
+}
+
+/// Eliminate a function term.
+pub fn eval_fun_elim(globals: &Globals, head: &Value, argument: Arc<Value>) -> Arc<Value> {
+    match head {
+        Value::FunctionTerm(_, body_closure) => eval_closure_elim(globals, body_closure, argument),
+        Value::Elim(head, elims, r#type) => {
+            let (param_type, body_type) = match r#type.as_ref() {
+                Value::FunctionType(param_type, body_type) => (param_type, body_type),
+                _ => return Arc::new(Value::Error),
+            };
+
+            let mut elims = elims.clone(); // TODO: Avoid clone?
+            elims.push(Elim::Function(argument, param_type.clone()));
+            Arc::new(Value::Elim(head.clone(), elims, body_type.clone()))
+        }
+        _ => Arc::new(Value::Error),
+    }
 }
 
 /// Read-back an eliminator into the term syntax.
