@@ -1,6 +1,7 @@
 use std::error::Error;
-use std::path::PathBuf;
 use std::sync::Arc;
+
+const HISTORY_FILE_NAME: &str = "history";
 
 /// The Pikelet REPL/interactive mode.
 #[derive(structopt::StructOpt)]
@@ -14,9 +15,6 @@ pub struct Options {
     /// Disable saving of command history on exit.
     #[structopt(long = "no-history")]
     pub no_history: bool,
-    /// The file to save the command history to.
-    #[structopt(long = "history-file", default_value = "repl-history")]
-    pub history_file: PathBuf,
 }
 
 fn print_welcome_banner() {
@@ -67,7 +65,10 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
         print_welcome_banner()
     }
 
-    if !options.no_history && editor.load_history(&options.history_file).is_err() {
+    let xdg_dirs = xdg::BaseDirectories::with_prefix("pikelet/repl")?;
+    let history_path = xdg_dirs.get_data_home().join(HISTORY_FILE_NAME);
+
+    if !options.no_history && editor.load_history(&history_path).is_err() {
         // No previous REPL history!
     }
 
@@ -117,8 +118,9 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
         }
     }
 
-    if !options.no_history {
-        editor.save_history(&options.history_file)?;
+    if !options.no_history && !editor.history().is_empty() {
+        let history_path = xdg_dirs.place_data_file(HISTORY_FILE_NAME)?;
+        editor.save_history(&history_path)?;
     }
 
     println!("Bye bye");
