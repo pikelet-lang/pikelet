@@ -46,7 +46,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [ ] Opaque (abstract) terms
   - [ ] Builtin terms
 - Dependently typed language
-  - [ ] Dependent record types
+  - [x] Dependent record types
   - [ ] Dependent function types
   - [ ] Equality types
   - [x] Universe levels

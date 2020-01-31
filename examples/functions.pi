@@ -1,4 +1,7 @@
 record {
-    id-String = (fun a => a) : String -> String,
-    const-String-S32 = (fun a b => a) : String -> S32 -> String,
+    id-String = fun a => a,
+    const-String-S32 = fun a b => a,
+} : Record {
+    id-String : String -> String,
+    const-String-S32 : String -> S32 -> String,
 }

@@ -65,6 +65,11 @@ fn hello_world() {
 }
 
 #[test]
+fn module() {
+    run_test(include_str!("../../examples/module.pi"));
+}
+
+#[test]
 fn universes() {
     run_test(include_str!("../../examples/universes.pi"));
 }

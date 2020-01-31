@@ -138,8 +138,10 @@ pub enum Value {
     Constant(Constant),
     /// Ordered sequences.
     Sequence(Vec<Arc<Value>>),
-    /// Record types.
-    RecordType(Vec<(String, Arc<Value>)>),
+    /// Record type extension.
+    RecordTypeExtend(String, Arc<Value>, Closure),
+    /// Empty record types.
+    RecordTypeEmpty,
     /// Record terms.
     RecordTerm(BTreeMap<String, Arc<Value>>),
     /// Function types.
@@ -301,6 +303,10 @@ pub struct LocalLevel(u32);
 pub struct LocalSize(u32);
 
 impl LocalSize {
+    pub fn increment(self) -> LocalSize {
+        LocalSize(self.0 + 1)
+    }
+
     /// Return the level of the next variable to be added to the environment.
     pub fn next_level(self) -> LocalLevel {
         LocalLevel(self.0)

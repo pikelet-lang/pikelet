@@ -7,6 +7,11 @@ record {
         3, 2, 6, 6, 2, 7,
         5, 4, 0, 0, 4, 1,
     ],
+    Vertex = Record {
+        point : Array 3 F32,
+        normal : Array 3 F32,
+        color : Array 4 F32,
+    },
     vertex-data = [
         record { point = [0, 0, 0], normal = [0, 0, 1], color = [1, 0, 0, 1] },
         record { point = [1, 0, 0], normal = [0, 0, 1], color = [0, 1, 0, 1] },
@@ -18,10 +23,7 @@ record {
         record { point = [1, 1, -1], normal = [0, 0, 1], color = [1, 0, 1, 1] },
     ],
 } : Record {
+    Vertex : Type,
     index-data : List U16,
-    vertex-data : List (Record {
-        point : Array 3 F32,
-        normal : Array 3 F32,
-        color : Array 4 F32,
-    }),
+    vertex-data : List Vertex,
 }
