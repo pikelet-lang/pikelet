@@ -107,6 +107,15 @@ impl<'me> State<'me> {
         core::semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
+    /// Eliminate a closure.
+    fn eval_closure_elim(
+        &self,
+        closure: &core::Closure,
+        argument: Arc<core::Value>,
+    ) -> Arc<core::Value> {
+        core::semantics::eval_closure_elim(self.globals, closure, argument)
+    }
+
     /// Normalize a term using the current state of the elaborator.
     pub fn normalize_term(&mut self, term: &core::Term, r#type: &core::Value) -> core::Term {
         core::semantics::normalize_term(
@@ -155,11 +164,9 @@ pub enum TypeError {
     UnexpectedNamesInRecordTerm {
         unexpected_names: Vec<String>,
     },
-    FieldNotFoundInRecord {
+    AmbiguousRecordTerm,
+    FieldNotFound {
         expected_field_name: String,
-        head_type: Arc<core::Value>,
-    },
-    NotARecord {
         head_type: Arc<core::Value>,
     },
     TooManyParametersForFunctionTerm {
@@ -295,30 +302,39 @@ pub fn check_term<S: AsRef<str>>(
             });
             core::Term::Error
         }
-        (Term::RecordTerm(_, term_entries), core::Value::RecordType(core_type_entries)) => {
+        (Term::RecordTerm(_, term_entries), _) => {
             use std::collections::btree_map::Entry;
             use std::collections::BTreeMap;
 
             let mut duplicate_names = Vec::new();
             let mut missing_names = Vec::new();
+
+            let mut expected_type = expected_type.clone();
+            let mut core_term_entries = BTreeMap::new();
             let mut term_entries =
                 (term_entries.iter()).fold(BTreeMap::new(), |mut acc, (name, term)| {
-                    match acc.entry(name.as_ref()) {
+                    match acc.entry(name.as_ref().to_owned()) {
                         Entry::Vacant(entry) => drop(entry.insert(term)),
                         Entry::Occupied(_) => duplicate_names.push(name.as_ref().to_owned()),
                     }
                     acc
                 });
-            let mut core_term_entries = BTreeMap::new();
 
-            for (name, core_type) in core_type_entries {
-                match term_entries.remove(&name.as_str()) {
+            while let core::Value::RecordTypeExtend(name, entry_type, rest_type) =
+                expected_type.as_ref()
+            {
+                expected_type = match term_entries.remove(name.as_str()) {
                     Some(term) => {
-                        let core_term = Arc::new(check_term(state, term, core_type));
+                        let core_term = Arc::new(check_term(state, term, entry_type));
+                        let core_value = state.eval_term(&core_term);
                         core_term_entries.insert(name.clone(), core_term);
+                        state.eval_closure_elim(rest_type, core_value)
                     }
-                    None => missing_names.push(name.clone()),
-                }
+                    None => {
+                        missing_names.push(name.clone());
+                        state.eval_closure_elim(rest_type, Arc::new(core::Value::Error))
+                    }
+                };
             }
 
             if !duplicate_names.is_empty() {
@@ -328,9 +344,7 @@ pub fn check_term<S: AsRef<str>>(
                 state.report(TypeError::MissingNamesInRecordTerm { missing_names });
             }
             if !term_entries.is_empty() {
-                let unexpected_names = (term_entries.into_iter())
-                    .map(|(name, _)| name.to_owned())
-                    .collect();
+                let unexpected_names = (term_entries.into_iter()).map(|(name, _)| name).collect();
                 state.report(TypeError::UnexpectedNamesInRecordTerm { unexpected_names });
             }
 
@@ -428,32 +442,15 @@ pub fn synth_term<S: AsRef<str>>(
             (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::RecordTerm(_, term_entries) => {
-            let mut duplicate_names = Vec::new();
-            let mut core_term_entries = BTreeMap::new();
-            let mut core_type_entries = Vec::new();
-
-            for (name, term) in term_entries {
-                use std::collections::btree_map::Entry;
-
-                let (term, r#type) = synth_term(state, term);
-
-                match core_term_entries.entry(name.as_ref().to_owned()) {
-                    Entry::Occupied(_) => duplicate_names.push(name.as_ref().to_owned()),
-                    Entry::Vacant(entry) => {
-                        entry.insert(Arc::new(term));
-                        core_type_entries.push((name.as_ref().to_owned(), r#type));
-                    }
-                }
+            if term_entries.is_empty() {
+                (
+                    core::Term::RecordTerm(BTreeMap::new()),
+                    Arc::from(core::Value::RecordTypeEmpty),
+                )
+            } else {
+                state.report(TypeError::AmbiguousRecordTerm);
+                (core::Term::Error, Arc::new(core::Value::Error))
             }
-
-            if !duplicate_names.is_empty() {
-                state.report(TypeError::DuplicateNamesInRecordTerm { duplicate_names });
-            }
-
-            (
-                core::Term::RecordTerm(core_term_entries),
-                Arc::new(core::Value::RecordType(core_type_entries)),
-            )
         }
         Term::RecordType(_, type_entries) => {
             let mut max_level = core::UniverseLevel(0);
@@ -468,7 +465,10 @@ pub fn synth_term<S: AsRef<str>>(
                         Some(level) => std::cmp::max(max_level, level),
                         None => return (core::Term::Error, Arc::new(core::Value::Error)),
                     };
-                    core_type_entries.push((name.as_ref().to_owned(), Arc::new(core_type)));
+                    let core_type = Arc::new(core_type);
+                    let core_type_value = state.eval_term(&core_type);
+                    core_type_entries.push((name.as_ref().to_owned(), core_type));
+                    state.push_param(name.as_ref().to_owned(), core_type_value);
                 } else {
                     duplicate_names.push(name.as_ref().to_owned());
                     check_type(state, r#type);
@@ -479,34 +479,34 @@ pub fn synth_term<S: AsRef<str>>(
                 state.report(TypeError::DuplicateNamesInRecordType { duplicate_names });
             }
 
+            state.pop_many_locals(seen_names.len());
+
             (
                 core::Term::RecordType(core_type_entries),
                 Arc::new(core::Value::Universe(max_level)),
             )
         }
         Term::RecordElim(_, head, name) => {
-            let (core_head, head_type) = synth_term(state, head);
-            match head_type.as_ref() {
-                core::Value::RecordType(type_entries) => {
-                    match type_entries.iter().find(|(n, _)| n == name.as_ref()) {
-                        Some((_, r#type)) => (
-                            core::Term::RecordElim(Arc::new(core_head), name.as_ref().to_owned()),
-                            r#type.clone(),
-                        ),
-                        None => {
-                            state.report(TypeError::FieldNotFoundInRecord {
-                                expected_field_name: name.as_ref().to_owned(),
-                                head_type,
-                            });
-                            (core::Term::Error, Arc::new(core::Value::Error))
-                        }
-                    }
-                }
-                _ => {
-                    state.report(TypeError::NotARecord { head_type });
-                    (core::Term::Error, Arc::new(core::Value::Error))
+            let (core_head, mut head_type) = synth_term(state, head);
+            let core_head = Arc::new(core_head);
+
+            while let core::Value::RecordTypeExtend(current_name, entry_type, rest_type) =
+                head_type.as_ref()
+            {
+                let term = core::Term::RecordElim(core_head.clone(), name.as_ref().to_owned());
+                if name.as_ref() == current_name {
+                    return (term, entry_type.clone());
+                } else {
+                    let value = state.eval_term(&term);
+                    head_type = state.eval_closure_elim(rest_type, value);
                 }
             }
+
+            state.report(TypeError::FieldNotFound {
+                expected_field_name: name.as_ref().to_owned(),
+                head_type,
+            });
+            (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::FunctionType(param_type, body_type) => {
             match (check_type(state, param_type), check_type(state, body_type)) {

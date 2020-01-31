@@ -1,5 +1,6 @@
 //! The operational semantics of the language.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::core::{
@@ -51,17 +52,19 @@ pub fn eval_term(
             Arc::new(Value::Sequence(value_entries))
         }
         Term::Ann(term, _) => eval_term(globals, universe_offset, values, term),
-        Term::RecordType(type_entries) => {
-            let type_entries = type_entries
-                .iter()
-                .map(|(name, r#type)| {
-                    let r#type = eval_term(globals, universe_offset, values, r#type);
-                    (name.clone(), r#type)
-                })
-                .collect();
+        Term::RecordType(type_entries) => match type_entries.split_first() {
+            None => Arc::new(Value::RecordTypeEmpty),
+            Some(((name, r#type), rest_type)) => {
+                let r#type = eval_term(globals, universe_offset, values, r#type);
+                let rest_types = Closure::new(
+                    universe_offset,
+                    values.clone(),
+                    Arc::new(Term::RecordType(rest_type.to_owned())), // FIXME: expensive to_owned?
+                );
 
-            Arc::new(Value::RecordType(type_entries))
-        }
+                Arc::new(Value::RecordTypeExtend(name.clone(), r#type, rest_types))
+            }
+        },
         Term::RecordTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
@@ -75,7 +78,7 @@ pub fn eval_term(
         }
         Term::RecordElim(head, field_name) => {
             let head = eval_term(globals, universe_offset, values, head);
-            eval_record_elim(&head, field_name)
+            eval_record_elim(globals, &head, field_name)
         }
         Term::FunctionType(param_type, body_type) => {
             let param_type = eval_term(globals, universe_offset, values, param_type);
@@ -119,33 +122,37 @@ pub fn eval_closure_elim(globals: &Globals, closure: &Closure, argument: Arc<Val
 }
 
 /// Eliminate a record term.
-pub fn eval_record_elim(head: &Value, name: &str) -> Arc<Value> {
-    match head {
+pub fn eval_record_elim(globals: &Globals, head_value: &Value, name: &str) -> Arc<Value> {
+    match head_value {
         Value::RecordTerm(term_entries) => match term_entries.get(name) {
             Some(value) => value.clone(),
             None => Arc::new(Value::Error),
         },
         Value::Elim(head, elims, r#type) => {
-            let type_entries = match r#type.as_ref() {
-                Value::RecordType(type_entries) => type_entries,
-                _ => return Arc::new(Value::Error),
-            };
-            let entry_type = match type_entries.iter().find(|(n, _)| n == name) {
-                Some((_, entry_type)) => entry_type,
-                None => return Arc::new(Value::Error),
-            };
+            let mut current_type = r#type.clone();
 
-            let mut elims = elims.clone(); // TODO: Avoid clone?
-            elims.push(Elim::Record(name.to_owned()));
-            Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()))
+            while let Value::RecordTypeExtend(current_name, entry_type, rest_type) =
+                current_type.as_ref()
+            {
+                if name == current_name {
+                    let mut elims = elims.clone(); // TODO: Avoid clone?
+                    elims.push(Elim::Record(name.to_owned()));
+                    return Arc::new(Value::Elim(head.clone(), elims, entry_type.clone()));
+                } else {
+                    let entry_term = eval_record_elim(globals, head_value, name);
+                    current_type = eval_closure_elim(globals, rest_type, entry_term);
+                }
+            }
+
+            Arc::new(Value::Error)
         }
         _ => Arc::new(Value::Error),
     }
 }
 
 /// Eliminate a function term.
-pub fn eval_fun_elim(globals: &Globals, head: &Value, argument: Arc<Value>) -> Arc<Value> {
-    match head {
+pub fn eval_fun_elim(globals: &Globals, head_value: &Value, argument: Arc<Value>) -> Arc<Value> {
+    match head_value {
         Value::FunctionTerm(_, body_closure) => eval_closure_elim(globals, body_closure, argument),
         Value::Elim(head, elims, r#type) => {
             let (param_type, body_type) = match r#type.as_ref() {
@@ -194,7 +201,7 @@ pub fn read_back_nf(
     r#type: &Value,
 ) -> Term {
     match (value, r#type) {
-        (Value::Universe(level), Value::Universe(_)) => Term::Universe(*level),
+        (_, Value::Universe(_)) => read_back_type(globals, local_size, value),
         (Value::Elim(head, spine, _), _) => read_back_elim(globals, local_size, head, spine),
         (Value::Constant(constant), _) => Term::Constant(constant.clone()),
         (Value::Sequence(value_entries), Value::Elim(Head::Global(name, _), elims, _)) => {
@@ -213,33 +220,24 @@ pub fn read_back_nf(
                 _ => Term::Error, // TODO: Report error
             }
         }
-        (Value::RecordType(type_entries), Value::Universe(_)) => {
-            let type_entries = type_entries
-                .iter()
-                .map(|(name, r#type)| {
-                    let r#type = Arc::new(read_back_type(globals, local_size, r#type));
-                    (name.clone(), r#type)
-                })
-                .collect();
+        (Value::RecordTerm(_), Value::RecordTypeExtend(name, entry_type, rest_type)) => {
+            let mut term_entries = BTreeMap::new();
 
-            Term::RecordType(type_entries)
-        }
-        (Value::RecordTerm(value_entries), Value::RecordType(type_entries)) => {
-            let term_entries = type_entries
-                .iter()
-                .map(|(name, r#type)| {
-                    let value = &value_entries[name];
-                    let term = Arc::new(read_back_nf(globals, local_size, value, r#type));
-                    (name.clone(), term)
-                })
-                .collect();
+            let entry_value = eval_record_elim(globals, value, name);
+            let entry_term = read_back_nf(globals, local_size, &entry_value, entry_type);
+            term_entries.insert(name.clone(), Arc::new(entry_term));
+            let mut r#type = eval_closure_elim(globals, rest_type, entry_value);
+
+            while let Value::RecordTypeExtend(name, entry_type, rest_type) = r#type.as_ref() {
+                let entry_value = eval_record_elim(globals, value, name);
+                let entry_term = read_back_nf(globals, local_size, &entry_value, entry_type);
+                term_entries.insert(name.clone(), Arc::new(entry_term));
+                r#type = eval_closure_elim(globals, rest_type, entry_value);
+            }
 
             Term::RecordTerm(term_entries)
         }
-        (Value::FunctionType(param_type, body_type), Value::Universe(_)) => Term::FunctionType(
-            Arc::new(read_back_type(globals, local_size, param_type)),
-            Arc::new(read_back_type(globals, local_size, body_type)),
-        ),
+        (Value::RecordTypeEmpty, Value::RecordTypeEmpty) => Term::RecordType(Vec::new()),
         (
             Value::FunctionTerm(param_name_hint, body_closure),
             Value::FunctionType(param_type, body_type),
@@ -251,7 +249,8 @@ pub fn read_back_nf(
         }
         (Value::Universe(_), _)
         | (Value::Sequence(_), _)
-        | (Value::RecordType(_), _)
+        | (Value::RecordTypeExtend(_, _, _), _)
+        | (Value::RecordTypeEmpty, _)
         | (Value::RecordTerm(_), _)
         | (Value::FunctionType(_, _), _)
         | (Value::FunctionTerm(_, _), _) => Term::Error, // TODO: Report error
@@ -264,17 +263,27 @@ pub fn read_back_type(globals: &Globals, local_size: LocalSize, r#type: &Value) 
     match r#type {
         Value::Universe(level) => Term::Universe(*level),
         Value::Elim(head, spine, _) => read_back_elim(globals, local_size, head, spine),
-        Value::RecordType(type_entries) => {
-            let type_entries = type_entries
-                .iter()
-                .map(|(name, r#type)| {
-                    let r#type = Arc::new(read_back_type(globals, local_size, r#type));
-                    (name.clone(), r#type)
-                })
-                .collect();
+        Value::RecordTypeExtend(name, entry_type, rest_type) => {
+            let mut local_size = local_size;
+            let mut type_entries = Vec::new();
+
+            let local = Arc::new(Value::local(local_size.next_level(), entry_type.clone()));
+            let entry_type = Arc::new(read_back_type(globals, local_size, entry_type));
+            type_entries.push((name.clone(), entry_type));
+            local_size = local_size.increment();
+            let mut r#type = eval_closure_elim(globals, rest_type, local);
+
+            while let Value::RecordTypeExtend(name, entry_type, rest_type) = r#type.as_ref() {
+                let local = Arc::new(Value::local(local_size.next_level(), entry_type.clone()));
+                let entry_type = Arc::new(read_back_type(globals, local_size, entry_type));
+                type_entries.push((name.clone(), entry_type));
+                local_size = local_size.increment();
+                r#type = eval_closure_elim(globals, rest_type, local);
+            }
 
             Term::RecordType(type_entries)
         }
+        Value::RecordTypeEmpty => Term::RecordType(Vec::new()),
         Value::FunctionType(param_type, body_type) => Term::FunctionType(
             Arc::new(read_back_type(globals, local_size, param_type)),
             Arc::new(read_back_type(globals, local_size, body_type)),
@@ -334,14 +343,26 @@ fn compare_types(
         (Value::Elim(head0, spine0, _), Value::Elim(head1, spine1, _)) => {
             is_equal_elim(globals, local_size, (head0, spine0), (head1, spine1))
         }
-        (Value::RecordType(type_entries0), Value::RecordType(type_entries1)) => {
-            type_entries0.len() == type_entries1.len()
-                && Iterator::zip(type_entries0.iter(), type_entries1.iter()).all(
-                    |((name0, type0), (name1, type1))| {
-                        name0 == name1 && compare_types(globals, local_size, type0, type1, compare)
-                    },
-                )
+        (
+            Value::RecordTypeExtend(name0, entry_type0, rest_type0),
+            Value::RecordTypeExtend(name1, entry_type1, rest_type1),
+        ) => {
+            name0 == name1
+                && compare_types(globals, local_size, entry_type0, entry_type1, compare)
+                && {
+                    let local =
+                        Arc::new(Value::local(local_size.next_level(), entry_type0.clone()));
+
+                    compare_types(
+                        globals,
+                        local_size.increment(),
+                        &*eval_closure_elim(globals, rest_type0, local.clone()),
+                        &*eval_closure_elim(globals, rest_type1, local),
+                        compare,
+                    )
+                }
         }
+        (Value::RecordTypeEmpty, Value::RecordTypeEmpty) => true,
         (
             Value::FunctionType(param_type0, body_type0),
             Value::FunctionType(param_type1, body_type1),

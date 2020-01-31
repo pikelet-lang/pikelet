@@ -23,6 +23,20 @@ Record {
 }
 ```
 
+### Dependent records
+
+Entries can be used to constrain the types of later entries.
+For example:
+
+```pikelet
+Record {
+  A : Type,
+  a : A,
+}
+```
+
+Here the type of `a` _depends_ on the type given to `A`.
+
 ### Universes
 
 Record types are also types:
@@ -44,10 +58,10 @@ Record {
 } : Type^3
 ```
 
-### Field order
+### Entry order
 
-Note that the order of the fields matters, so this would be a different type to
-the one defined above:
+The order of entries in a record type are significant,
+so the following record type is not the same as the one shown above:
 
 ```pikelet
 Record {
@@ -56,9 +70,20 @@ Record {
 }
 ```
 
+Dependencies must be supplied from the roots to the leaves.
+For example the following record would not type check because `A : Type` is not yet defined when `a : A` is declared:
+
+```pikelet
+Record {
+  a : A,
+  A : Type,
+}
+```
+
 :::note
-The field order seems annoying!
-It would be nice not to require this in the future.
+The entry order seems annoying!
+It would be nice not to require this in the future,
+but dependent record types make this a challenge!
 :::
 
 ## Construction
@@ -68,19 +93,16 @@ This section is a work in progress.
 :::
 
 ```pikelet
+record {}
+```
+
+```pikelet
 record {
     width = 24,
     height = 33,
 } : Record {
     width : U32,
     height : U32,
-}
-```
-
-```pikelet
-record {
-    width = 24 : U32,
-    height = 33 : U32,
 }
 ```
 

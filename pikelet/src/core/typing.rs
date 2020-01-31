@@ -10,7 +10,8 @@ use std::sync::Arc;
 
 use crate::core::semantics;
 use crate::core::{
-    Constant, Elim, Globals, Head, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset, Value,
+    Closure, Constant, Elim, Globals, Head, LocalLevel, Locals, Term, UniverseLevel,
+    UniverseOffset, Value,
 };
 
 /// The state of the type checker.
@@ -63,6 +64,12 @@ impl<'me> State<'me> {
         self.values.pop();
     }
 
+    /// Pop the given number of local entries.
+    fn pop_many_locals(&mut self, count: usize) {
+        self.types.pop_many(count);
+        self.values.pop_many(count);
+    }
+
     /// Report an error.
     fn report(&mut self, error: TypeError) {
         self.errors.push(error);
@@ -84,6 +91,11 @@ impl<'me> State<'me> {
     /// Evaluate a term using the current state of the type checker.
     pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
+    }
+
+    /// Eliminate a closure.
+    fn eval_closure_elim(&self, closure: &Closure, argument: Arc<Value>) -> Arc<Value> {
+        semantics::eval_closure_elim(self.globals, closure, argument)
     }
 
     /// Check if `value0` is a subtype of `value1`.
@@ -108,11 +120,9 @@ pub enum TypeError {
     UnexpectedNamesInRecordTerm {
         unexpected_names: Vec<String>,
     },
-    FieldNotFoundInRecord {
+    AmbiguousRecordTerm,
+    FieldNotFound {
         expected_field_name: String,
-        head_type: Arc<Value>,
-    },
-    NotARecord {
         head_type: Arc<Value>,
     },
     TooManyParametersForFunctionTerm {
@@ -184,15 +194,25 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
         (Term::Sequence(_), _) => state.report(TypeError::NoSequenceConversion {
             expected_type: expected_type.clone(),
         }),
-        (Term::RecordTerm(term_entries), Value::RecordType(type_entries)) => {
+        (Term::RecordTerm(term_entries), _) => {
             let mut missing_names = Vec::new();
+
+            let mut expected_type = expected_type.clone();
             let mut term_entries = term_entries.clone();
 
-            for (name, r#type) in type_entries {
-                match term_entries.remove(name) {
-                    Some(term) => check_term(state, &term, r#type),
-                    None => missing_names.push(name.clone()),
-                }
+            while let Value::RecordTypeExtend(name, entry_type, rest_type) = expected_type.as_ref()
+            {
+                expected_type = match term_entries.remove(name) {
+                    Some(entry_term) => {
+                        check_term(state, &entry_term, entry_type);
+                        let entry_value = state.eval_term(&entry_term);
+                        state.eval_closure_elim(rest_type, entry_value)
+                    }
+                    None => {
+                        missing_names.push(name.clone());
+                        state.eval_closure_elim(rest_type, Arc::new(Value::Error))
+                    }
+                };
             }
 
             if !missing_names.is_empty() {
@@ -274,12 +294,12 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             r#type
         }
         Term::RecordTerm(term_entries) => {
-            let type_entries = term_entries
-                .iter()
-                .map(|(name, term)| (name.clone(), synth_term(state, term)))
-                .collect();
-
-            Arc::new(Value::RecordType(type_entries))
+            if term_entries.is_empty() {
+                Arc::from(Value::RecordTypeEmpty)
+            } else {
+                state.report(TypeError::AmbiguousRecordTerm);
+                Arc::new(Value::Error)
+            }
         }
         Term::RecordType(type_entries) => {
             use std::collections::BTreeSet;
@@ -288,15 +308,19 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             let mut duplicate_names = Vec::new();
             let mut seen_names = BTreeSet::new();
 
-            for (name, r#type) in type_entries {
+            for (name, entry_type) in type_entries {
                 if !seen_names.insert(name) {
                     duplicate_names.push(name.clone());
                 }
-                max_level = match check_type(state, r#type) {
+                max_level = match check_type(state, entry_type) {
                     Some(level) => std::cmp::max(max_level, level),
                     None => return Arc::new(Value::Error),
                 };
+                let entry_type = state.eval_term(entry_type);
+                state.push_param(entry_type);
             }
+
+            state.pop_many_locals(seen_names.len());
 
             if !duplicate_names.is_empty() {
                 state.report(TypeError::DuplicateNamesInRecordType { duplicate_names });
@@ -305,25 +329,24 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Arc::new(Value::Universe(max_level))
         }
         Term::RecordElim(head, name) => {
-            let head_type = synth_term(state, head);
-            match head_type.as_ref() {
-                Value::RecordType(type_entries) => {
-                    match type_entries.iter().find(|(n, _)| n == name) {
-                        Some((_, r#type)) => r#type.clone(),
-                        None => {
-                            state.report(TypeError::FieldNotFoundInRecord {
-                                expected_field_name: name.clone(),
-                                head_type,
-                            });
-                            Arc::new(Value::Error)
-                        }
-                    }
-                }
-                _ => {
-                    state.report(TypeError::NotARecord { head_type });
-                    Arc::new(Value::Error)
+            let mut head_type = synth_term(state, head);
+
+            while let Value::RecordTypeExtend(current_name, entry_type, rest_type) =
+                head_type.as_ref()
+            {
+                if name == current_name {
+                    return entry_type.clone();
+                } else {
+                    let value = state.eval_term(&Term::RecordElim(head.clone(), name.clone()));
+                    head_type = state.eval_closure_elim(rest_type, value);
                 }
             }
+
+            state.report(TypeError::FieldNotFound {
+                expected_field_name: name.clone(),
+                head_type,
+            });
+            Arc::new(Value::Error)
         }
         Term::FunctionType(param_type, body_type) => {
             match (check_type(state, param_type), check_type(state, body_type)) {
