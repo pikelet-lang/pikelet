@@ -4,6 +4,7 @@
 //! language.
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::sync::Arc;
 
 pub mod projections;
@@ -312,16 +313,18 @@ impl LocalSize {
 }
 
 /// A local environment.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Locals<Entry> {
     /// The local values that are currently defined in the environment.
-    values: Vec<Entry>,
+    values: im::Vector<Entry>,
 }
 
-impl<Entry> Locals<Entry> {
+impl<Entry: Clone> Locals<Entry> {
     /// Create a new local environment.
     pub fn new() -> Locals<Entry> {
-        Locals { values: Vec::new() }
+        Locals {
+            values: im::Vector::new(),
+        }
     }
 
     /// Get the size of the environment.
@@ -337,22 +340,31 @@ impl<Entry> Locals<Entry> {
 
     /// Push an entry onto the environment.
     pub fn push(&mut self, entry: Entry) {
-        self.values.push(entry);
+        self.values.push_back(entry);
     }
 
     /// Pop an entry off the environment.
     pub fn pop(&mut self) {
-        self.values.pop();
+        self.values.pop_back();
     }
 
     /// Pop a number of entries off the environment.
     pub fn pop_many(&mut self, count: usize) {
-        crate::pop_many(&mut self.values, count);
+        self.values
+            .truncate(self.values.len().saturating_sub(count));
     }
 
     /// Clear the entries from the environment.
     pub fn clear(&mut self) {
         self.values.clear();
+    }
+}
+
+impl<Entry: Clone + fmt::Debug> fmt::Debug for Locals<Entry> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Locals")
+            .field("entries", &self.values)
+            .finish()
     }
 }
 

@@ -76,7 +76,8 @@ impl<'me> State<'me> {
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
-        crate::pop_many(&mut self.names_to_levels, count);
+        self.names_to_levels
+            .truncate(self.names_to_levels.len().saturating_sub(count));
         self.names.pop_many(count);
         self.types.pop_many(count);
         self.values.pop_many(count);
