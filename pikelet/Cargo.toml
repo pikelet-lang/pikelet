@@ -15,6 +15,7 @@ license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+im = "14.2"
 lalrpop-util = "0.17"
 pretty = "0.9"
 regex = "1.3"

@@ -85,11 +85,7 @@ pub fn eval_term(
         }
         Term::FunctionTerm(param_name, body) => Arc::new(Value::FunctionTerm(
             param_name.clone(),
-            Closure::new(
-                universe_offset,
-                values.clone(), // FIXME: This clone could be expensive
-                body.clone(),
-            ),
+            Closure::new(universe_offset, values.clone(), body.clone()),
         )),
         Term::FunctionElim(head, argument) => {
             let head = eval_term(globals, universe_offset, values, head);
