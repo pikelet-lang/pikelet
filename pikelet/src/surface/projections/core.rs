@@ -312,26 +312,26 @@ pub fn check_term<S: AsRef<str>>(
             let mut expected_type = expected_type.clone();
             let mut core_term_entries = BTreeMap::new();
             let mut term_entries =
-                (term_entries.iter()).fold(BTreeMap::new(), |mut acc, (name, term)| {
-                    match acc.entry(name.as_ref().to_owned()) {
-                        Entry::Vacant(entry) => drop(entry.insert(term)),
-                        Entry::Occupied(_) => duplicate_names.push(name.as_ref().to_owned()),
+                (term_entries.iter()).fold(BTreeMap::new(), |mut acc, (entry_name, entry_term)| {
+                    match acc.entry(entry_name.as_ref().to_owned()) {
+                        Entry::Vacant(entry) => drop(entry.insert(entry_term)),
+                        Entry::Occupied(_) => duplicate_names.push(entry_name.as_ref().to_owned()),
                     }
                     acc
                 });
 
-            while let core::Value::RecordTypeExtend(name, entry_type, rest_type) =
+            while let core::Value::RecordTypeExtend(entry_name, entry_type, rest_type) =
                 expected_type.as_ref()
             {
-                expected_type = match term_entries.remove(name.as_str()) {
+                expected_type = match term_entries.remove(entry_name.as_str()) {
                     Some(term) => {
                         let core_term = Arc::new(check_term(state, term, entry_type));
                         let core_value = state.eval_term(&core_term);
-                        core_term_entries.insert(name.clone(), core_term);
+                        core_term_entries.insert(entry_name.clone(), core_term);
                         state.eval_closure_elim(rest_type, core_value)
                     }
                     None => {
-                        missing_names.push(name.clone());
+                        missing_names.push(entry_name.clone());
                         state.eval_closure_elim(rest_type, Arc::new(core::Value::Error))
                     }
                 };

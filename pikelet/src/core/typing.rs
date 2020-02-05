@@ -200,16 +200,17 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             let mut expected_type = expected_type.clone();
             let mut term_entries = term_entries.clone();
 
-            while let Value::RecordTypeExtend(name, entry_type, rest_type) = expected_type.as_ref()
+            while let Value::RecordTypeExtend(entry_name, entry_type, rest_type) =
+                expected_type.as_ref()
             {
-                expected_type = match term_entries.remove(name) {
+                expected_type = match term_entries.remove(entry_name) {
                     Some(entry_term) => {
                         check_term(state, &entry_term, entry_type);
                         let entry_value = state.eval_term(&entry_term);
                         state.eval_closure_elim(rest_type, entry_value)
                     }
                     None => {
-                        missing_names.push(name.clone());
+                        missing_names.push(entry_name.clone());
                         state.eval_closure_elim(rest_type, Arc::new(Value::Error))
                     }
                 };
