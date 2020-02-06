@@ -6,7 +6,7 @@ use std::ops::{Range, RangeFrom, RangeTo};
 
 pub mod projections;
 
-#[allow(clippy::all)]
+#[allow(clippy::all, unused_parens)]
 mod grammar {
     include!(concat!(env!("OUT_DIR"), "/surface/grammar.rs"));
 }
