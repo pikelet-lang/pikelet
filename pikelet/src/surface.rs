@@ -45,7 +45,9 @@ impl<'input> Term<&'input str> {
     pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
         grammar::TermParser::new().parse(input)
     }
+}
 
+impl<T> Term<T> {
     pub fn span(&self) -> Range<usize> {
         match self {
             Term::Name(span, _)
