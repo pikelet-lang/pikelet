@@ -43,7 +43,7 @@ pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<Stri
                 .map(|(entry_name, entry_type)| {
                     let entry_type = delaborate_term(state, entry_type);
                     state.names.push(entry_name.clone());
-                    (entry_name.clone(), entry_type)
+                    (0..0, entry_name.clone(), entry_type)
                 })
                 .collect();
 
@@ -53,7 +53,7 @@ pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<Stri
             let core_term_entries = term_entries
                 .iter()
                 .map(|(entry_name, entry_term)| {
-                    (entry_name.clone(), delaborate_term(state, entry_term))
+                    (0..0, entry_name.clone(), delaborate_term(state, entry_term))
                 })
                 .collect();
             state.names.pop_many(term_entries.len());
