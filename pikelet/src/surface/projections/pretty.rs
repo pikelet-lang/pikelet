@@ -64,7 +64,7 @@ where
             .append("{")
             .group()
             .append(
-                alloc.concat(ty_entries.iter().map(|(entry_name, entry_type)| {
+                alloc.concat(ty_entries.iter().map(|(_, entry_name, entry_type)| {
                     (alloc.nil())
                         .append(alloc.hardline())
                         .append(alloc.text(entry_name.as_ref()))
@@ -87,7 +87,7 @@ where
             .append("{")
             .group()
             .append(
-                alloc.concat(term_entries.iter().map(|(entry_name, entry_term)| {
+                alloc.concat(term_entries.iter().map(|(_, entry_name, entry_term)| {
                     (alloc.nil())
                         .append(alloc.hardline())
                         .append(alloc.text(entry_name.as_ref()))

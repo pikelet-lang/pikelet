@@ -21,9 +21,9 @@ pub enum Term<S> {
     /// Ordered sequences.
     Sequence(Range<usize>, Vec<Term<S>>),
     /// Record types.
-    RecordType(Range<usize>, Vec<(S, Term<S>)>),
+    RecordType(Range<usize>, Vec<(Range<usize>, S, Term<S>)>),
     /// Record terms.
-    RecordTerm(Range<usize>, Vec<(S, Term<S>)>),
+    RecordTerm(Range<usize>, Vec<(Range<usize>, S, Term<S>)>),
     /// Record eliminations (field access).
     RecordElim(RangeTo<usize>, Box<Term<S>>, S),
     /// Function types.

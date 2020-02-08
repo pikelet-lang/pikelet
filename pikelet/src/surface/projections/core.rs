@@ -158,11 +158,11 @@ pub enum TypeError {
     },
     DuplicateNamesInRecordTerm {
         span: Range<usize>,
-        duplicate_names: Vec<String>, // TODO: add spans
+        duplicate_names: Vec<(Range<usize>, String)>,
     },
     DuplicateNamesInRecordType {
         span: Range<usize>,
-        duplicate_names: Vec<String>, // TODO: add spans
+        duplicate_names: Vec<(Range<usize>, String)>,
     },
     MissingNamesInRecordTerm {
         span: Range<usize>,
@@ -170,7 +170,7 @@ pub enum TypeError {
     },
     UnexpectedNamesInRecordTerm {
         span: Range<usize>,
-        unexpected_names: Vec<String>, // TODO: add spans
+        unexpected_names: Vec<(Range<usize>, String)>,
     },
     AmbiguousRecordTerm {
         span: Range<usize>,
@@ -348,20 +348,23 @@ pub fn check_term<S: AsRef<str>>(
 
             let mut expected_type = expected_type.clone();
             let mut core_term_entries = BTreeMap::new();
-            let mut term_entries =
-                (term_entries.iter()).fold(BTreeMap::new(), |mut acc, (entry_name, entry_term)| {
+            let mut term_entries = (term_entries.iter()).fold(
+                BTreeMap::new(),
+                |mut acc, (entry_name_span, entry_name, entry_term)| {
+                    let span = entry_name_span.clone();
                     match acc.entry(entry_name.as_ref().to_owned()) {
-                        Entry::Vacant(entry) => drop(entry.insert(entry_term)),
-                        Entry::Occupied(_) => duplicate_names.push(entry_name.as_ref().to_owned()),
+                        Entry::Vacant(entry) => drop(entry.insert((span, entry_term))),
+                        Entry::Occupied(entry) => duplicate_names.push((span, entry.key().clone())),
                     }
                     acc
-                });
+                },
+            );
 
             while let core::Value::RecordTypeExtend(entry_name, entry_type, rest_type) =
                 expected_type.as_ref()
             {
                 expected_type = match term_entries.remove(entry_name.as_str()) {
-                    Some(term) => {
+                    Some((_, term)) => {
                         let core_term = Arc::new(check_term(state, term, entry_type));
                         let core_value = state.eval_term(&core_term);
                         core_term_entries.insert(entry_name.clone(), core_term);
@@ -387,7 +390,9 @@ pub fn check_term<S: AsRef<str>>(
                 });
             }
             if !term_entries.is_empty() {
-                let unexpected_names = (term_entries.into_iter()).map(|(name, _)| name).collect();
+                let unexpected_names = (term_entries.into_iter())
+                    .map(|(entry_name, (entry_name_span, _))| (entry_name_span, entry_name))
+                    .collect();
                 state.report(TypeError::UnexpectedNamesInRecordTerm {
                     span: term.span(),
                     unexpected_names,
@@ -506,20 +511,20 @@ pub fn synth_term<S: AsRef<str>>(
             let mut seen_names = BTreeSet::new();
             let mut core_type_entries = Vec::new();
 
-            for (name, r#type) in type_entries {
-                if seen_names.insert(name.as_ref()) {
-                    let (core_type, level) = check_type(state, r#type);
+            for (entry_name_span, entry_name, entry_type) in type_entries {
+                if seen_names.insert(entry_name.as_ref()) {
+                    let (core_type, level) = check_type(state, entry_type);
                     max_level = match level {
                         Some(level) => std::cmp::max(max_level, level),
                         None => return (core::Term::Error, Arc::new(core::Value::Error)),
                     };
                     let core_type = Arc::new(core_type);
                     let core_type_value = state.eval_term(&core_type);
-                    core_type_entries.push((name.as_ref().to_owned(), core_type));
-                    state.push_param(name.as_ref().to_owned(), core_type_value);
+                    core_type_entries.push((entry_name.as_ref().to_owned(), core_type));
+                    state.push_param(entry_name.as_ref().to_owned(), core_type_value);
                 } else {
-                    duplicate_names.push(name.as_ref().to_owned());
-                    check_type(state, r#type);
+                    duplicate_names.push((entry_name_span.clone(), entry_name.as_ref().to_owned()));
+                    check_type(state, entry_type);
                 }
             }
 

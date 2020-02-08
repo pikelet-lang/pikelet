@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::surface::{Term, Literal};
 
 grammar;
@@ -48,12 +50,12 @@ List<Entry>: Vec<Entry> = {
     }
 }
 
-TypeEntry: (&'input str, Term<&'input str>) = {
-    <Name> ":" <Term> => (<>),
+TypeEntry: (Range<usize>, &'input str, Term<&'input str>) = {
+    <start: @L> <name: Name> <end: @R> ":" <term: Term> => (start..end, name, term),
 };
 
-TermEntry: (&'input str, Term<&'input str>) = {
-    <Name> "=" <Term> => (<>),
+TermEntry: (Range<usize>, &'input str, Term<&'input str>) = {
+    <start: @L> <name: Name> <end: @R> "=" <term: Term> => (start..end, name, term),
 };
 
 Name: &'input str = {
