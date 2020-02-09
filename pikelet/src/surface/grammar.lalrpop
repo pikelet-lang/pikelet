@@ -11,7 +11,7 @@ pub Term: Term<&'input str> = {
 
 ExprTerm: Term<&'input str> = {
     ArrowTerm,
-    <start: @L> "fun" <param_names: Name+> "=>" <body: ExprTerm> => {
+    <start: @L> "fun" <param_names: ParamName+> "=>" <body: ExprTerm> => {
         Term::FunctionTerm(start.., param_names, Box::new(body))
     },
 };
@@ -56,6 +56,10 @@ TypeEntry: (Range<usize>, &'input str, Term<&'input str>) = {
 
 TermEntry: (Range<usize>, &'input str, Term<&'input str>) = {
     <start: @L> <name: Name> <end: @R> "=" <term: Term> => (start..end, name, term),
+};
+
+ParamName: (Range<usize>,&'input str) = {
+    <start: @L> <name: Name> <end: @R> => (start..end, name),
 };
 
 Name: &'input str = {

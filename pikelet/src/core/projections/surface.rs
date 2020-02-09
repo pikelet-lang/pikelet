@@ -70,11 +70,11 @@ pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<Stri
         Term::FunctionTerm(param_name_hint, body) => {
             let mut current_body = body;
 
-            let mut param_names = vec![param_name_hint.clone()]; // FIXME: Name avoidance
+            let mut param_names = vec![(0..0, param_name_hint.clone())]; // FIXME: Name avoidance
             state.names.push(param_name_hint.clone());
 
             while let Term::FunctionTerm(param_name_hint, body) = current_body.as_ref() {
-                param_names.push(param_name_hint.clone()); // FIXME: Name avoidance
+                param_names.push((0..0, param_name_hint.clone())); // FIXME: Name avoidance
                 state.names.push(param_name_hint.clone());
                 current_body = body;
             }

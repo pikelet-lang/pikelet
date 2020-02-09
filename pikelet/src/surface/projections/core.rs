@@ -181,7 +181,7 @@ pub enum TypeError {
         head_type: Arc<core::Value>,
     },
     TooManyParametersForFunctionTerm {
-        excess_parameters: Vec<String>,
+        excess_parameters: Vec<(Range<usize>, String)>,
         expected_type: Arc<core::Value>,
     },
     AmbiguousFunctionTerm {
@@ -405,7 +405,7 @@ pub fn check_term<S: AsRef<str>>(
             let core_body = {
                 let mut expected_type = expected_type;
                 let mut param_names = param_names.iter();
-                while let Some(param_name) = param_names.next() {
+                while let Some((_, param_name)) = param_names.next() {
                     match expected_type.as_ref() {
                         core::Value::FunctionType(param_type, body_type) => {
                             state.push_param(param_name.as_ref().to_owned(), param_type.clone());
@@ -414,7 +414,9 @@ pub fn check_term<S: AsRef<str>>(
                         _ => {
                             state.report(TypeError::TooManyParametersForFunctionTerm {
                                 excess_parameters: param_names
-                                    .map(|param_name| param_name.as_ref().to_owned())
+                                    .map(|(param_name_span, param_name)| {
+                                        (param_name_span.clone(), param_name.as_ref().to_owned())
+                                    })
                                     .collect(),
                                 expected_type: expected_type.clone(),
                             });
@@ -425,7 +427,7 @@ pub fn check_term<S: AsRef<str>>(
                 check_term(state, body, expected_type)
             };
             state.pop_many_locals(param_names.len());
-            (param_names.iter().rev()).fold(core_body, |core_body, param_name| {
+            (param_names.iter().rev()).fold(core_body, |core_body, (_, param_name)| {
                 core::Term::FunctionTerm(param_name.as_ref().to_owned(), Arc::new(core_body))
             })
         }

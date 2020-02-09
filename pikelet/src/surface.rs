@@ -29,7 +29,7 @@ pub enum Term<S> {
     /// Function types.
     FunctionType(Box<Term<S>>, Box<Term<S>>),
     /// Function terms (lambda abstractions).
-    FunctionTerm(RangeFrom<usize>, Vec<S>, Box<Term<S>>),
+    FunctionTerm(RangeFrom<usize>, Vec<(Range<usize>, S)>, Box<Term<S>>),
     /// Function eliminations (function application).
     FunctionElim(Box<Term<S>>, Vec<Term<S>>),
     /// Lift a term by the given number of universe levels.

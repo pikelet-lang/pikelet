@@ -124,7 +124,14 @@ where
             (alloc.nil())
                 .append("fun")
                 .append(alloc.space())
-                .append(alloc.intersperse(param_names.iter().map(S::as_ref), alloc.space()))
+                .append(
+                    alloc.intersperse(
+                        param_names
+                            .iter()
+                            .map(|(_, param_name)| param_name.as_ref()),
+                        alloc.space(),
+                    ),
+                )
                 .append(alloc.space())
                 .append("=>")
                 .group()
