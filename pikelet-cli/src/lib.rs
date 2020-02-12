@@ -1,6 +1,7 @@
 use std::error::Error;
 
 pub mod repl;
+pub mod reporting;
 
 /// The Pikelet command line interface.
 #[derive(structopt::StructOpt)]
