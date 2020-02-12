@@ -48,9 +48,13 @@ fn term_width() -> usize {
 
 /// Run the REPL with the given options.
 pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
+    use annotate_snippets::display_list::DisplayList;
+    use annotate_snippets::formatter::DisplayListFormatter;
     use pikelet::{core, surface};
     use rustyline::error::ReadlineError;
     use rustyline::{Config, Editor};
+
+    use crate::reporting::ToSnippet;
 
     let mut editor = {
         let config = Config::builder()
@@ -99,7 +103,10 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
 
                 if !messages.is_empty() {
                     for message in &messages {
-                        println!("error: {:?}", message);
+                        let snippet = message.to_snippet(&line);
+                        let display_list = DisplayList::from(snippet);
+                        let formatter = DisplayListFormatter::new(true, false);
+                        println!("{}", formatter.format(&display_list));
                     }
                 } else {
                     let ann_term = core::Term::Ann(

@@ -11,6 +11,7 @@ mod grammar {
     include!(concat!(env!("OUT_DIR"), "/surface/grammar.rs"));
 }
 
+#[derive(Debug, Clone)]
 pub enum Term<S> {
     /// Names.
     Name(Range<usize>, S),
@@ -72,6 +73,7 @@ impl<T> Term<T> {
 }
 
 /// Literals.
+#[derive(Debug, Clone)]
 pub enum Literal<S> {
     /// Character literals.
     Char(S),

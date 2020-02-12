@@ -86,7 +86,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
 
 - [x] Basic error enum
 - [x] Error recovery
-- [ ] Pretty diagnostic reporting
+- [x] Pretty diagnostic reporting
 
 ### Rust marshalling
 

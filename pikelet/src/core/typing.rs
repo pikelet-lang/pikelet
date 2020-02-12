@@ -111,28 +111,21 @@ pub enum Message {
         name: String,
     },
     UnboundLocal,
-    DuplicateNamesInRecordType {
+    InvalidRecordType {
         duplicate_names: Vec<String>,
     },
-    MissingNamesInRecordTerm {
+    InvalidRecordTerm {
         missing_names: Vec<String>,
-    },
-    UnexpectedNamesInRecordTerm {
         unexpected_names: Vec<String>,
     },
-    AmbiguousRecordTerm,
     FieldNotFound {
         expected_field_name: String,
         head_type: Arc<Value>,
     },
-    TooManyParametersForFunctionTerm {
-        expected_type: Arc<Value>,
-    },
-    AmbiguousFunctionTerm,
-    NotAFunction {
+    TooManyParameters,
+    TooManyArguments {
         head_type: Arc<Value>,
     },
-    AmbiguousSequence,
     MismatchedSequenceLength {
         found_len: usize,
         expected_len: Arc<Value>,
@@ -140,13 +133,26 @@ pub enum Message {
     NoSequenceConversion {
         expected_type: Arc<Value>,
     },
-    ExpectedType {
-        found_type: Arc<Value>,
+    AmbiguousTerm {
+        term: AmbiguousTerm,
     },
     MismatchedTypes {
         found_type: Arc<Value>,
-        expected_type: Arc<Value>,
+        expected_type: ExpectedType,
     },
+}
+
+#[derive(Clone, Debug)]
+pub enum AmbiguousTerm {
+    Sequence,
+    FunctionTerm,
+    RecordTerm,
+}
+
+#[derive(Clone, Debug)]
+pub enum ExpectedType {
+    Universe,
+    Type(Arc<Value>),
 }
 
 /// Check that a term is a universe and return its level.
@@ -154,8 +160,12 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
     let r#type = synth_term(state, term);
     match r#type.as_ref() {
         Value::Universe(level) => Some(*level),
+        Value::Error => None,
         _ => {
-            state.report(Message::ExpectedType { found_type: r#type });
+            state.report(Message::MismatchedTypes {
+                found_type: r#type,
+                expected_type: ExpectedType::Universe,
+            });
             None
         }
     }
@@ -164,6 +174,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
 /// Check that a term matches the expected type.
 pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) {
     match (term, expected_type.as_ref()) {
+        (_, Value::Error) => {}
         (Term::Sequence(entry_terms), Value::Elim(Head::Global(name, _), elims, _)) => {
             match (name.as_ref(), elims.as_slice()) {
                 ("Array", [Elim::Function(len, _), Elim::Function(entry_type, _)]) => {
@@ -190,7 +201,6 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 }),
             }
         }
-        (Term::Sequence(_), Value::Error) => {}
         (Term::Sequence(_), _) => state.report(Message::NoSequenceConversion {
             expected_type: expected_type.clone(),
         }),
@@ -198,30 +208,37 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             let mut missing_names = Vec::new();
 
             let mut expected_type = expected_type.clone();
-            let mut term_entries = term_entries.clone();
+            let mut pending_term_entries = term_entries.clone();
 
-            while let Value::RecordTypeExtend(entry_name, entry_type, rest_type) =
-                expected_type.as_ref()
-            {
-                expected_type = match term_entries.remove(entry_name) {
-                    Some(entry_term) => {
-                        check_term(state, &entry_term, entry_type);
-                        let entry_value = state.eval_term(&entry_term);
-                        state.eval_closure_elim(rest_type, entry_value)
+            loop {
+                match expected_type.as_ref() {
+                    Value::RecordTypeExtend(entry_name, entry_type, rest_type) => {
+                        expected_type = match pending_term_entries.remove(entry_name) {
+                            Some(entry_term) => {
+                                check_term(state, &entry_term, entry_type);
+                                let entry_value = state.eval_term(&entry_term);
+                                state.eval_closure_elim(rest_type, entry_value)
+                            }
+                            None => {
+                                missing_names.push(entry_name.clone());
+                                state.eval_closure_elim(rest_type, Arc::new(Value::Error))
+                            }
+                        };
                     }
-                    None => {
-                        missing_names.push(entry_name.clone());
-                        state.eval_closure_elim(rest_type, Arc::new(Value::Error))
-                    }
-                };
+                    Value::RecordTypeEmpty => break,
+                    Value::Error => return,
+                    _ => unreachable!("invalid record extension"), // TODO: Report bug instead?
+                }
             }
 
-            if !missing_names.is_empty() {
-                state.report(Message::MissingNamesInRecordTerm { missing_names });
-            }
-            if !term_entries.is_empty() {
-                let unexpected_names = (term_entries.into_iter()).map(|(name, _)| name).collect();
-                state.report(Message::UnexpectedNamesInRecordTerm { unexpected_names });
+            if !missing_names.is_empty() && !pending_term_entries.is_empty() {
+                let unexpected_names = (pending_term_entries.into_iter())
+                    .map(|(name, _)| name)
+                    .collect();
+                state.report(Message::InvalidRecordTerm {
+                    missing_names,
+                    unexpected_names,
+                });
             }
         }
         (Term::FunctionTerm(_, body), Value::FunctionType(param_type, body_type)) => {
@@ -230,15 +247,13 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             state.pop_local();
         }
         (Term::FunctionTerm(_, _), _) => {
-            state.report(Message::TooManyParametersForFunctionTerm {
-                expected_type: expected_type.clone(),
-            });
+            state.report(Message::TooManyParameters);
         }
         (term, _) => match synth_term(state, term) {
             found_type if state.is_subtype(&found_type, expected_type) => {}
             found_type => state.report(Message::MismatchedTypes {
                 found_type,
-                expected_type: expected_type.clone(),
+                expected_type: ExpectedType::Type(expected_type.clone()),
             }),
         },
     }
@@ -285,7 +300,9 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Constant::String(_) => Value::global("String", 0, Value::universe(0)),
         }),
         Term::Sequence(_) => {
-            state.report(Message::AmbiguousSequence);
+            state.report(Message::AmbiguousTerm {
+                term: AmbiguousTerm::Sequence,
+            });
             Arc::new(Value::Error)
         }
         Term::Ann(term, r#type) => {
@@ -298,7 +315,9 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             if term_entries.is_empty() {
                 Arc::from(Value::RecordTypeEmpty)
             } else {
-                state.report(Message::AmbiguousRecordTerm);
+                state.report(Message::AmbiguousTerm {
+                    term: AmbiguousTerm::RecordTerm,
+                });
                 Arc::new(Value::Error)
             }
         }
@@ -315,7 +334,10 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
                 max_level = match check_type(state, entry_type) {
                     Some(level) => std::cmp::max(max_level, level),
-                    None => return Arc::new(Value::Error),
+                    None => {
+                        state.pop_many_locals(seen_names.len());
+                        return Arc::new(Value::Error);
+                    }
                 };
                 let entry_type = state.eval_term(entry_type);
                 state.push_param(entry_type);
@@ -324,7 +346,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             state.pop_many_locals(seen_names.len());
 
             if !duplicate_names.is_empty() {
-                state.report(Message::DuplicateNamesInRecordType { duplicate_names });
+                state.report(Message::InvalidRecordType { duplicate_names });
             }
 
             Arc::new(Value::Universe(max_level))
@@ -332,14 +354,19 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::RecordElim(head, name) => {
             let mut head_type = synth_term(state, head);
 
-            while let Value::RecordTypeExtend(current_name, entry_type, rest_type) =
-                head_type.as_ref()
-            {
-                if name == current_name {
-                    return entry_type.clone();
-                } else {
-                    let value = state.eval_term(&Term::RecordElim(head.clone(), name.clone()));
-                    head_type = state.eval_closure_elim(rest_type, value);
+            loop {
+                match head_type.as_ref() {
+                    Value::RecordTypeExtend(current_name, entry_type, rest_type) => {
+                        if name == current_name {
+                            return entry_type.clone();
+                        } else {
+                            let value =
+                                state.eval_term(&Term::RecordElim(head.clone(), name.clone()));
+                            head_type = state.eval_closure_elim(rest_type, value);
+                        }
+                    }
+                    Value::Error => return Arc::new(Value::Error),
+                    _ => break,
                 }
             }
 
@@ -358,7 +385,9 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
         }
         Term::FunctionTerm(_, _) => {
-            state.report(Message::AmbiguousFunctionTerm);
+            state.report(Message::AmbiguousTerm {
+                term: AmbiguousTerm::FunctionTerm,
+            });
             Arc::new(Value::Error)
         }
         Term::FunctionElim(head, argument) => {
@@ -370,7 +399,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
                 Value::Error => Arc::new(Value::Error),
                 _ => {
-                    state.report(Message::NotAFunction { head_type });
+                    state.report(Message::TooManyArguments { head_type });
                     Arc::new(Value::Error)
                 }
             }
