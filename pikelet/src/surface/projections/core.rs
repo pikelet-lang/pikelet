@@ -150,33 +150,31 @@ impl<'me> State<'me> {
 #[derive(Clone, Debug)]
 pub enum TypeError {
     MaximumUniverseLevelReached {
-        span: Range<usize>,
+        range: Range<usize>,
     },
     UnboundName {
-        span: Range<usize>,
+        range: Range<usize>,
         name: String,
     },
     DuplicateNamesInRecordTerm {
-        span: Range<usize>,
+        range: Range<usize>,
         duplicate_names: Vec<(Range<usize>, String)>,
     },
     DuplicateNamesInRecordType {
-        span: Range<usize>,
+        range: Range<usize>,
         duplicate_names: Vec<(Range<usize>, String)>,
     },
     MissingNamesInRecordTerm {
-        span: Range<usize>,
+        range: Range<usize>,
         missing_names: Vec<String>,
     },
     UnexpectedNamesInRecordTerm {
-        span: Range<usize>,
+        range: Range<usize>,
         unexpected_names: Vec<(Range<usize>, String)>,
     },
-    AmbiguousRecordTerm {
-        span: Range<usize>,
-    },
-    FieldNotFound {
-        span: Range<usize>,
+    EntryNameNotFound {
+        head_range: Range<usize>,
+        name_range: Range<usize>,
         expected_field_name: String,
         head_type: Arc<core::Value>,
     },
@@ -184,50 +182,55 @@ pub enum TypeError {
         excess_parameters: Vec<(Range<usize>, String)>,
         expected_type: Arc<core::Value>,
     },
-    AmbiguousFunctionTerm {
-        span: Range<usize>,
-    },
     NotAFunction {
-        span: Range<usize>,
+        range: Range<usize>,
         head_type: Arc<core::Value>,
     },
-    InvalidNumberLiteral {
-        span: Range<usize>,
-    },
-    InvalidCharLiteral {
-        span: Range<usize>,
-    },
-    InvalidStringLiteral {
-        span: Range<usize>,
+    InvalidLiteral {
+        range: Range<usize>,
+        literal: InvalidLiteral,
     },
     NoLiteralConversion {
-        span: Range<usize>,
+        range: Range<usize>,
         expected_type: Arc<core::Value>,
     },
-    AmbiguousLiteral {
-        span: Range<usize>,
-    },
-    AmbiguousSequence {
-        span: Range<usize>,
-    },
     MismatchedSequenceLength {
-        span: Range<usize>,
+        range: Range<usize>,
         found_len: usize,
         expected_len: Arc<core::Value>,
     },
     NoSequenceConversion {
-        span: Range<usize>,
+        range: Range<usize>,
         expected_type: Arc<core::Value>,
     },
     ExpectedType {
-        span: Range<usize>,
+        range: Range<usize>,
         found_type: Arc<core::Value>,
     },
+    AmbiguousTerm {
+        range: Range<usize>,
+        term: AmbiguousTerm,
+    },
     MismatchedTypes {
-        span: Range<usize>,
+        range: Range<usize>,
         found_type: Arc<core::Value>,
         expected_type: Arc<core::Value>,
     },
+}
+
+#[derive(Clone, Debug)]
+pub enum InvalidLiteral {
+    Char,
+    String,
+    Number,
+}
+
+#[derive(Clone, Debug)]
+pub enum AmbiguousTerm {
+    NumberLiteral,
+    Sequence,
+    FunctionTerm,
+    RecordTerm,
 }
 
 /// Check that a term is a universe and return its level.
@@ -240,7 +243,7 @@ pub fn check_type<S: AsRef<str>>(
         core::Value::Universe(level) => (core_term, Some(*level)),
         _ => {
             state.report(TypeError::ExpectedType {
-                span: term.span(),
+                range: term.range(),
                 found_type: r#type,
             });
             (core::Term::Error, None)
@@ -259,21 +262,21 @@ pub fn check_term<S: AsRef<str>>(
             use crate::core::Constant::*;
 
             match (literal, name.as_ref(), spine.as_slice()) {
-                (Literal::Number(data), "U8", []) => parse_number(state, term.span(), data, U8),
-                (Literal::Number(data), "U16", []) => parse_number(state, term.span(), data, U16),
-                (Literal::Number(data), "U32", []) => parse_number(state, term.span(), data, U32),
-                (Literal::Number(data), "U64", []) => parse_number(state, term.span(), data, U64),
-                (Literal::Number(data), "S8", []) => parse_number(state, term.span(), data, S8),
-                (Literal::Number(data), "S16", []) => parse_number(state, term.span(), data, S16),
-                (Literal::Number(data), "S32", []) => parse_number(state, term.span(), data, S32),
-                (Literal::Number(data), "S64", []) => parse_number(state, term.span(), data, S64),
-                (Literal::Number(data), "F32", []) => parse_number(state, term.span(), data, F32),
-                (Literal::Number(data), "F64", []) => parse_number(state, term.span(), data, F64),
-                (Literal::Char(data), "Char", []) => parse_char(state, term.span(), data),
-                (Literal::String(data), "String", []) => parse_string(state, term.span(), data),
+                (Literal::Number(data), "U8", []) => parse_number(state, term.range(), data, U8),
+                (Literal::Number(data), "U16", []) => parse_number(state, term.range(), data, U16),
+                (Literal::Number(data), "U32", []) => parse_number(state, term.range(), data, U32),
+                (Literal::Number(data), "U64", []) => parse_number(state, term.range(), data, U64),
+                (Literal::Number(data), "S8", []) => parse_number(state, term.range(), data, S8),
+                (Literal::Number(data), "S16", []) => parse_number(state, term.range(), data, S16),
+                (Literal::Number(data), "S32", []) => parse_number(state, term.range(), data, S32),
+                (Literal::Number(data), "S64", []) => parse_number(state, term.range(), data, S64),
+                (Literal::Number(data), "F32", []) => parse_number(state, term.range(), data, F32),
+                (Literal::Number(data), "F64", []) => parse_number(state, term.range(), data, F64),
+                (Literal::Char(data), "Char", []) => parse_char(state, term.range(), data),
+                (Literal::String(data), "String", []) => parse_string(state, term.range(), data),
                 (_, _, _) => {
                     state.report(TypeError::NoLiteralConversion {
-                        span: term.span(),
+                        range: term.range(),
                         expected_type: expected_type.clone(),
                     });
                     core::Term::Error
@@ -283,7 +286,7 @@ pub fn check_term<S: AsRef<str>>(
         (Term::Literal(_, _), core::Value::Error) => core::Term::Error,
         (Term::Literal(_, _), _) => {
             state.report(TypeError::NoLiteralConversion {
-                span: term.span(),
+                range: term.range(),
                 expected_type: expected_type.clone(),
             });
             core::Term::Error
@@ -306,7 +309,7 @@ pub fn check_term<S: AsRef<str>>(
                     }
                     _ => {
                         state.report(TypeError::MismatchedSequenceLength {
-                            span: term.span(),
+                            range: term.range(),
                             found_len: entry_terms.len(),
                             expected_len: len.clone(),
                         });
@@ -325,7 +328,7 @@ pub fn check_term<S: AsRef<str>>(
             }
             _ => {
                 state.report(TypeError::NoSequenceConversion {
-                    span: term.span(),
+                    range: term.range(),
                     expected_type: expected_type.clone(),
                 });
                 core::Term::Error
@@ -334,7 +337,7 @@ pub fn check_term<S: AsRef<str>>(
         (Term::Sequence(_, _), core::Value::Error) => core::Term::Error,
         (Term::Sequence(_, _), _) => {
             state.report(TypeError::NoSequenceConversion {
-                span: term.span(),
+                range: term.range(),
                 expected_type: expected_type.clone(),
             });
             core::Term::Error
@@ -350,11 +353,13 @@ pub fn check_term<S: AsRef<str>>(
             let mut core_term_entries = BTreeMap::new();
             let mut term_entries = (term_entries.iter()).fold(
                 BTreeMap::new(),
-                |mut acc, (entry_name_span, entry_name, entry_term)| {
-                    let span = entry_name_span.clone();
+                |mut acc, (entry_name_range, entry_name, entry_term)| {
+                    let range = entry_name_range.clone();
                     match acc.entry(entry_name.as_ref().to_owned()) {
-                        Entry::Vacant(entry) => drop(entry.insert((span, entry_term))),
-                        Entry::Occupied(entry) => duplicate_names.push((span, entry.key().clone())),
+                        Entry::Vacant(entry) => drop(entry.insert((range, entry_term))),
+                        Entry::Occupied(entry) => {
+                            duplicate_names.push((range, entry.key().clone()))
+                        }
                     }
                     acc
                 },
@@ -379,22 +384,22 @@ pub fn check_term<S: AsRef<str>>(
 
             if !duplicate_names.is_empty() {
                 state.report(TypeError::DuplicateNamesInRecordTerm {
-                    span: term.span(),
+                    range: term.range(),
                     duplicate_names,
                 });
             }
             if !missing_names.is_empty() {
                 state.report(TypeError::MissingNamesInRecordTerm {
-                    span: term.span(),
+                    range: term.range(),
                     missing_names,
                 });
             }
             if !term_entries.is_empty() {
                 let unexpected_names = (term_entries.into_iter())
-                    .map(|(entry_name, (entry_name_span, _))| (entry_name_span, entry_name))
+                    .map(|(entry_name, (entry_name_range, _))| (entry_name_range, entry_name))
                     .collect();
                 state.report(TypeError::UnexpectedNamesInRecordTerm {
-                    span: term.span(),
+                    range: term.range(),
                     unexpected_names,
                 });
             }
@@ -414,8 +419,8 @@ pub fn check_term<S: AsRef<str>>(
                         _ => {
                             state.report(TypeError::TooManyParametersForFunctionTerm {
                                 excess_parameters: param_names
-                                    .map(|(param_name_span, param_name)| {
-                                        (param_name_span.clone(), param_name.as_ref().to_owned())
+                                    .map(|(param_name_range, param_name)| {
+                                        (param_name_range.clone(), param_name.as_ref().to_owned())
                                     })
                                     .collect(),
                                 expected_type: expected_type.clone(),
@@ -435,7 +440,7 @@ pub fn check_term<S: AsRef<str>>(
             (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
             (_, found_type) => {
                 state.report(TypeError::MismatchedTypes {
-                    span: term.span(),
+                    range: term.range(),
                     found_type,
                     expected_type: expected_type.clone(),
                 });
@@ -464,7 +469,7 @@ pub fn synth_term<S: AsRef<str>>(
             }
 
             state.report(TypeError::UnboundName {
-                span: term.span(),
+                range: term.range(),
                 name: name.as_ref().to_owned(),
             });
             (core::Term::Error, Arc::new(core::Value::Error))
@@ -480,20 +485,26 @@ pub fn synth_term<S: AsRef<str>>(
         }
         Term::Literal(_, literal) => match literal {
             Literal::Number(_) => {
-                state.report(TypeError::AmbiguousLiteral { span: term.span() });
+                state.report(TypeError::AmbiguousTerm {
+                    range: term.range(),
+                    term: AmbiguousTerm::NumberLiteral,
+                });
                 (core::Term::Error, Arc::new(core::Value::Error))
             }
             Literal::Char(data) => (
-                parse_char(state, term.span(), data),
+                parse_char(state, term.range(), data),
                 Arc::new(core::Value::global("Char", 0, core::Value::universe(0))),
             ),
             Literal::String(data) => (
-                parse_string(state, term.span(), data),
+                parse_string(state, term.range(), data),
                 Arc::new(core::Value::global("String", 0, core::Value::universe(0))),
             ),
         },
         Term::Sequence(_, _) => {
-            state.report(TypeError::AmbiguousSequence { span: term.span() });
+            state.report(TypeError::AmbiguousTerm {
+                range: term.range(),
+                term: AmbiguousTerm::Sequence,
+            });
             (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::RecordTerm(_, term_entries) => {
@@ -503,7 +514,10 @@ pub fn synth_term<S: AsRef<str>>(
                     Arc::from(core::Value::RecordTypeEmpty),
                 )
             } else {
-                state.report(TypeError::AmbiguousRecordTerm { span: term.span() });
+                state.report(TypeError::AmbiguousTerm {
+                    range: term.range(),
+                    term: AmbiguousTerm::RecordTerm,
+                });
                 (core::Term::Error, Arc::new(core::Value::Error))
             }
         }
@@ -513,7 +527,7 @@ pub fn synth_term<S: AsRef<str>>(
             let mut seen_names = BTreeSet::new();
             let mut core_type_entries = Vec::new();
 
-            for (entry_name_span, entry_name, entry_type) in type_entries {
+            for (entry_name_range, entry_name, entry_type) in type_entries {
                 if seen_names.insert(entry_name.as_ref()) {
                     let (core_type, level) = check_type(state, entry_type);
                     max_level = match level {
@@ -525,14 +539,15 @@ pub fn synth_term<S: AsRef<str>>(
                     core_type_entries.push((entry_name.as_ref().to_owned(), core_type));
                     state.push_param(entry_name.as_ref().to_owned(), core_type_value);
                 } else {
-                    duplicate_names.push((entry_name_span.clone(), entry_name.as_ref().to_owned()));
+                    duplicate_names
+                        .push((entry_name_range.clone(), entry_name.as_ref().to_owned()));
                     check_type(state, entry_type);
                 }
             }
 
             if !duplicate_names.is_empty() {
                 state.report(TypeError::DuplicateNamesInRecordType {
-                    span: term.span(),
+                    range: term.range(),
                     duplicate_names,
                 });
             }
@@ -544,7 +559,7 @@ pub fn synth_term<S: AsRef<str>>(
                 Arc::new(core::Value::Universe(max_level)),
             )
         }
-        Term::RecordElim(_, head, name) => {
+        Term::RecordElim(head, name_range, name) => {
             let (core_head, mut head_type) = synth_term(state, head);
             let core_head = Arc::new(core_head);
 
@@ -560,8 +575,9 @@ pub fn synth_term<S: AsRef<str>>(
                 }
             }
 
-            state.report(TypeError::FieldNotFound {
-                span: term.span(),
+            state.report(TypeError::EntryNameNotFound {
+                head_range: head.range(),
+                name_range: name_range.clone(),
                 expected_field_name: name.as_ref().to_owned(),
                 head_type,
             });
@@ -580,7 +596,10 @@ pub fn synth_term<S: AsRef<str>>(
             }
         }
         Term::FunctionTerm(_, _, _) => {
-            state.report(TypeError::AmbiguousFunctionTerm { span: term.span() });
+            state.report(TypeError::AmbiguousTerm {
+                range: term.range(),
+                term: AmbiguousTerm::FunctionTerm,
+            });
             (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::FunctionElim(head, arguments) => {
@@ -598,7 +617,7 @@ pub fn synth_term<S: AsRef<str>>(
                     core::Value::Error => return (core::Term::Error, Arc::new(core::Value::Error)),
                     _ => {
                         state.report(TypeError::NotAFunction {
-                            span: term.span(),
+                            range: term.range(),
                             head_type,
                         });
                         return (core::Term::Error, Arc::new(core::Value::Error));
@@ -617,7 +636,9 @@ pub fn synth_term<S: AsRef<str>>(
                     (core_term, r#type)
                 }
                 None => {
-                    state.report(TypeError::MaximumUniverseLevelReached { span: term.span() });
+                    state.report(TypeError::MaximumUniverseLevelReached {
+                        range: term.range(),
+                    });
                     (core::Term::Error, Arc::new(core::Value::Error))
                 }
             }
@@ -628,7 +649,7 @@ pub fn synth_term<S: AsRef<str>>(
 
 fn parse_number<S: AsRef<str>, T: FromStr>(
     state: &mut State<'_>,
-    span: Range<usize>,
+    range: Range<usize>,
     data: &S,
     f: impl Fn(T) -> core::Constant,
 ) -> core::Term {
@@ -636,29 +657,38 @@ fn parse_number<S: AsRef<str>, T: FromStr>(
     match data.as_ref().parse() {
         Ok(value) => core::Term::Constant(f(value)),
         Err(_) => {
-            state.report(TypeError::InvalidNumberLiteral { span });
+            state.report(TypeError::InvalidLiteral {
+                range,
+                literal: InvalidLiteral::Number,
+            });
             core::Term::Error
         }
     }
 }
 
-fn parse_char<S: AsRef<str>>(state: &mut State<'_>, span: Range<usize>, data: &S) -> core::Term {
+fn parse_char<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &S) -> core::Term {
     // TODO: Improve parser (escapes)
     match data.as_ref().chars().nth(1) {
         Some(value) => core::Term::Constant(core::Constant::Char(value)),
         None => {
-            state.report(TypeError::InvalidCharLiteral { span });
+            state.report(TypeError::InvalidLiteral {
+                range,
+                literal: InvalidLiteral::Char,
+            });
             core::Term::Error
         }
     }
 }
 
-fn parse_string<S: AsRef<str>>(state: &mut State<'_>, span: Range<usize>, data: &S) -> core::Term {
+fn parse_string<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &S) -> core::Term {
     // TODO: Improve parser (escapes)
     match data.as_ref().get(1..data.as_ref().len() - 1) {
         Some(value) => core::Term::Constant(core::Constant::String(value.to_owned())),
         None => {
-            state.report(TypeError::InvalidStringLiteral { span });
+            state.report(TypeError::InvalidLiteral {
+                range,
+                literal: InvalidLiteral::String,
+            });
             core::Term::Error
         }
     }

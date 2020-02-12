@@ -2,7 +2,7 @@
 //!
 //! This is a user-friendly concrete syntax for the language.
 
-use std::ops::{Range, RangeFrom, RangeTo};
+use std::ops::{Range, RangeFrom};
 
 pub mod projections;
 
@@ -25,7 +25,7 @@ pub enum Term<S> {
     /// Record terms.
     RecordTerm(Range<usize>, Vec<(Range<usize>, S, Term<S>)>),
     /// Record eliminations (field access).
-    RecordElim(RangeTo<usize>, Box<Term<S>>, S),
+    RecordElim(Box<Term<S>>, Range<usize>, S),
     /// Function types.
     FunctionType(Box<Term<S>>, Box<Term<S>>),
     /// Function terms (lambda abstractions).
@@ -48,24 +48,24 @@ impl<'input> Term<&'input str> {
 }
 
 impl<T> Term<T> {
-    pub fn span(&self) -> Range<usize> {
+    pub fn range(&self) -> Range<usize> {
         match self {
-            Term::Name(span, _)
-            | Term::Literal(span, _)
-            | Term::Sequence(span, _)
-            | Term::RecordType(span, _)
-            | Term::RecordTerm(span, _)
-            | Term::Lift(span, _, _)
-            | Term::Error(span) => span.clone(),
-            Term::Ann(term, r#type) => term.span().start..r#type.span().end,
-            Term::RecordElim(span, term, _) => term.span().start..span.end,
+            Term::Name(range, _)
+            | Term::Literal(range, _)
+            | Term::Sequence(range, _)
+            | Term::RecordType(range, _)
+            | Term::RecordTerm(range, _)
+            | Term::Lift(range, _, _)
+            | Term::Error(range) => range.clone(),
+            Term::Ann(term, r#type) => term.range().start..r#type.range().end,
+            Term::RecordElim(term, name_range, _) => term.range().start..name_range.end,
             Term::FunctionType(param_type, body_type) => {
-                param_type.span().start..body_type.span().end
+                param_type.range().start..body_type.range().end
             }
-            Term::FunctionTerm(span, _, body) => span.start..body.span().end,
+            Term::FunctionTerm(range, _, body) => range.start..body.range().end,
             Term::FunctionElim(head, arguments) => match arguments.last() {
-                Some(argument) => head.span().start..argument.span().end,
-                None => head.span(),
+                Some(argument) => head.range().start..argument.range().end,
+                None => head.range(),
             },
         }
     }

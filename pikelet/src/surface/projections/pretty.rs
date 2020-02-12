@@ -104,7 +104,7 @@ where
                 })),
             )
             .append("}"),
-        Term::RecordElim(_, head, name) => (alloc.nil())
+        Term::RecordElim(head, _, name) => (alloc.nil())
             .append(pretty_term_prec(alloc, head, Prec::Atomic))
             .append(".")
             .append(name.as_ref()),
