@@ -61,7 +61,7 @@ pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<Stri
             surface::Term::RecordTerm(0..0, core_term_entries)
         }
         Term::RecordElim(head, name) => {
-            surface::Term::RecordElim(..0, Box::new(delaborate_term(state, head)), name.clone())
+            surface::Term::RecordElim(Box::new(delaborate_term(state, head)), 0..0, name.clone())
         }
         Term::FunctionType(param_type, body_type) => surface::Term::FunctionType(
             Box::new(delaborate_term(state, param_type)),
