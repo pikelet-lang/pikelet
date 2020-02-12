@@ -24,8 +24,8 @@ pub struct State<'me> {
     types: Locals<Arc<Value>>,
     /// Local value environment (used for evaluation).
     values: Locals<Arc<Value>>,
-    /// The errors accumulated during type checking.
-    errors: Vec<TypeError>,
+    /// The diagnostic messages accumulated during type checking.
+    messages: Vec<Message>,
 }
 
 impl<'me> State<'me> {
@@ -36,7 +36,7 @@ impl<'me> State<'me> {
             universe_offset: UniverseOffset(0),
             types: Locals::new(),
             values: Locals::new(),
-            errors: Vec::new(),
+            messages: Vec::new(),
         }
     }
 
@@ -70,14 +70,14 @@ impl<'me> State<'me> {
         self.values.pop_many(count);
     }
 
-    /// Report an error.
-    fn report(&mut self, error: TypeError) {
-        self.errors.push(error);
+    /// Report a diagnostic message.
+    fn report(&mut self, message: Message) {
+        self.messages.push(message);
     }
 
-    /// Drain the current errors.
-    pub fn drain_errors(&mut self) -> std::vec::Drain<TypeError> {
-        self.errors.drain(..)
+    /// Drain the current diagnostic messages.
+    pub fn drain_messages(&mut self) -> std::vec::Drain<Message> {
+        self.messages.drain(..)
     }
 
     /// Reset the type checker state while retaining existing allocations.
@@ -85,7 +85,7 @@ impl<'me> State<'me> {
         self.universe_offset = UniverseOffset(0);
         self.types.clear();
         self.values.clear();
-        self.errors.clear();
+        self.messages.clear();
     }
 
     /// Evaluate a term using the current state of the type checker.
@@ -105,7 +105,7 @@ impl<'me> State<'me> {
 }
 
 #[derive(Clone, Debug)]
-pub enum TypeError {
+pub enum Message {
     MaximumUniverseLevelReached,
     UnboundGlobal {
         name: String,
@@ -155,7 +155,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
     match r#type.as_ref() {
         Value::Universe(level) => Some(*level),
         _ => {
-            state.report(TypeError::ExpectedType { found_type: r#type });
+            state.report(Message::ExpectedType { found_type: r#type });
             None
         }
     }
@@ -174,7 +174,7 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                     match **len {
                         Value::Constant(Constant::U32(len))
                             if len as usize == entry_terms.len() => {}
-                        _ => state.report(TypeError::MismatchedSequenceLength {
+                        _ => state.report(Message::MismatchedSequenceLength {
                             found_len: entry_terms.len(),
                             expected_len: len.clone(),
                         }),
@@ -185,13 +185,13 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         check_term(state, entry_term, entry_type);
                     }
                 }
-                _ => state.report(TypeError::NoSequenceConversion {
+                _ => state.report(Message::NoSequenceConversion {
                     expected_type: expected_type.clone(),
                 }),
             }
         }
         (Term::Sequence(_), Value::Error) => {}
-        (Term::Sequence(_), _) => state.report(TypeError::NoSequenceConversion {
+        (Term::Sequence(_), _) => state.report(Message::NoSequenceConversion {
             expected_type: expected_type.clone(),
         }),
         (Term::RecordTerm(term_entries), _) => {
@@ -217,11 +217,11 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             }
 
             if !missing_names.is_empty() {
-                state.report(TypeError::MissingNamesInRecordTerm { missing_names });
+                state.report(Message::MissingNamesInRecordTerm { missing_names });
             }
             if !term_entries.is_empty() {
                 let unexpected_names = (term_entries.into_iter()).map(|(name, _)| name).collect();
-                state.report(TypeError::UnexpectedNamesInRecordTerm { unexpected_names });
+                state.report(Message::UnexpectedNamesInRecordTerm { unexpected_names });
             }
         }
         (Term::FunctionTerm(_, body), Value::FunctionType(param_type, body_type)) => {
@@ -230,13 +230,13 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             state.pop_local();
         }
         (Term::FunctionTerm(_, _), _) => {
-            state.report(TypeError::TooManyParametersForFunctionTerm {
+            state.report(Message::TooManyParametersForFunctionTerm {
                 expected_type: expected_type.clone(),
             });
         }
         (term, _) => match synth_term(state, term) {
             found_type if state.is_subtype(&found_type, expected_type) => {}
-            found_type => state.report(TypeError::MismatchedTypes {
+            found_type => state.report(Message::MismatchedTypes {
                 found_type,
                 expected_type: expected_type.clone(),
             }),
@@ -250,14 +250,14 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Universe(level) => match *level + UniverseOffset(1) {
             Some(level) => Arc::new(Value::universe(level)),
             None => {
-                state.report(TypeError::MaximumUniverseLevelReached);
+                state.report(Message::MaximumUniverseLevelReached);
                 Arc::new(Value::Error)
             }
         },
         Term::Global(name) => match state.globals.get(name) {
             Some((r#type, _)) => state.eval_term(r#type),
             None => {
-                state.report(TypeError::UnboundGlobal {
+                state.report(Message::UnboundGlobal {
                     name: name.to_owned(),
                 });
                 Arc::new(Value::Error)
@@ -266,7 +266,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Local(index) => match state.types.get(*index) {
             Some(r#type) => r#type.clone(),
             None => {
-                state.report(TypeError::UnboundLocal);
+                state.report(Message::UnboundLocal);
                 Arc::new(Value::Error)
             }
         },
@@ -285,7 +285,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Constant::String(_) => Value::global("String", 0, Value::universe(0)),
         }),
         Term::Sequence(_) => {
-            state.report(TypeError::AmbiguousSequence);
+            state.report(Message::AmbiguousSequence);
             Arc::new(Value::Error)
         }
         Term::Ann(term, r#type) => {
@@ -298,7 +298,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             if term_entries.is_empty() {
                 Arc::from(Value::RecordTypeEmpty)
             } else {
-                state.report(TypeError::AmbiguousRecordTerm);
+                state.report(Message::AmbiguousRecordTerm);
                 Arc::new(Value::Error)
             }
         }
@@ -324,7 +324,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             state.pop_many_locals(seen_names.len());
 
             if !duplicate_names.is_empty() {
-                state.report(TypeError::DuplicateNamesInRecordType { duplicate_names });
+                state.report(Message::DuplicateNamesInRecordType { duplicate_names });
             }
 
             Arc::new(Value::Universe(max_level))
@@ -343,7 +343,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
             }
 
-            state.report(TypeError::FieldNotFound {
+            state.report(Message::FieldNotFound {
                 expected_field_name: name.clone(),
                 head_type,
             });
@@ -358,7 +358,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
         }
         Term::FunctionTerm(_, _) => {
-            state.report(TypeError::AmbiguousFunctionTerm);
+            state.report(Message::AmbiguousFunctionTerm);
             Arc::new(Value::Error)
         }
         Term::FunctionElim(head, argument) => {
@@ -370,7 +370,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
                 Value::Error => Arc::new(Value::Error),
                 _ => {
-                    state.report(TypeError::NotAFunction { head_type });
+                    state.report(Message::NotAFunction { head_type });
                     Arc::new(Value::Error)
                 }
             }
@@ -383,7 +383,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 r#type
             }
             None => {
-                state.report(TypeError::MaximumUniverseLevelReached);
+                state.report(Message::MaximumUniverseLevelReached);
                 Arc::new(Value::Error)
             }
         },

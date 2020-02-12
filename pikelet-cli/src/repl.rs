@@ -95,11 +95,11 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
 
                 let (core_term, r#type) =
                     surface::projections::core::synth_term(&mut state, &surface_term);
-                let errors = state.drain_errors().collect::<Vec<_>>();
+                let messages = state.drain_messages().collect::<Vec<_>>();
 
-                if !errors.is_empty() {
-                    for error in &errors {
-                        println!("error: {:?}", error);
+                if !messages.is_empty() {
+                    for message in &messages {
+                        println!("error: {:?}", message);
                     }
                 } else {
                     let ann_term = core::Term::Ann(
