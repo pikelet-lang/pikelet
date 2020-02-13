@@ -20,7 +20,7 @@ pub struct State<'me> {
     /// The current universe offset.
     universe_offset: core::UniverseOffset,
     /// Substitutions from the user-defined names to the level in which they were bound.
-    names_to_levels: Vec<(String, core::LocalLevel)>,
+    names_to_levels: Vec<(Option<String>, core::LocalLevel)>,
     /// Distillation state (used for pretty printing).
     core_to_surface: core_to_surface::State<'me>,
     /// Local type environment (used for getting the types of local variables).
@@ -52,34 +52,38 @@ impl<'me> State<'me> {
 
     /// Get a local entry.
     fn get_local(&self, name: &str) -> Option<(core::LocalIndex, &Arc<Value>)> {
-        let (_, level) = self.names_to_levels.iter().rev().find(|(n, _)| n == name)?;
+        let (_, level) = self.names_to_levels.iter().rev().find(|(n, _)| match n {
+            Some(n) => n == name,
+            None => false,
+        })?;
         let index = self.values.size().index(*level);
         let ty = self.types.get(index)?;
         Some((index, ty))
     }
 
     /// Push a local entry.
-    fn push_local(&mut self, name: String, value: Arc<Value>, r#type: Arc<Value>) {
-        self.core_to_surface.push_name(Some(&name));
-        self.names_to_levels.push((name, self.next_level()));
+    fn push_local(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
+        self.names_to_levels
+            .push((name.map(str::to_owned), self.next_level()));
+        self.core_to_surface.push_name(name);
         self.types.push(r#type);
         self.values.push(value);
     }
 
     /// Push a local parameter.
-    fn push_param(&mut self, name: String, r#type: Arc<Value>) -> Arc<Value> {
+    fn push_local_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
         let value = Arc::new(Value::local(self.next_level(), r#type.clone()));
         self.push_local(name, value.clone(), r#type);
         value
     }
 
-    // /// Pop a local entry.
-    // fn pop_local(&mut self) {
-    //     self.core_to_surface.pop_name();
-    //     self.names_to_levels.pop();
-    //     self.types.pop();
-    //     self.values.pop();
-    // }
+    /// Pop a local entry.
+    fn pop_local(&mut self) {
+        self.core_to_surface.pop_name();
+        self.names_to_levels.pop();
+        self.types.pop();
+        self.values.pop();
+    }
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
@@ -333,15 +337,16 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::FunctionTerm(_, param_names, body), _) => {
             let mut seen_param_count = 0;
-            let mut expected_type = expected_type;
+            let mut expected_type = expected_type.clone();
             let mut pending_param_names = param_names.iter();
 
             while let Some((param_range, param_name)) = pending_param_names.next() {
                 match expected_type.as_ref() {
-                    Value::FunctionType(param_type, body_type) => {
-                        state.push_param(param_name.as_ref().to_owned(), param_type.clone());
+                    Value::FunctionType(_, param_type, body_closure) => {
+                        let param =
+                            state.push_local_param(Some(param_name.as_ref()), param_type.clone());
                         seen_param_count += 1;
-                        expected_type = body_type;
+                        expected_type = body_closure.elim(state.globals, param);
                     }
                     Value::Error => {
                         state.pop_many_locals(seen_param_count);
@@ -353,14 +358,14 @@ pub fn check_type<S: AsRef<str>>(
                                 .chain(pending_param_names.map(|(range, _)| range.clone()))
                                 .collect(),
                         });
-                        check_type(state, body, expected_type);
+                        check_type(state, body, &expected_type);
                         state.pop_many_locals(seen_param_count);
                         return core::Term::Error;
                     }
                 }
             }
 
-            let core_body = check_type(state, body, expected_type);
+            let core_body = check_type(state, body, &expected_type);
             state.pop_many_locals(seen_param_count);
             (param_names.iter().rev()).fold(core_body, |core_body, (_, param_name)| {
                 core::Term::FunctionTerm(param_name.as_ref().to_owned(), Arc::new(core_body))
@@ -482,7 +487,7 @@ pub fn synth_type<S: AsRef<str>>(
                         let core_type = Arc::new(core_type);
                         let core_type_value = state.eval_term(&core_type);
                         core_type_entries.push((label.as_ref().to_owned(), core_type));
-                        state.push_param(name.as_ref().to_owned(), core_type_value);
+                        state.push_local_param(Some(name.as_ref()), core_type_value);
                         entry.insert(label_range.clone());
                     }
                     Entry::Occupied(entry) => {
@@ -534,10 +539,65 @@ pub fn synth_type<S: AsRef<str>>(
             });
             (core::Term::Error, Arc::new(Value::Error))
         }
-        Term::FunctionType(param_type, body_type) => {
-            match (is_type(state, param_type), is_type(state, body_type)) {
-                ((core_param_type, Some(param_level)), (core_body_type, Some(body_level))) => (
-                    core::Term::FunctionType(Arc::new(core_param_type), Arc::new(core_body_type)),
+        Term::FunctionType(_, param_type_groups, body_type) => {
+            let mut max_level = Some(core::UniverseLevel(0));
+            let update_level = |max_level, next_level| match (max_level, next_level) {
+                (Some(max_level), Some(pl)) => Some(std::cmp::max(max_level, pl)),
+                (None, _) | (_, None) => None,
+            };
+            let mut core_params = Vec::new();
+
+            for (param_names, param_type) in param_type_groups {
+                for (_, param_name) in param_names {
+                    let (core_param_type, param_level) = is_type(state, param_type);
+                    max_level = update_level(max_level, param_level);
+
+                    let core_param_type_value = state.eval_term(&core_param_type);
+                    state.push_local_param(Some(param_name.as_ref()), core_param_type_value);
+                    core_params.push((Some(param_name.as_ref().to_owned()), core_param_type));
+                }
+            }
+
+            let (core_body_type, body_level) = is_type(state, body_type);
+            max_level = update_level(max_level, body_level);
+
+            state.pop_many_locals(core_params.len());
+
+            match max_level {
+                None => (core::Term::Error, Arc::new(Value::Error)),
+                Some(max_level) => (
+                    core_params.into_iter().rev().fold(
+                        core_body_type,
+                        |body_type, (param_name, param_type)| {
+                            core::Term::FunctionType(
+                                param_name,
+                                Arc::new(param_type),
+                                Arc::new(body_type),
+                            )
+                        },
+                    ),
+                    Arc::new(Value::Universe(max_level)),
+                ),
+            }
+        }
+        Term::FunctionArrowType(param_type, body_type) => {
+            let (core_param_type, param_level) = is_type(state, param_type);
+            let core_param_type_value = match param_level {
+                None => Arc::new(Value::Error),
+                Some(_) => state.eval_term(&core_param_type),
+            };
+
+            state.push_local_param(None, core_param_type_value);
+            let (core_body_type, body_level) = is_type(state, body_type);
+            state.pop_local();
+
+            match (param_level, body_level) {
+                (Some(param_level), Some(body_level)) => (
+                    core::Term::FunctionType(
+                        None,
+                        Arc::new(core_param_type),
+                        Arc::new(core_body_type),
+                    ),
                     Arc::new(Value::Universe(std::cmp::max(param_level, body_level))),
                 ),
                 (_, _) => (core::Term::Error, Arc::new(Value::Error)),
@@ -557,13 +617,13 @@ pub fn synth_type<S: AsRef<str>>(
 
             while let Some(argument) = arguments.next() {
                 match head_type.as_ref() {
-                    Value::FunctionType(param_type, body_type) => {
+                    Value::FunctionType(_, param_type, body_closure) => {
                         head_range.end = argument.range().end;
-                        core_head = core::Term::FunctionElim(
-                            Arc::new(core_head),
-                            Arc::new(check_type(state, argument, &param_type)),
-                        );
-                        head_type = body_type.clone();
+                        let core_argument = check_type(state, argument, &param_type);
+                        let core_argument_value = state.eval_term(&core_argument);
+                        core_head =
+                            core::Term::FunctionElim(Arc::new(core_head), Arc::new(core_argument));
+                        head_type = body_closure.elim(state.globals, core_argument_value);
                     }
                     Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
                     _ => {

@@ -22,6 +22,8 @@ pub enum Token<'a> {
     As,
     #[token("fun")]
     FunTerm,
+    #[token("Fun")]
+    FunType,
     #[token("record")]
     RecordTerm,
     #[token("Record")]
@@ -70,6 +72,7 @@ impl<'a> fmt::Display for Token<'a> {
 
             Token::As => write!(f, "as"),
             Token::FunTerm => write!(f, "fun"),
+            Token::FunType => write!(f, "Fun"),
             Token::RecordTerm => write!(f, "record"),
             Token::RecordType => write!(f, "Record"),
 

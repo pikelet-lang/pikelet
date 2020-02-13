@@ -163,10 +163,18 @@ pub fn from_term(state: &mut State<'_>, term: &Term) -> surface::Term<String> {
         Term::RecordElim(head, label) => {
             surface::Term::RecordElim(Box::new(from_term(state, head)), 0..0, label.clone())
         }
-        Term::FunctionType(param_type, body_type) => surface::Term::FunctionType(
-            Box::new(from_term(state, param_type)),
-            Box::new(from_term(state, body_type)),
-        ),
+        Term::FunctionType(param_name_hint, param_type, body_type) => {
+            // FIXME: properly group parameters!
+            let param_type = from_term(state, param_type);
+            let fresh_name = state.push_name(param_name_hint.as_ref().map(String::as_ref));
+            let param_type_groups = vec![(vec![(0..0, fresh_name)], param_type)];
+
+            surface::Term::FunctionType(
+                0..,
+                param_type_groups,
+                Box::new(from_term(state, body_type)),
+            )
+        }
         Term::FunctionTerm(param_name_hint, body) => {
             let mut current_body = body;
 

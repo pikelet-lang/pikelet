@@ -120,7 +120,44 @@ where
             .append(from_term_prec(alloc, head, Prec::Atomic))
             .append(".")
             .append(label.as_ref()),
-        Term::FunctionType(param_type, body_type) => paren(
+        Term::FunctionType(_, param_type_groups, body_type) => paren(
+            alloc,
+            prec > Prec::Arrow,
+            (alloc.nil())
+                .append("Fun")
+                .append(alloc.space())
+                .append(alloc.intersperse(
+                    param_type_groups.iter().map(|(param_names, param_type)| {
+                        (alloc.nil())
+                            .append("(")
+                            .append(
+                                alloc.intersperse(
+                                    param_names
+                                        .iter()
+                                        .map(|(_, param_name)| param_name.as_ref()),
+                                    alloc.space(),
+                                ),
+                            )
+                            .append(alloc.space())
+                            .append(":")
+                            .append(alloc.space())
+                            .append(from_term_prec(alloc, param_type, Prec::Term))
+                            .append(")")
+                    }),
+                    alloc.space(),
+                ))
+                .append(alloc.space())
+                .append("->")
+                .group()
+                .append(
+                    (alloc.nil()).append(alloc.space()).append(
+                        from_term_prec(alloc, body_type, Prec::Arrow)
+                            .group()
+                            .nest(4),
+                    ),
+                ),
+        ),
+        Term::FunctionArrowType(param_type, body_type) => paren(
             alloc,
             prec > Prec::Arrow,
             (alloc.nil())

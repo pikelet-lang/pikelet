@@ -21,6 +21,20 @@ For example, the function type for adding two 32-bit signed integers together is
 S32 -> S32 -> S32
 ```
 
+### Dependency
+
+Functions output types can also depend on their inputs.
+For example this is the type of the identity function:
+
+```pikelet
+Fun (A : Type) -> A -> A
+```
+
+:::note
+These are sometimes called _pi types_ or [_dependent product types_][dependent-product-types-nlab]
+in type theory.
+:::
+
 ### Universes
 
 Function types are also types:
@@ -65,7 +79,7 @@ record {
 ```
 
 :::note
-These are sometimes called _lambda abstractions_ in type theory,
+These are sometimes called [_lambda abstractions_][lambda-abstraction-nlab] in type theory,
 ore _anonymous functions_ in programming languages.
 :::
 
@@ -92,4 +106,6 @@ This section is a work in progress.
 (describe beta-reduction)
 
 [currying-wikipedia]: https://en.wikipedia.org/wiki/Currying
+[dependent-product-types-nlab]: https://ncatlab.org/nlab/show/dependent+product+type
+[lambda-abstraction-nlab]: https://ncatlab.org/nlab/show/lambda-abstraction
 [juxtaposition-wikipedia]: https://en.wikipedia.org/wiki/Juxtaposition#Mathematics

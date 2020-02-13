@@ -47,7 +47,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [ ] Builtin terms
 - Dependently typed language
   - [x] Dependent record types
-  - [ ] Dependent function types
+  - [x] Dependent function types
   - [ ] Equality types
   - [x] Universe levels
     - [x] Stratified

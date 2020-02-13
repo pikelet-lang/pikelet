@@ -11,10 +11,23 @@ mod grammar {
     include!(concat!(env!("OUT_DIR"), "/lang/surface/grammar.rs"));
 }
 
+/// Literals.
+#[derive(Debug, Clone)]
+pub enum Literal<S> {
+    /// Character literals.
+    Char(S),
+    /// String literals.
+    String(S),
+    /// Numeric literals.
+    Number(S),
+}
+
 /// Entry in a [record type](Term::RecordType).
 pub type TypeEntry<S> = (Range<usize>, S, Option<S>, Term<S>);
 /// Entry in a [record term](Term::RecordTerm).
 pub type TermEntry<S> = (Range<usize>, S, Term<S>);
+/// A group of function parameters that are elements of the same type.
+pub type ParameterGroup<S> = (Vec<(Range<usize>, S)>, Term<S>);
 
 #[derive(Debug, Clone)]
 pub enum Term<S> {
@@ -33,7 +46,9 @@ pub enum Term<S> {
     /// Record eliminations (field access).
     RecordElim(Box<Term<S>>, Range<usize>, S),
     /// Function types.
-    FunctionType(Box<Term<S>>, Box<Term<S>>),
+    FunctionType(RangeFrom<usize>, Vec<ParameterGroup<S>>, Box<Term<S>>),
+    /// Arrow function types.
+    FunctionArrowType(Box<Term<S>>, Box<Term<S>>),
     /// Function terms (lambda abstractions).
     FunctionTerm(RangeFrom<usize>, Vec<(Range<usize>, S)>, Box<Term<S>>),
     /// Function eliminations (function application).
@@ -47,6 +62,7 @@ pub enum Term<S> {
 type ParseError<'input> = lalrpop_util::ParseError<usize, lexer::Token<'input>, lexer::LexerError>;
 
 impl<'input> Term<&'input str> {
+    /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
         let tokens = lexer::tokens(input);
@@ -55,6 +71,7 @@ impl<'input> Term<&'input str> {
 }
 
 impl<T> Term<T> {
+    /// Return the source range of the term.
     pub fn range(&self) -> Range<usize> {
         match self {
             Term::Name(range, _)
@@ -66,7 +83,8 @@ impl<T> Term<T> {
             | Term::Error(range) => range.clone(),
             Term::Ann(term, r#type) => term.range().start..r#type.range().end,
             Term::RecordElim(term, label_range, _) => term.range().start..label_range.end,
-            Term::FunctionType(param_type, body_type) => {
+            Term::FunctionType(range, _, body_type) => range.start..body_type.range().end,
+            Term::FunctionArrowType(param_type, body_type) => {
                 param_type.range().start..body_type.range().end
             }
             Term::FunctionTerm(range, _, body) => range.start..body.range().end,
@@ -76,15 +94,4 @@ impl<T> Term<T> {
             },
         }
     }
-}
-
-/// Literals.
-#[derive(Debug, Clone)]
-pub enum Literal<S> {
-    /// Character literals.
-    Char(S),
-    /// String literals.
-    String(S),
-    /// Numeric literals.
-    Number(S),
 }
