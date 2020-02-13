@@ -19,6 +19,7 @@ extern {
 
         "as" => Token::As,
         "fun" => Token::FunTerm,
+        "Fun" => Token::FunType,
         "record" => Token::RecordTerm,
         "Record" => Token::RecordType,
 
@@ -52,8 +53,13 @@ ExprTerm: Term<&'input str> = {
 
 ArrowTerm: Term<&'input str> = {
     AppTerm,
+    <start: @L> "Fun" <param_type_groups: ("(" <ParamName+> ":" <ArrowTerm> ")")+>
+        "->" <body_type: ArrowTerm> =>
+    {
+        Term::FunctionType(start.., param_type_groups, Box::new(body_type))
+    },
     <param_type: AppTerm> "->" <body_type: ArrowTerm> => {
-        Term::FunctionType(Box::new(param_type), Box::new(body_type))
+        Term::FunctionArrowType(Box::new(param_type), Box::new(body_type))
     },
 };
 

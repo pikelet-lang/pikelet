@@ -32,6 +32,7 @@ The following keywords are reserved by Pikelet:
 | Keyword | Purpose |
 | ------- | ------- |
 | `as` | [Explicit binding names](./records#Explicit-binding-names) |
+| `Fun` | [Function formation](./functions#Formation) |
 | `fun` | [Function terms](./functions#Terms) |
 | `Record` | [Record types](./records#Types) |
 | `record` | [Record terms](./records#Terms) |

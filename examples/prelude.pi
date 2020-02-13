@@ -1,0 +1,87 @@
+record {
+    id = fun A a => a,
+    always = fun A B a b => a,
+    compose = fun A B C a-b b-c a => b-c (a-b a),
+    dep-compose = fun A B C a-b a-b-c a => a-b-c a (a-b a),
+    flip = fun A B C a-b-c a b => a-b-c b a,
+    dep-flip = fun A B C a-b-c b a => a-b-c a b,
+    subst = fun A B C a-b-c a-b a => a-b-c a (a-b a),
+    dep-subst = fun A B C a-b-c a-b a => a-b-c a (a-b a),
+
+    Unit = Record {},
+    unit = record {},
+
+    Prod = fun A B => Fun (a : A) -> B a,
+    Sum = fun A B => Record { val : A, proof : B val },
+} : Record {
+    ||| The polymorphic identity function.
+    id : Fun (A : Type) -> A -> A,
+
+    ||| Creates a function that always returns the same value.
+    always : Fun (A B : Type) -> A -> B -> A,
+
+    ||| Function composition.
+    compose : Fun (A B C : Type) -> (A -> B) -> (B -> C) -> (A -> C),
+
+    ||| Dependent function composition.
+    dep-compose :
+        Fun (A : Type)
+            (B : A -> Type)
+            (C : Fun (a : A) -> B a -> Type)
+            (a-b : Fun (a : A) -> B a)
+            (a-b-c : Fun (a : A) (b : B a) -> C a b)
+            -> (Fun (a : A) -> C a (a-b a)),
+
+    ||| Flip the order of the first two arguments to a function
+    flip : Fun (A B C : Type) -> (A -> B -> C) -> (B -> A -> C),
+
+    ||| Flip the order of the first two arguments to a dependent function.
+    dep-flip :
+        Fun (A B : Type)
+            (C : A -> B -> Type)
+            (a-b-c : Fun (a : A) (b : B) -> C a b)
+            -> (Fun (b : B) (a : A) -> C a b),
+
+    ||| Substitution.
+    subst : Fun (A B C : Type) -> (A -> B -> C) -> (A -> B) -> (A -> C),
+
+    ||| Dependent substitution.
+    |||
+    ||| Takes three arguments and then returns the first argument applied to the
+    ||| third, which is then applied to the result of the second argument applied to
+    ||| the third.
+    |||
+    ||| Also known as the 'S Combinator' in the [SKI combinator calculus][ski-wiki].
+    |||
+    ||| # References
+    |||
+    ||| - [Outrageous but Meaningful Coincidences: Dependent type-safe syntax and evaluation][dep-rep]
+    |||   (Described in Section 5 as an infix `_ˢ_` operator)
+    |||
+    ||| [ski-wiki]: https://en.wikipedia.org/wiki/SKI_combinator_calculus
+    ||| [dep-rep]: https://personal.cis.strath.ac.uk/conor.mcbride/pub/DepRep/DepRep.pdf
+    dep-subst :
+        Fun (A : Type)
+            (B : A -> Type)
+            (C : Fun (a : A) -> B a -> Type)
+            (a-b-c : Fun (a : A) (b : B a) -> C a b)
+            (a-b : Fun (a : A) -> B a)
+            -> (Fun (a : A) -> C a (a-b a)),
+
+
+    ||| The unit type
+    |||
+    ||| This is a synonym for the empty record, and can be constructed using the
+    ||| `unit` function.
+    Unit : Type,
+
+    ||| Create an element of the `Unit` type
+    unit : Unit,
+
+
+    ||| Dependent products
+    Prod : Fun (A : Type) (B : A -> Type) -> Type,
+
+    ||| Dependent sums (subtypes)
+    Sum : Fun (A : Type) (B : A -> Type) -> Type,
+}
