@@ -54,8 +54,6 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
     use rustyline::error::ReadlineError;
     use rustyline::{Config, Editor};
 
-    use crate::reporting::ToSnippet;
-
     let mut editor = {
         let config = Config::builder()
             .history_ignore_space(true)

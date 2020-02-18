@@ -1,4 +1,88 @@
 use annotate_snippets::snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation};
+use std::ops::Range;
+
+use crate::surface::Term;
+
+#[derive(Clone, Debug)]
+pub enum InvalidLiteral {
+    Char,
+    String,
+    Number,
+}
+
+#[derive(Clone, Debug)]
+pub enum AmbiguousTerm {
+    NumberLiteral,
+    Sequence,
+    FunctionTerm,
+    RecordTerm,
+}
+
+#[derive(Clone, Debug)]
+pub enum ExpectedType {
+    Universe,
+    Type(Term<String>),
+}
+
+#[derive(Clone, Debug)]
+pub enum Message {
+    MaximumUniverseLevelReached {
+        range: Range<usize>,
+    },
+    UnboundName {
+        range: Range<usize>,
+        name: String,
+    },
+    InvalidRecordType {
+        duplicate_names: Vec<(String, Range<usize>, Range<usize>)>,
+    },
+    InvalidRecordTerm {
+        range: Range<usize>,
+        duplicate_names: Vec<(String, Range<usize>, Range<usize>)>,
+        missing_names: Vec<String>,
+        unexpected_names: Vec<(String, Range<usize>)>,
+    },
+    EntryNameNotFound {
+        head_range: Range<usize>,
+        name_range: Range<usize>,
+        expected_field_name: String,
+        head_type: Term<String>,
+    },
+    TooManyParameters {
+        unexpected_parameters: Vec<Range<usize>>,
+    },
+    TooManyArguments {
+        head_range: Range<usize>,
+        head_type: Term<String>,
+        unexpected_arguments: Vec<Range<usize>>,
+    },
+    InvalidLiteral {
+        range: Range<usize>,
+        literal: InvalidLiteral,
+    },
+    NoLiteralConversion {
+        range: Range<usize>,
+        expected_type: Term<String>,
+    },
+    MismatchedSequenceLength {
+        range: Range<usize>,
+        found_len: usize,
+        expected_len: Term<String>,
+    },
+    NoSequenceConversion {
+        range: Range<usize>,
+        expected_type: Term<String>,
+    },
+    AmbiguousTerm {
+        range: Range<usize>,
+        term: AmbiguousTerm,
+    },
+    MismatchedTypes {
+        range: Range<usize>,
+        found_type: Term<String>,
+        expected_type: ExpectedType,
+    },
+}
 
 fn snippet(title: Annotation, slices: Vec<Slice>) -> Snippet {
     Snippet {
@@ -26,20 +110,12 @@ fn slice(source: &str, annotations: Vec<SourceAnnotation>) -> Slice {
     }
 }
 
-pub trait ToSnippet {
-    fn to_snippet(&self, source: &str) -> Snippet;
-}
-
-impl ToSnippet for pikelet::surface::projections::core::Message {
-    fn to_snippet(&self, source: &str) -> Snippet {
+impl Message {
+    pub fn to_snippet(&self, source: &str) -> Snippet {
         use itertools::Itertools;
-        use pikelet::surface;
-        use pikelet::surface::projections::core::{
-            AmbiguousTerm, ExpectedType, InvalidLiteral, Message,
-        };
 
         let pretty_alloc = pretty::BoxAllocator;
-        let to_doc = |term| surface::projections::pretty::pretty_term(&pretty_alloc, term).1;
+        let to_doc = |term| crate::surface::projections::pretty::pretty_term(&pretty_alloc, term).1;
 
         match self {
             Message::MaximumUniverseLevelReached { range } => snippet(
