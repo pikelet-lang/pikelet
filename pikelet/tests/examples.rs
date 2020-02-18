@@ -1,11 +1,13 @@
 //! Integration tests against the language samples directory.
 
+use annotate_snippets::display_list::DisplayList;
+use annotate_snippets::formatter::DisplayListFormatter;
 use pikelet::{core, surface};
 
-fn run_test(input: &str) {
+fn run_test(source: &str) {
     let mut is_failed = false;
 
-    let surface_term = surface::Term::from_str(input).unwrap();
+    let surface_term = surface::Term::from_str(source).unwrap();
 
     let globals = core::Globals::default();
     let mut state = surface::projections::core::State::new(&globals);
@@ -15,7 +17,9 @@ fn run_test(input: &str) {
         is_failed = true;
         eprintln!("surface::projections::core::synth_term messages:");
         for message in messages {
-            eprintln!("  {:?}", message);
+            let display_list = DisplayList::from(message.to_snippet(source)); // TODO: file path
+            let formatter = DisplayListFormatter::new(true, false);
+            eprintln!("{}", formatter.format(&display_list));
         }
         eprintln!();
     }

@@ -7,6 +7,10 @@ use std::sync::Arc;
 use crate::core;
 use crate::surface::{Literal, Term};
 
+pub mod reporting;
+
+pub use self::reporting::*;
+
 /// The state of the elaborator.
 pub struct State<'me> {
     /// Global definition environment.
@@ -150,87 +154,6 @@ impl<'me> State<'me> {
             &core_term,
         )
     }
-}
-
-#[derive(Clone, Debug)]
-pub enum Message {
-    MaximumUniverseLevelReached {
-        range: Range<usize>,
-    },
-    UnboundName {
-        range: Range<usize>,
-        name: String,
-    },
-    InvalidRecordType {
-        duplicate_names: Vec<(String, Range<usize>, Range<usize>)>,
-    },
-    InvalidRecordTerm {
-        range: Range<usize>,
-        duplicate_names: Vec<(String, Range<usize>, Range<usize>)>,
-        missing_names: Vec<String>,
-        unexpected_names: Vec<(String, Range<usize>)>,
-    },
-    EntryNameNotFound {
-        head_range: Range<usize>,
-        name_range: Range<usize>,
-        expected_field_name: String,
-        head_type: Term<String>,
-    },
-    TooManyParameters {
-        unexpected_parameters: Vec<Range<usize>>,
-    },
-    TooManyArguments {
-        head_range: Range<usize>,
-        head_type: Term<String>,
-        unexpected_arguments: Vec<Range<usize>>,
-    },
-    InvalidLiteral {
-        range: Range<usize>,
-        literal: InvalidLiteral,
-    },
-    NoLiteralConversion {
-        range: Range<usize>,
-        expected_type: Term<String>,
-    },
-    MismatchedSequenceLength {
-        range: Range<usize>,
-        found_len: usize,
-        expected_len: Term<String>,
-    },
-    NoSequenceConversion {
-        range: Range<usize>,
-        expected_type: Term<String>,
-    },
-    AmbiguousTerm {
-        range: Range<usize>,
-        term: AmbiguousTerm,
-    },
-    MismatchedTypes {
-        range: Range<usize>,
-        found_type: Term<String>,
-        expected_type: ExpectedType,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub enum InvalidLiteral {
-    Char,
-    String,
-    Number,
-}
-
-#[derive(Clone, Debug)]
-pub enum AmbiguousTerm {
-    NumberLiteral,
-    Sequence,
-    FunctionTerm,
-    RecordTerm,
-}
-
-#[derive(Clone, Debug)]
-pub enum ExpectedType {
-    Universe,
-    Type(Term<String>),
 }
 
 /// Check that a term is a universe and return its level.
