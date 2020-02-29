@@ -13,13 +13,10 @@ pub enum LexToken {
     #[token = ","]
     Comma,
     #[token = "fun"]
-    #[token = "λ"]
     Fun,
     #[token = "=>"]
-    #[token = "⇒"]
     DArrow,
     #[token = "->"]
-    #[token = "→"]
     Arrow,
     #[token = "("]
     LParen,
