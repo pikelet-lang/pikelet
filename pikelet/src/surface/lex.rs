@@ -1,5 +1,4 @@
 use logos::Logos;
-use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
 
 /// The complete set of `LexToken`s some of which never escape the lexer.
@@ -115,36 +114,6 @@ impl<'a> Display for Token<'a> {
     }
 }
 
-// Not really sure whether try_from is the best way to do this.
-// In particular this only succeeds for the nullary Tokens.
-impl<'a> TryFrom<&LexToken> for Token<'a> {
-    type Error = &'static str;
-    fn try_from(t: &LexToken) -> Result<Self, Self::Error> {
-        use LexToken as T;
-        match &t {
-            T::Colon => Ok(Self::Colon),
-            T::Comma => Ok(Self::Comma),
-            T::Fun => Ok(Self::Fun),
-            T::DArrow => Ok(Self::DArrow),
-            T::Arrow => Ok(Self::Arrow),
-            T::LParen => Ok(Self::LParen),
-            T::RParen => Ok(Self::RParen),
-            T::LBrack => Ok(Self::LBrack),
-            T::RBrack => Ok(Self::RBrack),
-            T::LBrace => Ok(Self::LBrace),
-            T::RBrace => Ok(Self::RBrace),
-            T::RecordTerm => Ok(Self::RecordTerm),
-            T::RecordType => Ok(Self::RecordType),
-            T::Dot => Ok(Self::Dot),
-            T::Equal => Ok(Self::Equal),
-            t => {
-                println!("{:?}", t);
-                Err("Error in converting LexicalToken to Token")
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct LexicalError(std::ops::Range<usize>, &'static str);
 
@@ -167,42 +136,59 @@ impl<'a> Iterator for LexIterator<'a> {
     type Item = Spanned<Token<'a>, usize, LexicalError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut lex;
-        let mut range;
+        use LexToken as LT;
+        use Token as T;
+        let lex = &mut self.0;
         loop {
-            lex = &mut self.0;
-            range = lex.range();
             match &lex.token {
-                LexToken::Whitespace => {
+                LT::Whitespace => {
                     // Skip whitespace
                     lex.advance();
                     continue;
                 }
-                _t => break,
+                _ => break,
             }
         }
 
-        let it = match &lex.token {
-            LexToken::EOF => None,
-            // First match all the Token members with parameters.
-            // Think as-is this includes single quotes
-            LexToken::CharLit => Some(Ok((range.start, Token::CharLit(lex.slice()), range.end))),
-            LexToken::Name => Some(Ok((range.start, Token::Name(lex.slice()), range.end))),
+        const fn tok<'a>(
+            r: std::ops::Range<usize>,
+            t: Token<'a>,
+        ) -> Option<Spanned<Token<'a>, usize, LexicalError>> {
+            Some(Ok((r.start, t, r.end)))
+        }
+
+        let r = lex.range();
+        // I'm really not fond of this, but trying to split this match statement up
+        // appears to be more trouble than it is worth.
+        #[rustfmt::skip]
+        let it: Option<Self::Item> = match &lex.token {
+            LT::EOF => None,
+            LT::Error => Some(Err(LexicalError(r, "Lexical error"))),
+            LT::Whitespace => unreachable!(),
+            LT::Colon  => tok(r, T::Colon),
+            LT::Comma  => tok(r, T::Comma),
+            LT::Fun    => tok(r, T::Fun),
+            LT::DArrow => tok(r, T::DArrow),
+            LT::Arrow  => tok(r, T::Arrow),
+            LT::LParen => tok(r, T::LParen),
+            LT::RParen => tok(r, T::RParen),
+            LT::LBrack => tok(r, T::LBrack),
+            LT::RBrack => tok(r, T::RBrack),
+            LT::LBrace => tok(r, T::LBrace),
+            LT::RBrace => tok(r, T::RBrace),
+            LT::Dot    => tok(r, T::Dot),
+            LT::Equal  => tok(r, T::Equal),
+            LT::RecordTerm => tok(r, T::RecordTerm),
+            LT::RecordType => tok(r, T::RecordType),
+            LT::Name    => tok(r, T::Name(lex.slice())),
             // We could do something here besides expose this as a string if desired,
             // that doesn't work with the way that Literal is though...
-            LexToken::Number => Some(Ok((range.start, Token::Number(lex.slice()), range.end))),
-            // Think as-is this includes double quotes.
-            LexToken::StrLit => Some(Ok((range.start, Token::StrLit(lex.slice()), range.end))),
-            LexToken::Shift => Some(Ok((range.start, Token::Shift(lex.slice()), range.end))),
-            LexToken::Error => Some(Err(LexicalError(range, "Error token encountered"))),
-            // Lastly convert all the unitary LexTokens.
-            t => {
-                let t = Token::try_from(t);
-                match t {
-                    Ok(t) => Some(Ok((range.start, t, range.end))),
-                    Err(e) => Some(Err(LexicalError(range, e))),
-                }
-            }
+            LT::Number  => tok(r, T::Number(lex.slice())),
+            LT::Shift   => tok(r, T::Shift(lex.slice())),
+            // I think as-is the next 2 will include the pair of quotation marks.
+            // These probably need to be stripped from CharLit and StrLit?
+            LT::CharLit => tok(r, T::CharLit(lex.slice())),
+            LT::StrLit  => tok(r, T::StrLit(lex.slice())),
         };
         lex.advance();
         it
