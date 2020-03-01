@@ -3,8 +3,8 @@ use std::fmt::{self, Display, Formatter};
 
 /// The complete set of `LexToken`s some of which never escape the lexer.
 /// See Token for a list of which Tokens do and do not escape.
-#[derive(Logos, Debug)]
-pub enum LexToken {
+#[derive(Logos)]
+enum LexToken {
     #[end]
     EOF,
     #[token = ":"]
