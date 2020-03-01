@@ -139,15 +139,9 @@ impl<'a> Iterator for LexIterator<'a> {
         use LexToken as LT;
         use Token as T;
         let lex = &mut self.0;
-        loop {
-            match &lex.token {
-                LT::Whitespace => {
-                    // Skip whitespace
-                    lex.advance();
-                    continue;
-                }
-                _ => break,
-            }
+
+        while let LT::Whitespace = &lex.token {
+            lex.advance();
         }
 
         const fn tok<'a>(
