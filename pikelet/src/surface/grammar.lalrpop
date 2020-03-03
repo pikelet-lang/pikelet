@@ -24,9 +24,9 @@ extern {
     "(" => Token::LParen,
     ")" => Token::RParen,
     "=" => Token::Equal,
-    CharLit => Token::CharLit(<&'input str>),
-    StrLit => Token::StrLit(<&'input str>),
-    Number => Token::Number(<&'input  str>),
+    CharLiteral => Token::CharLiteral(<&'input str>),
+    StrLiteral => Token::StrLiteral(<&'input str>),
+    NumLiteral => Token::NumLiteral(<&'input  str>),
     Id => Token::Name(<&'input str>),
     Shift => Token::Shift(<&'input str>),
   }
@@ -95,7 +95,7 @@ Name: &'input str = {
 };
 
 Literal: Literal<&'input str> = {
-    CharLit => Literal::Char(<>),
-    StrLit => Literal::String(<>),
-    Number => Literal::Number(<>),
+    CharLiteral => Literal::Char(<>),
+    StrLiteral => Literal::String(<>),
+    NumLiteral => Literal::Number(<>),
 };
