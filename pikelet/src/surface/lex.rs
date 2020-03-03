@@ -37,6 +37,8 @@ enum LexToken {
     Dot,
     #[token = "="]
     Equal,
+    #[regex = r"\-\-(.*)\n"]
+    Comment,
     // Hmm, not sure why this doesn't work.
     // #[regex = r#"'(.|\\"|\\')*'"#]
     #[regex = r#"('[^'\\]|\\t|\\u|\\n|\\"|\\')*'"#]
@@ -62,6 +64,9 @@ enum LexToken {
 /// * Whitespace -- skipped.
 /// * EOF -- turned into None, rather than a token.
 /// * Error -- turned into Some(Err(...)).
+///
+/// Comment while a valid token has been reserved but is not currently
+/// emitted by the lexer.
 #[derive(Debug, Clone)]
 pub enum Token<'a> {
     Colon,
@@ -84,6 +89,8 @@ pub enum Token<'a> {
     NumLiteral(&'a str),
     Name(&'a str),
     Shift(&'a str),
+    // Not in use at this time.
+    Comment(&'a str),
 }
 
 impl<'a> fmt::Display for Token<'a> {
@@ -104,6 +111,7 @@ impl<'a> fmt::Display for Token<'a> {
             Token::RecordType => write!(f, "Record"),
             Token::Equal => write!(f, "="),
             Token::Dot => write!(f, "."),
+            Token::Comment(s) => write!(f, "Comment({})", s),
             Token::CharLiteral(s) => write!(f, "CharLiteral({})", s),
             Token::StrLiteral(s) => write!(f, "StrLiteral({})", s),
             Token::NumLiteral(s) => write!(f, "NumLiteral({})", s),
@@ -152,7 +160,7 @@ impl<'a> Iterator for Tokens<'a> {
                 // But we might as well return.
                 LexToken::EOF => return None,
                 LexToken::Error => break Some(Err(LexicalError(range, "Lexical error"))),
-                LexToken::Whitespace => {
+                LexToken::Whitespace | LexToken::Comment => {
                     lex.advance();
                     continue;
                 }

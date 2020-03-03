@@ -54,6 +54,11 @@ fn run_test(source: &str) {
 }
 
 #[test]
+fn comments() {
+    run_test(include_str!("../../examples/comments.pi"));
+}
+
+#[test]
 fn cube() {
     run_test(include_str!("../../examples/cube.pi"));
 }

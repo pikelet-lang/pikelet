@@ -23,7 +23,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
 ### Language
 
 - Basic config language
-  - [ ] Comments
+  - [x] Comments
   - [x] Boolean literals/constants
   - [x] Integer literals/constants
   - [x] Float literals/constants
