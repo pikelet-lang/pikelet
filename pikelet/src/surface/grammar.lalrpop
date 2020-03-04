@@ -1,8 +1,36 @@
 use std::ops::Range;
 
 use crate::surface::{Term, Literal};
+use crate::surface::lex::{LexicalError, Token};
 
-grammar;
+grammar<'input>;
+
+extern {
+  type Location = usize;
+  type Error = LexicalError;
+  enum Token<'input> {
+    "->"  => Token::Arrow,
+    "=>"  => Token::DArrow,
+    ":"   => Token::Colon,
+    ","   => Token::Comma,
+    "."   => Token::Dot,
+    "fun" => Token::Fun,
+    "record" => Token::RecordTerm,
+    "Record" => Token::RecordType,
+    "{" => Token::LBrace,
+    "}" => Token::RBrace,
+    "[" => Token::LBrack,
+    "]" => Token::RBrack,
+    "(" => Token::LParen,
+    ")" => Token::RParen,
+    "=" => Token::Equal,
+    CharLiteral => Token::CharLiteral(<&'input str>),
+    StrLiteral => Token::StrLiteral(<&'input str>),
+    NumLiteral => Token::NumLiteral(<&'input  str>),
+    Id => Token::Name(<&'input str>),
+    Shift => Token::Shift(<&'input str>),
+  }
+}
 
 pub Term: Term<&'input str> = {
     ExprTerm,
@@ -38,7 +66,7 @@ AtomicTerm: Term<&'input str> = {
     <start: @L> "Record" "{" <entries: List<TypeEntry>> "}" <end: @R> => Term::RecordType(start..end, entries),
     <start: @L> "record" "{" <entries: List<TermEntry>> "}" <end: @R> => Term::RecordTerm(start..end, entries),
     <head: AtomicTerm> "." <name_start: @L> <name: Name> <end: @R> => Term::RecordElim(Box::new(head), name_start..end, name),
-    <start: @L> <term: AtomicTerm> <shift: r"\^[0-9]+(\.[0-9]+)?"> <end: @R> => {
+    <start: @L> <term: AtomicTerm> <shift:Shift> <end: @R> => {
         Term::Lift(start..end, Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
     },
 };
@@ -63,11 +91,11 @@ ParamName: (Range<usize>,&'input str) = {
 };
 
 Name: &'input str = {
-    r"[a-zA-Z][a-zA-Z0-9\-]*" => <>,
+    Id,
 };
 
 Literal: Literal<&'input str> = {
-    r#"'(.|\\"|\\')*'"# => Literal::Char(<>),
-    r#""(.|\\"|\\')*""# => Literal::String(<>),
-    r"[-+]?[0-9]+(\.[0-9]+)?" => Literal::Number(<>),
+    CharLiteral => Literal::Char(<>),
+    StrLiteral => Literal::String(<>),
+    NumLiteral => Literal::Number(<>),
 };
