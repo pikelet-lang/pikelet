@@ -48,8 +48,8 @@ fn term_width() -> usize {
 
 /// Run the REPL with the given options.
 pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
-    use annotate_snippets::display_list::DisplayList;
-    use annotate_snippets::formatter::DisplayListFormatter;
+    use codespan_reporting::files::SimpleFile;
+    use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
     use pikelet::{core, surface};
     use rustyline::error::ReadlineError;
     use rustyline::{Config, Editor};
@@ -75,6 +75,9 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
     }
 
     let pretty_alloc = pretty::BoxAllocator;
+    let writer = StandardStream::stderr(ColorChoice::Always);
+    let reporting_config = codespan_reporting::term::Config::default();
+
     let globals = core::Globals::default();
     let mut state = surface::projections::core::State::new(&globals);
 
@@ -87,7 +90,9 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
 
                 // TODO: Parse REPL commands
 
-                let surface_term = match surface::Term::from_str(&line) {
+                let file = SimpleFile::new("<input>", line);
+
+                let surface_term = match surface::Term::from_str(file.source()) {
                     Ok(surface_term) => surface_term,
                     Err(error) => {
                         println!("error: {}", error);
@@ -100,11 +105,14 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                 let messages = state.drain_messages().collect::<Vec<_>>();
 
                 if !messages.is_empty() {
-                    for message in &messages {
-                        let snippet = message.to_snippet(&line);
-                        let display_list = DisplayList::from(snippet);
-                        let formatter = DisplayListFormatter::new(true, false);
-                        println!("{}", formatter.format(&display_list));
+                    for diagnostic in messages.iter().map(|message| message.to_diagnostic()) {
+                        codespan_reporting::term::emit(
+                            &mut writer.lock(),
+                            &reporting_config,
+                            &file,
+                            &diagnostic,
+                        )
+                        .unwrap();
                     }
                 } else {
                     let ann_term = core::Term::Ann(
