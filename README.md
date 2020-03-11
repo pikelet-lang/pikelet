@@ -9,7 +9,7 @@
 [![License][license-badge]][license-url]
 [![Contributor Covenant][code-of-conduct-badge]][code-of-conduct-url]
 
-[actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/ci/badge.svg
+[actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/Continuous%20integration/badge.svg
 [actions-url]: https://github.com/pikelet-lang/pikelet/actions
 [gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
