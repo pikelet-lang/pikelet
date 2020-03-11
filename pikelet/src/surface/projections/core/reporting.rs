@@ -1,4 +1,4 @@
-use annotate_snippets::snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation};
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use std::ops::Range;
 
 use crate::surface::Term;
@@ -84,362 +84,234 @@ pub enum Message {
     },
 }
 
-fn snippet(title: Annotation, slices: Vec<Slice>) -> Snippet {
-    Snippet {
-        title: Some(title),
-        slices,
-        footer: vec![],
-    }
-}
-
-fn annotation(label: impl Into<String>, annotation_type: AnnotationType) -> Annotation {
-    Annotation {
-        label: Some(label.into()),
-        id: None,
-        annotation_type,
-    }
-}
-
-fn slice(source: &str, annotations: Vec<SourceAnnotation>) -> Slice {
-    Slice {
-        source: source.to_owned(),
-        line_start: 0,
-        origin: None,
-        fold: false,
-        annotations,
-    }
-}
-
 impl Message {
-    pub fn to_snippet(&self, source: &str) -> Snippet {
+    pub fn to_diagnostic(&self) -> Diagnostic<()> {
         use itertools::Itertools;
 
         let pretty_alloc = pretty::BoxAllocator;
         let to_doc = |term| crate::surface::projections::pretty::pretty_term(&pretty_alloc, term).1;
 
         match self {
-            Message::MaximumUniverseLevelReached { range } => snippet(
-                annotation("maximum universe level reached", AnnotationType::Error),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
-                        label: "overflowing universe level".to_owned(),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+            Message::MaximumUniverseLevelReached { range } => Diagnostic::error()
+                .with_message("maximum universe level reached")
+                .with_labels(vec![
+                    Label::primary((), range.clone()).with_message("overflowing universe level")
+                ]),
 
-            Message::UnboundName { range, name } => snippet(
-                annotation(
-                    format!("cannot find `{}` in this scope", name),
-                    AnnotationType::Error,
-                ),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
-                        // TODO: name suggestions?
-                        label: "not found in this scope".to_owned(),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+            Message::UnboundName { range, name } => Diagnostic::error()
+                .with_message(format!("cannot find `{}` in this scope", name))
+                // TODO: name suggestions?
+                .with_labels(vec![
+                    Label::primary((), range.clone()).with_message("not found in this scope")
+                ]),
 
-            Message::InvalidRecordType { duplicate_names } => snippet(
-                annotation("invalid record type", AnnotationType::Error),
-                vec![slice(source, {
-                    let mut annotations = Vec::with_capacity(duplicate_names.len() * 2);
+            Message::InvalidRecordType { duplicate_names } => Diagnostic::error()
+                .with_message("invalid record type")
+                .with_labels({
+                    let mut labels = Vec::with_capacity(duplicate_names.len() * 2);
 
                     for (name, name_range1, name_range2) in duplicate_names {
-                        annotations.push(SourceAnnotation {
-                            label: format!("first use of `{}`", name),
-                            annotation_type: AnnotationType::Note,
-                            range: (name_range1.start, name_range1.end),
-                        });
-                        annotations.push(SourceAnnotation {
-                            label: "entry name used more than once".to_owned(),
-                            annotation_type: AnnotationType::Error,
-                            range: (name_range2.start, name_range2.end),
-                        });
+                        labels.push(
+                            Label::secondary((), name_range1.clone())
+                                .with_message(format!("first use of `{}`", name)),
+                        );
+                        labels.push(
+                            Label::primary((), name_range2.clone())
+                                .with_message("entry name used more than once"),
+                        );
                     }
 
-                    annotations
-                })],
-            ),
+                    labels
+                }),
 
             Message::InvalidRecordTerm {
                 range,
                 duplicate_names,
                 missing_names,
                 unexpected_names,
-            } => snippet(
-                annotation("invalid record term", AnnotationType::Error),
-                vec![slice(source, {
-                    let mut annotations = Vec::with_capacity(
+            } => Diagnostic::error()
+                .with_message("invalid record term")
+                .with_labels({
+                    let mut labels = Vec::with_capacity(
                         duplicate_names.len() * 2
                             + unexpected_names.len()
                             + if missing_names.is_empty() { 0 } else { 1 },
                     );
 
                     for (name, name_range1, name_range2) in duplicate_names {
-                        annotations.push(SourceAnnotation {
-                            label: format!("first use of `{}`", name),
-                            annotation_type: AnnotationType::Note,
-                            range: (name_range1.start, name_range1.end),
-                        });
-                        annotations.push(SourceAnnotation {
-                            label: "entry name used more than once".to_owned(),
-                            annotation_type: AnnotationType::Error,
-                            range: (name_range2.start, name_range2.end),
-                        });
+                        labels.push(
+                            Label::primary((), name_range1.clone())
+                                .with_message(format!("first use of `{}`", name)),
+                        );
+                        labels.push(
+                            Label::primary((), name_range2.clone())
+                                .with_message("entry name used more than once"),
+                        );
                     }
 
                     for (_, name_range) in unexpected_names {
-                        annotations.push(SourceAnnotation {
-                            label: "unexpected entry name".to_owned(),
-                            annotation_type: AnnotationType::Error,
-                            range: (name_range.start, name_range.end),
-                        });
+                        labels.push(
+                            Label::primary((), name_range.clone())
+                                .with_message("unexpected entry name"),
+                        );
                     }
 
                     if !missing_names.is_empty() {
-                        annotations.push(SourceAnnotation {
-                            label: format!(
+                        labels.push(Label::primary((), range.clone()).with_message(format!(
                                 "missing the names {} in this record term",
                                 missing_names
                                     .iter()
                                     // TODO: reduce string allocations
                                     .map(|name| format!("`{}`", name))
                                     .format(", "),
-                            ),
-                            annotation_type: AnnotationType::Error,
-                            range: (range.start, range.end),
-                        });
+                            )));
                     }
 
-                    annotations
-                })],
-            ),
+                    labels
+                }),
 
             Message::EntryNameNotFound {
                 head_range,
                 name_range,
                 expected_field_name,
                 head_type,
-            } => snippet(
-                annotation(
-                    format!(
-                        "no entry named `{}` in type `{}`",
-                        expected_field_name,
+            } => Diagnostic::error()
+                .with_message(format!(
+                    "no entry named `{}` in type `{}`",
+                    expected_field_name,
+                    to_doc(&head_type).pretty(std::usize::MAX),
+                ))
+                .with_labels(vec![
+                    Label::primary((), name_range.clone()).with_message("unknown entry name"),
+                    Label::secondary((), head_range.clone()).with_message(format!(
+                        "the type here is `{}`",
                         to_doc(&head_type).pretty(std::usize::MAX),
-                    ),
-                    AnnotationType::Error,
-                ),
-                vec![slice(
-                    source,
-                    vec![
-                        SourceAnnotation {
-                            label: "unknown entry name".to_owned(),
-                            annotation_type: AnnotationType::Error,
-                            range: (name_range.start, name_range.end),
-                        },
-                        SourceAnnotation {
-                            label: format!(
-                                "the type here is `{}`",
-                                to_doc(&head_type).pretty(std::usize::MAX),
-                            ),
-                            annotation_type: AnnotationType::Help,
-                            range: (head_range.start, head_range.end),
-                        },
-                    ],
-                )],
-            ),
+                    )),
+                ]),
 
             Message::TooManyParameters {
                 unexpected_parameters,
-            } => snippet(
-                annotation(
-                    "too many parameters given for function term",
-                    AnnotationType::Error,
-                ),
-                vec![slice(
-                    source,
+            } => Diagnostic::error()
+                .with_message("too many parameters given for function term")
+                .with_labels(
                     unexpected_parameters
                         .iter()
-                        .map(|parameter_range| SourceAnnotation {
-                            label: "unexpected parameter".to_owned(),
-                            annotation_type: AnnotationType::Note,
-                            range: (parameter_range.start, parameter_range.end),
+                        .map(|parameter_range| {
+                            Label::primary((), parameter_range.clone())
+                                .with_message("unexpected parameter")
                         })
                         .collect(),
-                )],
-            ),
+                ),
 
             Message::TooManyArguments {
                 head_range,
                 head_type,
                 unexpected_arguments,
-            } => snippet(
-                annotation(
-                    "term was applied to too many arguments",
-                    AnnotationType::Error,
-                ),
-                vec![slice(
-                    source,
-                    std::iter::once(SourceAnnotation {
+            } => Diagnostic::error()
+                .with_message("term was applied to too many arguments")
+                .with_labels(
+                    std::iter::once(Label::primary((), head_range.clone()).with_message(format!(
                         // TODO: multi-line?
-                        label: format!(
-                            "expected a function, found `{}`",
-                            to_doc(&head_type).pretty(std::usize::MAX),
-                        ),
-                        annotation_type: AnnotationType::Error,
-                        range: (head_range.start, head_range.end),
-                    })
-                    .chain(
-                        unexpected_arguments
-                            .iter()
-                            .map(|argument_range| SourceAnnotation {
-                                label: "unexpected argument".to_owned(),
-                                annotation_type: AnnotationType::Note,
-                                range: (argument_range.start, argument_range.end),
-                            }),
-                    )
+                        "expected a function, found `{}`",
+                        to_doc(&head_type).pretty(std::usize::MAX),
+                    )))
+                    .chain(unexpected_arguments.iter().map(|argument_range| {
+                        Label::primary((), argument_range.clone())
+                            .with_message("unexpected argument".to_owned())
+                    }))
                     .collect(),
-                )],
-            ),
-
-            Message::InvalidLiteral { range, literal } => snippet(
-                annotation(
-                    // TODO: supply expected type information
-                    format!(
-                        "invalid {} literal",
-                        match literal {
-                            InvalidLiteral::Char => "character",
-                            InvalidLiteral::String => "string",
-                            InvalidLiteral::Number => "numeric",
-                        },
-                    ),
-                    AnnotationType::Error,
                 ),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
-                        label: "failed to parse literal".to_owned(),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+
+            Message::InvalidLiteral { range, literal } => Diagnostic::error()
+                .with_message(format!(
+                    // TODO: supply expected type information
+                    "invalid {} literal",
+                    match literal {
+                        InvalidLiteral::Char => "character",
+                        InvalidLiteral::String => "string",
+                        InvalidLiteral::Number => "numeric",
+                    },
+                ))
+                .with_labels(vec![
+                    Label::primary((), range.clone()).with_message("failed to parse literal")
+                ]),
 
             Message::NoLiteralConversion {
                 range,
                 expected_type,
-            } => snippet(
-                annotation("no known literal conversion", AnnotationType::Error),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
+            } => Diagnostic::error()
+                .with_message("no known literal conversion")
+                .with_labels(vec![Label::primary((), range.clone()).with_message(
+                    format!(
                         // TODO: multi-line?
-                        label: format!(
-                            "expected `{}`, found a literal",
-                            to_doc(&expected_type).pretty(std::usize::MAX),
-                        ),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+                        "expected `{}`, found a literal",
+                        to_doc(&expected_type).pretty(std::usize::MAX),
+                    ),
+                )]),
 
             Message::MismatchedSequenceLength {
                 range,
                 found_len,
                 expected_len,
-            } => snippet(
-                annotation("mismatched sequence length", AnnotationType::Error),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
+            } => Diagnostic::error()
+                .with_message("mismatched sequence length")
+                .with_labels(vec![Label::primary((), range.clone()).with_message(
+                    format!(
                         // TODO: multi-line?
-                        label: format!(
-                            "expected `{}` entries, found `{}` entries",
-                            to_doc(&expected_len).pretty(std::usize::MAX),
-                            found_len,
-                        ),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+                        "expected `{}` entries, found `{}` entries",
+                        to_doc(&expected_len).pretty(std::usize::MAX),
+                        found_len,
+                    ),
+                )]),
 
             Message::NoSequenceConversion {
                 range,
                 expected_type,
-            } => snippet(
-                annotation("no known sequence conversion", AnnotationType::Error),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
-                        // TODO: multi-line?
-                        label: format!(
-                            "expected `{}`, found a sequence",
-                            to_doc(&expected_type).pretty(std::usize::MAX),
-                        ),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
-
-            Message::AmbiguousTerm { range, term } => snippet(
-                annotation(
+            } => Diagnostic::error()
+                .with_message("no known sequence conversion")
+                .with_labels(vec![Label::primary((), range.clone()).with_message(
                     format!(
-                        "ambiguous {}",
-                        match term {
-                            AmbiguousTerm::NumberLiteral => "numeric literal",
-                            AmbiguousTerm::Sequence => "sequence",
-                            AmbiguousTerm::FunctionTerm => "function term",
-                            AmbiguousTerm::RecordTerm => "record term",
-                        },
+                        // TODO: multi-line?
+                        "expected `{}`, found a sequence",
+                        to_doc(&expected_type).pretty(std::usize::MAX),
                     ),
-                    AnnotationType::Error,
-                ),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
-                        label: "type annotations needed".to_owned(),
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+                )]),
+
+            Message::AmbiguousTerm { range, term } => Diagnostic::error()
+                .with_message(format!(
+                    "ambiguous {}",
+                    match term {
+                        AmbiguousTerm::NumberLiteral => "numeric literal",
+                        AmbiguousTerm::Sequence => "sequence",
+                        AmbiguousTerm::FunctionTerm => "function term",
+                        AmbiguousTerm::RecordTerm => "record term",
+                    },
+                ))
+                .with_labels(vec![
+                    Label::primary((), range.clone()).with_message("type annotations needed")
+                ]),
 
             Message::MismatchedTypes {
                 range,
                 found_type,
                 expected_type,
-            } => snippet(
-                annotation("mismatched types", AnnotationType::Error),
-                vec![slice(
-                    source,
-                    vec![SourceAnnotation {
-                        // TODO: multi-line?
-                        label: match expected_type {
-                            ExpectedType::Universe => format!(
-                                "expected a type, found `{}`",
-                                to_doc(&found_type).pretty(std::usize::MAX),
-                            ),
-                            ExpectedType::Type(expected_type) => format!(
-                                "expected `{}`, found `{}`",
-                                to_doc(&expected_type).pretty(std::usize::MAX),
-                                to_doc(&found_type).pretty(std::usize::MAX),
-                            ),
-                        },
-                        annotation_type: AnnotationType::Error,
-                        range: (range.start, range.end),
-                    }],
-                )],
-            ),
+            } => Diagnostic::error()
+                .with_message("mismatched types")
+                .with_labels(vec![Label::primary((), range.clone()).with_message(
+                    match expected_type {
+                        ExpectedType::Universe => format!(
+                            // TODO: multi-line?
+                            "expected a type, found `{}`",
+                            to_doc(&found_type).pretty(std::usize::MAX),
+                        ),
+                        ExpectedType::Type(expected_type) => format!(
+                            // TODO: multi-line?
+                            "expected `{}`, found `{}`",
+                            to_doc(&expected_type).pretty(std::usize::MAX),
+                            to_doc(&found_type).pretty(std::usize::MAX),
+                        ),
+                    },
+                )]),
         }
     }
 }
