@@ -351,7 +351,7 @@ pub fn check_term<S: AsRef<str>>(
             let mut expected_type = expected_type;
             let mut pending_param_names = param_names.iter();
 
-            while let Some((_, param_name)) = pending_param_names.next() {
+            while let Some((param_range, param_name)) = pending_param_names.next() {
                 match expected_type.as_ref() {
                     core::Value::FunctionType(param_type, body_type) => {
                         state.push_param(param_name.as_ref().to_owned(), param_type.clone());
@@ -364,8 +364,8 @@ pub fn check_term<S: AsRef<str>>(
                     }
                     _ => {
                         state.report(Message::TooManyParameters {
-                            unexpected_parameters: pending_param_names
-                                .map(|(name_range, _)| name_range.clone())
+                            unexpected_parameters: std::iter::once(param_range.clone())
+                                .chain(pending_param_names.map(|(range, _)| range.clone()))
                                 .collect(),
                         });
                         check_term(state, body, expected_type);
