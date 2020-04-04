@@ -20,12 +20,14 @@ jobs:
     name: Check (${{ matrix.rust }})
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install minimal ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
         with:
           command: check
 
@@ -37,12 +39,14 @@ jobs:
     name: Test Suite (${{ matrix.rust }})
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install minimal ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
         with:
           command: test
 
@@ -54,13 +58,15 @@ jobs:
     name: Rustfmt (${{ matrix.rust }})
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install minimal ${{ matrix.rust }} with rustfmt
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
+          components: rustfmt
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
@@ -69,17 +75,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: ["1.40.0", "stable"]
+        rust: ["1.40.0", "stable", "beta", "nightly"]
     name: Clippy (${{ matrix.rust }})
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install minimal ${{ matrix.rust }} with clippy
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
+          components: clippy
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: -- -D warnings
@@ -89,7 +97,9 @@ jobs:
     name: Build website
     steps:
       - uses: actions/checkout@v2
-      - run: yarn install
+      - name: Install website dependencies
+        run: yarn install
         working-directory: ./website
-      - run: yarn build
+      - name: Build website
+        run: yarn build
         working-directory: ./website
