@@ -1,18 +1,19 @@
 use logos::Logos;
 use std::fmt;
+use std::ops::Range;
 
-/// The complete set of `LexToken`s some of which never escape the lexer.
-/// See Token for a list of which Tokens do and do not escape.
+/// The complete set of `LexerToken`s some of which never escape the lexer.
+/// See `Token` for a list of which Tokens do and do not escape.
 #[derive(Logos)]
-enum LexToken {
+enum LexerToken {
     #[end]
-    EOF,
+    Eof,
     #[token = ":"]
     Colon,
     #[token = ","]
     Comma,
     #[token = "fun"]
-    Fun,
+    FunTerm,
     #[token = "=>"]
     DArrow,
     #[token = "->"]
@@ -59,11 +60,13 @@ enum LexToken {
     Error,
 }
 
-/// The subset of `LexToken`s for the parser.
-/// The tokens in `LexToken`s which are excluded from this enum are:
-/// * Whitespace -- skipped.
-/// * EOF -- turned into None, rather than a token.
-/// * Error -- turned into Some(Err(...)).
+/// The subset of `LexerToken`s for the parser.
+///
+/// The tokens in `LexerToken`s which are excluded from this enum are:
+///
+/// - `Whitespace`: skipped.
+/// - `Eof`: turned into `None`, rather than a token.
+/// - `Error`: turned into `Some(Err(...))`.
 ///
 /// Comment while a valid token has been reserved but is not currently
 /// emitted by the lexer.
@@ -71,7 +74,7 @@ enum LexToken {
 pub enum Token<'a> {
     Colon,
     Comma,
-    Fun,
+    FunTerm,
     DArrow,
     Arrow,
     LParen,
@@ -98,7 +101,7 @@ impl<'a> fmt::Display for Token<'a> {
         match self {
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
-            Token::Fun => write!(f, "Fun"),
+            Token::FunTerm => write!(f, "fun"),
             Token::DArrow => write!(f, "=>"),
             Token::Arrow => write!(f, "->"),
             Token::LParen => write!(f, "("),
@@ -121,72 +124,81 @@ impl<'a> fmt::Display for Token<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct LexicalError(std::ops::Range<usize>, &'static str);
+#[derive(Debug, Clone)]
+pub enum LexerError {
+    InvalidToken(Range<usize>),
+}
 
-impl fmt::Display for LexicalError {
+impl fmt::Display for LexerError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Lexical error: {:?} {}", self.0, self.1)
+        match self {
+            LexerError::InvalidToken(range) => write!(f, "Invalid token: {:?}", range),
+        }
     }
 }
 
-pub struct Tokens<'a>(logos::Lexer<LexToken, &'a str>);
+pub struct Tokens<'a> {
+    lexer: logos::Lexer<LexerToken, &'a str>,
+}
+
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
 impl<'a> Tokens<'a> {
     pub fn new(source: &'a str) -> Tokens<'a> {
-        Tokens(LexToken::lexer(source))
+        Tokens {
+            lexer: LexerToken::lexer(source),
+        }
     }
 }
 
 impl<'a> Iterator for Tokens<'a> {
-    type Item = Spanned<Token<'a>, usize, LexicalError>;
+    type Item = Spanned<Token<'a>, usize, LexerError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let lex = &mut self.0;
+        let lexer = &mut self.lexer;
 
         const fn tok<'a>(
-            r: std::ops::Range<usize>,
+            r: Range<usize>,
             t: Token<'a>,
-        ) -> Option<Spanned<Token<'a>, usize, LexicalError>> {
+        ) -> Option<Spanned<Token<'a>, usize, LexerError>> {
             Some(Ok((r.start, t, r.end)))
         }
 
-        let range = lex.range();
+        let range = lexer.range();
 
         let token = loop {
-            match &lex.token {
-                // There doesn't seem to be any harm in advancing after EOF.
+            match &lexer.token {
+                // There doesn't seem to be any harm in advancing after `Eof`.
                 // But we might as well return.
-                LexToken::EOF => return None,
-                LexToken::Error => break Some(Err(LexicalError(range, "Lexical error"))),
-                LexToken::Whitespace | LexToken::Comment => {
-                    lex.advance();
+                LexerToken::Eof => return None,
+                LexerToken::Error => break Some(Err(LexerError::InvalidToken(range))),
+                LexerToken::Whitespace | LexerToken::Comment => {
+                    lexer.advance();
                     continue;
                 }
-                LexToken::Colon => break tok(range, Token::Colon),
-                LexToken::Comma => break tok(range, Token::Comma),
-                LexToken::Fun => break tok(range, Token::Fun),
-                LexToken::DArrow => break tok(range, Token::DArrow),
-                LexToken::Arrow => break tok(range, Token::Arrow),
-                LexToken::LParen => break tok(range, Token::LParen),
-                LexToken::RParen => break tok(range, Token::RParen),
-                LexToken::LBrack => break tok(range, Token::LBrack),
-                LexToken::RBrack => break tok(range, Token::RBrack),
-                LexToken::LBrace => break tok(range, Token::LBrace),
-                LexToken::RBrace => break tok(range, Token::RBrace),
-                LexToken::Dot => break tok(range, Token::Dot),
-                LexToken::Equal => break tok(range, Token::Equal),
-                LexToken::RecordTerm => break tok(range, Token::RecordTerm),
-                LexToken::RecordType => break tok(range, Token::RecordType),
-                LexToken::Name => break tok(range, Token::Name(lex.slice())),
-                LexToken::Shift => break tok(range, Token::Shift(lex.slice())),
-                LexToken::NumLiteral => break tok(range, Token::NumLiteral(lex.slice())),
-                LexToken::CharLiteral => break tok(range, Token::CharLiteral(lex.slice())),
-                LexToken::StrLiteral => break tok(range, Token::StrLiteral(lex.slice())),
+                LexerToken::Colon => break tok(range, Token::Colon),
+                LexerToken::Comma => break tok(range, Token::Comma),
+                LexerToken::FunTerm => break tok(range, Token::FunTerm),
+                LexerToken::DArrow => break tok(range, Token::DArrow),
+                LexerToken::Arrow => break tok(range, Token::Arrow),
+                LexerToken::LParen => break tok(range, Token::LParen),
+                LexerToken::RParen => break tok(range, Token::RParen),
+                LexerToken::LBrack => break tok(range, Token::LBrack),
+                LexerToken::RBrack => break tok(range, Token::RBrack),
+                LexerToken::LBrace => break tok(range, Token::LBrace),
+                LexerToken::RBrace => break tok(range, Token::RBrace),
+                LexerToken::Dot => break tok(range, Token::Dot),
+                LexerToken::Equal => break tok(range, Token::Equal),
+                LexerToken::RecordTerm => break tok(range, Token::RecordTerm),
+                LexerToken::RecordType => break tok(range, Token::RecordType),
+                LexerToken::Name => break tok(range, Token::Name(lexer.slice())),
+                LexerToken::Shift => break tok(range, Token::Shift(lexer.slice())),
+                LexerToken::NumLiteral => break tok(range, Token::NumLiteral(lexer.slice())),
+                LexerToken::CharLiteral => break tok(range, Token::CharLiteral(lexer.slice())),
+                LexerToken::StrLiteral => break tok(range, Token::StrLiteral(lexer.slice())),
             }
         };
-        lex.advance();
+        lexer.advance();
         token
     }
 }
@@ -195,7 +207,7 @@ impl<'a> Iterator for Tokens<'a> {
 fn behavior_after_error() {
     let starts_with_invalid = "@.";
     // [Err(...), Some(Token::DOT)]
-    let from_lex: Vec<Spanned<Token<'static>, usize, LexicalError>> =
+    let from_lex: Vec<Spanned<Token<'static>, usize, LexerError>> =
         Tokens::new(starts_with_invalid).collect();
     let result: Vec<bool> = from_lex.iter().map(Result::is_ok).collect();
     assert_eq!(result, vec![false, true]);
