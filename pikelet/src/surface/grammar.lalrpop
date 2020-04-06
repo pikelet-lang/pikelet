@@ -1,35 +1,36 @@
 use std::ops::Range;
 
 use crate::surface::{Term, Literal};
-use crate::surface::lex::{LexicalError, Token};
+use crate::surface::lexer::{LexerError, Token};
 
 grammar<'input>;
 
 extern {
-  type Location = usize;
-  type Error = LexicalError;
-  enum Token<'input> {
-    "->"  => Token::Arrow,
-    "=>"  => Token::DArrow,
-    ":"   => Token::Colon,
-    ","   => Token::Comma,
-    "."   => Token::Dot,
-    "fun" => Token::Fun,
-    "record" => Token::RecordTerm,
-    "Record" => Token::RecordType,
-    "{" => Token::LBrace,
-    "}" => Token::RBrace,
-    "[" => Token::LBrack,
-    "]" => Token::RBrack,
-    "(" => Token::LParen,
-    ")" => Token::RParen,
-    "=" => Token::Equal,
-    CharLiteral => Token::CharLiteral(<&'input str>),
-    StrLiteral => Token::StrLiteral(<&'input str>),
-    NumLiteral => Token::NumLiteral(<&'input  str>),
-    Id => Token::Name(<&'input str>),
-    Shift => Token::Shift(<&'input str>),
-  }
+    type Location = usize;
+    type Error = LexerError;
+
+    enum Token<'input> {
+        "->"  => Token::Arrow,
+        "=>"  => Token::DArrow,
+        ":"   => Token::Colon,
+        ","   => Token::Comma,
+        "."   => Token::Dot,
+        "fun" => Token::FunTerm,
+        "record" => Token::RecordTerm,
+        "Record" => Token::RecordType,
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
+        "[" => Token::LBrack,
+        "]" => Token::RBrack,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "=" => Token::Equal,
+        CharLiteral => Token::CharLiteral(<&'input str>),
+        StrLiteral => Token::StrLiteral(<&'input str>),
+        NumLiteral => Token::NumLiteral(<&'input  str>),
+        Id => Token::Name(<&'input str>),
+        Shift => Token::Shift(<&'input str>),
+    }
 }
 
 pub Term: Term<&'input str> = {
