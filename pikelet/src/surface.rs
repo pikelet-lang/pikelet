@@ -46,7 +46,7 @@ type ParseError<'input> = lalrpop_util::ParseError<usize, lexer::Token<'input>, 
 impl<'input> Term<&'input str> {
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
-        let tokens = lexer::Tokens::new(input);
+        let tokens = lexer::tokens(input);
         grammar::TermParser::new().parse(tokens)
     }
 }
