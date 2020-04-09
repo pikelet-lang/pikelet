@@ -2,12 +2,10 @@ use logos::Logos;
 use std::fmt;
 use std::ops::Range;
 
-/// The complete set of `LexerToken`s some of which never escape the lexer.
-/// See `Token` for a list of which Tokens do and do not escape.
-#[derive(Logos)]
-enum LexerToken {
-    #[end]
-    Eof,
+/// Tokens in the surface language.
+#[derive(Debug, Clone, Logos)]
+#[logos(trivia = r"(\p{Whitespace}|--(.*)\n)")]
+pub enum Token<'a> {
     #[token = ":"]
     Colon,
     #[token = ","]
@@ -38,62 +36,22 @@ enum LexerToken {
     Dot,
     #[token = "="]
     Equal,
-    #[regex = r"\-\-(.*)\n"]
-    Comment,
     // Hmm, not sure why this doesn't work.
     // #[regex = r#"'(.|\\"|\\')*'"#]
-    #[regex = r#"('[^'\\]|\\t|\\u|\\n|\\"|\\')*'"#]
-    CharLiteral,
+    #[regex(r#"('[^'\\]|\\t|\\u|\\n|\\"|\\')*'"#, |lexer| lexer.slice())]
+    CharLiteral(&'a str),
     // Ditto.
     // #[regex = r#""(.|\\"|\\')*""#]
-    #[regex = r#""([^"\\]|\\t|\\u|\\n|\\"|\\')*""#]
-    StrLiteral,
-    #[regex = r"[-+]?[0-9]+(\.[0-9]+)?"]
-    NumLiteral,
-    #[regex = r"[a-zA-Z][a-zA-Z0-9\-]*"]
-    Name,
-    #[regex = r"\^[0-9]+(\.[0-9]+)?"]
-    Shift,
-    #[regex = r"\p{Whitespace}"]
-    Whitespace,
+    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\"|\\')*""#, |lexer| lexer.slice())]
+    StrLiteral(&'a str),
+    #[regex(r"[-+]?[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
+    NumLiteral(&'a str),
+    #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*", |lexer| lexer.slice())]
+    Name(&'a str),
+    #[regex(r"\^[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
+    Shift(&'a str),
     #[error]
     Error,
-}
-
-/// The subset of `LexerToken`s for the parser.
-///
-/// The tokens in `LexerToken`s which are excluded from this enum are:
-///
-/// - `Whitespace`: skipped.
-/// - `Eof`: turned into `None`, rather than a token.
-/// - `Error`: turned into `Some(Err(...))`.
-///
-/// Comment while a valid token has been reserved but is not currently
-/// emitted by the lexer.
-#[derive(Debug, Clone)]
-pub enum Token<'a> {
-    Colon,
-    Comma,
-    FunTerm,
-    DArrow,
-    Arrow,
-    LParen,
-    RParen,
-    LBrack,
-    RBrack,
-    LBrace,
-    RBrace,
-    RecordTerm,
-    RecordType,
-    Equal,
-    Dot,
-    CharLiteral(&'a str),
-    StrLiteral(&'a str),
-    NumLiteral(&'a str),
-    Name(&'a str),
-    Shift(&'a str),
-    // Not in use at this time.
-    Comment(&'a str),
 }
 
 impl<'a> fmt::Display for Token<'a> {
@@ -114,12 +72,12 @@ impl<'a> fmt::Display for Token<'a> {
             Token::RecordType => write!(f, "Record"),
             Token::Equal => write!(f, "="),
             Token::Dot => write!(f, "."),
-            Token::Comment(s) => write!(f, "Comment({})", s),
-            Token::CharLiteral(s) => write!(f, "CharLiteral({})", s),
-            Token::StrLiteral(s) => write!(f, "StrLiteral({})", s),
-            Token::NumLiteral(s) => write!(f, "NumLiteral({})", s),
-            Token::Name(s) => write!(f, "Write({})", s),
-            Token::Shift(s) => write!(f, "Shift({})", s),
+            Token::CharLiteral(s) => write!(f, "{}", s),
+            Token::StrLiteral(s) => write!(f, "{}", s),
+            Token::NumLiteral(s) => write!(f, "{}", s),
+            Token::Name(s) => write!(f, "{}", s),
+            Token::Shift(s) => write!(f, "{}", s),
+            Token::Error => write!(f, "<error>"),
         }
     }
 }
@@ -137,70 +95,17 @@ impl fmt::Display for LexerError {
     }
 }
 
-pub struct Tokens<'a> {
-    lexer: logos::Lexer<LexerToken, &'a str>,
-}
-
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
-impl<'a> Tokens<'a> {
-    pub fn new(source: &'a str) -> Tokens<'a> {
-        Tokens {
-            lexer: LexerToken::lexer(source),
-        }
-    }
-}
-
-impl<'a> Iterator for Tokens<'a> {
-    type Item = Spanned<Token<'a>, usize, LexerError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let lexer = &mut self.lexer;
-
-        const fn tok<'a>(
-            r: Range<usize>,
-            t: Token<'a>,
-        ) -> Option<Spanned<Token<'a>, usize, LexerError>> {
-            Some(Ok((r.start, t, r.end)))
-        }
-
-        let range = lexer.range();
-
-        let token = loop {
-            match &lexer.token {
-                // There doesn't seem to be any harm in advancing after `Eof`.
-                // But we might as well return.
-                LexerToken::Eof => return None,
-                LexerToken::Error => break Some(Err(LexerError::InvalidToken(range))),
-                LexerToken::Whitespace | LexerToken::Comment => {
-                    lexer.advance();
-                    continue;
-                }
-                LexerToken::Colon => break tok(range, Token::Colon),
-                LexerToken::Comma => break tok(range, Token::Comma),
-                LexerToken::FunTerm => break tok(range, Token::FunTerm),
-                LexerToken::DArrow => break tok(range, Token::DArrow),
-                LexerToken::Arrow => break tok(range, Token::Arrow),
-                LexerToken::LParen => break tok(range, Token::LParen),
-                LexerToken::RParen => break tok(range, Token::RParen),
-                LexerToken::LBrack => break tok(range, Token::LBrack),
-                LexerToken::RBrack => break tok(range, Token::RBrack),
-                LexerToken::LBrace => break tok(range, Token::LBrace),
-                LexerToken::RBrace => break tok(range, Token::RBrace),
-                LexerToken::Dot => break tok(range, Token::Dot),
-                LexerToken::Equal => break tok(range, Token::Equal),
-                LexerToken::RecordTerm => break tok(range, Token::RecordTerm),
-                LexerToken::RecordType => break tok(range, Token::RecordType),
-                LexerToken::Name => break tok(range, Token::Name(lexer.slice())),
-                LexerToken::Shift => break tok(range, Token::Shift(lexer.slice())),
-                LexerToken::NumLiteral => break tok(range, Token::NumLiteral(lexer.slice())),
-                LexerToken::CharLiteral => break tok(range, Token::CharLiteral(lexer.slice())),
-                LexerToken::StrLiteral => break tok(range, Token::StrLiteral(lexer.slice())),
-            }
-        };
-        lexer.advance();
-        token
-    }
+pub fn tokens<'a>(
+    source: &'a str,
+) -> impl 'a + Iterator<Item = Spanned<Token<'a>, usize, LexerError>> {
+    Token::lexer(source)
+        .spanned()
+        .map(|(token, range)| match token {
+            Token::Error => Err(LexerError::InvalidToken(range)),
+            token => Ok((range.start, token, range.end)),
+        })
 }
 
 #[test]
@@ -208,7 +113,7 @@ fn behavior_after_error() {
     let starts_with_invalid = "@.";
     // [Err(...), Some(Token::DOT)]
     let from_lex: Vec<Spanned<Token<'static>, usize, LexerError>> =
-        Tokens::new(starts_with_invalid).collect();
+        tokens(starts_with_invalid).collect();
     let result: Vec<bool> = from_lex.iter().map(Result::is_ok).collect();
     assert_eq!(result, vec![false, true]);
 }
