@@ -21,7 +21,7 @@ itertools = "0.8"
 lalrpop-util = "0.17"
 pretty = "0.9"
 regex = "1.3"
-logos = " 0.11.0-rc2"
+logos = "0.11.0-rc2"
 
 [build-dependencies]
 lalrpop = "0.17"
