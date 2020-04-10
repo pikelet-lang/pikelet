@@ -10,6 +10,12 @@ extern {
     type Error = LexerError;
 
     enum Token<'input> {
+        "doc comment" => Token::DocComment(<&'input str>),
+        "character literal" => Token::CharLiteral(<&'input str>),
+        "string literal" => Token::StrLiteral(<&'input str>),
+        "numeric literal" => Token::NumLiteral(<&'input  str>),
+        "name" => Token::Name(<&'input str>),
+        "shift" => Token::Shift(<&'input str>),
         "->"  => Token::Arrow,
         "=>"  => Token::DArrow,
         ":"   => Token::Colon,
@@ -25,11 +31,6 @@ extern {
         "(" => Token::LParen,
         ")" => Token::RParen,
         "=" => Token::Equal,
-        CharLiteral => Token::CharLiteral(<&'input str>),
-        StrLiteral => Token::StrLiteral(<&'input str>),
-        NumLiteral => Token::NumLiteral(<&'input  str>),
-        Id => Token::Name(<&'input str>),
-        Shift => Token::Shift(<&'input str>),
     }
 }
 
@@ -67,7 +68,7 @@ AtomicTerm: Term<&'input str> = {
     <start: @L> "Record" "{" <entries: List<TypeEntry>> "}" <end: @R> => Term::RecordType(start..end, entries),
     <start: @L> "record" "{" <entries: List<TermEntry>> "}" <end: @R> => Term::RecordTerm(start..end, entries),
     <head: AtomicTerm> "." <name_start: @L> <name: Name> <end: @R> => Term::RecordElim(Box::new(head), name_start..end, name),
-    <start: @L> <term: AtomicTerm> <shift:Shift> <end: @R> => {
+    <start: @L> <term: AtomicTerm> <shift: "shift"> <end: @R> => {
         Term::Lift(start..end, Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
     },
 };
@@ -80,11 +81,17 @@ List<Entry>: Vec<Entry> = {
 }
 
 TypeEntry: (Range<usize>, &'input str, Term<&'input str>) = {
-    <start: @L> <name: Name> <end: @R> ":" <term: Term> => (start..end, name, term),
+    <_docs: "doc comment"*> <start: @L> <name: Name> <end: @R> ":" <term: Term> => {
+        // TODO: Use doc comments
+        (start..end, name, term)
+    },
 };
 
 TermEntry: (Range<usize>, &'input str, Term<&'input str>) = {
-    <start: @L> <name: Name> <end: @R> "=" <term: Term> => (start..end, name, term),
+    <_docs: "doc comment"*> <start: @L> <name: Name> <end: @R> "=" <term: Term> => {
+        // TODO: Use doc comments
+        (start..end, name, term)
+    },
 };
 
 ParamName: (Range<usize>,&'input str) = {
@@ -92,11 +99,11 @@ ParamName: (Range<usize>,&'input str) = {
 };
 
 Name: &'input str = {
-    Id,
+    "name",
 };
 
 Literal: Literal<&'input str> = {
-    CharLiteral => Literal::Char(<>),
-    StrLiteral => Literal::String(<>),
-    NumLiteral => Literal::Number(<>),
+    "character literal" => Literal::Char(<>),
+    "string literal" => Literal::String(<>),
+    "numeric literal" => Literal::Number(<>),
 };
