@@ -40,9 +40,9 @@ pub enum Token<'a> {
     LBrace,
     #[token = "}"]
     RBrace,
-    #[token = r"record"]
+    #[token = "record"]
     RecordTerm,
-    #[token = r"Record"]
+    #[token = "Record"]
     RecordType,
     #[token = "."]
     Dot,
