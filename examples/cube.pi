@@ -23,7 +23,10 @@ record {
         record { point = [1, 1, -1], normal = [0, 0, 1], color = [1, 0, 1, 1] },
     ],
 } : Record {
+    ||| The type of vertex in the mesh.
     Vertex : Type,
+    ||| The index data to use.
     index-data : List U16,
+    ||| The vertex data.
     vertex-data : List Vertex,
 }

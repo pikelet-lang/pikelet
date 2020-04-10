@@ -4,8 +4,20 @@ use std::ops::Range;
 
 /// Tokens in the surface language.
 #[derive(Debug, Clone, Logos)]
-#[logos(trivia = r"(\p{Whitespace}|--(.*)\n)")]
+#[logos(trivia = r"\p{Whitespace}|--(.*)\n")]
 pub enum Token<'a> {
+    #[regex(r"\|\|\|(.*)\n", |lexer| lexer.slice())]
+    DocComment(&'a str),
+    #[regex(r#"('[^'\\]|\\')*'"#, |lexer| lexer.slice())]
+    CharLiteral(&'a str),
+    #[regex(r#""([^"\\]|\\")*""#, |lexer| lexer.slice())]
+    StrLiteral(&'a str),
+    #[regex(r"[-+]?[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
+    NumLiteral(&'a str),
+    #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*", |lexer| lexer.slice())]
+    Name(&'a str),
+    #[regex(r"\^[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
+    Shift(&'a str),
     #[token = ":"]
     Colon,
     #[token = ","]
@@ -36,20 +48,6 @@ pub enum Token<'a> {
     Dot,
     #[token = "="]
     Equal,
-    // Hmm, not sure why this doesn't work.
-    // #[regex = r#"'(.|\\"|\\')*'"#]
-    #[regex(r#"('[^'\\]|\\t|\\u|\\n|\\"|\\')*'"#, |lexer| lexer.slice())]
-    CharLiteral(&'a str),
-    // Ditto.
-    // #[regex = r#""(.|\\"|\\')*""#]
-    #[regex(r#""([^"\\]|\\t|\\u|\\n|\\"|\\')*""#, |lexer| lexer.slice())]
-    StrLiteral(&'a str),
-    #[regex(r"[-+]?[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
-    NumLiteral(&'a str),
-    #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*", |lexer| lexer.slice())]
-    Name(&'a str),
-    #[regex(r"\^[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
-    Shift(&'a str),
     #[error]
     Error,
 }
@@ -57,6 +55,12 @@ pub enum Token<'a> {
 impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Token::DocComment(s) => write!(f, "{}", s),
+            Token::CharLiteral(s) => write!(f, "{}", s),
+            Token::StrLiteral(s) => write!(f, "{}", s),
+            Token::NumLiteral(s) => write!(f, "{}", s),
+            Token::Name(s) => write!(f, "{}", s),
+            Token::Shift(s) => write!(f, "{}", s),
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
             Token::FunTerm => write!(f, "fun"),
@@ -72,11 +76,6 @@ impl<'a> fmt::Display for Token<'a> {
             Token::RecordType => write!(f, "Record"),
             Token::Equal => write!(f, "="),
             Token::Dot => write!(f, "."),
-            Token::CharLiteral(s) => write!(f, "{}", s),
-            Token::StrLiteral(s) => write!(f, "{}", s),
-            Token::NumLiteral(s) => write!(f, "{}", s),
-            Token::Name(s) => write!(f, "{}", s),
-            Token::Shift(s) => write!(f, "{}", s),
             Token::Error => write!(f, "<error>"),
         }
     }
