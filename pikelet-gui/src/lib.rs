@@ -1,22 +1,29 @@
-use iced::{Column, Container, Element, Row, Sandbox, Settings, Text};
+use iced::{Column, Container, Element, Row, Sandbox, Settings, Text, TextInput};
 
 pub fn run() {
-    Workspace::run(Settings::default())
+    State::run(Settings::default())
 }
 
 #[derive(Debug, Clone)]
-pub enum Message {}
-
-pub struct Workspace {
-    globals: pikelet::core::Globals,
+pub enum Message {
+    InputChanged(String),
+    InputSubmit,
 }
 
-impl Sandbox for Workspace {
+pub struct State {
+    globals: pikelet::core::Globals,
+    input: iced::text_input::State,
+    input_value: String,
+}
+
+impl Sandbox for State {
     type Message = Message;
 
-    fn new() -> Workspace {
-        Workspace {
+    fn new() -> State {
+        State {
             globals: pikelet::core::Globals::default(),
+            input: iced::text_input::State::default(),
+            input_value: "".to_owned(),
         }
     }
 
@@ -25,15 +32,28 @@ impl Sandbox for Workspace {
     }
 
     fn update(&mut self, message: Message) {
-        match message {}
+        match message {
+            Message::InputChanged(value) => {
+                self.input_value = value;
+            }
+            Message::InputSubmit => {
+                // TODO: execute expression
+                self.input_value.clear();
+            }
+        }
     }
 
     fn view(&mut self) -> Element<Message> {
-        let Workspace { globals } = self;
+        let State {
+            globals,
+            input,
+            input_value,
+        } = self;
 
         Container::new(
             Column::new()
                 .push(Text::new("Hi this is Pikelet!"))
+                // TODO: Move to separate window?
                 .push(Text::new("Globals:"))
                 .push(
                     globals
@@ -53,6 +73,15 @@ impl Sandbox for Workspace {
                                 }
                             })
                         }),
+                )
+                .push(
+                    TextInput::new(
+                        input,
+                        "Pikelet expression…",
+                        input_value,
+                        Message::InputChanged,
+                    )
+                    .on_submit(Message::InputSubmit),
                 ),
         )
         .into()
