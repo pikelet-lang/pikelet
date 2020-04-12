@@ -432,6 +432,10 @@ pub fn synth_term<S: AsRef<str>>(
                 core_type_value,
             )
         }
+        Term::Let(_, _bindings, term) => {
+            // FIXME need to do something with bindings/locals here.
+            synth_term(state, term)
+        }
         Term::Literal(_, literal) => match literal {
             Literal::Number(_) => {
                 state.report(Message::AmbiguousTerm {

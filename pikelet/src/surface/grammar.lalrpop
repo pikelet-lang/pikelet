@@ -20,8 +20,11 @@ extern {
         "=>"  => Token::DArrow,
         ":"   => Token::Colon,
         ","   => Token::Comma,
+        ";"   => Token::Semi,
         "."   => Token::Dot,
         "fun" => Token::FunTerm,
+        "let" => Token::Let,
+        "in"  => Token::In,
         "record" => Token::RecordTerm,
         "Record" => Token::RecordType,
         "{" => Token::LBrace,
@@ -39,10 +42,25 @@ pub Term: Term<&'input str> = {
     <term: ExprTerm> ":" <ty: Term> => Term::Ann(Box::new(term), Box::new(ty)),
 };
 
+Items<Item>: Vec<Item> = {
+    <mut bindings: (<Item> ";")+> <last: Item?> => {
+        bindings.extend(last);
+        bindings
+    }
+}
+
+Item: (Range<usize>, &'input str, Term<&'input str>) = {
+  TermEntry,
+  TypeEntry,
+}
+
 ExprTerm: Term<&'input str> = {
     ArrowTerm,
     <start: @L> "fun" <param_names: ParamName+> "=>" <body: ExprTerm> => {
         Term::FunctionTerm(start.., param_names, Box::new(body))
+    },
+    <start: @L> "let" <bindings: Items<Item>> "in" <expr: ExprTerm> => {
+        Term::Let(start.., bindings, Box::new(expr))
     },
 };
 

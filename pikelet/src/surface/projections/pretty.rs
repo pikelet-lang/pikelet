@@ -45,6 +45,15 @@ where
                         .nest(4),
                 ),
         ),
+        // Needs testing.
+        Term::Let(_, bindings, term) => (alloc.nil())
+            .append("let")
+            .append(alloc.intersperse(
+                bindings.iter().map(|t| pretty_term_prec(alloc, &t.2, prec)),
+                alloc.text(";").append(alloc.space()),
+            ))
+            .append("in")
+            .append(pretty_term_prec(alloc, term, prec)),
         Term::Literal(_, literal) => pretty_literal(alloc, literal),
         Term::Sequence(_, term_entries) => (alloc.nil())
             .append("[")

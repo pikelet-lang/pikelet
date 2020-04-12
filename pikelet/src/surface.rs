@@ -35,6 +35,12 @@ pub enum Term<S> {
     FunctionTerm(RangeFrom<usize>, Vec<(Range<usize>, S)>, Box<Term<S>>),
     /// Function eliminations (function application).
     FunctionElim(Box<Term<S>>, Vec<Term<S>>),
+    /// Let.
+    Let(
+        RangeFrom<usize>,
+        Vec<(Range<usize>, S, Term<S>)>,
+        Box<Term<S>>,
+    ),
     /// Lift a term by the given number of universe levels.
     Lift(Range<usize>, Box<Term<S>>, u32),
     /// Error sentinel.
@@ -61,6 +67,7 @@ impl<T> Term<T> {
             | Term::RecordTerm(range, _)
             | Term::Lift(range, _, _)
             | Term::Error(range) => range.clone(),
+            Term::Let(rfrom, _, term) => rfrom.start..term.range().end,
             Term::Ann(term, r#type) => term.range().start..r#type.range().end,
             Term::RecordElim(term, name_range, _) => term.range().start..name_range.end,
             Term::FunctionType(param_type, body_type) => {

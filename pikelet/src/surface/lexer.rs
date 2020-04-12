@@ -23,6 +23,12 @@ pub enum Token<'a> {
     Comma,
     #[token("fun")]
     FunTerm,
+    #[token(";")]
+    Semi,
+    #[token("let")]
+    Let,
+    #[token("in")]
+    In,
     #[token("=>")]
     DArrow,
     #[token("->")]
@@ -63,7 +69,10 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Shift(s) => write!(f, "{}", s),
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
+            Token::Semi => write!(f, ";"),
             Token::FunTerm => write!(f, "fun"),
+            Token::Let => write!(f, "let"),
+            Token::In => write!(f, "in"),
             Token::DArrow => write!(f, "=>"),
             Token::Arrow => write!(f, "->"),
             Token::LParen => write!(f, "("),

@@ -70,6 +70,11 @@ fn cube() {
 }
 
 #[test]
+fn r#let() {
+    run_test("examples/let.pi", include_str!("../../examples/let.pi"));
+}
+
+#[test]
 fn functions() {
     run_test(
         "examples/functions.pi",
