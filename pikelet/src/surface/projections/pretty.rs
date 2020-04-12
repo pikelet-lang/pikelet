@@ -2,7 +2,7 @@
 
 use pretty::{DocAllocator, DocBuilder};
 
-use crate::surface::{Literal, Term};
+use crate::surface::{Item, Literal, Term};
 
 /// The precedence of a term.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -49,7 +49,10 @@ where
         Term::Let(_, bindings, term) => (alloc.nil())
             .append("let")
             .append(alloc.intersperse(
-                bindings.iter().map(|t| pretty_term_prec(alloc, &t.2, prec)),
+                bindings.iter().map(|t| match t {
+                    Item::Declaration((_, _, r#type)) => pretty_term_prec(alloc, &r#type, prec),
+                    Item::Definition((_, _, term)) => pretty_term_prec(alloc, &term, prec),
+                }),
                 alloc.text(";").append(alloc.space()),
             ))
             .append("in")

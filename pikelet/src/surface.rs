@@ -36,11 +36,7 @@ pub enum Term<S> {
     /// Function eliminations (function application).
     FunctionElim(Box<Term<S>>, Vec<Term<S>>),
     /// Let.
-    Let(
-        RangeFrom<usize>,
-        Vec<(Range<usize>, S, Term<S>)>,
-        Box<Term<S>>,
-    ),
+    Let(RangeFrom<usize>, Vec<Item<S>>, Box<Term<S>>),
     /// Lift a term by the given number of universe levels.
     Lift(Range<usize>, Box<Term<S>>, u32),
     /// Error sentinel.
@@ -91,4 +87,12 @@ pub enum Literal<S> {
     String(S),
     /// Numeric literals.
     Number(S),
+}
+
+/// An Item is either a Definition, or a Declaration,
+/// With a Definition being a term, and a Declaration being a type.
+#[derive(Debug, Clone)]
+pub enum Item<S> {
+    Definition((Range<usize>, S, Term<S>)),
+    Declaration((Range<usize>, S, Term<S>)),
 }

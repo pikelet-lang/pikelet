@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::surface::{Term, Literal};
+use crate::surface::{Term, Literal, Item};
 use crate::surface::lexer::{LexerError, Token};
 
 grammar<'input>;
@@ -49,9 +49,9 @@ Items<Item>: Vec<Item> = {
     }
 }
 
-Item: (Range<usize>, &'input str, Term<&'input str>) = {
-  TermEntry,
-  TypeEntry,
+Item: Item<&'input str> = {
+  TermEntry => Item::Definition(<>),
+  TypeEntry => Item::Declaration(<>),
 }
 
 ExprTerm: Term<&'input str> = {
