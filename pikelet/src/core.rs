@@ -375,40 +375,39 @@ impl<Entry: Clone + fmt::Debug> fmt::Debug for Locals<Entry> {
 }
 
 pub trait HasType {
-    fn r#type() -> Arc<Value>;
+    fn r#type() -> Arc<Term>;
 }
 
 macro_rules! impl_has_type {
     ($Self:ty, $term:expr) => {
         impl HasType for $Self {
-            fn r#type() -> Arc<Value> {
+            fn r#type() -> Arc<Term> {
                 Arc::new($term)
             }
         }
     };
 }
 
-impl_has_type!(bool, Value::global("Bool", 0, Value::universe(0)));
-impl_has_type!(u8, Value::global("U8", 0, Value::universe(0)));
-impl_has_type!(u16, Value::global("U16", 0, Value::universe(0)));
-impl_has_type!(u32, Value::global("U32", 0, Value::universe(0)));
-impl_has_type!(u64, Value::global("U64", 0, Value::universe(0)));
-impl_has_type!(i8, Value::global("S8", 0, Value::universe(0)));
-impl_has_type!(i16, Value::global("S16", 0, Value::universe(0)));
-impl_has_type!(i32, Value::global("S32", 0, Value::universe(0)));
-impl_has_type!(i64, Value::global("S64", 0, Value::universe(0)));
-impl_has_type!(f32, Value::global("F32", 0, Value::universe(0)));
-impl_has_type!(f64, Value::global("F64", 0, Value::universe(0)));
-impl_has_type!(char, Value::global("Char", 0, Value::universe(0)));
-impl_has_type!(String, Value::global("String", 0, Value::universe(0)));
-impl_has_type!(str, Value::global("String", 0, Value::universe(0)));
+impl_has_type!(bool, Term::global("Bool"));
+impl_has_type!(u8, Term::global("U8"));
+impl_has_type!(u16, Term::global("U16"));
+impl_has_type!(u32, Term::global("U32"));
+impl_has_type!(u64, Term::global("U64"));
+impl_has_type!(i8, Term::global("S8"));
+impl_has_type!(i16, Term::global("S16"));
+impl_has_type!(i32, Term::global("S32"));
+impl_has_type!(i64, Term::global("S64"));
+impl_has_type!(f32, Term::global("F32"));
+impl_has_type!(f64, Term::global("F64"));
+impl_has_type!(char, Term::global("Char"));
+impl_has_type!(String, Term::global("String"));
+impl_has_type!(str, Term::global("String"));
 
 impl<T: HasType> HasType for Vec<T> {
-    fn r#type() -> Arc<Value> {
-        Arc::new(Value::Elim(
-            Head::Global("List".to_owned(), UniverseOffset(0)),
-            vec![Elim::Function(T::r#type(), Arc::new(Value::universe(0)))],
-            Arc::new(Value::universe(0)),
+    fn r#type() -> Arc<Term> {
+        Arc::new(Term::FunctionElim(
+            Arc::new(Term::global("List")),
+            T::r#type(),
         ))
     }
 }
@@ -416,17 +415,13 @@ impl<T: HasType> HasType for Vec<T> {
 macro_rules! impl_has_type_array {
     ($($len:expr),*) => {
         $(impl<T: HasType> HasType for [T; $len] {
-            fn r#type() -> Arc<Value> {
-                Arc::new(Value::Elim(
-                    Head::Global("Array".to_owned(), UniverseOffset(0)),
-                    vec![
-                        Elim::Function(
-                            Arc::new(Value::Constant(Constant::U32($len as u32))),
-                            Arc::new(Value::global("U32", 0, Value::universe(0))),
-                        ),
-                        Elim::Function(T::r#type(), Arc::new(Value::universe(0))),
-                    ],
-                    Arc::new(Value::universe(0)),
+            fn r#type() -> Arc<Term> {
+                Arc::new(Term::FunctionElim(
+                    Arc::new(Term::FunctionElim(
+                        Arc::new(Term::global("Array")),
+                        Arc::new(Term::Constant(Constant::U32($len as u32))),
+                    )),
+                    T::r#type(),
                 ))
             }
         })*
