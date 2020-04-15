@@ -19,12 +19,14 @@ We might also want to eventually investigate implementing the programming enviro
 - [fructure](https://github.com/disconcision/fructure)
 - [Glamorous Toolkit](https://gtoolkit.com/)
 - [Hazel](https://hazel.org/)
+- [Houdini Networks](https://www.sidefx.com/docs/houdini/network/index.html)
 - [Livelits](https://github.com/hazelgrove/livelits-tyde/blob/master/livelits-tyde.pdf)
 - [medit](https://github.com/molikto/medit)
 - [MPS](https://www.jetbrains.com/mps/)
 - [Pharo](https://pharo.org/)
 - [Self](https://www.jetbrains.com/mps/)
 - [Symbolics Lisp](https://twitter.com/RainerJoswig/status/1213528401774071813)
+- [Unreal Blueprints](https://docs.unrealengine.com/en-US/Engine/Blueprints)
 
 ### Collections
 
