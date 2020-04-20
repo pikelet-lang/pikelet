@@ -12,6 +12,7 @@ We might also want to eventually investigate implementing the programming enviro
 
 ### Projects
 
+- [Aardappel](http://strlen.com/aardappel-language/)
 - [Alfa](http://www.cse.chalmers.se/~hallgren/Alfa/)
 - [Dark](https://darklang.com/)
 - [Eve](http://witheve.com/)
@@ -26,6 +27,7 @@ We might also want to eventually investigate implementing the programming enviro
 - [Pharo](https://pharo.org/)
 - [Self](https://www.jetbrains.com/mps/)
 - [Symbolics Lisp](https://twitter.com/RainerJoswig/status/1213528401774071813)
+- [TreeSheets](http://strlen.com/treesheets/)
 - [Unreal Blueprints](https://docs.unrealengine.com/en-US/Engine/Blueprints)
 
 ### Collections
