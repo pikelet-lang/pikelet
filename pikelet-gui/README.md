@@ -32,3 +32,21 @@ We might also want to eventually investigate implementing the programming enviro
 
 - [Visual Programming Codex](https://github.com/ivanreese/visual-programming-codex)
 - [The Whole Code Catalog](https://futureofcoding.org/catalog/)
+
+### Papers
+
+- "Tangible Functional Programming"<br>
+  Conal M. Elliott,
+  [CiteSeer](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.422.6896)
+- "An Extensible Proof Text Editor"<br>
+  Thomas Hallgren, Aarne Ranta,
+  [CiteSeer](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.138.2186)
+- "Interactive visual functional programming"<br>
+  Keith Hanna,
+  [ACM](https://dl.acm.org/doi/10.1145/583852.581493)
+- "A Document-Centered Environment for Haskell"<br>
+  Keith Hanna,
+  [ACM](https://dl.acm.org/doi/10.1007/11964681_12)
+- "Accessible AST-Based Programming for Visually-Impaired Programmers"<br>
+  Emmanuel Schanzer, Sina Bahram, Shriram Krishnamurthi,
+  [PDF](https://cs.brown.edu/~sk/Publications/Papers/Published/sbk-accessible-ast-blocks/paper.pdf)
