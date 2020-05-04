@@ -4,7 +4,6 @@ use std::ops::Range;
 
 /// Tokens in the surface language.
 #[derive(Debug, Clone, Logos)]
-#[logos(trivia = r"\p{Whitespace}|--(.*)\n")]
 pub enum Token<'a> {
     #[regex(r"\|\|\|(.*)\n", |lexer| lexer.slice())]
     DocComment(&'a str),
@@ -18,37 +17,38 @@ pub enum Token<'a> {
     Name(&'a str),
     #[regex(r"\^[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
     Shift(&'a str),
-    #[token = ":"]
+    #[token(":")]
     Colon,
-    #[token = ","]
+    #[token(",")]
     Comma,
-    #[token = "fun"]
+    #[token("fun")]
     FunTerm,
-    #[token = "=>"]
+    #[token("=>")]
     DArrow,
-    #[token = "->"]
+    #[token("->")]
     Arrow,
-    #[token = "("]
+    #[token("(")]
     LParen,
-    #[token = ")"]
+    #[token(")")]
     RParen,
-    #[token = "["]
+    #[token("[")]
     LBrack,
-    #[token = "]"]
+    #[token("]")]
     RBrack,
-    #[token = "{"]
+    #[token("{")]
     LBrace,
-    #[token = "}"]
+    #[token("}")]
     RBrace,
-    #[token = "record"]
+    #[token("record")]
     RecordTerm,
-    #[token = "Record"]
+    #[token("Record")]
     RecordType,
-    #[token = "."]
+    #[token(".")]
     Dot,
-    #[token = "="]
+    #[token("=")]
     Equal,
     #[error]
+    #[regex(r"\p{Whitespace}|--(.*)\n", logos::skip)]
     Error,
 }
 
