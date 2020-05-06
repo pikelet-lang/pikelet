@@ -16,6 +16,7 @@ pub enum AmbiguousTerm {
     Sequence,
     FunctionTerm,
     RecordTerm,
+    Let,
 }
 
 #[derive(Clone, Debug)]
@@ -285,6 +286,7 @@ impl Message {
                         AmbiguousTerm::Sequence => "sequence",
                         AmbiguousTerm::FunctionTerm => "function term",
                         AmbiguousTerm::RecordTerm => "record term",
+                        AmbiguousTerm::Let => "let binding",
                     },
                 ))
                 .with_labels(vec![

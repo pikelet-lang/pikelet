@@ -1,9 +1,14 @@
 let
     id : (a : Type) -> a -> a;
     id = fun a => fun x => x;
+    x : String;
     x = "helloo";
+    y : String;
     y = x;
+    nested : (a : Type) -> a -> a;
     nested =
-    let const = fun x y => x;
+    let
+        const : (a : Type) -> (b: Type) -> a -> b -> a;
+        const = fun x y => x;
      in const id x;
 in record {}

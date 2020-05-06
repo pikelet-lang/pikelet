@@ -96,3 +96,23 @@ pub enum Item<S> {
     Definition((Range<usize>, S, Term<S>)),
     Declaration((Range<usize>, S, Term<S>)),
 }
+
+// Haven't ended up using these.
+/*
+impl<S> Item<S> {
+  pub fn is_definition(self) -> bool {
+    if let Item::Definition(_) = self {
+        true
+    } else {
+        false
+    }
+  }
+  pub fn is_dec(self) -> bool {
+    if let Item::Definition(_) = self {
+        true
+    } else {
+        false
+    }
+  }
+}
+*/

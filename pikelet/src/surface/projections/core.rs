@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::core;
-use crate::surface::{Literal, Term};
+use crate::surface::{Item, Literal, Term};
 
 pub mod reporting;
 
@@ -432,8 +432,52 @@ pub fn synth_term<S: AsRef<str>>(
                 core_type_value,
             )
         }
-        Term::Let(_, _bindings, term) => {
-            // FIXME need to do something with bindings/locals here.
+        Term::Let(_, items, term) => {
+            use std::collections::btree_map::Entry;
+            let mut forward_declarations: BTreeMap<&str, Arc<core::Value>> = BTreeMap::new();
+
+            for item in items {
+                match item {
+                    Item::Declaration((range, name, r#type)) => {
+                        if let Entry::Vacant(entry) = forward_declarations.entry(name.as_ref()) {
+                            let (core_type, _core_term) = check_type(state, r#type);
+                            let core_type_value = state.eval_term(&core_type);
+                            entry.insert(core_type_value);
+                        } else {
+                            // There already exists a declaration with this name.
+                            state.report(Message::AmbiguousTerm {
+                                range: range.clone(),
+                                term: AmbiguousTerm::Let,
+                            });
+                            return (core::Term::Error, Arc::new(core::Value::Error));
+                        }
+                    }
+                    Item::Definition((range, name, term)) => {
+                        match forward_declarations.entry(name.as_ref()) {
+                            Entry::Vacant(_entry) => {
+                                // Unannotated, need to try and infer the type?
+                                state.report(Message::AmbiguousTerm {
+                                    range: range.clone(),
+                                    term: AmbiguousTerm::Let,
+                                });
+                                return (core::Term::Error, Arc::new(core::Value::Error));
+                            }
+                            Entry::Occupied(entry) => {
+                                let term = Arc::new(check_term(state, term, entry.get()));
+                                let value = state.eval_term(&term);
+                                state.push_local(
+                                    name.as_ref().to_string(),
+                                    value,
+                                    Arc::clone(entry.get()),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // FIXME Not sure if this is really the right thing to do,
+            // presumably we need to pop_many_locals somewhere!
             synth_term(state, term)
         }
         Term::Literal(_, literal) => match literal {
