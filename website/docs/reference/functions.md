@@ -25,14 +25,14 @@ S32 -> S32 -> S32
 
 Function types are also types:
 
-```
+```pikelet
 U32 -> U32 : Type
 ```
 
 In order to find the universe level of a function type,
 we use the universe level the largest input or output:
 
-```
+```pikelet
 U32 -> Type^2 : Type^3
 ```
 
