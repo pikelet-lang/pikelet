@@ -10,7 +10,11 @@ module.exports = {
     {
       type: "category",
       label: "Pikelet",
-      items: ["pikelet/introduction", "pikelet/roadmap", "pikelet/contributing"]
+      items: [
+        "pikelet/introduction",
+        "pikelet/roadmap",
+        "pikelet/contributing",
+      ],
     },
     {
       type: "category",
@@ -20,8 +24,8 @@ module.exports = {
         "guide/getting-started",
         "guide/hello-world",
         "guide/data-structures",
-        "guide/modular-programming"
-      ]
+        "guide/modular-programming",
+      ],
     },
     {
       type: "category",
@@ -38,12 +42,12 @@ module.exports = {
             "reference/builtins",
             "reference/functions",
             "reference/records",
-            "reference/universes"
-          ]
+            "reference/universes",
+          ],
         },
         "reference/bibliography",
-        "reference/influences"
-      ]
+        "reference/influences",
+      ],
     },
     {
       type: "category",
@@ -56,8 +60,8 @@ module.exports = {
           items: [
             "specification/surface/lexical-structure",
             "specification/surface/grammar",
-            "specification/surface/elaboration"
-          ]
+            "specification/surface/elaboration",
+          ],
         },
         {
           type: "category",
@@ -65,11 +69,11 @@ module.exports = {
           items: [
             "specification/core/operational-semantics",
             "specification/core/declarative-typing",
-            "specification/core/bidirectional-typing"
-          ]
+            "specification/core/bidirectional-typing",
+          ],
         },
-        "specification/inspiration"
-      ]
-    }
-  ]
+        "specification/inspiration",
+      ],
+    },
+  ],
 };
