@@ -41,7 +41,7 @@ Here the type of `a` _depends_ on the type given to `A`.
 
 Record types are also types:
 
-```
+```pikelet
 Record {
   first : U32,
 } : Type
