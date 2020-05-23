@@ -9,19 +9,19 @@ module.exports = {
   themeConfig: {
     // sidebarCollapsible: false,
     prism: {
-      theme: require("prism-react-renderer/themes/palenight")
+      theme: require("prism-react-renderer/themes/palenight"),
     },
     navbar: {
       title: "Pikelet",
       logo: {
         alt: "My Site Logo",
-        src: "img/logo.svg"
+        src: "img/logo.svg",
       },
       links: [
         {
           label: "Docs",
           to: "docs/pikelet/introduction",
-          position: "right"
+          position: "right",
         },
         // {
         //   label: "Blog",
@@ -31,14 +31,14 @@ module.exports = {
         {
           label: "GitHub",
           href: "https://github.com/pikelet-lang/pikelet",
-          position: "right"
+          position: "right",
         },
         {
           label: "Gitter",
           href: "https://gitter.im/pikelet-lang/Lobby",
-          position: "right"
-        }
-      ]
+          position: "right",
+        },
+      ],
     },
     footer: {
       style: "dark",
@@ -48,42 +48,42 @@ module.exports = {
           items: [
             { to: "docs/guide", label: "Guide" },
             { to: "docs/reference", label: "Reference" },
-            { to: "docs/specification", label: "Specification" }
-          ]
+            { to: "docs/specification", label: "Specification" },
+          ],
         },
         {
           title: "Community",
           items: [
             {
               label: "Gitter",
-              href: "https://gitter.im/pikelet-lang/Lobby"
+              href: "https://gitter.im/pikelet-lang/Lobby",
             },
             {
               label: "Discord (Unofficial)",
-              href: "https://discord.gg/vQtyxjZ"
-            }
-          ]
+              href: "https://discord.gg/vQtyxjZ",
+            },
+          ],
         },
         {
           title: "Social",
           items: [
             {
               label: "Blog",
-              to: "blog"
+              to: "blog",
             },
             {
               label: "GitHub",
-              href: "https://github.com/pikelet-lang/pikelet"
+              href: "https://github.com/pikelet-lang/pikelet",
             },
             {
               label: "Twitter",
-              href: "https://twitter.com/pikelet-lang"
-            }
-          ]
-        }
+              href: "https://twitter.com/pikelet-lang",
+            },
+          ],
+        },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Brendan Zabarauskas. Built with Docusaurus.`
-    }
+      copyright: `Copyright © ${new Date().getFullYear()} Brendan Zabarauskas. Built with Docusaurus.`,
+    },
   },
   presets: [
     [
@@ -93,7 +93,6 @@ module.exports = {
           sidebarPath: require.resolve("./sidebars.js"),
           editUrl:
             "https://github.com/pikelet-lang/pikelet/edit/master/website/",
-          remarkPlugins: [[require("remark-admonitions"), {}]]
         },
         // blog: {
         //   feedOptions: {
@@ -104,9 +103,9 @@ module.exports = {
         //   }
         // },
         theme: {
-          customCss: require.resolve("./src/css/custom.css")
-        }
-      }
-    ]
-  ]
+          customCss: require.resolve("./src/css/custom.css"),
+        },
+      },
+    ],
+  ],
 };
