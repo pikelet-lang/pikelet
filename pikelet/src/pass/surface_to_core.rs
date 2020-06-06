@@ -113,13 +113,25 @@ impl<'me> State<'me> {
         core::semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
-    /// Eliminate a closure.
-    fn eval_closure_elim(
-        &self,
-        closure: &core::Closure,
-        argument: Arc<core::Value>,
-    ) -> Arc<core::Value> {
-        core::semantics::eval_closure_elim(self.globals, closure, argument)
+    /// Apply a callback to each of the entry types in the record closure.
+    pub fn record_closure_entries<'closure>(
+        &mut self,
+        closure: &'closure core::RecordTypeClosure,
+        mut on_entry: impl FnMut(&mut State<'me>, &'closure str, Arc<core::Value>) -> Arc<core::Value>,
+    ) {
+        core::semantics::record_closure_entries(self.globals, closure, |entry_name, entry_type| {
+            on_entry(self, entry_name, entry_type)
+        })
+    }
+
+    /// Return the type of the record elimination.
+    pub fn eval_record_closure_elim_type(
+        &mut self,
+        head_value: &core::Value,
+        name: &str,
+        closure: &core::RecordTypeClosure,
+    ) -> Option<Arc<core::Value>> {
+        core::semantics::record_closure_elim_type(self.globals, head_value, name, closure)
     }
 
     /// Normalize a term using the current state of the elaborator.
@@ -284,14 +296,13 @@ pub fn check_type<S: AsRef<str>>(
             });
             core::Term::Error
         }
-        (Term::RecordTerm(_, term_entries), _) => {
+        (Term::RecordTerm(_, term_entries), core::Value::RecordType(closure)) => {
             use std::collections::btree_map::Entry;
             use std::collections::BTreeMap;
 
             let mut duplicate_names = Vec::new();
             let mut missing_names = Vec::new();
 
-            let mut expected_type = expected_type.clone();
             let mut core_term_entries = BTreeMap::new();
             let mut pending_term_entries = (term_entries.iter()).fold(
                 BTreeMap::new(),
@@ -309,27 +320,20 @@ pub fn check_type<S: AsRef<str>>(
                 },
             );
 
-            loop {
-                match expected_type.as_ref() {
-                    core::Value::RecordTypeExtend(entry_name, entry_type, rest_type) => {
-                        expected_type = match pending_term_entries.remove(entry_name.as_str()) {
-                            Some((_, term)) => {
-                                let core_term = Arc::new(check_type(state, term, entry_type));
-                                let core_value = state.eval_term(&core_term);
-                                core_term_entries.insert(entry_name.clone(), core_term);
-                                state.eval_closure_elim(rest_type, core_value)
-                            }
-                            None => {
-                                missing_names.push(entry_name.clone());
-                                state.eval_closure_elim(rest_type, Arc::new(core::Value::Error))
-                            }
-                        };
+            state.record_closure_entries(closure, |state, entry_name, entry_type| {
+                match pending_term_entries.remove(entry_name) {
+                    Some((_, entry_term)) => {
+                        let core_entry_term = check_type(state, entry_term, &entry_type);
+                        let core_entry_value = state.eval_term(&core_entry_term);
+                        core_term_entries.insert(entry_name.to_owned(), Arc::new(core_entry_term));
+                        core_entry_value
                     }
-                    core::Value::RecordTypeEmpty => break,
-                    core::Value::Error => return core::Term::Error,
-                    _ => unreachable!("invalid record extension"), // TODO: Report bug instead?
+                    None => {
+                        missing_names.push(entry_name.to_owned());
+                        Arc::new(core::Value::Error)
+                    }
                 }
-            }
+            });
 
             if !duplicate_names.is_empty()
                 || !missing_names.is_empty()
@@ -462,7 +466,11 @@ pub fn synth_type<S: AsRef<str>>(
             if term_entries.is_empty() {
                 (
                     core::Term::RecordTerm(BTreeMap::new()),
-                    Arc::from(core::Value::RecordTypeEmpty),
+                    Arc::from(core::Value::RecordType(core::RecordTypeClosure::new(
+                        state.universe_offset,
+                        state.values.clone(),
+                        Arc::new([]),
+                    ))),
                 )
             } else {
                 state.report(Message::AmbiguousTerm {
@@ -514,29 +522,28 @@ pub fn synth_type<S: AsRef<str>>(
 
             state.pop_many_locals(seen_names.len());
             (
-                core::Term::RecordType(core_type_entries),
+                core::Term::RecordType(core_type_entries.into()),
                 Arc::new(core::Value::Universe(max_level)),
             )
         }
         Term::RecordElim(head, name_range, name) => {
-            let (core_head, mut head_type) = synth_type(state, head);
-            let core_head = Arc::new(core_head);
+            let (core_head, head_type) = synth_type(state, head);
 
-            loop {
-                match head_type.as_ref() {
-                    core::Value::RecordTypeExtend(current_name, entry_type, rest_type) => {
-                        let term =
-                            core::Term::RecordElim(core_head.clone(), name.as_ref().to_owned());
-                        if name.as_ref() == current_name {
-                            return (term, entry_type.clone());
-                        } else {
-                            let value = state.eval_term(&term);
-                            head_type = state.eval_closure_elim(rest_type, value);
-                        }
+            match head_type.as_ref() {
+                core::Value::RecordType(closure) => {
+                    let head_value = state.eval_term(&core_head);
+                    let name = name.as_ref();
+
+                    if let Some(entry_type) =
+                        state.eval_record_closure_elim_type(&head_value, name, closure)
+                    {
+                        let core_head = Arc::new(core_head);
+                        let core_term = core::Term::RecordElim(core_head, name.to_owned());
+                        return (core_term, entry_type);
                     }
-                    core::Value::Error => return (core::Term::Error, Arc::new(core::Value::Error)),
-                    _ => break,
                 }
+                core::Value::Error => return (core::Term::Error, Arc::new(core::Value::Error)),
+                _ => {}
             }
 
             let head_type = state.read_back_type(&head_type);

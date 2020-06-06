@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::lang::core::semantics;
 use crate::lang::core::{
-    Closure, Constant, Elim, Globals, Head, LocalLevel, Locals, Term, UniverseLevel,
+    Constant, Elim, Globals, Head, LocalLevel, Locals, RecordTypeClosure, Term, UniverseLevel,
     UniverseOffset, Value,
 };
 
@@ -93,9 +93,25 @@ impl<'me> State<'me> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
-    /// Eliminate a closure.
-    fn eval_closure_elim(&self, closure: &Closure, argument: Arc<Value>) -> Arc<Value> {
-        semantics::eval_closure_elim(self.globals, closure, argument)
+    /// Apply a callback to each of the entry types in the record closure.
+    pub fn record_closure_entries<'closure>(
+        &mut self,
+        closure: &'closure RecordTypeClosure,
+        mut on_entry: impl FnMut(&mut State<'me>, &'closure str, Arc<Value>) -> Arc<Value>,
+    ) {
+        semantics::record_closure_entries(self.globals, closure, |entry_name, entry_type| {
+            on_entry(self, entry_name, entry_type)
+        })
+    }
+
+    /// Return the type of the record elimination.
+    pub fn record_closure_elim_type(
+        &mut self,
+        head_value: &Value,
+        name: &str,
+        closure: &RecordTypeClosure,
+    ) -> Option<Arc<Value>> {
+        semantics::record_closure_elim_type(self.globals, head_value, name, closure)
     }
 
     /// Check if `value0` is a subtype of `value1`.
@@ -204,32 +220,23 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
         (Term::Sequence(_), _) => state.report(Message::NoSequenceConversion {
             expected_type: expected_type.clone(),
         }),
-        (Term::RecordTerm(term_entries), _) => {
+        (Term::RecordTerm(term_entries), Value::RecordType(closure)) => {
             let mut missing_names = Vec::new();
 
-            let mut expected_type = expected_type.clone();
             let mut pending_term_entries = term_entries.clone();
 
-            loop {
-                match expected_type.as_ref() {
-                    Value::RecordTypeExtend(entry_name, entry_type, rest_type) => {
-                        expected_type = match pending_term_entries.remove(entry_name) {
-                            Some(entry_term) => {
-                                check_type(state, &entry_term, entry_type);
-                                let entry_value = state.eval_term(&entry_term);
-                                state.eval_closure_elim(rest_type, entry_value)
-                            }
-                            None => {
-                                missing_names.push(entry_name.clone());
-                                state.eval_closure_elim(rest_type, Arc::new(Value::Error))
-                            }
-                        };
+            state.record_closure_entries(closure, |state, entry_name, entry_type| {
+                match pending_term_entries.remove(entry_name) {
+                    Some(entry_term) => {
+                        check_type(state, &entry_term, &entry_type);
+                        state.eval_term(&entry_term)
                     }
-                    Value::RecordTypeEmpty => break,
-                    Value::Error => return,
-                    _ => unreachable!("invalid record extension"), // TODO: Report bug instead?
+                    None => {
+                        missing_names.push(entry_name.to_owned());
+                        Arc::new(Value::Error)
+                    }
                 }
-            }
+            });
 
             if !missing_names.is_empty() && !pending_term_entries.is_empty() {
                 let unexpected_names = (pending_term_entries.into_iter())
@@ -313,7 +320,11 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         }
         Term::RecordTerm(term_entries) => {
             if term_entries.is_empty() {
-                Arc::from(Value::RecordTypeEmpty)
+                Arc::from(Value::RecordType(RecordTypeClosure::new(
+                    state.universe_offset,
+                    state.values.clone(),
+                    Arc::new([]),
+                )))
             } else {
                 state.report(Message::AmbiguousTerm {
                     term: AmbiguousTerm::RecordTerm,
@@ -328,7 +339,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             let mut duplicate_names = Vec::new();
             let mut seen_names = BTreeSet::new();
 
-            for (name, entry_type) in type_entries {
+            for (name, entry_type) in type_entries.iter() {
                 if !seen_names.insert(name) {
                     duplicate_names.push(name.clone());
                 }
@@ -352,22 +363,20 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Arc::new(Value::Universe(max_level))
         }
         Term::RecordElim(head, name) => {
-            let mut head_type = synth_type(state, head);
+            let head_type = synth_type(state, head);
 
-            loop {
-                match head_type.as_ref() {
-                    Value::RecordTypeExtend(current_name, entry_type, rest_type) => {
-                        if name == current_name {
-                            return entry_type.clone();
-                        } else {
-                            let value =
-                                state.eval_term(&Term::RecordElim(head.clone(), name.clone()));
-                            head_type = state.eval_closure_elim(rest_type, value);
-                        }
+            match head_type.as_ref() {
+                Value::RecordType(closure) => {
+                    let head_value = state.eval_term(head);
+
+                    if let Some(entry_type) =
+                        state.record_closure_elim_type(&head_value, name, closure)
+                    {
+                        return entry_type;
                     }
-                    Value::Error => return Arc::new(Value::Error),
-                    _ => break,
                 }
+                Value::Error => return Arc::new(Value::Error),
+                _ => {}
             }
 
             state.report(Message::FieldNotFound {
