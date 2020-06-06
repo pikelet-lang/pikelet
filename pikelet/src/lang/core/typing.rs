@@ -155,9 +155,9 @@ pub enum ExpectedType {
     Type(Arc<Value>),
 }
 
-/// Check that a term is a universe and return its level.
-pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
-    let r#type = synth_term(state, term);
+/// Check that a term is a type and return the universe level it inhabits.
+pub fn is_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
+    let r#type = synth_type(state, term);
     match r#type.as_ref() {
         Value::Universe(level) => Some(*level),
         Value::Error => None,
@@ -171,15 +171,15 @@ pub fn check_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
     }
 }
 
-/// Check that a term matches the expected type.
-pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) {
+/// Check that a term is an element of a type.
+pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) {
     match (term, expected_type.as_ref()) {
         (_, Value::Error) => {}
         (Term::Sequence(entry_terms), Value::Elim(Head::Global(name, _), elims, _)) => {
             match (name.as_ref(), elims.as_slice()) {
                 ("Array", [Elim::Function(len, _), Elim::Function(entry_type, _)]) => {
                     for entry_term in entry_terms {
-                        check_term(state, entry_term, entry_type);
+                        check_type(state, entry_term, entry_type);
                     }
 
                     match **len {
@@ -193,7 +193,7 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 }
                 ("List", [Elim::Function(entry_type, _)]) => {
                     for entry_term in entry_terms {
-                        check_term(state, entry_term, entry_type);
+                        check_type(state, entry_term, entry_type);
                     }
                 }
                 _ => state.report(Message::NoSequenceConversion {
@@ -215,7 +215,7 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                     Value::RecordTypeExtend(entry_name, entry_type, rest_type) => {
                         expected_type = match pending_term_entries.remove(entry_name) {
                             Some(entry_term) => {
-                                check_term(state, &entry_term, entry_type);
+                                check_type(state, &entry_term, entry_type);
                                 let entry_value = state.eval_term(&entry_term);
                                 state.eval_closure_elim(rest_type, entry_value)
                             }
@@ -243,13 +243,13 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
         }
         (Term::FunctionTerm(_, body), Value::FunctionType(param_type, body_type)) => {
             state.push_param(param_type.clone());
-            check_term(state, body, body_type);
+            check_type(state, body, body_type);
             state.pop_local();
         }
         (Term::FunctionTerm(_, _), _) => {
             state.report(Message::TooManyParameters);
         }
-        (term, _) => match synth_term(state, term) {
+        (term, _) => match synth_type(state, term) {
             found_type if state.is_subtype(&found_type, expected_type) => {}
             found_type => state.report(Message::MismatchedTypes {
                 found_type,
@@ -260,7 +260,7 @@ pub fn check_term(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
 }
 
 /// Synthesize the type of a term.
-pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
+pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
     match term {
         Term::Universe(level) => match *level + UniverseOffset(1) {
             Some(level) => Arc::new(Value::universe(level)),
@@ -306,9 +306,9 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Arc::new(Value::Error)
         }
         Term::Ann(term, r#type) => {
-            check_type(state, r#type);
+            is_type(state, r#type);
             let r#type = state.eval_term(r#type);
-            check_term(state, term, &r#type);
+            check_type(state, term, &r#type);
             r#type
         }
         Term::RecordTerm(term_entries) => {
@@ -332,7 +332,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 if !seen_names.insert(name) {
                     duplicate_names.push(name.clone());
                 }
-                max_level = match check_type(state, entry_type) {
+                max_level = match is_type(state, entry_type) {
                     Some(level) => std::cmp::max(max_level, level),
                     None => {
                         state.pop_many_locals(seen_names.len());
@@ -352,7 +352,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Arc::new(Value::Universe(max_level))
         }
         Term::RecordElim(head, name) => {
-            let mut head_type = synth_term(state, head);
+            let mut head_type = synth_type(state, head);
 
             loop {
                 match head_type.as_ref() {
@@ -377,7 +377,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Arc::new(Value::Error)
         }
         Term::FunctionType(param_type, body_type) => {
-            match (check_type(state, param_type), check_type(state, body_type)) {
+            match (is_type(state, param_type), is_type(state, body_type)) {
                 (Some(param_level), Some(body_level)) => {
                     Arc::new(Value::Universe(std::cmp::max(param_level, body_level)))
                 }
@@ -391,10 +391,10 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             Arc::new(Value::Error)
         }
         Term::FunctionElim(head, argument) => {
-            let head_type = synth_term(state, head);
+            let head_type = synth_type(state, head);
             match head_type.as_ref() {
                 Value::FunctionType(param_type, body_type) => {
-                    check_term(state, argument, &param_type);
+                    check_type(state, argument, &param_type);
                     body_type.clone()
                 }
                 Value::Error => Arc::new(Value::Error),
@@ -407,7 +407,7 @@ pub fn synth_term(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Lift(term, offset) => match state.universe_offset + *offset {
             Some(new_offset) => {
                 let previous_offset = std::mem::replace(&mut state.universe_offset, new_offset);
-                let r#type = synth_term(state, term);
+                let r#type = synth_type(state, term);
                 state.universe_offset = previous_offset;
                 r#type
             }

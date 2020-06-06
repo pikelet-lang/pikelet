@@ -157,12 +157,13 @@ impl<'me> State<'me> {
     }
 }
 
-/// Check that a term is a universe and return its level.
-pub fn check_type<S: AsRef<str>>(
+/// Check that a term is a type return, and return the elaborated term and the
+/// universe level it inhabits.
+pub fn is_type<S: AsRef<str>>(
     state: &mut State<'_>,
     term: &Term<S>,
 ) -> (core::Term, Option<core::UniverseLevel>) {
-    let (core_term, r#type) = synth_term(state, term);
+    let (core_term, r#type) = synth_type(state, term);
     match r#type.as_ref() {
         core::Value::Universe(level) => (core_term, Some(*level)),
         core::Value::Error => (core::Term::Error, None),
@@ -179,8 +180,8 @@ pub fn check_type<S: AsRef<str>>(
     }
 }
 
-/// Check that a term matches the expected type.
-pub fn check_term<S: AsRef<str>>(
+/// Check that a term is an element of a type, and return the elaborated term.
+pub fn check_type<S: AsRef<str>>(
     state: &mut State<'_>,
     term: &Term<S>,
     expected_type: &Arc<core::Value>,
@@ -233,7 +234,7 @@ pub fn check_term<S: AsRef<str>>(
             ) => {
                 let core_entry_terms = entry_terms
                     .iter()
-                    .map(|entry_term| Arc::new(check_term(state, entry_term, core_entry_type)))
+                    .map(|entry_term| Arc::new(check_type(state, entry_term, core_entry_type)))
                     .collect();
 
                 match **len {
@@ -259,7 +260,7 @@ pub fn check_term<S: AsRef<str>>(
             ("List", [core::Elim::Function(core_entry_type, _)]) => {
                 let core_entry_terms = entry_terms
                     .iter()
-                    .map(|entry_term| Arc::new(check_term(state, entry_term, core_entry_type)))
+                    .map(|entry_term| Arc::new(check_type(state, entry_term, core_entry_type)))
                     .collect();
 
                 core::Term::Sequence(core_entry_terms)
@@ -313,7 +314,7 @@ pub fn check_term<S: AsRef<str>>(
                     core::Value::RecordTypeExtend(entry_name, entry_type, rest_type) => {
                         expected_type = match pending_term_entries.remove(entry_name.as_str()) {
                             Some((_, term)) => {
-                                let core_term = Arc::new(check_term(state, term, entry_type));
+                                let core_term = Arc::new(check_type(state, term, entry_type));
                                 let core_value = state.eval_term(&core_term);
                                 core_term_entries.insert(entry_name.clone(), core_term);
                                 state.eval_closure_elim(rest_type, core_value)
@@ -369,20 +370,20 @@ pub fn check_term<S: AsRef<str>>(
                                 .chain(pending_param_names.map(|(range, _)| range.clone()))
                                 .collect(),
                         });
-                        check_term(state, body, expected_type);
+                        check_type(state, body, expected_type);
                         state.pop_many_locals(seen_param_count);
                         return core::Term::Error;
                     }
                 }
             }
 
-            let core_body = check_term(state, body, expected_type);
+            let core_body = check_type(state, body, expected_type);
             state.pop_many_locals(seen_param_count);
             (param_names.iter().rev()).fold(core_body, |core_body, (_, param_name)| {
                 core::Term::FunctionTerm(param_name.as_ref().to_owned(), Arc::new(core_body))
             })
         }
-        (term, _) => match synth_term(state, term) {
+        (term, _) => match synth_type(state, term) {
             (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
             (_, found_type) => {
                 let found_type = state.read_back_type(&found_type);
@@ -400,8 +401,8 @@ pub fn check_term<S: AsRef<str>>(
     }
 }
 
-/// Synthesize the type of a term.
-pub fn synth_term<S: AsRef<str>>(
+/// Synthesize the type of a surface term, and return the elaborated term.
+pub fn synth_type<S: AsRef<str>>(
     state: &mut State<'_>,
     term: &Term<S>,
 ) -> (core::Term, Arc<core::Value>) {
@@ -425,9 +426,9 @@ pub fn synth_term<S: AsRef<str>>(
             (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::Ann(term, r#type) => {
-            let (core_type, _) = check_type(state, r#type);
+            let (core_type, _) = is_type(state, r#type);
             let core_type_value = state.eval_term(&core_type);
-            let core_term = check_term(state, term, &core_type_value);
+            let core_term = check_type(state, term, &core_type_value);
             (
                 core::Term::Ann(Arc::new(core_term), Arc::new(core_type)),
                 core_type_value,
@@ -482,7 +483,7 @@ pub fn synth_term<S: AsRef<str>>(
             for (entry_name_range, entry_name, entry_type) in type_entries {
                 match seen_names.entry(entry_name.as_ref()) {
                     Entry::Vacant(entry) => {
-                        let (core_type, level) = check_type(state, entry_type);
+                        let (core_type, level) = is_type(state, entry_type);
                         max_level = match level {
                             Some(level) => std::cmp::max(max_level, level),
                             None => {
@@ -502,7 +503,7 @@ pub fn synth_term<S: AsRef<str>>(
                             entry.get().clone(),
                             entry_name_range.clone(),
                         ));
-                        check_type(state, entry_type);
+                        is_type(state, entry_type);
                     }
                 }
             }
@@ -518,7 +519,7 @@ pub fn synth_term<S: AsRef<str>>(
             )
         }
         Term::RecordElim(head, name_range, name) => {
-            let (core_head, mut head_type) = synth_term(state, head);
+            let (core_head, mut head_type) = synth_type(state, head);
             let core_head = Arc::new(core_head);
 
             loop {
@@ -549,7 +550,7 @@ pub fn synth_term<S: AsRef<str>>(
             (core::Term::Error, Arc::new(core::Value::Error))
         }
         Term::FunctionType(param_type, body_type) => {
-            match (check_type(state, param_type), check_type(state, body_type)) {
+            match (is_type(state, param_type), is_type(state, body_type)) {
                 ((core_param_type, Some(param_level)), (core_body_type, Some(body_level))) => (
                     core::Term::FunctionType(Arc::new(core_param_type), Arc::new(core_body_type)),
                     Arc::new(core::Value::Universe(std::cmp::max(
@@ -569,7 +570,7 @@ pub fn synth_term<S: AsRef<str>>(
         }
         Term::FunctionElim(head, arguments) => {
             let mut head_range = head.range();
-            let (mut core_head, mut head_type) = synth_term(state, head);
+            let (mut core_head, mut head_type) = synth_type(state, head);
             let mut arguments = arguments.iter();
 
             while let Some(argument) = arguments.next() {
@@ -578,7 +579,7 @@ pub fn synth_term<S: AsRef<str>>(
                         head_range.end = argument.range().end;
                         core_head = core::Term::FunctionElim(
                             Arc::new(core_head),
-                            Arc::new(check_term(state, argument, &param_type)),
+                            Arc::new(check_type(state, argument, &param_type)),
                         );
                         head_type = body_type.clone();
                     }
@@ -603,7 +604,7 @@ pub fn synth_term<S: AsRef<str>>(
             match state.universe_offset + core::UniverseOffset(*offset) {
                 Some(new_offset) => {
                     let previous_offset = std::mem::replace(&mut state.universe_offset, new_offset);
-                    let (core_term, r#type) = synth_term(state, inner_term);
+                    let (core_term, r#type) = synth_type(state, inner_term);
                     state.universe_offset = previous_offset;
                     (core_term, r#type)
                 }

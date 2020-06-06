@@ -101,7 +101,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                     }
                 };
 
-                let (core_term, r#type) = surface_to_core::synth_term(&mut state, &surface_term);
+                let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
                 let messages = state.drain_messages().collect::<Vec<_>>();
 
                 if !messages.is_empty() {
@@ -120,7 +120,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                         Arc::new(state.read_back_type(&r#type)),
                     );
                     let term = state.delaborate_term(&ann_term);
-                    let doc = surface_to_pretty::pretty_term(&pretty_alloc, &term);
+                    let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
 
                     println!("{}", doc.1.pretty(term_width()));
                 }
