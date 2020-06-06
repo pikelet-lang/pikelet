@@ -2,7 +2,8 @@
 
 use codespan_reporting::files::SimpleFile;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
-use pikelet::{core, surface};
+use pikelet::lang::{core, surface};
+use pikelet::pass::surface_to_core;
 
 fn run_test(path: &str, source: &str) {
     let mut is_failed = false;
@@ -14,8 +15,8 @@ fn run_test(path: &str, source: &str) {
     let surface_term = surface::Term::from_str(file.source()).unwrap();
 
     let globals = core::Globals::default();
-    let mut state = surface::projections::core::State::new(&globals);
-    let (core_term, r#type) = surface::projections::core::synth_term(&mut state, &surface_term);
+    let mut state = surface_to_core::State::new(&globals);
+    let (core_term, r#type) = surface_to_core::synth_term(&mut state, &surface_term);
     let messages = state.drain_messages().collect::<Vec<_>>();
     if !messages.is_empty() {
         is_failed = true;

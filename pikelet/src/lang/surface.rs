@@ -4,13 +4,11 @@
 
 use std::ops::{Range, RangeFrom};
 
-pub mod projections;
-
 mod lexer;
 
 #[allow(clippy::all, unused_parens)]
 mod grammar {
-    include!(concat!(env!("OUT_DIR"), "/surface/grammar.rs"));
+    include!(concat!(env!("OUT_DIR"), "/lang/surface/grammar.rs"));
 }
 
 #[derive(Debug, Clone)]

@@ -4,8 +4,9 @@ use std::ops::Range;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::core;
-use crate::surface::{Literal, Term};
+use crate::lang::core;
+use crate::lang::surface::{Literal, Term};
+use crate::pass::core_to_surface;
 
 pub mod reporting;
 
@@ -149,8 +150,8 @@ impl<'me> State<'me> {
 
     /// Delaborate a `core::Term` into a `surface::Term`.
     pub fn delaborate_term(&mut self, core_term: &core::Term) -> Term<String> {
-        core::projections::surface::delaborate_term(
-            &mut core::projections::surface::State::new(&mut self.names),
+        core_to_surface::delaborate_term(
+            &mut core_to_surface::State::new(&mut self.names),
             &core_term,
         )
     }
@@ -187,7 +188,7 @@ pub fn check_term<S: AsRef<str>>(
     match (term, expected_type.as_ref()) {
         (_, core::Value::Error) => core::Term::Error,
         (Term::Literal(_, literal), core::Value::Elim(core::Head::Global(name, _), spine, _)) => {
-            use crate::core::Constant::*;
+            use crate::lang::core::Constant::*;
 
             match (literal, name.as_ref(), spine.as_slice()) {
                 (Literal::Number(data), "U8", []) => parse_number(state, term.range(), data, U8),

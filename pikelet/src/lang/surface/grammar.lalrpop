@@ -1,7 +1,7 @@
 use std::ops::Range;
 
-use crate::surface::{Term, Literal};
-use crate::surface::lexer::{LexerError, Token};
+use crate::lang::surface::{Term, Literal};
+use crate::lang::surface::lexer::{LexerError, Token};
 
 grammar<'input>;
 

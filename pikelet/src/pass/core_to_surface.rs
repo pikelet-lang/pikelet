@@ -1,7 +1,7 @@
 //! Delaborate the core language into the surface language.
 
-use crate::core::{Constant, Locals, Term, UniverseLevel, UniverseOffset};
-use crate::surface;
+use crate::lang::core::{Constant, Locals, Term, UniverseLevel, UniverseOffset};
+use crate::lang::surface;
 
 pub struct State<'me> {
     // TODO: global names
@@ -105,7 +105,7 @@ pub fn delaborate_term(state: &mut State<'_>, term: &Term) -> surface::Term<Stri
 }
 
 pub fn delaborate_constant(constant: &Constant) -> surface::Term<String> {
-    use crate::surface::Literal::{Char, Number, String};
+    use crate::lang::surface::Literal::{Char, Number, String};
 
     match constant {
         Constant::U8(value) => surface::Term::Literal(0..0, Number(value.to_string())),

@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use crate::core::{
+use crate::lang::core::{
     Closure, Elim, Globals, Head, LocalSize, Locals, Term, UniverseLevel, UniverseOffset, Value,
 };
 

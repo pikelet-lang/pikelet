@@ -50,7 +50,8 @@ fn term_width() -> usize {
 pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
     use codespan_reporting::files::SimpleFile;
     use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
-    use pikelet::{core, surface};
+    use pikelet::lang::{core, surface};
+    use pikelet::pass::{surface_to_core, surface_to_pretty};
     use rustyline::error::ReadlineError;
     use rustyline::{Config, Editor};
 
@@ -79,7 +80,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
     let reporting_config = codespan_reporting::term::Config::default();
 
     let globals = core::Globals::default();
-    let mut state = surface::projections::core::State::new(&globals);
+    let mut state = surface_to_core::State::new(&globals);
 
     loop {
         match editor.readline(&options.prompt) {
@@ -100,8 +101,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                     }
                 };
 
-                let (core_term, r#type) =
-                    surface::projections::core::synth_term(&mut state, &surface_term);
+                let (core_term, r#type) = surface_to_core::synth_term(&mut state, &surface_term);
                 let messages = state.drain_messages().collect::<Vec<_>>();
 
                 if !messages.is_empty() {
@@ -120,7 +120,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                         Arc::new(state.read_back_type(&r#type)),
                     );
                     let term = state.delaborate_term(&ann_term);
-                    let doc = surface::projections::pretty::pretty_term(&pretty_alloc, &term);
+                    let doc = surface_to_pretty::pretty_term(&pretty_alloc, &term);
 
                     println!("{}", doc.1.pretty(term_width()));
                 }
