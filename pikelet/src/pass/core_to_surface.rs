@@ -1,5 +1,7 @@
 //! Delaborate the core language into the surface language.
 
+#![allow(clippy::reversed_empty_ranges)]
+
 use crate::lang::core::{Constant, Locals, Term, UniverseLevel, UniverseOffset};
 use crate::lang::surface;
 

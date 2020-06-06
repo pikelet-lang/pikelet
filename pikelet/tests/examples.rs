@@ -8,7 +8,7 @@ use pikelet::pass::surface_to_core;
 fn run_test(path: &str, source: &str) {
     let mut is_failed = false;
 
-    let writer = StandardStream::stderr(ColorChoice::Always);
+    let writer = StandardStream::stdout(ColorChoice::Always);
     let config = codespan_reporting::term::Config::default();
     let file = SimpleFile::new(path, source);
 
