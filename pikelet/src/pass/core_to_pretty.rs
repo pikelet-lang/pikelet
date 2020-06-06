@@ -13,15 +13,15 @@ pub enum Prec {
     Atomic,
 }
 
-pub fn pretty_term<'a, D>(alloc: &'a D, term: &'a Term) -> DocBuilder<'a, D>
+pub fn from_term<'a, D>(alloc: &'a D, term: &'a Term) -> DocBuilder<'a, D>
 where
     D: DocAllocator<'a>,
     D::Doc: Clone,
 {
-    pretty_term_prec(alloc, term, Prec::Term)
+    from_term_prec(alloc, term, Prec::Term)
 }
 
-pub fn pretty_term_prec<'a, D>(alloc: &'a D, term: &'a Term, prec: Prec) -> DocBuilder<'a, D>
+pub fn from_term_prec<'a, D>(alloc: &'a D, term: &'a Term, prec: Prec) -> DocBuilder<'a, D>
 where
     D: DocAllocator<'a>,
     D::Doc: Clone,
@@ -39,21 +39,21 @@ where
             .append(alloc.text("local"))
             .append(alloc.space())
             .append(alloc.as_string(index.0)),
-        Term::Ann(term, r#type) => pretty_paren(
+        Term::Ann(term, r#type) => paren(
             alloc,
             prec > Prec::Term,
             (alloc.nil())
-                .append(pretty_term_prec(alloc, term, Prec::Expr))
+                .append(from_term_prec(alloc, term, Prec::Expr))
                 .append(alloc.space())
                 .append(":")
                 .append(
                     (alloc.space())
-                        .append(pretty_term_prec(alloc, r#type, Prec::Term))
+                        .append(from_term_prec(alloc, r#type, Prec::Term))
                         .group()
                         .nest(4),
                 ),
         ),
-        Term::Constant(constant) => pretty_constant(alloc, constant),
+        Term::Constant(constant) => from_constant(alloc, constant),
         Term::Sequence(term_entries) => (alloc.nil())
             .append("[")
             .group()
@@ -61,7 +61,7 @@ where
                 alloc.intersperse(
                     term_entries
                         .iter()
-                        .map(|term| pretty_term_prec(alloc, term, Prec::Term).group().nest(4)),
+                        .map(|term| from_term_prec(alloc, term, Prec::Term).group().nest(4)),
                     alloc.text(",").append(alloc.space()),
                 ),
             )
@@ -79,7 +79,7 @@ where
                         .append(":")
                         .append(
                             (alloc.space())
-                                .append(pretty_term_prec(alloc, entry_type, Prec::Term))
+                                .append(from_term_prec(alloc, entry_type, Prec::Term))
                                 .append(",")
                                 .group()
                                 .nest(4),
@@ -102,7 +102,7 @@ where
                         .append("=")
                         .append(
                             (alloc.space())
-                                .append(pretty_term_prec(alloc, entry_term, Prec::Term))
+                                .append(from_term_prec(alloc, entry_term, Prec::Term))
                                 .append(",")
                                 .group()
                                 .nest(4),
@@ -113,20 +113,20 @@ where
             )
             .append("}"),
         Term::RecordElim(head, name) => (alloc.nil())
-            .append(pretty_term_prec(alloc, head, Prec::Atomic))
+            .append(from_term_prec(alloc, head, Prec::Atomic))
             .append(".")
             .append(alloc.text(name)),
-        Term::FunctionType(param_type, body_type) => pretty_paren(
+        Term::FunctionType(param_type, body_type) => paren(
             alloc,
             prec > Prec::Arrow,
             (alloc.nil())
-                .append(pretty_term_prec(alloc, param_type, Prec::App))
+                .append(from_term_prec(alloc, param_type, Prec::App))
                 .append(alloc.space())
                 .append("->")
                 .append(alloc.space())
-                .append(pretty_term_prec(alloc, body_type, Prec::Arrow)),
+                .append(from_term_prec(alloc, body_type, Prec::Arrow)),
         ),
-        Term::FunctionTerm(_, body) => pretty_paren(
+        Term::FunctionTerm(_, body) => paren(
             alloc,
             prec > Prec::Expr,
             (alloc.nil())
@@ -137,27 +137,27 @@ where
                 .append("=>")
                 .group()
                 .append(alloc.space())
-                .append(pretty_term_prec(alloc, body, Prec::Expr).nest(4)),
+                .append(from_term_prec(alloc, body, Prec::Expr).nest(4)),
         ),
-        Term::FunctionElim(head, argument) => pretty_paren(
+        Term::FunctionElim(head, argument) => paren(
             alloc,
             prec > Prec::App,
-            pretty_term_prec(alloc, head, Prec::App).append(
+            from_term_prec(alloc, head, Prec::App).append(
                 (alloc.space())
-                    .append(pretty_term_prec(alloc, argument, Prec::Arrow))
+                    .append(from_term_prec(alloc, argument, Prec::Arrow))
                     .group()
                     .nest(4),
             ),
         ),
         Term::Lift(term, shift) => (alloc.nil())
-            .append(pretty_term_prec(alloc, term, Prec::Atomic))
+            .append(from_term_prec(alloc, term, Prec::Atomic))
             .append("^")
             .append(alloc.as_string(shift.0)),
         Term::Error => alloc.text("!"),
     }
 }
 
-pub fn pretty_constant<'a, D>(alloc: &'a D, constant: &'a Constant) -> DocBuilder<'a, D>
+pub fn from_constant<'a, D>(alloc: &'a D, constant: &'a Constant) -> DocBuilder<'a, D>
 where
     D: DocAllocator<'a>,
     D::Doc: Clone,
@@ -178,7 +178,7 @@ where
     }
 }
 
-fn pretty_paren<'a, D>(alloc: &'a D, b: bool, doc: DocBuilder<'a, D>) -> DocBuilder<'a, D>
+fn paren<'a, D>(alloc: &'a D, b: bool, doc: DocBuilder<'a, D>) -> DocBuilder<'a, D>
 where
     D: DocAllocator<'a>,
     D::Doc: Clone,

@@ -16,7 +16,7 @@ fn run_test(path: &str, source: &str) {
 
     let globals = core::Globals::default();
     let mut state = surface_to_core::State::new(&globals);
-    let (core_term, r#type) = surface_to_core::synth_term(&mut state, &surface_term);
+    let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
     let messages = state.drain_messages().collect::<Vec<_>>();
     if !messages.is_empty() {
         is_failed = true;
@@ -29,7 +29,7 @@ fn run_test(path: &str, source: &str) {
     }
 
     let mut state = core::typing::State::new(&globals);
-    core::typing::synth_term(&mut state, &core_term);
+    core::typing::synth_type(&mut state, &core_term);
     let messages = state.drain_messages().collect::<Vec<_>>();
     if !messages.is_empty() {
         is_failed = true;
@@ -41,7 +41,7 @@ fn run_test(path: &str, source: &str) {
     }
 
     let mut state = core::typing::State::new(&globals);
-    core::typing::check_term(&mut state, &core_term, &r#type);
+    core::typing::check_type(&mut state, &core_term, &r#type);
     let messages = state.drain_messages().collect::<Vec<_>>();
     if !messages.is_empty() {
         is_failed = true;

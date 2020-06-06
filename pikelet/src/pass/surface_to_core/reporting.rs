@@ -89,7 +89,7 @@ impl Message {
         use itertools::Itertools;
 
         let pretty_alloc = pretty::BoxAllocator;
-        let to_doc = |term| crate::pass::surface_to_pretty::pretty_term(&pretty_alloc, term).1;
+        let to_doc = |term| crate::pass::surface_to_pretty::from_term(&pretty_alloc, term).1;
 
         match self {
             Message::MaximumUniverseLevelReached { range } => Diagnostic::error()
