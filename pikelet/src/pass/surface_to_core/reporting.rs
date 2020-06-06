@@ -1,7 +1,7 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use std::ops::Range;
 
-use crate::surface::Term;
+use crate::lang::surface::Term;
 
 #[derive(Clone, Debug)]
 pub enum InvalidLiteral {
@@ -89,7 +89,7 @@ impl Message {
         use itertools::Itertools;
 
         let pretty_alloc = pretty::BoxAllocator;
-        let to_doc = |term| crate::surface::projections::pretty::pretty_term(&pretty_alloc, term).1;
+        let to_doc = |term| crate::pass::surface_to_pretty::pretty_term(&pretty_alloc, term).1;
 
         match self {
             Message::MaximumUniverseLevelReached { range } => Diagnostic::error()

@@ -8,8 +8,8 @@
 
 use std::sync::Arc;
 
-use crate::core::semantics;
-use crate::core::{
+use crate::lang::core::semantics;
+use crate::lang::core::{
     Closure, Constant, Elim, Globals, Head, LocalLevel, Locals, Term, UniverseLevel,
     UniverseOffset, Value,
 };

@@ -7,7 +7,6 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
 
-pub mod projections;
 pub mod semantics;
 pub mod typing;
 
@@ -292,7 +291,7 @@ impl Default for Globals {
 
 /// An index into the local environment.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct LocalIndex(u32);
+pub struct LocalIndex(pub u32);
 
 /// An level into the local environment.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -11,7 +11,7 @@ pub enum Message {
 }
 
 pub struct State {
-    globals: pikelet::core::Globals,
+    globals: pikelet::lang::core::Globals,
     input: iced::text_input::State,
     input_value: String,
 }
@@ -21,7 +21,7 @@ impl Sandbox for State {
 
     fn new() -> State {
         State {
-            globals: pikelet::core::Globals::default(),
+            globals: pikelet::lang::core::Globals::default(),
             input: iced::text_input::State::default(),
             input_value: "".to_owned(),
         }
@@ -88,8 +88,8 @@ impl Sandbox for State {
     }
 }
 
-fn view_term<M: 'static>(term: &pikelet::core::Term) -> Element<M> {
-    use pikelet::core::{Constant, Term, UniverseLevel, UniverseOffset};
+fn view_term<M: 'static>(term: &pikelet::lang::core::Term) -> Element<M> {
+    use pikelet::lang::core::{Constant, Term, UniverseLevel, UniverseOffset};
 
     match term {
         Term::Universe(UniverseLevel(level)) => Row::new()
