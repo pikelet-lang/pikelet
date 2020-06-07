@@ -114,25 +114,14 @@ impl<'me> State<'me> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
-    /// Apply a callback to each of the entry types in the record closure.
-    pub fn record_closure_entries<'closure>(
-        &mut self,
-        closure: &'closure RecordTypeClosure,
-        mut on_entry: impl FnMut(&mut State<'me>, &'closure str, Arc<Value>) -> Arc<Value>,
-    ) {
-        semantics::record_closure_entries(self.globals, closure, |entry_name, entry_type| {
-            on_entry(self, entry_name, entry_type)
-        })
-    }
-
     /// Return the type of the record elimination.
-    pub fn eval_record_closure_elim_type(
+    pub fn record_elim_type(
         &mut self,
         head_value: &Value,
         name: &str,
         closure: &RecordTypeClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_closure_elim_type(self.globals, head_value, name, closure)
+        semantics::record_elim_type(self.globals, head_value, name, closure)
     }
 
     /// Normalize a term using the current state of the elaborator.
@@ -317,8 +306,9 @@ pub fn check_type<S: AsRef<str>>(
                 },
             );
 
-            state.record_closure_entries(closure, |state, entry_name, entry_type| {
-                match pending_term_entries.remove(entry_name) {
+            closure.entries(
+                state.globals,
+                |entry_name, entry_type| match pending_term_entries.remove(entry_name) {
                     Some((_, entry_term)) => {
                         let core_entry_term = check_type(state, entry_term, &entry_type);
                         let core_entry_value = state.eval_term(&core_entry_term);
@@ -329,8 +319,8 @@ pub fn check_type<S: AsRef<str>>(
                         missing_names.push(entry_name.to_owned());
                         Arc::new(Value::Error)
                     }
-                }
-            });
+                },
+            );
 
             if !duplicate_names.is_empty()
                 || !missing_names.is_empty()
@@ -531,9 +521,7 @@ pub fn synth_type<S: AsRef<str>>(
                     let head_value = state.eval_term(&core_head);
                     let name = name.as_ref();
 
-                    if let Some(entry_type) =
-                        state.eval_record_closure_elim_type(&head_value, name, closure)
-                    {
+                    if let Some(entry_type) = state.record_elim_type(&head_value, name, closure) {
                         let core_head = Arc::new(core_head);
                         let core_term = core::Term::RecordElim(core_head, name.to_owned());
                         return (core_term, entry_type);

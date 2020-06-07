@@ -102,6 +102,13 @@ impl Closure {
             term,
         }
     }
+
+    /// Eliminate a closure.
+    pub fn elim(&self, globals: &Globals, argument: Arc<Value>) -> Arc<Value> {
+        let mut values = self.values.clone();
+        values.push(argument);
+        eval_term(globals, self.universe_offset, &mut values, &self.term)
+    }
 }
 
 /// Record type closure, capturing the current universe offset and the current locals in scope.
@@ -122,6 +129,20 @@ impl RecordTypeClosure {
             universe_offset,
             values,
             entries,
+        }
+    }
+
+    /// Apply a callback to each of the entry types in the record closure.
+    pub fn entries<'closure>(
+        &'closure self,
+        globals: &Globals,
+        mut on_entry: impl FnMut(&'closure str, Arc<Value>) -> Arc<Value>,
+    ) {
+        let universe_offset = self.universe_offset;
+        let mut values = self.values.clone();
+        for (entry_name, entry_type) in self.entries.iter() {
+            let entry_type = eval_term(globals, universe_offset, &mut values, entry_type);
+            values.push(on_entry(entry_name, entry_type));
         }
     }
 }
@@ -214,40 +235,8 @@ pub fn eval_term(
     }
 }
 
-/// Instantiate a closure in an environment of the given size.
-pub fn instantiate_closure(
-    globals: &Globals,
-    local_size: LocalSize,
-    r#type: Arc<Value>,
-    closure: &Closure,
-) -> Arc<Value> {
-    let argument = Arc::from(Value::local(local_size.next_level(), r#type));
-    eval_closure_elim(globals, closure, argument)
-}
-
-/// Eliminate a closure.
-pub fn eval_closure_elim(globals: &Globals, closure: &Closure, argument: Arc<Value>) -> Arc<Value> {
-    let mut values = closure.values.clone();
-    values.push(argument);
-    eval_term(globals, closure.universe_offset, &mut values, &closure.term)
-}
-
-/// Apply a callback to each of the entry types in the record closure.
-pub fn record_closure_entries<'closure>(
-    globals: &Globals,
-    closure: &'closure RecordTypeClosure,
-    mut on_entry: impl FnMut(&'closure str, Arc<Value>) -> Arc<Value>,
-) {
-    let universe_offset = closure.universe_offset;
-    let mut values = closure.values.clone();
-    for (entry_name, entry_type) in closure.entries.iter() {
-        let entry_type = eval_term(globals, universe_offset, &mut values, entry_type);
-        values.push(on_entry(entry_name, entry_type));
-    }
-}
-
 /// Return the type of the record elimination.
-pub fn record_closure_elim_type(
+pub fn record_elim_type(
     globals: &Globals,
     head_value: &Value,
     name: &str,
@@ -274,9 +263,7 @@ pub fn eval_record_elim(globals: &Globals, head_value: &Value, name: &str) -> Ar
         },
         Value::Elim(head, elims, r#type) => {
             if let Value::RecordType(closure) = r#type.as_ref() {
-                if let Some(entry_type) =
-                    record_closure_elim_type(globals, head_value, name, closure)
-                {
+                if let Some(entry_type) = record_elim_type(globals, head_value, name, closure) {
                     let mut elims = elims.clone(); // FIXME: Avoid clone of elims?
                     elims.push(Elim::Record(name.to_owned()));
                     return Arc::new(Value::Elim(head.clone(), elims, entry_type));
@@ -291,7 +278,7 @@ pub fn eval_record_elim(globals: &Globals, head_value: &Value, name: &str) -> Ar
 /// Eliminate a function term.
 pub fn eval_fun_elim(globals: &Globals, head_value: &Value, argument: Arc<Value>) -> Arc<Value> {
     match head_value {
-        Value::FunctionTerm(_, body_closure) => eval_closure_elim(globals, body_closure, argument),
+        Value::FunctionTerm(_, body_closure) => body_closure.elim(globals, argument),
         Value::Elim(head, elims, r#type) => {
             if let Value::FunctionType(param_type, body_type) = r#type.as_ref() {
                 let mut elims = elims.clone(); // FIXME: Avoid clone of elims?
@@ -376,7 +363,8 @@ pub fn read_back_nf(
             Value::FunctionTerm(param_name_hint, body_closure),
             Value::FunctionType(param_type, body_type),
         ) => {
-            let body = instantiate_closure(globals, local_size, param_type.clone(), body_closure);
+            let argument = Arc::from(Value::local(local_size.next_level(), param_type.clone()));
+            let body = body_closure.elim(globals, argument);
             let body = read_back_nf(globals, LocalSize(local_size.0 + 1), &body, body_type);
 
             Term::FunctionTerm(param_name_hint.clone(), Arc::new(body))
