@@ -80,7 +80,7 @@ pub enum Term {
     /// Annotated terms
     Ann(Arc<Term>, Arc<Term>),
     /// Record types.
-    RecordType(Vec<(String, Arc<Term>)>),
+    RecordType(Arc<[(String, Arc<Term>)]>),
     /// Record terms.
     RecordTerm(BTreeMap<String, Arc<Term>>),
     /// Record eliminations (field access).
@@ -137,10 +137,8 @@ pub enum Value {
     Constant(Constant),
     /// Ordered sequences.
     Sequence(Vec<Arc<Value>>),
-    /// Record type extension.
-    RecordTypeExtend(String, Arc<Value>, Closure),
-    /// Empty record types.
-    RecordTypeEmpty,
+    /// Record types.
+    RecordType(RecordTypeClosure),
     /// Record terms.
     RecordTerm(BTreeMap<String, Arc<Value>>),
     /// Function types.
@@ -194,12 +192,12 @@ pub enum Elim {
     Function(Arc<Value>, Arc<Value>),
 }
 
-/// Closure, which captures a local environment.
+/// Closure, capturing the current universe offset and the current locals in scope.
 #[derive(Clone, Debug)]
 pub struct Closure {
-    pub universe_offset: UniverseOffset,
-    pub values: Locals<Arc<Value>>,
-    pub term: Arc<Term>,
+    universe_offset: UniverseOffset,
+    values: Locals<Arc<Value>>,
+    term: Arc<Term>,
 }
 
 impl Closure {
@@ -212,6 +210,28 @@ impl Closure {
             universe_offset,
             values,
             term,
+        }
+    }
+}
+
+/// Record type closure, capturing the current universe offset and the current locals in scope.
+#[derive(Clone, Debug)]
+pub struct RecordTypeClosure {
+    universe_offset: UniverseOffset,
+    values: Locals<Arc<Value>>,
+    entries: Arc<[(String, Arc<Term>)]>,
+}
+
+impl RecordTypeClosure {
+    pub fn new(
+        universe_offset: UniverseOffset,
+        values: Locals<Arc<Value>>,
+        entries: Arc<[(String, Arc<Term>)]>,
+    ) -> RecordTypeClosure {
+        RecordTypeClosure {
+            universe_offset,
+            values,
+            entries,
         }
     }
 }
