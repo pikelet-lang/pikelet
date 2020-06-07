@@ -8,10 +8,9 @@
 
 use std::sync::Arc;
 
-use crate::lang::core::semantics;
+use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Value};
 use crate::lang::core::{
-    Constant, Elim, Globals, Head, LocalLevel, Locals, RecordTypeClosure, Term, UniverseLevel,
-    UniverseOffset, Value,
+    Constant, Globals, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset,
 };
 
 /// The state of the type checker.
@@ -93,25 +92,14 @@ impl<'me> State<'me> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
-    /// Apply a callback to each of the entry types in the record closure.
-    pub fn record_closure_entries<'closure>(
-        &mut self,
-        closure: &'closure RecordTypeClosure,
-        mut on_entry: impl FnMut(&mut State<'me>, &'closure str, Arc<Value>) -> Arc<Value>,
-    ) {
-        semantics::record_closure_entries(self.globals, closure, |entry_name, entry_type| {
-            on_entry(self, entry_name, entry_type)
-        })
-    }
-
     /// Return the type of the record elimination.
-    pub fn record_closure_elim_type(
+    pub fn record_elim_type(
         &mut self,
         head_value: &Value,
         name: &str,
         closure: &RecordTypeClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_closure_elim_type(self.globals, head_value, name, closure)
+        semantics::record_elim_type(self.globals, head_value, name, closure)
     }
 
     /// Check if `value0` is a subtype of `value1`.
@@ -225,8 +213,9 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
 
             let mut pending_term_entries = term_entries.clone();
 
-            state.record_closure_entries(closure, |state, entry_name, entry_type| {
-                match pending_term_entries.remove(entry_name) {
+            closure.entries(
+                state.globals,
+                |entry_name, entry_type| match pending_term_entries.remove(entry_name) {
                     Some(entry_term) => {
                         check_type(state, &entry_term, &entry_type);
                         state.eval_term(&entry_term)
@@ -235,8 +224,8 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         missing_names.push(entry_name.to_owned());
                         Arc::new(Value::Error)
                     }
-                }
-            });
+                },
+            );
 
             if !missing_names.is_empty() && !pending_term_entries.is_empty() {
                 let unexpected_names = (pending_term_entries.into_iter())
@@ -369,9 +358,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 Value::RecordType(closure) => {
                     let head_value = state.eval_term(head);
 
-                    if let Some(entry_type) =
-                        state.record_closure_elim_type(&head_value, name, closure)
-                    {
+                    if let Some(entry_type) = state.record_elim_type(&head_value, name, closure) {
                         return entry_type;
                     }
                 }
