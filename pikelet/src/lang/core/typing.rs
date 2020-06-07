@@ -8,10 +8,9 @@
 
 use std::sync::Arc;
 
-use crate::lang::core::semantics;
+use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Value};
 use crate::lang::core::{
-    Constant, Elim, Globals, Head, LocalLevel, Locals, RecordTypeClosure, Term, UniverseLevel,
-    UniverseOffset, Value,
+    Constant, Globals, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset,
 };
 
 /// The state of the type checker.
