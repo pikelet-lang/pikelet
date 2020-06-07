@@ -75,7 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: ["1.42.0", "stable", "beta", "nightly"]
+        rust: ["1.42.0", "stable"]
+        # rust: ["1.42.0", "stable", "beta", "nightly"]
     name: Clippy (${{ matrix.rust }})
     steps:
       - uses: actions/checkout@v2
@@ -86,7 +87,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           override: true
           components: clippy
-      - name: Run cargo fmt
+      - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
