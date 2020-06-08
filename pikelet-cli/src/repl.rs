@@ -105,7 +105,8 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                 let messages = state.drain_messages().collect::<Vec<_>>();
 
                 if !messages.is_empty() {
-                    for diagnostic in messages.iter().map(|message| message.to_diagnostic()) {
+                    for message in messages {
+                        let diagnostic = message.to_diagnostic(&pretty_alloc);
                         codespan_reporting::term::emit(
                             &mut writer.lock(),
                             &reporting_config,

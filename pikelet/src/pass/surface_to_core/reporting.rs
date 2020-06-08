@@ -1,4 +1,5 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
+use pretty::DocAllocator;
 use std::ops::Range;
 
 use crate::lang::surface::Term;
@@ -85,11 +86,16 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn to_diagnostic(&self) -> Diagnostic<()> {
+    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<()>
+    where
+        D: DocAllocator<'a>,
+        D::Doc: Clone,
+    {
         use itertools::Itertools;
 
-        let pretty_alloc = pretty::BoxAllocator;
-        let to_doc = |term| crate::pass::surface_to_pretty::from_term(&pretty_alloc, term).1;
+        use crate::pass::surface_to_pretty;
+
+        let to_doc = |term| surface_to_pretty::from_term(pretty_alloc, term).1;
 
         match self {
             Message::MaximumUniverseLevelReached { range } => Diagnostic::error()

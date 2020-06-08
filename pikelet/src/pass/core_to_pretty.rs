@@ -1,4 +1,5 @@
 //! Pretty prints the core language to a textual form.
+
 use pretty::{DocAllocator, DocBuilder};
 
 use crate::lang::core::{Constant, Term};
