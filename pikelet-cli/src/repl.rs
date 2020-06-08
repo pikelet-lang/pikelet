@@ -83,51 +83,51 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
     let mut state = surface_to_core::State::new(&globals);
 
     loop {
-        match editor.readline(&options.prompt) {
-            Ok(line) => {
-                if !options.no_history {
-                    editor.add_history_entry(&line);
-                }
-
-                // TODO: Parse REPL commands
-
-                let file = SimpleFile::new("<input>", line);
-
-                let surface_term = match surface::Term::from_str(file.source()) {
-                    Ok(surface_term) => surface_term,
-                    Err(error) => {
-                        println!("error: {}", error);
-                        continue;
-                    }
-                };
-
-                let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
-                let messages = state.drain_messages().collect::<Vec<_>>();
-
-                if !messages.is_empty() {
-                    for diagnostic in messages.iter().map(|message| message.to_diagnostic()) {
-                        codespan_reporting::term::emit(
-                            &mut writer.lock(),
-                            &reporting_config,
-                            &file,
-                            &diagnostic,
-                        )
-                        .unwrap();
-                    }
-                } else {
-                    let ann_term = core::Term::Ann(
-                        Arc::new(state.normalize_term(&core_term, &r#type)),
-                        Arc::new(state.read_back_type(&r#type)),
-                    );
-                    let term = state.delaborate_term(&ann_term);
-                    let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
-
-                    println!("{}", doc.1.pretty(term_width()));
-                }
+        let file = match editor.readline(&options.prompt) {
+            Ok(line) => SimpleFile::new("<input>", line),
+            Err(ReadlineError::Interrupted) => {
+                println!("Interrupted!");
+                continue;
             }
-            Err(ReadlineError::Interrupted) => println!("Interrupted!"),
             Err(ReadlineError::Eof) => break,
             Err(error) => return Err(error.into()),
+        };
+
+        if !options.no_history {
+            editor.add_history_entry(file.source());
+        }
+
+        // TODO: Parse REPL commands
+        let surface_term = match surface::Term::from_str(file.source()) {
+            Ok(surface_term) => surface_term,
+            Err(error) => {
+                println!("error: {}", error);
+                continue;
+            }
+        };
+
+        let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
+        let messages = state.drain_messages().collect::<Vec<_>>();
+
+        if !messages.is_empty() {
+            for message in messages {
+                let diagnostic = message.to_diagnostic(&pretty_alloc);
+                codespan_reporting::term::emit(
+                    &mut writer.lock(),
+                    &reporting_config,
+                    &file,
+                    &diagnostic,
+                )?;
+            }
+        } else {
+            let ann_term = core::Term::Ann(
+                Arc::new(state.normalize_term(&core_term, &r#type)),
+                Arc::new(state.read_back_type(&r#type)),
+            );
+            let term = state.delaborate_term(&ann_term);
+            let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
+
+            println!("{}", doc.1.pretty(term_width()));
         }
     }
 

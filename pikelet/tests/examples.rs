@@ -11,17 +11,19 @@ fn run_test(path: &str, source: &str) {
     let writer = StandardStream::stdout(ColorChoice::Always);
     let config = codespan_reporting::term::Config::default();
     let file = SimpleFile::new(path, source);
-
     let surface_term = surface::Term::from_str(file.source()).unwrap();
 
     let globals = core::Globals::default();
+    let pretty_alloc = pretty::BoxAllocator;
+
     let mut state = surface_to_core::State::new(&globals);
     let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
     let messages = state.drain_messages().collect::<Vec<_>>();
     if !messages.is_empty() {
         is_failed = true;
         eprintln!("surface::projections::core::synth_term messages:");
-        for diagnostic in messages.iter().map(|message| message.to_diagnostic()) {
+        for message in messages {
+            let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
                 .unwrap();
         }
