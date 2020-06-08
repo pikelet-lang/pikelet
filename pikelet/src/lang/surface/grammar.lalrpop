@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use crate::lang::surface::{Term, Literal};
+use crate::lang::surface::{Term, Literal, TypeEntry, TermEntry};
 use crate::lang::surface::lexer::{LexerError, Token};
 
 grammar<'input>;
@@ -16,14 +16,18 @@ extern {
         "numeric literal" => Token::NumLiteral(<&'input  str>),
         "name" => Token::Name(<&'input str>),
         "shift" => Token::Shift(<&'input str>),
+
+        "as" => Token::As,
+        "fun" => Token::FunTerm,
+        "record" => Token::RecordTerm,
+        "Record" => Token::RecordType,
+
         "->"  => Token::Arrow,
         "=>"  => Token::DArrow,
         ":"   => Token::Colon,
         ","   => Token::Comma,
         "."   => Token::Dot,
-        "fun" => Token::FunTerm,
-        "record" => Token::RecordTerm,
-        "Record" => Token::RecordType,
+
         "{" => Token::LBrace,
         "}" => Token::RBrace,
         "[" => Token::LBrack,
@@ -67,7 +71,7 @@ AtomicTerm: Term<&'input str> = {
     <start: @L> "[" <entries: List<Term>> "]" <end: @R> => Term::Sequence(start..end, entries),
     <start: @L> "Record" "{" <entries: List<TypeEntry>> "}" <end: @R> => Term::RecordType(start..end, entries),
     <start: @L> "record" "{" <entries: List<TermEntry>> "}" <end: @R> => Term::RecordTerm(start..end, entries),
-    <head: AtomicTerm> "." <name_start: @L> <name: Name> <end: @R> => Term::RecordElim(Box::new(head), name_start..end, name),
+    <head: AtomicTerm> "." <label_start: @L> <label: Name> <end: @R> => Term::RecordElim(Box::new(head), label_start..end, label),
     <start: @L> <term: AtomicTerm> <shift: "shift"> <end: @R> => {
         Term::Lift(start..end, Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
     },
@@ -80,17 +84,17 @@ List<Entry>: Vec<Entry> = {
     }
 }
 
-TypeEntry: (Range<usize>, &'input str, Term<&'input str>) = {
-    <_docs: "doc comment"*> <start: @L> <name: Name> <end: @R> ":" <term: Term> => {
+TypeEntry: TypeEntry<&'input str> = {
+    <_docs: "doc comment"*> <start: @L> <label: Name> <name: ("as" <Name>)?> <end: @R> ":" <term: Term> => {
         // TODO: Use doc comments
-        (start..end, name, term)
+        (start..end, label, name, term)
     },
 };
 
-TermEntry: (Range<usize>, &'input str, Term<&'input str>) = {
-    <_docs: "doc comment"*> <start: @L> <name: Name> <end: @R> "=" <term: Term> => {
+TermEntry: TermEntry<&'input str> = {
+    <_docs: "doc comment"*> <start: @L> <label: Name> <end: @R> "=" <term: Term> => {
         // TODO: Use doc comments
-        (start..end, name, term)
+        (start..end, label, term)
     },
 };
 

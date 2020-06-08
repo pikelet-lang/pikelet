@@ -17,16 +17,29 @@ pub enum Token<'a> {
     Name(&'a str),
     #[regex(r"\^[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
     Shift(&'a str),
+
+    #[token("as")]
+    As,
+    #[token("fun")]
+    FunTerm,
+    #[token("record")]
+    RecordTerm,
+    #[token("Record")]
+    RecordType,
+
     #[token(":")]
     Colon,
     #[token(",")]
     Comma,
-    #[token("fun")]
-    FunTerm,
     #[token("=>")]
     DArrow,
     #[token("->")]
     Arrow,
+    #[token(".")]
+    Dot,
+    #[token("=")]
+    Equal,
+
     #[token("(")]
     LParen,
     #[token(")")]
@@ -39,14 +52,7 @@ pub enum Token<'a> {
     LBrace,
     #[token("}")]
     RBrace,
-    #[token("record")]
-    RecordTerm,
-    #[token("Record")]
-    RecordType,
-    #[token(".")]
-    Dot,
-    #[token("=")]
-    Equal,
+
     #[error]
     #[regex(r"\p{Whitespace}|--(.*)\n", logos::skip)]
     Error,
@@ -61,21 +67,26 @@ impl<'a> fmt::Display for Token<'a> {
             Token::NumLiteral(s) => write!(f, "{}", s),
             Token::Name(s) => write!(f, "{}", s),
             Token::Shift(s) => write!(f, "{}", s),
+
+            Token::As => write!(f, "as"),
+            Token::FunTerm => write!(f, "fun"),
+            Token::RecordTerm => write!(f, "record"),
+            Token::RecordType => write!(f, "Record"),
+
             Token::Colon => write!(f, ":"),
             Token::Comma => write!(f, ","),
-            Token::FunTerm => write!(f, "fun"),
             Token::DArrow => write!(f, "=>"),
             Token::Arrow => write!(f, "->"),
+            Token::Equal => write!(f, "="),
+            Token::Dot => write!(f, "."),
+
             Token::LParen => write!(f, "("),
             Token::RParen => write!(f, ")"),
             Token::LBrack => write!(f, "["),
             Token::RBrack => write!(f, "]"),
             Token::LBrace => write!(f, "{{"),
             Token::RBrace => write!(f, "}}"),
-            Token::RecordTerm => write!(f, "record"),
-            Token::RecordType => write!(f, "Record"),
-            Token::Equal => write!(f, "="),
-            Token::Dot => write!(f, "."),
+
             Token::Error => write!(f, "<error>"),
         }
     }

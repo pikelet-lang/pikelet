@@ -140,9 +140,9 @@ impl RecordTypeClosure {
     ) {
         let universe_offset = self.universe_offset;
         let mut values = self.values.clone();
-        for (entry_name, entry_type) in self.entries.iter() {
+        for (label, entry_type) in self.entries.iter() {
             let entry_type = eval_term(globals, universe_offset, &mut values, entry_type);
-            values.push(on_entry(entry_name, entry_type));
+            values.push(on_entry(label, entry_type));
         }
     }
 }
@@ -200,17 +200,17 @@ pub fn eval_term(
         Term::RecordTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
-                .map(|(entry_name, entry_term)| {
+                .map(|(label, entry_term)| {
                     let entry_term = eval_term(globals, universe_offset, values, entry_term);
-                    (entry_name.clone(), entry_term)
+                    (label.clone(), entry_term)
                 })
                 .collect();
 
             Arc::new(Value::RecordTerm(value_entries))
         }
-        Term::RecordElim(head, name) => {
+        Term::RecordElim(head, label) => {
             let head = eval_term(globals, universe_offset, values, head);
-            eval_record_elim(globals, &head, name)
+            eval_record_elim(globals, &head, label)
         }
         Term::FunctionType(param_type, body_type) => {
             let param_type = eval_term(globals, universe_offset, values, param_type);
@@ -239,32 +239,32 @@ pub fn eval_term(
 pub fn record_elim_type(
     globals: &Globals,
     head_value: &Value,
-    name: &str,
+    label: &str,
     closure: &RecordTypeClosure,
 ) -> Option<Arc<Value>> {
     let universe_offset = closure.universe_offset;
     let mut values = closure.values.clone();
-    for (entry_name, entry_type) in closure.entries.iter() {
-        if name == entry_name {
+    for (entry_label, entry_type) in closure.entries.iter() {
+        if entry_label == label {
             return Some(eval_term(globals, universe_offset, &mut values, entry_type));
         }
-        values.push(eval_record_elim(globals, head_value, entry_name));
+        values.push(eval_record_elim(globals, head_value, label));
     }
     None
 }
 
 /// Eliminate a record term.
-pub fn eval_record_elim(globals: &Globals, head_value: &Value, name: &str) -> Arc<Value> {
+pub fn eval_record_elim(globals: &Globals, head_value: &Value, label: &str) -> Arc<Value> {
     match head_value {
-        Value::RecordTerm(term_entries) => match term_entries.get(name) {
+        Value::RecordTerm(term_entries) => match term_entries.get(label) {
             Some(value) => value.clone(),
             None => Arc::new(Value::Error),
         },
         Value::Elim(head, elims, r#type) => {
             if let Value::RecordType(closure) = r#type.as_ref() {
-                if let Some(entry_type) = record_elim_type(globals, head_value, name, closure) {
+                if let Some(entry_type) = record_elim_type(globals, head_value, label, closure) {
                     let mut elims = elims.clone(); // FIXME: Avoid clone of elims?
-                    elims.push(Elim::Record(name.to_owned()));
+                    elims.push(Elim::Record(label.to_owned()));
                     return Arc::new(Value::Elim(head.clone(), elims, entry_type));
                 }
             }
@@ -303,7 +303,7 @@ pub fn read_back_elim(
     };
 
     spine.iter().fold(head, |head, elim| match elim {
-        Elim::Record(name) => Term::RecordElim(Arc::new(head), name.clone()),
+        Elim::Record(label) => Term::RecordElim(Arc::new(head), label.clone()),
         Elim::Function(argument, argument_type) => Term::FunctionElim(
             Arc::new(head),
             Arc::new(read_back_nf(globals, local_size, argument, argument_type)),
@@ -345,10 +345,10 @@ pub fn read_back_nf(
         (Value::RecordTerm(_), Value::RecordType(closure)) => {
             let mut term_entries = BTreeMap::new();
 
-            closure.entries(globals, |entry_name, entry_type| {
-                let entry_value = eval_record_elim(globals, value, entry_name);
+            closure.entries(globals, |label, entry_type| {
+                let entry_value = eval_record_elim(globals, value, label);
                 let entry_term = read_back_nf(globals, local_size, &entry_value, &entry_type);
-                term_entries.insert(entry_name.to_owned(), Arc::new(entry_term));
+                term_entries.insert(label.to_owned(), Arc::new(entry_term));
                 entry_value
             });
 
@@ -383,9 +383,9 @@ pub fn read_back_type(globals: &Globals, local_size: LocalSize, r#type: &Value) 
             let mut local_size = local_size;
             let mut type_entries = Vec::with_capacity(closure.entries.len());
 
-            closure.entries(globals, |entry_name, entry_type| {
+            closure.entries(globals, |label, entry_type| {
                 type_entries.push((
-                    entry_name.to_owned(),
+                    label.to_owned(),
                     Arc::new(read_back_type(globals, local_size, &entry_type)),
                 ));
 
@@ -424,7 +424,7 @@ pub fn is_equal_elim(
             (Elim::Function(argument0, type0), Elim::Function(argument1, type1)) => {
                 is_equal_nf(globals, local_size, (argument0, type0), (argument1, type1))
             }
-            (Elim::Record(field0), Elim::Record(field1)) => field0 == field1,
+            (Elim::Record(label0), Elim::Record(label1)) => label0 == label1,
             (_, _) => false,
         })
 }
@@ -465,8 +465,8 @@ fn compare_types(
 
             closure0.entries.len() == closure1.entries.len()
                 && Iterator::zip(closure0.entries.iter(), closure1.entries.iter()).all(
-                    |((entry_name0, entry_type0), (entry_name1, entry_type1))| {
-                        entry_name0 == entry_name1 && {
+                    |((label0, entry_type0), (label1, entry_type1))| {
+                        label0 == label1 && {
                             let entry_type0 =
                                 eval_term(globals, universe_offset0, &mut values0, entry_type0);
                             let entry_type1 =

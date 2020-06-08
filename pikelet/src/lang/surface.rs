@@ -11,6 +11,11 @@ mod grammar {
     include!(concat!(env!("OUT_DIR"), "/lang/surface/grammar.rs"));
 }
 
+/// Entry in a [record type](Term::RecordType).
+pub type TypeEntry<S> = (Range<usize>, S, Option<S>, Term<S>);
+/// Entry in a [record term](Term::RecordTerm).
+pub type TermEntry<S> = (Range<usize>, S, Term<S>);
+
 #[derive(Debug, Clone)]
 pub enum Term<S> {
     /// Names.
@@ -22,9 +27,9 @@ pub enum Term<S> {
     /// Ordered sequences.
     Sequence(Range<usize>, Vec<Term<S>>),
     /// Record types.
-    RecordType(Range<usize>, Vec<(Range<usize>, S, Term<S>)>),
+    RecordType(Range<usize>, Vec<TypeEntry<S>>),
     /// Record terms.
-    RecordTerm(Range<usize>, Vec<(Range<usize>, S, Term<S>)>),
+    RecordTerm(Range<usize>, Vec<TermEntry<S>>),
     /// Record eliminations (field access).
     RecordElim(Box<Term<S>>, Range<usize>, S),
     /// Function types.
@@ -60,7 +65,7 @@ impl<T> Term<T> {
             | Term::Lift(range, _, _)
             | Term::Error(range) => range.clone(),
             Term::Ann(term, r#type) => term.range().start..r#type.range().end,
-            Term::RecordElim(term, name_range, _) => term.range().start..name_range.end,
+            Term::RecordElim(term, label_range, _) => term.range().start..label_range.end,
             Term::FunctionType(param_type, body_type) => {
                 param_type.range().start..body_type.range().end
             }
