@@ -345,17 +345,13 @@ pub fn read_back_nf(
         }
         (Value::RecordTerm(_), Value::RecordType(closure)) => {
             let mut term_entries = BTreeMap::new();
-            let mut values = closure.values.clone();
-            let universe_offset = closure.universe_offset;
 
-            for (entry_name, entry_type) in closure.entries.iter() {
-                let entry_type = eval_term(globals, universe_offset, &mut values, entry_type);
+            closure.entries(globals, |entry_name, entry_type| {
                 let entry_value = eval_record_elim(globals, value, entry_name);
                 let entry_term = read_back_nf(globals, local_size, &entry_value, &entry_type);
-
-                term_entries.insert(entry_name.clone(), Arc::new(entry_term));
-                values.push(entry_value);
-            }
+                term_entries.insert(entry_name.to_owned(), Arc::new(entry_term));
+                entry_value
+            });
 
             Term::RecordTerm(term_entries)
         }
@@ -386,23 +382,21 @@ pub fn read_back_type(globals: &Globals, local_size: LocalSize, r#type: &Value) 
         Value::Elim(head, spine, _) => read_back_elim(globals, local_size, head, spine),
         Value::RecordType(closure) => {
             let mut local_size = local_size;
-            let mut values = closure.values.clone();
+            let mut type_entries = Vec::with_capacity(closure.entries.len());
 
-            let type_entries = (closure.entries.iter())
-                .map(|(entry_name, entry_type)| {
-                    let entry_type_value =
-                        eval_term(globals, closure.universe_offset, &mut values, entry_type);
-                    let entry_type = read_back_type(globals, local_size, &entry_type_value);
+            closure.entries(globals, |entry_name, entry_type| {
+                type_entries.push((
+                    entry_name.to_owned(),
+                    Arc::new(read_back_type(globals, local_size, &entry_type)),
+                ));
 
-                    let local_level = local_size.next_level();
-                    values.push(Arc::new(Value::local(local_level, entry_type_value)));
-                    local_size = local_size.increment();
+                let local_level = local_size.next_level();
+                local_size = local_size.increment();
 
-                    (entry_name.clone(), Arc::new(entry_type))
-                })
-                .collect();
+                Arc::new(Value::local(local_level, entry_type))
+            });
 
-            Term::RecordType(type_entries)
+            Term::RecordType(type_entries.into())
         }
         Value::FunctionType(param_type, body_type) => Term::FunctionType(
             Arc::new(read_back_type(globals, local_size, param_type)),
