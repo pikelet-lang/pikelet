@@ -290,21 +290,16 @@ pub fn check_type<S: AsRef<str>>(
             let mut missing_names = Vec::new();
 
             let mut core_term_entries = BTreeMap::new();
-            let mut pending_term_entries = (term_entries.iter()).fold(
-                BTreeMap::new(),
-                |mut acc, (entry_name_range, entry_name, entry_term)| {
-                    let range = entry_name_range.clone();
-                    match acc.entry(entry_name.as_ref().to_owned()) {
-                        Entry::Vacant(entry) => drop(entry.insert((range, entry_term))),
-                        Entry::Occupied(entry) => duplicate_names.push((
-                            entry.key().clone(),
-                            entry.get().0.clone(),
-                            range,
-                        )),
+            let mut pending_term_entries = BTreeMap::new();
+            for (entry_name_range, entry_name, entry_term) in term_entries {
+                let range = entry_name_range.clone();
+                match pending_term_entries.entry(entry_name.as_ref().to_owned()) {
+                    Entry::Vacant(entry) => drop(entry.insert((range, entry_term))),
+                    Entry::Occupied(entry) => {
+                        duplicate_names.push((entry.key().clone(), entry.get().0.clone(), range));
                     }
-                    acc
-                },
-            );
+                }
+            }
 
             closure.entries(
                 state.globals,
