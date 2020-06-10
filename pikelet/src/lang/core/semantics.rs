@@ -245,9 +245,8 @@ pub fn record_elim_type(
     let universe_offset = closure.universe_offset;
     let mut values = closure.values.clone();
     for (entry_name, entry_type) in closure.entries.iter() {
-        let entry_type = eval_term(globals, universe_offset, &mut values, entry_type);
         if name == entry_name {
-            return Some(entry_type);
+            return Some(eval_term(globals, universe_offset, &mut values, entry_type));
         }
         values.push(eval_record_elim(globals, head_value, entry_name));
     }
