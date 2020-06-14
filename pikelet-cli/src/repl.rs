@@ -124,7 +124,7 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
                 Arc::new(state.normalize_term(&core_term, &r#type)),
                 Arc::new(state.read_back_type(&r#type)),
             );
-            let term = state.delaborate_term(&ann_term);
+            let term = state.to_surface_term(&ann_term);
             let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
 
             println!("{}", doc.1.pretty(term_width()));
