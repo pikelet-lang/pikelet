@@ -150,9 +150,9 @@ impl<'me> State<'me> {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
 
-    /// Delaborate a `core::Term` into a `surface::Term`.
-    pub fn delaborate_term(&mut self, core_term: &core::Term) -> Term<String> {
-        core_to_surface::delaborate_term(
+    /// Distill a `core::Term` into a `surface::Term`.
+    pub fn to_surface_term(&mut self, core_term: &core::Term) -> Term<String> {
+        core_to_surface::from_term(
             &mut core_to_surface::State::new(self.globals, &mut self.names),
             &core_term,
         )
@@ -171,7 +171,7 @@ pub fn is_type<S: AsRef<str>>(
         Value::Error => (core::Term::Error, None),
         found_type => {
             let found_type = state.read_back_type(&found_type);
-            let found_type = state.delaborate_term(&found_type);
+            let found_type = state.to_surface_term(&found_type);
             state.report(Message::MismatchedTypes {
                 range: term.range(),
                 found_type,
@@ -208,7 +208,7 @@ pub fn check_type<S: AsRef<str>>(
                 (Literal::String(data), "String", []) => parse_string(state, term.range(), data),
                 (_, _, _) => {
                     let expected_type = state.read_back_type(expected_type);
-                    let expected_type = state.delaborate_term(&expected_type);
+                    let expected_type = state.to_surface_term(&expected_type);
                     state.report(Message::NoLiteralConversion {
                         range: term.range(),
                         expected_type,
@@ -219,7 +219,7 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::Literal(_, _), _) => {
             let expected_type = state.read_back_type(expected_type);
-            let expected_type = state.delaborate_term(&expected_type);
+            let expected_type = state.to_surface_term(&expected_type);
             state.report(Message::NoLiteralConversion {
                 range: term.range(),
                 expected_type,
@@ -243,7 +243,7 @@ pub fn check_type<S: AsRef<str>>(
                         Value::Error => core::Term::Error,
                         _ => {
                             let expected_len = state.read_back_nf(&len, len_type);
-                            let expected_len = state.delaborate_term(&expected_len);
+                            let expected_len = state.to_surface_term(&expected_len);
                             state.report(Message::MismatchedSequenceLength {
                                 range: term.range(),
                                 found_len: entry_terms.len(),
@@ -264,7 +264,7 @@ pub fn check_type<S: AsRef<str>>(
                 }
                 _ => {
                     let expected_type = state.read_back_type(expected_type);
-                    let expected_type = state.delaborate_term(&expected_type);
+                    let expected_type = state.to_surface_term(&expected_type);
                     state.report(Message::NoSequenceConversion {
                         range: term.range(),
                         expected_type,
@@ -275,7 +275,7 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::Sequence(_, _), _) => {
             let expected_type = state.read_back_type(expected_type);
-            let expected_type = state.delaborate_term(&expected_type);
+            let expected_type = state.to_surface_term(&expected_type);
             state.report(Message::NoSequenceConversion {
                 range: term.range(),
                 expected_type,
@@ -373,9 +373,9 @@ pub fn check_type<S: AsRef<str>>(
             (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
             (_, found_type) => {
                 let found_type = state.read_back_type(&found_type);
-                let found_type = state.delaborate_term(&found_type);
+                let found_type = state.to_surface_term(&found_type);
                 let expected_type = state.read_back_type(expected_type);
-                let expected_type = state.delaborate_term(&expected_type);
+                let expected_type = state.to_surface_term(&expected_type);
                 state.report(Message::MismatchedTypes {
                     range: term.range(),
                     found_type,
@@ -528,7 +528,7 @@ pub fn synth_type<S: AsRef<str>>(
             }
 
             let head_type = state.read_back_type(&head_type);
-            let head_type = state.delaborate_term(&head_type);
+            let head_type = state.to_surface_term(&head_type);
             state.report(Message::LabelNotFound {
                 head_range: head.range(),
                 label_range: label_range.clone(),
@@ -571,7 +571,7 @@ pub fn synth_type<S: AsRef<str>>(
                     Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
                     _ => {
                         let head_type = state.read_back_type(&head_type);
-                        let head_type = state.delaborate_term(&head_type);
+                        let head_type = state.to_surface_term(&head_type);
                         let unexpected_arguments = arguments.map(|arg| arg.range()).collect();
                         state.report(Message::TooManyArguments {
                             head_range,
