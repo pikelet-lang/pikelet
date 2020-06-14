@@ -8,7 +8,7 @@ use crate::lang::surface;
 pub struct State<'me> {
     globals: &'me Globals,
     usages: HashMap<String, Usage>,
-    names: &'me mut Locals<String>,
+    names: Locals<String>,
 }
 
 struct Usage {
@@ -19,7 +19,7 @@ struct Usage {
 const DEFAULT_NAME: &str = "t";
 
 impl<'me> State<'me> {
-    pub fn new(globals: &'me Globals, names: &'me mut Locals<String>) -> State<'me> {
+    pub fn new(globals: &'me Globals) -> State<'me> {
         let usages = globals
             .entries()
             .map(|(name, _)| {
@@ -36,13 +36,13 @@ impl<'me> State<'me> {
         State {
             globals,
             usages,
-            names,
+            names: Locals::new(),
         }
     }
 
     // TODO: Find optimal names by using free variables
     // TODO: Reduce string allocations
-    fn push_name(&mut self, name_hint: Option<&str>) -> String {
+    pub fn push_name(&mut self, name_hint: Option<&str>) -> String {
         let base_name = name_hint.unwrap_or(DEFAULT_NAME);
         let (fresh_name, base_name) = match self.usages.get_mut(base_name) {
             // The name has not been used yet
@@ -76,7 +76,7 @@ impl<'me> State<'me> {
         fresh_name
     }
 
-    fn pop_name(&mut self) {
+    pub fn pop_name(&mut self) {
         if let Some(mut name) = self.names.pop() {
             while let Some(base_name) = self.remove_usage(name) {
                 name = base_name;
@@ -97,7 +97,7 @@ impl<'me> State<'me> {
         }
     }
 
-    fn pop_many_names(&mut self, count: usize) {
+    pub fn pop_many_names(&mut self, count: usize) {
         (0..count).for_each(|_| self.pop_name());
     }
 }
@@ -230,8 +230,7 @@ mod tests {
     #[test]
     fn push_default_name() {
         let globals = Globals::default();
-        let mut locals = Locals::new();
-        let mut state = State::new(&globals, &mut locals);
+        let mut state = State::new(&globals);
 
         assert_eq!(state.push_name(None), "t");
         assert_eq!(state.push_name(Some("t")), "t-1");
@@ -241,8 +240,7 @@ mod tests {
     #[test]
     fn push_and_pop_default_name() {
         let globals = Globals::default();
-        let mut locals = Locals::new();
-        let mut state = State::new(&globals, &mut locals);
+        let mut state = State::new(&globals);
 
         assert_eq!(state.push_name(None), "t");
         state.pop_name();
@@ -264,8 +262,7 @@ mod tests {
     #[test]
     fn push_name() {
         let globals = Globals::default();
-        let mut locals = Locals::new();
-        let mut state = State::new(&globals, &mut locals);
+        let mut state = State::new(&globals);
 
         assert_eq!(state.push_name(Some("test")), "test");
         assert_eq!(state.push_name(Some("test")), "test-1");
@@ -275,8 +272,7 @@ mod tests {
     #[test]
     fn push_and_pop_name() {
         let globals = Globals::default();
-        let mut locals = Locals::new();
-        let mut state = State::new(&globals, &mut locals);
+        let mut state = State::new(&globals);
 
         assert_eq!(state.push_name(Some("test")), "test");
         state.pop_name();
@@ -298,8 +294,7 @@ mod tests {
     #[test]
     fn push_fresh_name() {
         let globals = Globals::default();
-        let mut locals = Locals::new();
-        let mut state = State::new(&globals, &mut locals);
+        let mut state = State::new(&globals);
 
         assert_eq!(state.push_name(Some("test")), "test");
         assert_eq!(state.push_name(Some("test")), "test-1");
@@ -311,8 +306,7 @@ mod tests {
     #[test]
     fn push_global_name() {
         let globals = Globals::default();
-        let mut locals = Locals::new();
-        let mut state = State::new(&globals, &mut locals);
+        let mut state = State::new(&globals);
 
         assert_eq!(state.push_name(Some("Type")), "Type-1");
         assert_eq!(state.push_name(Some("Type")), "Type-2");

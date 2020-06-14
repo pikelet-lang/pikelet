@@ -21,8 +21,8 @@ pub struct State<'me> {
     universe_offset: core::UniverseOffset,
     /// Substitutions from the user-defined names to the level in which they were bound.
     names_to_levels: Vec<(String, core::LocalLevel)>,
-    /// Local name environment (used for pretty printing).
-    names: core::Locals<String>,
+    /// Distillation state (used for pretty printing).
+    core_to_surface: core_to_surface::State<'me>,
     /// Local type environment (used for getting the types of local variables).
     types: core::Locals<Arc<Value>>,
     /// Local value environment (used for evaluation).
@@ -38,7 +38,7 @@ impl<'me> State<'me> {
             globals,
             universe_offset: core::UniverseOffset(0),
             names_to_levels: Vec::new(),
-            names: core::Locals::new(),
+            core_to_surface: core_to_surface::State::new(globals),
             types: core::Locals::new(),
             values: core::Locals::new(),
             messages: Vec::new(),
@@ -60,8 +60,8 @@ impl<'me> State<'me> {
 
     /// Push a local entry.
     fn push_local(&mut self, name: String, value: Arc<Value>, r#type: Arc<Value>) {
-        self.names_to_levels.push((name.clone(), self.next_level()));
-        self.names.push(name);
+        self.core_to_surface.push_name(Some(&name));
+        self.names_to_levels.push((name, self.next_level()));
         self.types.push(r#type);
         self.values.push(value);
     }
@@ -75,17 +75,17 @@ impl<'me> State<'me> {
 
     // /// Pop a local entry.
     // fn pop_local(&mut self) {
+    //     self.core_to_surface.pop_name();
     //     self.names_to_levels.pop();
-    //     self.names.pop();
     //     self.types.pop();
     //     self.values.pop();
     // }
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
+        self.core_to_surface.pop_many_names(count);
         self.names_to_levels
             .truncate(self.names_to_levels.len().saturating_sub(count));
-        self.names.pop_many(count);
         self.types.pop_many(count);
         self.values.pop_many(count);
     }
@@ -151,11 +151,8 @@ impl<'me> State<'me> {
     }
 
     /// Distill a `core::Term` into a `surface::Term`.
-    pub fn to_surface_term(&mut self, core_term: &core::Term) -> Term<String> {
-        core_to_surface::from_term(
-            &mut core_to_surface::State::new(self.globals, &mut self.names),
-            &core_term,
-        )
+    pub fn core_to_surface_term(&mut self, core_term: &core::Term) -> Term<String> {
+        core_to_surface::from_term(&mut self.core_to_surface, &core_term)
     }
 }
 
@@ -171,7 +168,7 @@ pub fn is_type<S: AsRef<str>>(
         Value::Error => (core::Term::Error, None),
         found_type => {
             let found_type = state.read_back_type(&found_type);
-            let found_type = state.to_surface_term(&found_type);
+            let found_type = state.core_to_surface_term(&found_type);
             state.report(Message::MismatchedTypes {
                 range: term.range(),
                 found_type,
@@ -208,7 +205,7 @@ pub fn check_type<S: AsRef<str>>(
                 (Literal::String(data), "String", []) => parse_string(state, term.range(), data),
                 (_, _, _) => {
                     let expected_type = state.read_back_type(expected_type);
-                    let expected_type = state.to_surface_term(&expected_type);
+                    let expected_type = state.core_to_surface_term(&expected_type);
                     state.report(Message::NoLiteralConversion {
                         range: term.range(),
                         expected_type,
@@ -219,7 +216,7 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::Literal(_, _), _) => {
             let expected_type = state.read_back_type(expected_type);
-            let expected_type = state.to_surface_term(&expected_type);
+            let expected_type = state.core_to_surface_term(&expected_type);
             state.report(Message::NoLiteralConversion {
                 range: term.range(),
                 expected_type,
@@ -243,7 +240,7 @@ pub fn check_type<S: AsRef<str>>(
                         Value::Error => core::Term::Error,
                         _ => {
                             let expected_len = state.read_back_nf(&len, len_type);
-                            let expected_len = state.to_surface_term(&expected_len);
+                            let expected_len = state.core_to_surface_term(&expected_len);
                             state.report(Message::MismatchedSequenceLength {
                                 range: term.range(),
                                 found_len: entry_terms.len(),
@@ -264,7 +261,7 @@ pub fn check_type<S: AsRef<str>>(
                 }
                 _ => {
                     let expected_type = state.read_back_type(expected_type);
-                    let expected_type = state.to_surface_term(&expected_type);
+                    let expected_type = state.core_to_surface_term(&expected_type);
                     state.report(Message::NoSequenceConversion {
                         range: term.range(),
                         expected_type,
@@ -275,7 +272,7 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::Sequence(_, _), _) => {
             let expected_type = state.read_back_type(expected_type);
-            let expected_type = state.to_surface_term(&expected_type);
+            let expected_type = state.core_to_surface_term(&expected_type);
             state.report(Message::NoSequenceConversion {
                 range: term.range(),
                 expected_type,
@@ -373,9 +370,9 @@ pub fn check_type<S: AsRef<str>>(
             (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
             (_, found_type) => {
                 let found_type = state.read_back_type(&found_type);
-                let found_type = state.to_surface_term(&found_type);
+                let found_type = state.core_to_surface_term(&found_type);
                 let expected_type = state.read_back_type(expected_type);
-                let expected_type = state.to_surface_term(&expected_type);
+                let expected_type = state.core_to_surface_term(&expected_type);
                 state.report(Message::MismatchedTypes {
                     range: term.range(),
                     found_type,
@@ -528,7 +525,7 @@ pub fn synth_type<S: AsRef<str>>(
             }
 
             let head_type = state.read_back_type(&head_type);
-            let head_type = state.to_surface_term(&head_type);
+            let head_type = state.core_to_surface_term(&head_type);
             state.report(Message::LabelNotFound {
                 head_range: head.range(),
                 label_range: label_range.clone(),
@@ -571,7 +568,7 @@ pub fn synth_type<S: AsRef<str>>(
                     Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
                     _ => {
                         let head_type = state.read_back_type(&head_type);
-                        let head_type = state.to_surface_term(&head_type);
+                        let head_type = state.core_to_surface_term(&head_type);
                         let unexpected_arguments = arguments.map(|arg| arg.range()).collect();
                         state.report(Message::TooManyArguments {
                             head_range,
