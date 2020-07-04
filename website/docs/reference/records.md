@@ -11,9 +11,9 @@ Records provide a way of grouping together data into [composite data types][comp
 
 [composite-data-types-wikipedia]: https://en.wikipedia.org/wiki/Composite_data_type
 
-## Formation
+## Types
 
-A record type is a list of entries, consisting of an entry name, and an entry type.
+A record type is a list of entries, consisting of an entry label, and an entry type.
 For example, this is a record that defines `width` and `height` extents:
 
 ```pikelet
@@ -23,7 +23,7 @@ Record {
 }
 ```
 
-### Dependent records
+### Dependency
 
 Entries can be used to constrain the types of later entries.
 For example:
@@ -35,7 +35,32 @@ Record {
 }
 ```
 
-Here the type of `a` _depends_ on the type given to `A`.
+Here the type of the entry with the label `a` _depends_ on the type given to
+the entry with label `A`.
+
+### Explicit binding names
+
+By default, the binding name of an entry is the same as the label. In rare
+cases, however the label name might shadow a binding from a higher scope.
+In this case we can give the field a new, internal name using the `as` keyword:
+
+```pikelet
+Record {
+  -- label
+  --  │
+  --  │    explicit name binding
+  --  │        │
+  String as String-1 : Type,
+
+  -- refers to the built-in `String` type
+  --     │
+  x : String,
+
+  -- refers to the local `String` entry
+  --     │
+  y : String-1,
+}
+```
 
 ### Universes
 
@@ -86,7 +111,7 @@ It would be nice not to require this in the future,
 but dependent record types make this a challenge!
 :::
 
-## Construction
+## Terms
 
 :::note
 This section is a work in progress.
@@ -106,7 +131,7 @@ record {
 }
 ```
 
-## Elimination
+## Eliminations
 
 :::note
 This section is a work in progress.

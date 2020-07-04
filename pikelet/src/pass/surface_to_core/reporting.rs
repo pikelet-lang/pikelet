@@ -35,18 +35,18 @@ pub enum Message {
         name: String,
     },
     InvalidRecordType {
-        duplicate_names: Vec<(String, Range<usize>, Range<usize>)>,
+        duplicate_labels: Vec<(String, Range<usize>, Range<usize>)>,
     },
     InvalidRecordTerm {
         range: Range<usize>,
-        duplicate_names: Vec<(String, Range<usize>, Range<usize>)>,
-        missing_names: Vec<String>,
-        unexpected_names: Vec<(String, Range<usize>)>,
+        duplicate_labels: Vec<(String, Range<usize>, Range<usize>)>,
+        missing_labels: Vec<String>,
+        unexpected_labels: Vec<(String, Range<usize>)>,
     },
-    EntryNameNotFound {
+    LabelNotFound {
         head_range: Range<usize>,
-        name_range: Range<usize>,
-        expected_field_name: String,
+        label_range: Range<usize>,
+        expected_label: String,
         head_type: Term<String>,
     },
     TooManyParameters {
@@ -111,19 +111,19 @@ impl Message {
                     Label::primary((), range.clone()).with_message("not found in this scope")
                 ]),
 
-            Message::InvalidRecordType { duplicate_names } => Diagnostic::error()
+            Message::InvalidRecordType { duplicate_labels } => Diagnostic::error()
                 .with_message("invalid record type")
                 .with_labels({
-                    let mut labels = Vec::with_capacity(duplicate_names.len() * 2);
+                    let mut labels = Vec::with_capacity(duplicate_labels.len() * 2);
 
-                    for (name, name_range1, name_range2) in duplicate_names {
+                    for (label, label_range1, label_range2) in duplicate_labels {
                         labels.push(
-                            Label::secondary((), name_range1.clone())
-                                .with_message(format!("first use of `{}`", name)),
+                            Label::secondary((), label_range1.clone())
+                                .with_message(format!("first use of `{}`", label)),
                         );
                         labels.push(
-                            Label::primary((), name_range2.clone())
-                                .with_message("entry name used more than once"),
+                            Label::primary((), label_range2.clone())
+                                .with_message("entry label used more than once"),
                         );
                     }
 
@@ -132,43 +132,43 @@ impl Message {
 
             Message::InvalidRecordTerm {
                 range,
-                duplicate_names,
-                missing_names,
-                unexpected_names,
+                duplicate_labels,
+                missing_labels,
+                unexpected_labels,
             } => Diagnostic::error()
                 .with_message("invalid record term")
                 .with_labels({
                     let mut labels = Vec::with_capacity(
-                        duplicate_names.len() * 2
-                            + unexpected_names.len()
-                            + if missing_names.is_empty() { 0 } else { 1 },
+                        duplicate_labels.len() * 2
+                            + unexpected_labels.len()
+                            + if missing_labels.is_empty() { 0 } else { 1 },
                     );
 
-                    for (name, name_range1, name_range2) in duplicate_names {
+                    for (label, label_range1, label_range2) in duplicate_labels {
                         labels.push(
-                            Label::primary((), name_range1.clone())
-                                .with_message(format!("first use of `{}`", name)),
+                            Label::primary((), label_range1.clone())
+                                .with_message(format!("first use of `{}`", label)),
                         );
                         labels.push(
-                            Label::primary((), name_range2.clone())
-                                .with_message("entry name used more than once"),
-                        );
-                    }
-
-                    for (_, name_range) in unexpected_names {
-                        labels.push(
-                            Label::primary((), name_range.clone())
-                                .with_message("unexpected entry name"),
+                            Label::primary((), label_range2.clone())
+                                .with_message("entry label used more than once"),
                         );
                     }
 
-                    if !missing_names.is_empty() {
+                    for (_, label_range) in unexpected_labels {
+                        labels.push(
+                            Label::primary((), label_range.clone())
+                                .with_message("unexpected entry label"),
+                        );
+                    }
+
+                    if !missing_labels.is_empty() {
                         labels.push(Label::primary((), range.clone()).with_message(format!(
-                                "missing the names {} in this record term",
-                                missing_names
+                                "missing the labels {} in this record term",
+                                missing_labels
                                     .iter()
                                     // TODO: reduce string allocations
-                                    .map(|name| format!("`{}`", name))
+                                    .map(|label| format!("`{}`", label))
                                     .format(", "),
                             )));
                     }
@@ -176,19 +176,19 @@ impl Message {
                     labels
                 }),
 
-            Message::EntryNameNotFound {
+            Message::LabelNotFound {
                 head_range,
-                name_range,
-                expected_field_name,
+                label_range,
+                expected_label,
                 head_type,
             } => Diagnostic::error()
                 .with_message(format!(
-                    "no entry named `{}` in type `{}`",
-                    expected_field_name,
+                    "no entry with label `{}` in type `{}`",
+                    expected_label,
                     to_doc(&head_type).pretty(std::usize::MAX),
                 ))
                 .with_labels(vec![
-                    Label::primary((), name_range.clone()).with_message("unknown entry name"),
+                    Label::primary((), label_range.clone()).with_message("unknown entry label"),
                     Label::secondary((), head_range.clone()).with_message(format!(
                         "the type here is `{}`",
                         to_doc(&head_type).pretty(std::usize::MAX),

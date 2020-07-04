@@ -21,8 +21,8 @@ pub struct State<'me> {
     universe_offset: core::UniverseOffset,
     /// Substitutions from the user-defined names to the level in which they were bound.
     names_to_levels: Vec<(String, core::LocalLevel)>,
-    /// Local name environment (used for pretty printing).
-    names: core::Locals<String>,
+    /// Distillation state (used for pretty printing).
+    core_to_surface: core_to_surface::State<'me>,
     /// Local type environment (used for getting the types of local variables).
     types: core::Locals<Arc<Value>>,
     /// Local value environment (used for evaluation).
@@ -38,7 +38,7 @@ impl<'me> State<'me> {
             globals,
             universe_offset: core::UniverseOffset(0),
             names_to_levels: Vec::new(),
-            names: core::Locals::new(),
+            core_to_surface: core_to_surface::State::new(globals),
             types: core::Locals::new(),
             values: core::Locals::new(),
             messages: Vec::new(),
@@ -60,8 +60,8 @@ impl<'me> State<'me> {
 
     /// Push a local entry.
     fn push_local(&mut self, name: String, value: Arc<Value>, r#type: Arc<Value>) {
-        self.names_to_levels.push((name.clone(), self.next_level()));
-        self.names.push(name);
+        self.core_to_surface.push_name(Some(&name));
+        self.names_to_levels.push((name, self.next_level()));
         self.types.push(r#type);
         self.values.push(value);
     }
@@ -75,17 +75,17 @@ impl<'me> State<'me> {
 
     // /// Pop a local entry.
     // fn pop_local(&mut self) {
+    //     self.core_to_surface.pop_name();
     //     self.names_to_levels.pop();
-    //     self.names.pop();
     //     self.types.pop();
     //     self.values.pop();
     // }
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
+        self.core_to_surface.pop_many_names(count);
         self.names_to_levels
             .truncate(self.names_to_levels.len().saturating_sub(count));
-        self.names.pop_many(count);
         self.types.pop_many(count);
         self.values.pop_many(count);
     }
@@ -118,10 +118,10 @@ impl<'me> State<'me> {
     pub fn record_elim_type(
         &mut self,
         head_value: &Value,
-        name: &str,
+        label: &str,
         closure: &RecordTypeClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(self.globals, head_value, name, closure)
+        semantics::record_elim_type(self.globals, head_value, label, closure)
     }
 
     /// Normalize a term using the current state of the elaborator.
@@ -150,12 +150,9 @@ impl<'me> State<'me> {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
 
-    /// Delaborate a `core::Term` into a `surface::Term`.
-    pub fn delaborate_term(&mut self, core_term: &core::Term) -> Term<String> {
-        core_to_surface::delaborate_term(
-            &mut core_to_surface::State::new(&mut self.names),
-            &core_term,
-        )
+    /// Distill a `core::Term` into a `surface::Term`.
+    pub fn core_to_surface_term(&mut self, core_term: &core::Term) -> Term<String> {
+        core_to_surface::from_term(&mut self.core_to_surface, &core_term)
     }
 }
 
@@ -171,7 +168,7 @@ pub fn is_type<S: AsRef<str>>(
         Value::Error => (core::Term::Error, None),
         found_type => {
             let found_type = state.read_back_type(&found_type);
-            let found_type = state.delaborate_term(&found_type);
+            let found_type = state.core_to_surface_term(&found_type);
             state.report(Message::MismatchedTypes {
                 range: term.range(),
                 found_type,
@@ -208,7 +205,7 @@ pub fn check_type<S: AsRef<str>>(
                 (Literal::String(data), "String", []) => parse_string(state, term.range(), data),
                 (_, _, _) => {
                     let expected_type = state.read_back_type(expected_type);
-                    let expected_type = state.delaborate_term(&expected_type);
+                    let expected_type = state.core_to_surface_term(&expected_type);
                     state.report(Message::NoLiteralConversion {
                         range: term.range(),
                         expected_type,
@@ -219,7 +216,7 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::Literal(_, _), _) => {
             let expected_type = state.read_back_type(expected_type);
-            let expected_type = state.delaborate_term(&expected_type);
+            let expected_type = state.core_to_surface_term(&expected_type);
             state.report(Message::NoLiteralConversion {
                 range: term.range(),
                 expected_type,
@@ -243,7 +240,7 @@ pub fn check_type<S: AsRef<str>>(
                         Value::Error => core::Term::Error,
                         _ => {
                             let expected_len = state.read_back_nf(&len, len_type);
-                            let expected_len = state.delaborate_term(&expected_len);
+                            let expected_len = state.core_to_surface_term(&expected_len);
                             state.report(Message::MismatchedSequenceLength {
                                 range: term.range(),
                                 found_len: entry_terms.len(),
@@ -264,7 +261,7 @@ pub fn check_type<S: AsRef<str>>(
                 }
                 _ => {
                     let expected_type = state.read_back_type(expected_type);
-                    let expected_type = state.delaborate_term(&expected_type);
+                    let expected_type = state.core_to_surface_term(&expected_type);
                     state.report(Message::NoSequenceConversion {
                         range: term.range(),
                         expected_type,
@@ -275,7 +272,7 @@ pub fn check_type<S: AsRef<str>>(
         }
         (Term::Sequence(_, _), _) => {
             let expected_type = state.read_back_type(expected_type);
-            let expected_type = state.delaborate_term(&expected_type);
+            let expected_type = state.core_to_surface_term(&expected_type);
             state.report(Message::NoSequenceConversion {
                 range: term.range(),
                 expected_type,
@@ -286,49 +283,49 @@ pub fn check_type<S: AsRef<str>>(
             use std::collections::btree_map::Entry;
             use std::collections::BTreeMap;
 
-            let mut duplicate_names = Vec::new();
-            let mut missing_names = Vec::new();
+            let mut duplicate_labels = Vec::new();
+            let mut missing_labels = Vec::new();
 
             let mut core_term_entries = BTreeMap::new();
             let mut pending_term_entries = BTreeMap::new();
-            for (entry_name_range, entry_name, entry_term) in term_entries {
-                let range = entry_name_range.clone();
-                match pending_term_entries.entry(entry_name.as_ref().to_owned()) {
+            for (label_range, label, entry_term) in term_entries {
+                let range = label_range.clone();
+                match pending_term_entries.entry(label.as_ref().to_owned()) {
                     Entry::Vacant(entry) => drop(entry.insert((range, entry_term))),
                     Entry::Occupied(entry) => {
-                        duplicate_names.push((entry.key().clone(), entry.get().0.clone(), range));
+                        duplicate_labels.push((entry.key().clone(), entry.get().0.clone(), range));
                     }
                 }
             }
 
             closure.entries(
                 state.globals,
-                |entry_name, entry_type| match pending_term_entries.remove(entry_name) {
+                |label, entry_type| match pending_term_entries.remove(label) {
                     Some((_, entry_term)) => {
                         let core_entry_term = check_type(state, entry_term, &entry_type);
                         let core_entry_value = state.eval_term(&core_entry_term);
-                        core_term_entries.insert(entry_name.to_owned(), Arc::new(core_entry_term));
+                        core_term_entries.insert(label.to_owned(), Arc::new(core_entry_term));
                         core_entry_value
                     }
                     None => {
-                        missing_names.push(entry_name.to_owned());
+                        missing_labels.push(label.to_owned());
                         Arc::new(Value::Error)
                     }
                 },
             );
 
-            if !duplicate_names.is_empty()
-                || !missing_names.is_empty()
+            if !duplicate_labels.is_empty()
+                || !missing_labels.is_empty()
                 || !pending_term_entries.is_empty()
             {
-                let unexpected_names = (pending_term_entries.into_iter())
-                    .map(|(entry_name, (entry_name_range, _))| (entry_name, entry_name_range))
+                let unexpected_labels = (pending_term_entries.into_iter())
+                    .map(|(label, (label_range, _))| (label, label_range))
                     .collect();
                 state.report(Message::InvalidRecordTerm {
                     range: term.range(),
-                    duplicate_names,
-                    missing_names,
-                    unexpected_names,
+                    duplicate_labels,
+                    missing_labels,
+                    unexpected_labels,
                 });
             }
 
@@ -373,9 +370,9 @@ pub fn check_type<S: AsRef<str>>(
             (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
             (_, found_type) => {
                 let found_type = state.read_back_type(&found_type);
-                let found_type = state.delaborate_term(&found_type);
+                let found_type = state.core_to_surface_term(&found_type);
                 let expected_type = state.read_back_type(expected_type);
-                let expected_type = state.delaborate_term(&expected_type);
+                let expected_type = state.core_to_surface_term(&expected_type);
                 state.report(Message::MismatchedTypes {
                     range: term.range(),
                     found_type,
@@ -466,59 +463,60 @@ pub fn synth_type<S: AsRef<str>>(
             use std::collections::btree_map::Entry;
 
             let mut max_level = core::UniverseLevel(0);
-            let mut duplicate_names = Vec::new();
-            let mut seen_names = BTreeMap::new();
+            let mut duplicate_labels = Vec::new();
+            let mut seen_labels = BTreeMap::new();
             let mut core_type_entries = Vec::new();
 
-            for (entry_name_range, entry_name, entry_type) in type_entries {
-                match seen_names.entry(entry_name.as_ref()) {
+            for (label_range, label, name, entry_type) in type_entries {
+                let name = name.as_ref().unwrap_or(label);
+                match seen_labels.entry(label.as_ref()) {
                     Entry::Vacant(entry) => {
                         let (core_type, level) = is_type(state, entry_type);
                         max_level = match level {
                             Some(level) => std::cmp::max(max_level, level),
                             None => {
-                                state.pop_many_locals(seen_names.len());
+                                state.pop_many_locals(seen_labels.len());
                                 return (core::Term::Error, Arc::new(Value::Error));
                             }
                         };
                         let core_type = Arc::new(core_type);
                         let core_type_value = state.eval_term(&core_type);
-                        core_type_entries.push((entry_name.as_ref().to_owned(), core_type));
-                        state.push_param(entry_name.as_ref().to_owned(), core_type_value);
-                        entry.insert(entry_name_range.clone());
+                        core_type_entries.push((label.as_ref().to_owned(), core_type));
+                        state.push_param(name.as_ref().to_owned(), core_type_value);
+                        entry.insert(label_range.clone());
                     }
                     Entry::Occupied(entry) => {
-                        duplicate_names.push((
+                        duplicate_labels.push((
                             (*entry.key()).to_owned(),
                             entry.get().clone(),
-                            entry_name_range.clone(),
+                            label_range.clone(),
                         ));
                         is_type(state, entry_type);
                     }
                 }
             }
 
-            if !duplicate_names.is_empty() {
-                state.report(Message::InvalidRecordType { duplicate_names });
+            if !duplicate_labels.is_empty() {
+                state.report(Message::InvalidRecordType { duplicate_labels });
             }
 
-            state.pop_many_locals(seen_names.len());
+            state.pop_many_locals(seen_labels.len());
             (
                 core::Term::RecordType(core_type_entries.into()),
                 Arc::new(Value::Universe(max_level)),
             )
         }
-        Term::RecordElim(head, name_range, name) => {
+        Term::RecordElim(head, label_range, label) => {
             let (core_head, head_type) = synth_type(state, head);
 
             match head_type.as_ref() {
                 Value::RecordType(closure) => {
                     let head_value = state.eval_term(&core_head);
-                    let name = name.as_ref();
+                    let label = label.as_ref();
 
-                    if let Some(entry_type) = state.record_elim_type(&head_value, name, closure) {
+                    if let Some(entry_type) = state.record_elim_type(&head_value, label, closure) {
                         let core_head = Arc::new(core_head);
-                        let core_term = core::Term::RecordElim(core_head, name.to_owned());
+                        let core_term = core::Term::RecordElim(core_head, label.to_owned());
                         return (core_term, entry_type);
                     }
                 }
@@ -527,11 +525,11 @@ pub fn synth_type<S: AsRef<str>>(
             }
 
             let head_type = state.read_back_type(&head_type);
-            let head_type = state.delaborate_term(&head_type);
-            state.report(Message::EntryNameNotFound {
+            let head_type = state.core_to_surface_term(&head_type);
+            state.report(Message::LabelNotFound {
                 head_range: head.range(),
-                name_range: name_range.clone(),
-                expected_field_name: name.as_ref().to_owned(),
+                label_range: label_range.clone(),
+                expected_label: label.as_ref().to_owned(),
                 head_type,
             });
             (core::Term::Error, Arc::new(Value::Error))
@@ -570,7 +568,7 @@ pub fn synth_type<S: AsRef<str>>(
                     Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
                     _ => {
                         let head_type = state.read_back_type(&head_type);
-                        let head_type = state.delaborate_term(&head_type);
+                        let head_type = state.core_to_surface_term(&head_type);
                         let unexpected_arguments = arguments.map(|arg| arg.range()).collect();
                         state.report(Message::TooManyArguments {
                             head_range,

@@ -250,8 +250,8 @@ impl<Entry: Clone> Locals<Entry> {
     }
 
     /// Pop an entry off the environment.
-    pub fn pop(&mut self) {
-        self.values.pop_back();
+    pub fn pop(&mut self) -> Option<Entry> {
+        self.values.pop_back()
     }
 
     /// Pop a number of entries off the environment.

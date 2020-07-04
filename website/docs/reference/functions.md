@@ -9,7 +9,7 @@ keywords:
 
 A function is a way of relating an input to an output.
 
-## Formation
+## Types
 
 Function types are written as `A -> B`.
 Functions are [_curried_][currying-wikipedia], meaning that they take a single input, and return a single output.
@@ -36,7 +36,7 @@ we use the universe level the largest input or output:
 U32 -> Type^2 : Type^3
 ```
 
-## Construction
+## Terms
 
 Functions are constructed by specifying a list of one-or-more parameter names after a `fun` token,
 and then a body term after a `=>` token.
@@ -69,7 +69,7 @@ These are sometimes called _lambda abstractions_ in type theory,
 ore _anonymous functions_ in programming languages.
 :::
 
-## Elimination
+## Eliminations
 
 Functions can be applied to arguments via [_juxtaposition_][juxtaposition-wikipedia].
 

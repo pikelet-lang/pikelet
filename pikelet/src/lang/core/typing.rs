@@ -116,14 +116,14 @@ pub enum Message {
     },
     UnboundLocal,
     InvalidRecordType {
-        duplicate_names: Vec<String>,
+        duplicate_labels: Vec<String>,
     },
     InvalidRecordTerm {
-        missing_names: Vec<String>,
-        unexpected_names: Vec<String>,
+        missing_labels: Vec<String>,
+        unexpected_labels: Vec<String>,
     },
-    FieldNotFound {
-        expected_field_name: String,
+    LabelNotFound {
+        expected_label: String,
         head_type: Arc<Value>,
     },
     TooManyParameters,
@@ -209,31 +209,30 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             expected_type: expected_type.clone(),
         }),
         (Term::RecordTerm(term_entries), Value::RecordType(closure)) => {
-            let mut missing_names = Vec::new();
+            let mut missing_labels = Vec::new();
 
             let mut pending_term_entries = term_entries.clone();
 
-            closure.entries(
-                state.globals,
-                |entry_name, entry_type| match pending_term_entries.remove(entry_name) {
+            closure.entries(state.globals, |label, r#type| {
+                match pending_term_entries.remove(label) {
                     Some(entry_term) => {
-                        check_type(state, &entry_term, &entry_type);
+                        check_type(state, &entry_term, &r#type);
                         state.eval_term(&entry_term)
                     }
                     None => {
-                        missing_names.push(entry_name.to_owned());
+                        missing_labels.push(label.to_owned());
                         Arc::new(Value::Error)
                     }
-                },
-            );
+                }
+            });
 
-            if !missing_names.is_empty() && !pending_term_entries.is_empty() {
-                let unexpected_names = (pending_term_entries.into_iter())
-                    .map(|(name, _)| name)
+            if !missing_labels.is_empty() && !pending_term_entries.is_empty() {
+                let unexpected_labels = (pending_term_entries.into_iter())
+                    .map(|(label, _)| label)
                     .collect();
                 state.report(Message::InvalidRecordTerm {
-                    missing_names,
-                    unexpected_names,
+                    missing_labels,
+                    unexpected_labels,
                 });
             }
         }
@@ -325,40 +324,40 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             use std::collections::BTreeSet;
 
             let mut max_level = UniverseLevel(0);
-            let mut duplicate_names = Vec::new();
-            let mut seen_names = BTreeSet::new();
+            let mut duplicate_labels = Vec::new();
+            let mut seen_labels = BTreeSet::new();
 
-            for (name, entry_type) in type_entries.iter() {
-                if !seen_names.insert(name) {
-                    duplicate_names.push(name.clone());
+            for (name, r#type) in type_entries.iter() {
+                if !seen_labels.insert(name) {
+                    duplicate_labels.push(name.clone());
                 }
-                max_level = match is_type(state, entry_type) {
+                max_level = match is_type(state, r#type) {
                     Some(level) => std::cmp::max(max_level, level),
                     None => {
-                        state.pop_many_locals(seen_names.len());
+                        state.pop_many_locals(seen_labels.len());
                         return Arc::new(Value::Error);
                     }
                 };
-                let entry_type = state.eval_term(entry_type);
-                state.push_param(entry_type);
+                let r#type = state.eval_term(r#type);
+                state.push_param(r#type);
             }
 
-            state.pop_many_locals(seen_names.len());
+            state.pop_many_locals(seen_labels.len());
 
-            if !duplicate_names.is_empty() {
-                state.report(Message::InvalidRecordType { duplicate_names });
+            if !duplicate_labels.is_empty() {
+                state.report(Message::InvalidRecordType { duplicate_labels });
             }
 
             Arc::new(Value::Universe(max_level))
         }
-        Term::RecordElim(head, name) => {
+        Term::RecordElim(head, label) => {
             let head_type = synth_type(state, head);
 
             match head_type.as_ref() {
                 Value::RecordType(closure) => {
                     let head_value = state.eval_term(head);
 
-                    if let Some(entry_type) = state.record_elim_type(&head_value, name, closure) {
+                    if let Some(entry_type) = state.record_elim_type(&head_value, label, closure) {
                         return entry_type;
                     }
                 }
@@ -366,8 +365,8 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 _ => {}
             }
 
-            state.report(Message::FieldNotFound {
-                expected_field_name: name.clone(),
+            state.report(Message::LabelNotFound {
+                expected_label: label.clone(),
                 head_type,
             });
             Arc::new(Value::Error)

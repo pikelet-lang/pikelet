@@ -31,9 +31,10 @@ The following keywords are reserved by Pikelet:
 
 | Keyword | Purpose |
 | ------- | ------- |
-| `fun` | [Function construction](./functions#Construction) |
-| `Record` | [Record formation](./records#Formation) |
-| `record` | [Record construction](./records#Construction) |
+| `as` | [Explicit binding names](./records#Explicit-binding-names) |
+| `fun` | [Function terms](./functions#Terms) |
+| `Record` | [Record types](./records#Types) |
+| `record` | [Record terms](./records#Terms) |
 
 :::note
 See [Surface language - Lexical syntax - Keywords and identifiers](../specification/surface/lexical-structure#keywords-and-identifiers): <a href="../specification/surface/lexical-structure#var:keyword"><var>keyword</var></a>
