@@ -97,6 +97,14 @@ fn module() {
 }
 
 #[test]
+fn prelude() {
+    run_test(
+        "examples/prelude.pi",
+        include_str!("../../examples/prelude.pi"),
+    );
+}
+
+#[test]
 fn universes() {
     run_test(
         "examples/universes.pi",

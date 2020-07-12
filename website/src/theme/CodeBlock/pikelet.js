@@ -44,7 +44,7 @@ Prism.languages.pikelet = {
     greedy: true,
     inside: {
       // Keywords
-      keyword: /^(?:fun|Record|record)$/,
+      keyword: /^(?:Fun|fun|Record|record)$/,
       // Builtins
       builtin: /^(?:Type|Bool|true|false|U8|U16|U32|U64|S8|S16|S32|S64|F32|F64|String|Char|Array|List)$/,
     },

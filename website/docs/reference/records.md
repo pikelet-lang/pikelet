@@ -75,7 +75,7 @@ Record {
 In order to find the universe level of a record type,
 we use the universe level the largest entry type:
 
-```
+```pikelet
 Record {
   first : U32,
   second : Type^2,

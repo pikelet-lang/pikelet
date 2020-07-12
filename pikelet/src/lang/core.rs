@@ -86,7 +86,7 @@ pub enum Term {
     /// Record eliminations (field access).
     RecordElim(Arc<Term>, String),
     /// Function types.
-    FunctionType(Arc<Term>, Arc<Term>),
+    FunctionType(Option<String>, Arc<Term>, Arc<Term>),
     /// Function terms (lambda abstractions).
     FunctionTerm(String, Arc<Term>),
     /// Function eliminations (function application).
@@ -166,8 +166,10 @@ impl Default for Globals {
             "Array".to_owned(),
             (
                 Arc::new(Term::FunctionType(
+                    None,
                     Arc::new(Term::Global("U32".to_owned())),
                     Arc::new(Term::FunctionType(
+                        None,
                         Arc::new(Term::universe(0)),
                         Arc::new(Term::universe(0)),
                     )),
@@ -179,6 +181,7 @@ impl Default for Globals {
             "List".to_owned(),
             (
                 Arc::new(Term::FunctionType(
+                    None,
                     Arc::new(Term::universe(0)),
                     Arc::new(Term::universe(0)),
                 )),
