@@ -72,7 +72,7 @@ impl<'me> State<'me> {
 
     /// Push a local parameter.
     fn push_local_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.next_level(), r#type.clone()));
+        let value = Arc::new(Value::local(self.next_level()));
         self.push_local(name, value.clone(), r#type);
         value
     }
@@ -129,24 +129,13 @@ impl<'me> State<'me> {
     }
 
     /// Normalize a term using the current state of the elaborator.
-    pub fn normalize_term(&mut self, term: &core::Term, r#type: &Value) -> core::Term {
-        semantics::normalize_term(
-            self.globals,
-            self.universe_offset,
-            &mut self.values,
-            term,
-            r#type,
-        )
+    pub fn normalize_term(&mut self, term: &core::Term) -> core::Term {
+        semantics::normalize_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
-    /// Read back a normal form using the current state of the elaborator.
-    pub fn read_back_nf(&mut self, value: &Value, r#type: &Value) -> core::Term {
-        semantics::read_back_nf(self.globals, self.values.size(), value, r#type)
-    }
-
-    /// Read back a type using the current state of the elaborator.
-    pub fn read_back_type(&mut self, r#type: &Value) -> core::Term {
-        semantics::read_back_type(self.globals, self.values.size(), r#type)
+    /// Read back a value into a normal form using the current state of the elaborator.
+    pub fn read_back_value(&mut self, value: &Value) -> core::Term {
+        semantics::read_back_value(self.globals, self.values.size(), value)
     }
 
     /// Check if `value0` is a subtype of `value1`.
@@ -171,7 +160,7 @@ pub fn is_type<S: AsRef<str>>(
         Value::Universe(level) => (core_term, Some(*level)),
         Value::Error => (core::Term::Error, None),
         found_type => {
-            let found_type = state.read_back_type(&found_type);
+            let found_type = state.read_back_value(&found_type);
             let found_type = state.core_to_surface_term(&found_type);
             state.report(Message::MismatchedTypes {
                 range: term.range(),
@@ -191,7 +180,7 @@ pub fn check_type<S: AsRef<str>>(
 ) -> core::Term {
     match (term, expected_type.as_ref()) {
         (_, Value::Error) => core::Term::Error,
-        (Term::Literal(_, literal), Value::Elim(Head::Global(name, _), spine, _)) => {
+        (Term::Literal(_, literal), Value::Elim(Head::Global(name, _), spine)) => {
             use crate::lang::core::Constant::*;
 
             match (literal, name.as_ref(), spine.as_slice()) {
@@ -208,7 +197,7 @@ pub fn check_type<S: AsRef<str>>(
                 (Literal::Char(data), "Char", []) => parse_char(state, term.range(), data),
                 (Literal::String(data), "String", []) => parse_string(state, term.range(), data),
                 (_, _, _) => {
-                    let expected_type = state.read_back_type(expected_type);
+                    let expected_type = state.read_back_value(expected_type);
                     let expected_type = state.core_to_surface_term(&expected_type);
                     state.report(Message::NoLiteralConversion {
                         range: term.range(),
@@ -219,7 +208,7 @@ pub fn check_type<S: AsRef<str>>(
             }
         }
         (Term::Literal(_, _), _) => {
-            let expected_type = state.read_back_type(expected_type);
+            let expected_type = state.read_back_value(expected_type);
             let expected_type = state.core_to_surface_term(&expected_type);
             state.report(Message::NoLiteralConversion {
                 range: term.range(),
@@ -227,9 +216,9 @@ pub fn check_type<S: AsRef<str>>(
             });
             core::Term::Error
         }
-        (Term::Sequence(_, entry_terms), Value::Elim(Head::Global(name, _), elims, _)) => {
+        (Term::Sequence(_, entry_terms), Value::Elim(Head::Global(name, _), elims)) => {
             match (name.as_ref(), elims.as_slice()) {
-                ("Array", [Elim::Function(len, len_type), Elim::Function(core_entry_type, _)]) => {
+                ("Array", [Elim::Function(len), Elim::Function(core_entry_type)]) => {
                     let core_entry_terms = entry_terms
                         .iter()
                         .map(|entry_term| Arc::new(check_type(state, entry_term, core_entry_type)))
@@ -243,7 +232,7 @@ pub fn check_type<S: AsRef<str>>(
                         }
                         Value::Error => core::Term::Error,
                         _ => {
-                            let expected_len = state.read_back_nf(&len, len_type);
+                            let expected_len = state.read_back_value(&len);
                             let expected_len = state.core_to_surface_term(&expected_len);
                             state.report(Message::MismatchedSequenceLength {
                                 range: term.range(),
@@ -255,7 +244,7 @@ pub fn check_type<S: AsRef<str>>(
                         }
                     }
                 }
-                ("List", [Elim::Function(core_entry_type, _)]) => {
+                ("List", [Elim::Function(core_entry_type)]) => {
                     let core_entry_terms = entry_terms
                         .iter()
                         .map(|entry_term| Arc::new(check_type(state, entry_term, core_entry_type)))
@@ -264,7 +253,7 @@ pub fn check_type<S: AsRef<str>>(
                     core::Term::Sequence(core_entry_terms)
                 }
                 _ => {
-                    let expected_type = state.read_back_type(expected_type);
+                    let expected_type = state.read_back_value(expected_type);
                     let expected_type = state.core_to_surface_term(&expected_type);
                     state.report(Message::NoSequenceConversion {
                         range: term.range(),
@@ -275,7 +264,7 @@ pub fn check_type<S: AsRef<str>>(
             }
         }
         (Term::Sequence(_, _), _) => {
-            let expected_type = state.read_back_type(expected_type);
+            let expected_type = state.read_back_value(expected_type);
             let expected_type = state.core_to_surface_term(&expected_type);
             state.report(Message::NoSequenceConversion {
                 range: term.range(),
@@ -374,9 +363,9 @@ pub fn check_type<S: AsRef<str>>(
         (term, _) => match synth_type(state, term) {
             (term, found_type) if state.is_subtype(&found_type, expected_type) => term,
             (_, found_type) => {
-                let found_type = state.read_back_type(&found_type);
+                let found_type = state.read_back_value(&found_type);
                 let found_type = state.core_to_surface_term(&found_type);
-                let expected_type = state.read_back_type(expected_type);
+                let expected_type = state.read_back_value(expected_type);
                 let expected_type = state.core_to_surface_term(&expected_type);
                 state.report(Message::MismatchedTypes {
                     range: term.range(),
@@ -432,11 +421,11 @@ pub fn synth_type<S: AsRef<str>>(
             }
             Literal::Char(data) => (
                 parse_char(state, term.range(), data),
-                Arc::new(Value::global("Char", 0, Value::universe(0))),
+                Arc::new(Value::global("Char", 0)),
             ),
             Literal::String(data) => (
                 parse_string(state, term.range(), data),
-                Arc::new(Value::global("String", 0, Value::universe(0))),
+                Arc::new(Value::global("String", 0)),
             ),
         },
         Term::Sequence(_, _) => {
@@ -529,7 +518,7 @@ pub fn synth_type<S: AsRef<str>>(
                 _ => {}
             }
 
-            let head_type = state.read_back_type(&head_type);
+            let head_type = state.read_back_value(&head_type);
             let head_type = state.core_to_surface_term(&head_type);
             state.report(Message::LabelNotFound {
                 head_range: head.range(),
@@ -627,7 +616,7 @@ pub fn synth_type<S: AsRef<str>>(
                     }
                     Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
                     _ => {
-                        let head_type = state.read_back_type(&head_type);
+                        let head_type = state.read_back_value(&head_type);
                         let head_type = state.core_to_surface_term(&head_type);
                         let unexpected_arguments = arguments.map(|arg| arg.range()).collect();
                         state.report(Message::TooManyArguments {

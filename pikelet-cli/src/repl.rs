@@ -121,8 +121,8 @@ pub fn run(options: Options) -> Result<(), Box<dyn Error>> {
             }
         } else {
             let ann_term = core::Term::Ann(
-                Arc::new(state.normalize_term(&core_term, &r#type)),
-                Arc::new(state.read_back_type(&r#type)),
+                Arc::new(state.normalize_term(&core_term)),
+                Arc::new(state.read_back_value(&r#type)),
             );
             let term = state.core_to_surface_term(&ann_term);
             let doc = surface_to_pretty::from_term(&pretty_alloc, &term);

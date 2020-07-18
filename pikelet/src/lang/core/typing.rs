@@ -52,7 +52,7 @@ impl<'me> State<'me> {
 
     /// Push a local parameter.
     fn push_local_param(&mut self, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.next_level(), r#type.clone()));
+        let value = Arc::new(Value::local(self.next_level()));
         self.push_local(value.clone(), r#type);
         value
     }
@@ -179,9 +179,9 @@ pub fn is_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
 pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) {
     match (term, expected_type.as_ref()) {
         (_, Value::Error) => {}
-        (Term::Sequence(entry_terms), Value::Elim(Head::Global(name, _), elims, _)) => {
+        (Term::Sequence(entry_terms), Value::Elim(Head::Global(name, _), elims)) => {
             match (name.as_ref(), elims.as_slice()) {
-                ("Array", [Elim::Function(len, _), Elim::Function(entry_type, _)]) => {
+                ("Array", [Elim::Function(len), Elim::Function(entry_type)]) => {
                     for entry_term in entry_terms {
                         check_type(state, entry_term, entry_type);
                     }
@@ -195,7 +195,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         }),
                     }
                 }
-                ("List", [Elim::Function(entry_type, _)]) => {
+                ("List", [Elim::Function(entry_type)]) => {
                     for entry_term in entry_terms {
                         check_type(state, entry_term, entry_type);
                     }
@@ -281,18 +281,18 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
         },
         Term::Constant(constant) => Arc::new(match constant {
-            Constant::U8(_) => Value::global("U8", 0, Value::universe(0)),
-            Constant::U16(_) => Value::global("U16", 0, Value::universe(0)),
-            Constant::U32(_) => Value::global("U32", 0, Value::universe(0)),
-            Constant::U64(_) => Value::global("U64", 0, Value::universe(0)),
-            Constant::S8(_) => Value::global("S8", 0, Value::universe(0)),
-            Constant::S16(_) => Value::global("S16", 0, Value::universe(0)),
-            Constant::S32(_) => Value::global("S32", 0, Value::universe(0)),
-            Constant::S64(_) => Value::global("S64", 0, Value::universe(0)),
-            Constant::F32(_) => Value::global("F32", 0, Value::universe(0)),
-            Constant::F64(_) => Value::global("F64", 0, Value::universe(0)),
-            Constant::Char(_) => Value::global("Char", 0, Value::universe(0)),
-            Constant::String(_) => Value::global("String", 0, Value::universe(0)),
+            Constant::U8(_) => Value::global("U8", 0),
+            Constant::U16(_) => Value::global("U16", 0),
+            Constant::U32(_) => Value::global("U32", 0),
+            Constant::U64(_) => Value::global("U64", 0),
+            Constant::S8(_) => Value::global("S8", 0),
+            Constant::S16(_) => Value::global("S16", 0),
+            Constant::S32(_) => Value::global("S32", 0),
+            Constant::S64(_) => Value::global("S64", 0),
+            Constant::F32(_) => Value::global("F32", 0),
+            Constant::F64(_) => Value::global("F64", 0),
+            Constant::Char(_) => Value::global("Char", 0),
+            Constant::String(_) => Value::global("String", 0),
         }),
         Term::Sequence(_) => {
             state.report(Message::AmbiguousTerm {
