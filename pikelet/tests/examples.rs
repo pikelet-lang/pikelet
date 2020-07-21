@@ -21,7 +21,7 @@ fn run_test(path: &str, source: &str) {
     let messages = state.drain_messages().collect::<Vec<_>>();
     if !messages.is_empty() {
         is_failed = true;
-        eprintln!("surface::projections::core::synth_term messages:");
+        eprintln!("surface_to_core::synth_type messages:");
         for message in messages {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
