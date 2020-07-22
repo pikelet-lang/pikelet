@@ -1,5 +1,7 @@
 //! Distill the core language into the surface language.
 
+#![allow(clippy::reversed_empty_ranges)]
+
 use std::collections::HashMap;
 
 use crate::lang::core::{Constant, Globals, Locals, Term, UniverseLevel, UniverseOffset};

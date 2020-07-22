@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: ["1.42.0", "stable"]
+        rust: ["stable"]
         # rust: ["1.42.0", "stable", "beta", "nightly"]
     name: Clippy (${{ matrix.rust }})
     steps:
