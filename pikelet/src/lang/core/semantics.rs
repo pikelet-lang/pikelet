@@ -503,7 +503,7 @@ pub fn read_back_value(
 }
 
 /// Check that one elimination is equal to another elimination.
-pub fn is_equal_elim(
+pub fn is_equal_spine(
     globals: &Globals,
     local_size: LocalSize,
     (head0, spine0): (&Head, &[Elim]),
@@ -546,9 +546,25 @@ pub fn is_subtype(
     value0: &Value,
     value1: &Value,
 ) -> bool {
-    match (value0.force(globals), value1.force(globals)) {
+    match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_elim(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1))
+        }
+        (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
+            if is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1)) {
+                // No need to force computation if the spines are the same!
+                return true;
+            }
+
+            let value0 = value0.force(globals);
+            let value1 = value1.force(globals);
+            is_subtype(globals, local_size, value0, value1)
+        }
+        (Value::Unstuck(_, _, value0), value1) => {
+            is_subtype(globals, local_size, value0.force(globals), value1)
+        }
+        (value0, Value::Unstuck(_, _, value1)) => {
+            is_subtype(globals, local_size, value0, value1.force(globals))
         }
 
         (Value::Universe(level0), Value::Universe(level1)) => level0 <= level1,
