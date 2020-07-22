@@ -531,12 +531,113 @@ pub fn is_equal_spine(
     true
 }
 
-/// Check that one normal form is a equal of another normal form.
+/// Check that one value is definitionally equal to another value.
 fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &Value) -> bool {
-    // TODO: avoid allocation of intermediate term, as in smalltt and blott,
-    // for example, see: https://github.com/jozefg/blott/blob/9eadd6f1eb3ecb28fd66a25bc56c19041d98f722/src/lib/nbe.ml#L200-L242
-    read_back_value(globals, local_size, Unfold::All, value0)
-        == read_back_value(globals, local_size, Unfold::All, value1)
+    match (value0, value1) {
+        (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
+            is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1))
+        }
+        (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
+            if is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1)) {
+                // No need to force computation if the spines are the same!
+                return true;
+            }
+
+            let value0 = value0.force(globals);
+            let value1 = value1.force(globals);
+            is_subtype(globals, local_size, value0, value1)
+        }
+        (Value::Unstuck(_, _, value0), value1) => {
+            is_equal(globals, local_size, value0.force(globals), value1)
+        }
+        (value0, Value::Unstuck(_, _, value1)) => {
+            is_equal(globals, local_size, value0, value1.force(globals))
+        }
+
+        (Value::Universe(level0), Value::Universe(level1)) => level0 == level1,
+        (Value::Constant(constant0), Value::Constant(constant1)) => constant0 == constant1,
+        (Value::Sequence(value_entries0), Value::Sequence(value_entries1)) => {
+            if value_entries0.len() != value_entries1.len() {
+                return false;
+            }
+
+            Iterator::zip(value_entries0.iter(), value_entries1.iter()).all(
+                |(value_entry0, value_entry1)| {
+                    is_equal(globals, local_size, value_entry0, value_entry1)
+                },
+            )
+        }
+        (Value::RecordType(closure0), Value::RecordType(closure1)) => {
+            if closure0.entries.len() != closure1.entries.len() {
+                return false;
+            }
+
+            let mut local_size = local_size;
+            let universe_offset0 = closure0.universe_offset;
+            let universe_offset1 = closure1.universe_offset;
+            let mut values0 = closure0.values.clone();
+            let mut values1 = closure1.values.clone();
+
+            for ((label0, entry_type0), (label1, entry_type1)) in
+                Iterator::zip(closure0.entries.iter(), closure1.entries.iter())
+            {
+                if label0 != label1 {
+                    return false;
+                }
+
+                let entry_type0 = eval_term(globals, universe_offset0, &mut values0, entry_type0);
+                let entry_type1 = eval_term(globals, universe_offset1, &mut values1, entry_type1);
+
+                if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
+                    return false;
+                }
+
+                let local_level = local_size.next_level();
+                values0.push(Arc::new(Value::local(local_level)));
+                values1.push(Arc::new(Value::local(local_level)));
+                local_size = local_size.increment();
+            }
+
+            true
+        }
+        (Value::RecordTerm(value_entries0), Value::RecordTerm(value_entries1)) => {
+            if value_entries0.len() != value_entries1.len() {
+                return false;
+            }
+
+            Iterator::zip(value_entries0.iter(), value_entries1.iter()).all(
+                |((label0, entry_value0), (label1, entry_value1))| {
+                    label0 == label1 && is_equal(globals, local_size, entry_value0, entry_value1)
+                },
+            )
+        }
+        (
+            Value::FunctionType(_, param_type0, body_closure0),
+            Value::FunctionType(_, param_type1, body_closure1),
+        ) => {
+            if !is_equal(globals, local_size, param_type1, param_type0) {
+                return false;
+            }
+
+            let local = Arc::new(Value::local(local_size.next_level()));
+            let body_term0 = body_closure0.elim(globals, local.clone());
+            let body_term1 = body_closure1.elim(globals, local);
+
+            is_equal(globals, local_size.increment(), &body_term0, &body_term1)
+        }
+        (Value::FunctionTerm(_, body_closure0), Value::FunctionTerm(_, body_closure1)) => {
+            let local = Arc::new(Value::local(local_size.next_level()));
+            let body_value0 = body_closure0.elim(globals, local.clone());
+            let body_value1 = body_closure1.elim(globals, local);
+
+            is_equal(globals, local_size.increment(), &body_value0, &body_value1)
+        }
+
+        // Errors are always treated as subtypes, regardless of what they are compared with.
+        (Value::Error, _) | (_, Value::Error) => true,
+        // Anything else is not equal!
+        (_, _) => false,
+    }
 }
 
 /// Check that one type is a subtype of another type.
@@ -610,10 +711,10 @@ pub fn is_subtype(
             }
 
             let local = Arc::new(Value::local(local_size.next_level()));
-            let body0 = body_closure0.elim(globals, local.clone());
-            let body1 = body_closure1.elim(globals, local);
+            let body_term0 = body_closure0.elim(globals, local.clone());
+            let body_term1 = body_closure1.elim(globals, local);
 
-            is_subtype(globals, local_size.increment(), &body0, &body1)
+            is_subtype(globals, local_size.increment(), &body_term0, &body_term1)
         }
 
         // Errors are always treated as subtypes, regardless of what they are compared with.
