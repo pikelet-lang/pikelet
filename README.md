@@ -5,13 +5,13 @@
 [pikelet-mascot]: assets/pikelet.png
 
 [![Actions Status][actions-badge]][actions-url]
-[![Gitter][gitter-badge]][gitter-lobby]
+[![Matrix][matrix-badge]][matrix-lobby]
 [![License][license-badge]][license-url]
 
 [actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/ci/badge.svg
 [actions-url]: https://github.com/pikelet-lang/pikelet/actions
-[gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
-[gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
+[matrix-badge]: https://img.shields.io/matrix/pikelet:matrix.org?label=%23pikelet%3Amatrix.org
+[matrix-lobby]: https://app.element.io/#/room/#pikelet:matrix.org
 [license-badge]: https://img.shields.io/github/license/pikelet-lang/pikelet
 [license-url]: ./LICENSE
 
