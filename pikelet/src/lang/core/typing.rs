@@ -99,7 +99,7 @@ impl<'me> State<'me> {
     /// Return the type of the record elimination.
     pub fn record_elim_type(
         &mut self,
-        head_value: &Value,
+        head_value: Arc<Value>,
         name: &str,
         closure: &RecordTypeClosure,
     ) -> Option<Arc<Value>> {
@@ -354,7 +354,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 Value::RecordType(closure) => {
                     let head_value = state.eval_term(head_term);
 
-                    if let Some(entry_type) = state.record_elim_type(&head_value, label, closure) {
+                    if let Some(entry_type) = state.record_elim_type(head_value, label, closure) {
                         return entry_type;
                     }
                 }

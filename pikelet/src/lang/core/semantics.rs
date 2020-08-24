@@ -234,10 +234,10 @@ impl LazyValue {
                 eval_term(globals, universe_offset, &mut values, &term)
             }
             Some(LazyInit::ApplyElim(head, Elim::Record(label))) => {
-                apply_record_elim(head.force(globals), &label)
+                apply_record_elim(head.force(globals).clone(), &label)
             }
             Some(LazyInit::ApplyElim(head, Elim::Function(input))) => {
-                apply_function_elim(globals, head.force(globals), input)
+                apply_function_elim(globals, head.force(globals).clone(), input)
             }
             None => panic!("Lazy instance has previously been poisoned"),
         })
@@ -312,7 +312,7 @@ pub fn eval_term(
         }
         Term::RecordElim(head, label) => {
             let head = eval_term(globals, universe_offset, values, head);
-            apply_record_elim(&head, label)
+            apply_record_elim(head, label)
         }
 
         Term::FunctionType(input_name_hint, input_type, output_type) => {
@@ -329,7 +329,7 @@ pub fn eval_term(
         Term::FunctionElim(head, input) => {
             let head = eval_term(globals, universe_offset, values, head);
             let input = LazyValue::eval_term(universe_offset, values.clone(), input.clone());
-            apply_function_elim(globals, &head, Arc::new(input))
+            apply_function_elim(globals, head, Arc::new(input))
         }
 
         Term::Sequence(term_entries) => {
@@ -350,7 +350,7 @@ pub fn eval_term(
 /// Return the type of the record elimination.
 pub fn record_elim_type(
     globals: &Globals,
-    head_value: &Value,
+    head_value: Arc<Value>,
     label: &str,
     closure: &RecordTypeClosure,
 ) -> Option<Arc<Value>> {
@@ -360,24 +360,25 @@ pub fn record_elim_type(
         if entry_label == label {
             return Some(eval_term(globals, universe_offset, &mut values, entry_type));
         }
-        values.push(apply_record_elim(head_value, label));
+        values.push(apply_record_elim(head_value.clone(), label));
     }
     None
 }
 
 /// Apply a record term elimination.
-fn apply_record_elim(head_value: &Value, label: &str) -> Arc<Value> {
-    match head_value {
-        Value::Stuck(head, spine) => {
-            let mut spine = spine.clone(); // FIXME: Avoid clone of spine?
+fn apply_record_elim(mut head_value: Arc<Value>, label: &str) -> Arc<Value> {
+    match Arc::make_mut(&mut head_value) {
+        Value::Stuck(_, spine) => {
             spine.push(Elim::Record(label.to_owned()));
-            Arc::new(Value::Stuck(head.clone(), spine))
+            head_value
         }
-        Value::Unstuck(head, spine, value) => {
-            let mut spine = spine.clone(); // FIXME: Avoid clone of spine?
+        Value::Unstuck(_, spine, value) => {
             spine.push(Elim::Record(label.to_owned()));
-            let value = LazyValue::apply_elim(value.clone(), Elim::Record(label.to_owned()));
-            Arc::new(Value::Unstuck(head.clone(), spine, Arc::new(value)))
+            *value = Arc::new(LazyValue::apply_elim(
+                value.clone(),
+                Elim::Record(label.to_owned()),
+            ));
+            head_value
         }
 
         Value::RecordTerm(term_entries) => match term_entries.get(label) {
@@ -390,18 +391,20 @@ fn apply_record_elim(head_value: &Value, label: &str) -> Arc<Value> {
 }
 
 /// Apply a function term elimination.
-fn apply_function_elim(globals: &Globals, head_value: &Value, input: Arc<LazyValue>) -> Arc<Value> {
-    match head_value {
-        Value::Stuck(head, spine) => {
-            let mut spine = spine.clone(); // FIXME: Avoid clone of spine?
+fn apply_function_elim(
+    globals: &Globals,
+    mut head_value: Arc<Value>,
+    input: Arc<LazyValue>,
+) -> Arc<Value> {
+    match Arc::make_mut(&mut head_value) {
+        Value::Stuck(_, spine) => {
             spine.push(Elim::Function(input));
-            Arc::new(Value::Stuck(head.clone(), spine))
+            head_value
         }
-        Value::Unstuck(head, spine, value) => {
-            let mut spine = spine.clone(); // FIXME: Avoid clone of spine?
+        Value::Unstuck(_, spine, value) => {
             spine.push(Elim::Function(input.clone()));
-            let value = LazyValue::apply_elim(value.clone(), Elim::Function(input));
-            Arc::new(Value::Unstuck(head.clone(), spine, Arc::new(value)))
+            *value = Arc::new(LazyValue::apply_elim(value.clone(), Elim::Function(input)));
+            head_value
         }
 
         Value::FunctionTerm(_, output_closure) => {
