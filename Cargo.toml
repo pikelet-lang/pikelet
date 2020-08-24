@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "./pikelet",
+    "./pikelet-cli",
+    "./pikelet-gui",
+]
