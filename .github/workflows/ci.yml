@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - master
+      - next
+
+  pull_request:
+    branches:
+      - master
+      - next
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: ["1.36.0", "stable", "beta", "nightly"]
+    name: Check (${{ matrix.rust }})
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: ["1.36.0", "stable", "beta", "nightly"]
+    name: Test Suite (${{ matrix.rust }})
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  fmt:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: ["1.36.0", "stable", "beta", "nightly"]
+    name: Rustfmt (${{ matrix.rust }})
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: ["1.36.0", "stable", "beta", "nightly"]
+    name: Clippy (${{ matrix.rust }})
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+      - run: rustup component add clippy
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+  website:
+    runs-on: ubuntu-latest
+    name: Build website
+    steps:
+      - uses: actions/checkout@v2
+      - run: yarn install
+        working-directory: ./website
+      - run: yarn build
+        working-directory: ./website

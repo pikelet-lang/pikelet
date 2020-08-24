@@ -4,11 +4,11 @@
 
 [pikelet-mascot]: assets/pikelet.png
 
-[![Build Status][travis-badge]][travis-url]
+[![Actions Status][actions-badge]][actions-url]
 [![Gitter][gitter-badge]][gitter-lobby]
 
-[travis-badge]: https://travis-ci.org/pikelet-lang/pikelet.svg?branch=master
-[travis-url]: https://travis-ci.org/pikelet-lang/pikelet
+[actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/ci/badge.svg
+[actions-url]: https://github.com/pikelet-lang/pikelet/actions
 [gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
 
