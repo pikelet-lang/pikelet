@@ -1,45 +1,110 @@
-# Pikelet!
+# Pikelet
 
-![Pikelet Mascot][pikelet-mascot]
+A simple language.
 
-[![Build Status][travis-badge]][travis-url]
-[![Gitter][gitter-badge]][gitter-lobby]
+This is planned to meet the demands of the 'next version of Pikelet', as
+described in [_Pondering the next version of Pikelet_][next-pikelet].
 
-[pikelet-mascot]: assets/pikelet.png
-[travis-badge]: https://travis-ci.org/pikelet-lang/pikelet.svg?branch=master
-[travis-url]: https://travis-ci.org/pikelet-lang/pikelet
-[gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
-[gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
+[next-pikelet]: https://gist.github.com/brendanzab/eba7015e6345abe79a57a704091820bb/.
 
-Pikelet is a small, functional, dependently typed programming language.
+## Roadmap
 
-Dependent types allow us to do a bunch of really interesting things, like using
-records for modules, declaring the length of arrays at the type level, and
-much more — many of great utility for low-level and high-level code alike!
+Our main aim is to start off with a simple configuration language, like
+[Dhall][dhall]. From there we will progressively add features to gain more
+flexibility. We want to provide a textual syntax up-front, but we should aim to
+keep the core language reasonably decoupled from this, allowing us to provide
+support for [projectional editing][structure-editor-wikipedia] in the future.
 
-We hope to one day grow Pikelet into fully-fledged systems programming language,
-with support for unboxed data types, control over memory layout and allocation
-strategy, linear types, and a flexible phase distinction and support for calling
-other languages. At the moment however we've only implemented a type checker and
-very slow  interpreter, so don't get your hopes up too much yet! There's still a
-whole lot to do before it is even remotely useful to anyone! 😅
+[dhall]: https://dhall-lang.org/
+[structure-editor-wikipedia]: https://en.wikipedia.org/wiki/Structure_editor
 
-For more information, see [The Pikelet Book][pikelet-book].
+### Language
 
-[pikelet-book]: https://pikelet-lang.github.io/pikelet/
+- Basic config language
+  - [ ] Comments
+  - [x] Boolean literals/constants
+  - [x] Integer literals/constants
+  - [x] Float literals/constants
+  - [x] Character literals/constants
+  - [x] String literals/constants
+  - [x] Record terms
+  - [x] Non-dependent record types
+  - [x] Dynamically sized arrays
+  - [x] Fixed sized arrays
+- Basic programming language
+  - [ ] Improved literal parsing
+  - [x] Annotated terms
+  - [ ] Let expressions
+  - [ ] Record field lookups
+  - [ ] Import expressions
+  - [ ] Function terms
+  - [ ] Non-dependent function types
+  - [ ] Pattern matching
+  - [ ] Recursive terms
+  - [ ] Opaque (abstract) terms
+  - [ ] Builtin terms
+- Dependently typed language
+  - [ ] Dependent record types
+  - [ ] Dependent function types
+  - [ ] Equality types
+  - [ ] Fixed-size arrays
+  - [x] Universe levels
+    - [x] Stratified
+    - [x] Cumulative
+    - [x] Lifting operator
+    - [ ] Large types (Typeω)
+  - [ ] Multi-stage programming
+  - [ ] Quantitative type theory
 
-## Contributing
+### Projections
 
-We really want to encourage new contributors to help out! Please come chat with
-us [on our Gitter channel][gitter-lobby] - if you have any questions about the
-project, or just want to say hi! We sometimes get side-tracked on technical
-discussions, but we're always more than happy to spend time explaining things.
+- [x] Surface -> Pretty
+- [x] Surface -> Core
+- [x] Core -> Pretty
+- [x] Core -> Value
+- [ ] Core -> Binary
+- [ ] Core -> Documentation
+- [ ] Core -> Cranelift
+- [ ] Core -> LLVM
+- [ ] Value -> JSON/YAML/TOML
 
-## Acknowledgments
+### Tooling
 
-[![YesLogic Logo][yeslogic-logo]][yeslogic]
+- [ ] REPL
+- [ ] Package manager
+- [ ] Auto-formatter for surface language
 
-This work was done in part with the generous support of [YesLogic][yeslogic].
+### Testing
 
-[yeslogic]: http://yeslogic.com/
-[yeslogic-logo]: assets/yeslogic-logo.png
+- [x] Language samples
+- [ ] Feature tests
+- [ ] Property based tests
+
+### Diagnostics
+
+- [x] Basic error enum
+- [x] Error recovery
+- [ ] Pretty diagnostic reporting
+
+### Rust marshalling
+
+- [x] Mashalling traits
+- [ ] Improved error messages
+- [ ] Nicer marshalling API
+- [ ] Derive macro for generating marshalling trait implementations
+- [ ] More efficient, visitor based marshalling
+
+### Documentation
+
+- [ ] Guide
+- [ ] Specification
+  - [ ] Surface
+    - [ ] Syntax
+    - [ ] Elaboration
+  - [ ] Core
+    - [ ] Syntax
+    - [ ] Typing
+    - [ ] Operational semantics
+- [ ] References
+  - [ ] Papers
+  - [ ] Languages
