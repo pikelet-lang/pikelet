@@ -6,11 +6,14 @@
 
 [![Actions Status][actions-badge]][actions-url]
 [![Gitter][gitter-badge]][gitter-lobby]
+[![License][license-badge]][license-url]
 
 [actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/ci/badge.svg
 [actions-url]: https://github.com/pikelet-lang/pikelet/actions
 [gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
 [gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
+[license-badge]: https://img.shields.io/github/license/pikelet-lang/pikelet
+[license-url]: ./LICENSE
 
 Pikelet is a small, functional, dependently typed programming language.
 
