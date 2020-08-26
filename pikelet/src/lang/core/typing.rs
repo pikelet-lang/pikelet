@@ -178,8 +178,9 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
         (Term::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
             match (name.as_ref(), spine.as_slice()) {
                 ("Array", [Elim::Function(len), Elim::Function(entry_type)]) => {
+                    let entry_type = entry_type.force(state.globals);
                     for entry_term in entry_terms {
-                        check_type(state, entry_term, entry_type.force(state.globals));
+                        check_type(state, entry_term, entry_type);
                     }
 
                     let len = len.force(state.globals);
@@ -193,8 +194,9 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                     }
                 }
                 ("List", [Elim::Function(entry_type)]) => {
+                    let entry_type = entry_type.force(state.globals);
                     for entry_term in entry_terms {
-                        check_type(state, entry_term, entry_type.force(state.globals));
+                        check_type(state, entry_term, entry_type);
                     }
                 }
                 _ => state.report(Message::NoSequenceConversion {

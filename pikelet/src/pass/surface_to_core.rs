@@ -277,15 +277,10 @@ pub fn check_type<S: AsRef<str>>(
         (TermData::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
             match (name.as_ref(), spine.as_slice()) {
                 ("Array", [Elim::Function(len), Elim::Function(core_entry_type)]) => {
+                    let core_entry_type = core_entry_type.force(state.globals);
                     let core_entry_terms = entry_terms
                         .iter()
-                        .map(|entry_term| {
-                            Arc::new(check_type(
-                                state,
-                                entry_term,
-                                core_entry_type.force(state.globals),
-                            ))
-                        })
+                        .map(|entry_term| Arc::new(check_type(state, entry_term, core_entry_type)))
                         .collect();
 
                     let len = len.force(state.globals);
@@ -304,21 +299,15 @@ pub fn check_type<S: AsRef<str>>(
                                 found_len: entry_terms.len(),
                                 expected_len,
                             });
-
                             core::Term::Error
                         }
                     }
                 }
                 ("List", [Elim::Function(core_entry_type)]) => {
+                    let core_entry_type = core_entry_type.force(state.globals);
                     let core_entry_terms = entry_terms
                         .iter()
-                        .map(|entry_term| {
-                            Arc::new(check_type(
-                                state,
-                                entry_term,
-                                core_entry_type.force(state.globals),
-                            ))
-                        })
+                        .map(|entry_term| Arc::new(check_type(state, entry_term, core_entry_type)))
                         .collect();
 
                     core::Term::Sequence(core_entry_terms)
