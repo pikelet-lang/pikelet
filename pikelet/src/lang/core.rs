@@ -132,6 +132,12 @@ impl Term {
     }
 }
 
+impl From<Constant> for Term {
+    fn from(constant: Constant) -> Term {
+        Term::Constant(constant)
+    }
+}
+
 /// An environment of global definitions.
 pub struct Globals {
     entries: BTreeMap<String, (Arc<Term>, Option<Arc<Term>>)>,
@@ -342,7 +348,7 @@ macro_rules! impl_has_type_array {
                 Arc::new(Term::FunctionElim(
                     Arc::new(Term::FunctionElim(
                         Arc::new(Term::global("Array")),
-                        Arc::new(Term::Constant(Constant::U32($len as u32))),
+                        Arc::new(Term::from(Constant::U32($len as u32))),
                     )),
                     T::r#type(),
                 ))
@@ -488,23 +494,19 @@ impl_to_term!(bool, |value| Term::Global(match value {
     true => "true".to_owned(),
     false => "false".to_owned(),
 }));
-impl_to_term!(u8, |value| Term::Constant(Constant::U8(*value)));
-impl_to_term!(u16, |value| Term::Constant(Constant::U16(*value)));
-impl_to_term!(u32, |value| Term::Constant(Constant::U32(*value)));
-impl_to_term!(u64, |value| Term::Constant(Constant::U64(*value)));
-impl_to_term!(i8, |value| Term::Constant(Constant::S8(*value)));
-impl_to_term!(i16, |value| Term::Constant(Constant::S16(*value)));
-impl_to_term!(i32, |value| Term::Constant(Constant::S32(*value)));
-impl_to_term!(i64, |value| Term::Constant(Constant::S64(*value)));
-impl_to_term!(f32, |value| Term::Constant(Constant::F32(*value)));
-impl_to_term!(f64, |value| Term::Constant(Constant::F64(*value)));
-impl_to_term!(char, |value| Term::Constant(Constant::Char(*value)));
-impl_to_term!(String, |value| Term::Constant(Constant::String(
-    value.clone()
-)));
-impl_to_term!(str, |value| Term::Constant(Constant::String(
-    value.to_owned()
-)));
+impl_to_term!(u8, |value| Term::from(Constant::U8(*value)));
+impl_to_term!(u16, |value| Term::from(Constant::U16(*value)));
+impl_to_term!(u32, |value| Term::from(Constant::U32(*value)));
+impl_to_term!(u64, |value| Term::from(Constant::U64(*value)));
+impl_to_term!(i8, |value| Term::from(Constant::S8(*value)));
+impl_to_term!(i16, |value| Term::from(Constant::S16(*value)));
+impl_to_term!(i32, |value| Term::from(Constant::S32(*value)));
+impl_to_term!(i64, |value| Term::from(Constant::S64(*value)));
+impl_to_term!(f32, |value| Term::from(Constant::F32(*value)));
+impl_to_term!(f64, |value| Term::from(Constant::F64(*value)));
+impl_to_term!(char, |value| Term::from(Constant::Char(*value)));
+impl_to_term!(String, |value| Term::from(Constant::String(value.clone())));
+impl_to_term!(str, |value| Term::from(Constant::String(value.to_owned())));
 
 impl<T: ToTerm> ToTerm for Vec<T> {
     fn to_term(&self) -> Term {

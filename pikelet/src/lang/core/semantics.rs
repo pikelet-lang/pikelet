@@ -92,6 +92,12 @@ impl Value {
     }
 }
 
+impl From<Constant> for Value {
+    fn from(constant: Constant) -> Value {
+        Value::Constant(constant)
+    }
+}
+
 /// The head of an elimination.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Head {
@@ -341,7 +347,7 @@ pub fn eval_term(
             Arc::new(Value::Sequence(value_entries))
         }
 
-        Term::Constant(constant) => Arc::new(Value::Constant(constant.clone())),
+        Term::Constant(constant) => Arc::new(Value::from(constant.clone())),
 
         Term::Error => Arc::new(Value::Error),
     }
@@ -520,7 +526,7 @@ pub fn read_back_value(
             Term::Sequence(term_entries)
         }
 
-        Value::Constant(constant) => Term::Constant(constant.clone()),
+        Value::Constant(constant) => Term::from(constant.clone()),
 
         Value::Error => Term::Error,
     }

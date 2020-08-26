@@ -57,6 +57,12 @@ pub enum Value {
     Error,
 }
 
+impl From<Constant> for Value {
+    fn from(constant: Constant) -> Value {
+        Value::Constant(constant)
+    }
+}
+
 /// Computations eliminate values.
 pub enum Computation {
     /// Values.

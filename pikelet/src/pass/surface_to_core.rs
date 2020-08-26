@@ -689,7 +689,7 @@ fn parse_number<S: AsRef<str>, T: FromStr>(
 ) -> core::Term {
     // TODO: improve parser (eg. numeric separators, positive sign)
     match data.as_ref().parse() {
-        Ok(value) => core::Term::Constant(f(value)),
+        Ok(value) => core::Term::from(f(value)),
         Err(_) => {
             state.report(Message::InvalidLiteral {
                 range,
@@ -703,7 +703,7 @@ fn parse_number<S: AsRef<str>, T: FromStr>(
 fn parse_char<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &S) -> core::Term {
     // TODO: Improve parser (escapes)
     match data.as_ref().chars().nth(1) {
-        Some(value) => core::Term::Constant(core::Constant::Char(value)),
+        Some(value) => core::Term::from(core::Constant::Char(value)),
         None => {
             state.report(Message::InvalidLiteral {
                 range,
@@ -717,7 +717,7 @@ fn parse_char<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &
 fn parse_string<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &S) -> core::Term {
     // TODO: Improve parser (escapes)
     match data.as_ref().get(1..data.as_ref().len() - 1) {
-        Some(value) => core::Term::Constant(core::Constant::String(value.to_owned())),
+        Some(value) => core::Term::from(core::Constant::String(value.to_owned())),
         None => {
             state.report(Message::InvalidLiteral {
                 range,
