@@ -22,6 +22,7 @@ language-server = ["pikelet-language-server"]
 [dependencies]
 anyhow = "1.0"
 codespan-reporting = "0.9.5"
+crossbeam-channel = "0.4"
 pikelet = { path = "../pikelet" }
 pikelet-editor = { path = "../pikelet-editor", optional = true }
 pikelet-language-server = { path = "../pikelet-language-server", optional = true }

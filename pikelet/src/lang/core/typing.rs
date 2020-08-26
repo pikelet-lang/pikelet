@@ -6,6 +6,7 @@
 //! and doesn't need to perform any additional elaboration.
 //! We can use it as a way to validate that elaborated terms are well-formed.
 
+use crossbeam_channel::Sender;
 use std::sync::Arc;
 
 use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Value};
@@ -28,18 +29,18 @@ pub struct State<'me> {
     /// Local value environment (used for evaluation).
     values: Locals<Arc<Value>>,
     /// The diagnostic messages accumulated during type checking.
-    messages: Vec<Message>,
+    message_tx: Sender<Message>,
 }
 
 impl<'me> State<'me> {
     /// Construct a new type checker state.
-    pub fn new(globals: &'me Globals) -> State<'me> {
+    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> State<'me> {
         State {
             globals,
             universe_offset: UniverseOffset(0),
             types: Locals::new(),
             values: Locals::new(),
-            messages: Vec::new(),
+            message_tx,
         }
     }
 
@@ -75,12 +76,7 @@ impl<'me> State<'me> {
 
     /// Report a diagnostic message.
     fn report(&mut self, message: Message) {
-        self.messages.push(message);
-    }
-
-    /// Drain the current diagnostic messages.
-    pub fn drain_messages(&mut self) -> std::vec::Drain<Message> {
-        self.messages.drain(..)
+        self.message_tx.send(message).unwrap();
     }
 
     /// Reset the type checker state while retaining existing allocations.
@@ -88,7 +84,6 @@ impl<'me> State<'me> {
         self.universe_offset = UniverseOffset(0);
         self.types.clear();
         self.values.clear();
-        self.messages.clear();
     }
 
     /// Evaluate a term using the current state of the type checker.

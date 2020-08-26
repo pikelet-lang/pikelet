@@ -79,7 +79,8 @@ pub fn run(options: Options) -> anyhow::Result<()> {
     let reporting_config = codespan_reporting::term::Config::default();
 
     let globals = core::Globals::default();
-    let mut state = surface_to_core::State::new(&globals);
+    let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
+    let mut state = surface_to_core::State::new(&globals, messages_tx);
 
     loop {
         let file = match editor.readline(&options.prompt) {
@@ -106,10 +107,9 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         };
 
         let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
-        let messages = state.drain_messages().collect::<Vec<_>>();
 
-        if !messages.is_empty() {
-            for message in messages {
+        if !messages_rx.is_empty() {
+            for message in &messages_rx {
                 let diagnostic = message.to_diagnostic(&pretty_alloc);
                 codespan_reporting::term::emit(
                     &mut writer.lock(),

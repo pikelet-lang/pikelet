@@ -1,5 +1,6 @@
 //! Elaborates the surface language into the core language.
 
+use crossbeam_channel::Sender;
 use std::ops::Range;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -28,12 +29,12 @@ pub struct State<'me> {
     /// Local value environment (used for evaluation).
     values: core::Locals<Arc<Value>>,
     /// The diagnostic messages accumulated during elaboration.
-    messages: Vec<Message>,
+    message_tx: Sender<Message>,
 }
 
 impl<'me> State<'me> {
     /// Construct a new elaborator state.
-    pub fn new(globals: &'me core::Globals) -> State<'me> {
+    pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> State<'me> {
         State {
             globals,
             universe_offset: core::UniverseOffset(0),
@@ -41,7 +42,7 @@ impl<'me> State<'me> {
             core_to_surface: core_to_surface::State::new(globals),
             types: core::Locals::new(),
             values: core::Locals::new(),
-            messages: Vec::new(),
+            message_tx,
         }
     }
 
@@ -96,12 +97,7 @@ impl<'me> State<'me> {
 
     /// Report a diagnostic message.
     fn report(&mut self, error: Message) {
-        self.messages.push(error);
-    }
-
-    /// Drain the currently accumulated diagnostic messages.
-    pub fn drain_messages(&mut self) -> std::vec::Drain<Message> {
-        self.messages.drain(..)
+        self.message_tx.send(error).unwrap();
     }
 
     /// Reset the elaborator state while retaining existing allocations.
@@ -110,7 +106,6 @@ impl<'me> State<'me> {
         self.names_to_levels.clear();
         self.types.clear();
         self.values.clear();
-        self.messages.clear();
     }
 
     /// Evaluate a term using the current state of the elaborator.

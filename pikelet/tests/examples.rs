@@ -16,13 +16,13 @@ fn run_test(path: &str, source: &str) {
     let globals = core::Globals::default();
     let pretty_alloc = pretty::BoxAllocator;
 
-    let mut state = surface_to_core::State::new(&globals);
+    let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
+    let mut state = surface_to_core::State::new(&globals, messages_tx);
     let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
-    let messages = state.drain_messages().collect::<Vec<_>>();
-    if !messages.is_empty() {
+    if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("surface_to_core::synth_type messages:");
-        for message in messages {
+        for message in &messages_rx {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
                 .unwrap();
@@ -30,25 +30,24 @@ fn run_test(path: &str, source: &str) {
         eprintln!();
     }
 
-    let mut state = core::typing::State::new(&globals);
+    let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
+    let mut state = core::typing::State::new(&globals, messages_tx.clone());
+
     core::typing::synth_type(&mut state, &core_term);
-    let messages = state.drain_messages().collect::<Vec<_>>();
-    if !messages.is_empty() {
+    if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("core::typing::synth_term messages:");
-        for message in messages {
+        for message in &messages_rx {
             eprintln!("  {:?}", message);
         }
         eprintln!();
     }
 
-    let mut state = core::typing::State::new(&globals);
     core::typing::check_type(&mut state, &core_term, &r#type);
-    let messages = state.drain_messages().collect::<Vec<_>>();
-    if !messages.is_empty() {
+    if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("core::typing::check_term messages:");
-        for message in messages {
+        for message in &messages_rx {
             eprintln!("  {:?}", message);
         }
         eprintln!();
