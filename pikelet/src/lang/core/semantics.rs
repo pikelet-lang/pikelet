@@ -86,7 +86,7 @@ impl Value {
     /// Force any unstuck values.
     pub fn force(&self, globals: &Globals) -> &Value {
         match self {
-            Value::Unstuck(_, _, value) => value.force(globals).force(globals),
+            Value::Unstuck(_, _, value) => Value::force(LazyValue::force(value, globals), globals),
             value => value,
         }
     }
