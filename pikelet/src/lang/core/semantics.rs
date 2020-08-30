@@ -283,7 +283,7 @@ pub fn eval_term(
             let head = Head::Local(values.size().level(*index));
             match values.get(*index) {
                 Some(value) => {
-                    let value = LazyValue::new(value.clone());
+                    let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
                     Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
                 }
                 None => Arc::new(Value::Stuck(head, Vec::new())),

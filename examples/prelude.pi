@@ -1,3 +1,4 @@
+-- TODO: type annotations for record terms
 record {
     id = fun A a => a,
     always = fun A B a b => a,
@@ -13,6 +14,33 @@ record {
 
     Prod = fun A B => Fun (a : A) -> B a,
     Sum = fun A B => Record { val : A, proof : B val },
+
+    Semigroup = Record {
+        ||| The carrier type
+        Carrier : Type,
+        ||| The associative operation
+        append : Carrier -> Carrier -> Carrier,
+    },
+
+    Category = Record {
+        ||| An object in the category
+        Object : Type,
+        ||| Arrows between the objects in the category
+        Arrow : Object -> Object -> Type,
+        ||| The identity arrow
+        id : Fun (A : Object) -> Arrow A A,
+        ||| The sequencing of two arrows
+        seq : Fun (A B C : Object) -> Arrow A B -> Arrow B C -> Arrow A C,
+    },
+
+    -- FIXME: level shifts for record fields
+    -- category-pikelet = record {
+    --     Object = Type,
+    --     Arrow = fun A B => A -> B,
+    --     -- TODO: Use combinator definitions
+    --     id = fun A a => a,
+    --     seq = fun A B C a-b b-c a => b-c (a-b a),
+    -- },
 } : Record {
     ||| The polymorphic identity function.
     id : Fun (A : Type) -> A -> A,
@@ -83,4 +111,23 @@ record {
 
     ||| Dependent sums (subtypes)
     Sum : Fun (A : Type) (B : A -> Type) -> Type,
+
+
+    ||| A carrier equipped with an associative operation
+    Semigroup : Type^1,
+
+    ||| A category is a very general structure that provides a common way of
+    ||| composing units of functionality
+    |||
+    ||| The most common category programmers would be familiar with would be `Type`s
+    ||| are the objects, and the functions between those types are the arrows. Many
+    ||| other categories exist though, for example:
+    |||
+    ||| - nodes in a directed graph, and the edges between those nodes.
+    ||| - etc.
+    Category : Type^1,
+
+    -- FIXME: level shifts for record fields
+    -- ||| Category of Pikelet functions and types.
+    -- category-pikelet : Category^1,
 }
