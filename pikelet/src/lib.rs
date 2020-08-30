@@ -4,3 +4,4 @@
 
 pub mod lang;
 pub mod pass;
+pub mod reporting;

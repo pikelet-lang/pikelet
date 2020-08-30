@@ -9,15 +9,15 @@ fn run_test(path: &str, source: &str) {
     let mut is_failed = false;
 
     let writer = StandardStream::stdout(ColorChoice::Always);
+    let globals = core::Globals::default();
+    let pretty_alloc = pretty::BoxAllocator;
     let config = codespan_reporting::term::Config::default();
+    let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
+
     let file = SimpleFile::new(path, source);
     let surface_term = surface::Term::from_str(file.source()).unwrap();
 
-    let globals = core::Globals::default();
-    let pretty_alloc = pretty::BoxAllocator;
-
-    let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
-    let mut state = surface_to_core::State::new(&globals, messages_tx);
+    let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
     let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
     if !messages_rx.is_empty() {
         is_failed = true;
@@ -30,7 +30,6 @@ fn run_test(path: &str, source: &str) {
         eprintln!();
     }
 
-    let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
     let mut state = core::typing::State::new(&globals, messages_tx.clone());
 
     core::typing::synth_type(&mut state, &core_term);
@@ -38,7 +37,9 @@ fn run_test(path: &str, source: &str) {
         is_failed = true;
         eprintln!("core::typing::synth_term messages:");
         for message in &messages_rx {
-            eprintln!("  {:?}", message);
+            let diagnostic = message.to_diagnostic(&pretty_alloc);
+            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
+                .unwrap();
         }
         eprintln!();
     }
@@ -48,7 +49,9 @@ fn run_test(path: &str, source: &str) {
         is_failed = true;
         eprintln!("core::typing::check_term messages:");
         for message in &messages_rx {
-            eprintln!("  {:?}", message);
+            let diagnostic = message.to_diagnostic(&pretty_alloc);
+            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
+                .unwrap();
         }
         eprintln!();
     }

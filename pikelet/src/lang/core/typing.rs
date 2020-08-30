@@ -9,12 +9,12 @@
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 
-use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Value};
+use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, Value};
 use crate::lang::core::{
     Constant, Globals, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset,
 };
 
-pub mod reporting;
+mod reporting;
 
 pub use self::reporting::*;
 
@@ -29,12 +29,12 @@ pub struct State<'me> {
     /// Local value environment (used for evaluation).
     values: Locals<Arc<Value>>,
     /// The diagnostic messages accumulated during type checking.
-    message_tx: Sender<Message>,
+    message_tx: Sender<crate::reporting::Message>,
 }
 
 impl<'me> State<'me> {
     /// Construct a new type checker state.
-    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> State<'me> {
+    pub fn new(globals: &'me Globals, message_tx: Sender<crate::reporting::Message>) -> State<'me> {
         State {
             globals,
             universe_offset: UniverseOffset(0),
@@ -76,7 +76,7 @@ impl<'me> State<'me> {
 
     /// Report a diagnostic message.
     fn report(&mut self, message: Message) {
-        self.message_tx.send(message).unwrap();
+        self.message_tx.send(message.into()).unwrap();
     }
 
     /// Reset the type checker state while retaining existing allocations.
@@ -101,6 +101,11 @@ impl<'me> State<'me> {
         semantics::record_elim_type(self.globals, head_value, name, closure)
     }
 
+    /// Read back a value into a normal form using the current state of the elaborator.
+    pub fn read_back_value(&mut self, value: &Value) -> Term {
+        semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
+    }
+
     /// Check if `value0` is a subtype of `value1`.
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
@@ -114,6 +119,7 @@ pub fn is_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
         Value::TypeType(level) => Some(*level),
         Value::Error => None,
         _ => {
+            let r#type = state.read_back_value(&r#type);
             state.report(Message::MismatchedTypes {
                 found_type: r#type,
                 expected_type: ExpectedType::Universe,
@@ -178,14 +184,16 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         check_type(state, entry_term, entry_type);
                     }
 
-                    let len = len.force(state.globals);
-                    match len.as_ref() {
+                    match len.force(state.globals).as_ref() {
                         Value::Constant(Constant::U32(len))
                             if *len as usize == entry_terms.len() => {}
-                        _ => state.report(Message::MismatchedSequenceLength {
-                            found_len: entry_terms.len(),
-                            expected_len: len.clone(),
-                        }),
+                        len => {
+                            let expected_len = state.read_back_value(len);
+                            state.report(Message::MismatchedSequenceLength {
+                                found_len: entry_terms.len(),
+                                expected_len,
+                            })
+                        }
                     }
                 }
                 ("List", [Elim::Function(entry_type)]) => {
@@ -194,21 +202,27 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         check_type(state, entry_term, entry_type);
                     }
                 }
-                _ => state.report(Message::NoSequenceConversion {
-                    expected_type: expected_type.clone(),
-                }),
+                _ => {
+                    let expected_type = state.read_back_value(expected_type);
+                    state.report(Message::NoSequenceConversion { expected_type })
+                }
             }
         }
-        (Term::Sequence(_), _) => state.report(Message::NoSequenceConversion {
-            expected_type: expected_type.clone(),
-        }),
+        (Term::Sequence(_), _) => {
+            let expected_type = state.read_back_value(expected_type);
+            state.report(Message::NoSequenceConversion { expected_type })
+        }
 
         (term, _) => match synth_type(state, term) {
             found_type if state.is_subtype(&found_type, expected_type) => {}
-            found_type => state.report(Message::MismatchedTypes {
-                found_type,
-                expected_type: ExpectedType::Type(expected_type.clone()),
-            }),
+            found_type => {
+                let found_type = state.read_back_value(&found_type);
+                let expected_type = ExpectedType::Type(state.read_back_value(expected_type));
+                state.report(Message::MismatchedTypes {
+                    found_type,
+                    expected_type,
+                })
+            }
         },
     }
 }
@@ -294,6 +308,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 }
                 Value::Error => Arc::new(Value::Error),
                 _ => {
+                    let head_type = state.read_back_value(&head_type);
                     state.report(Message::TooManyInputsInFunctionElim { head_type });
                     Arc::new(Value::Error)
                 }
@@ -359,6 +374,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 _ => {}
             }
 
+            let head_type = state.read_back_value(&head_type);
             state.report(Message::LabelNotFound {
                 expected_label: label.clone(),
                 head_type,
