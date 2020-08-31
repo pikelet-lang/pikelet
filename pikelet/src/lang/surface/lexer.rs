@@ -7,7 +7,7 @@ use std::ops::Range;
 pub enum Token<'a> {
     #[regex(r"\|\|\|(.*)\n", |lexer| lexer.slice())]
     DocComment(&'a str),
-    #[regex(r#"('[^'\\]|\\')*'"#, |lexer| lexer.slice())]
+    #[regex(r#"'([^'\\]|\\')*'"#, |lexer| lexer.slice())]
     CharLiteral(&'a str),
     #[regex(r#""([^"\\]|\\")*""#, |lexer| lexer.slice())]
     StrLiteral(&'a str),
