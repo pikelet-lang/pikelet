@@ -1,41 +1,35 @@
 use crate::lang::Ranged;
 use crate::lang::surface::{Term, TermData, Literal, TypeEntry, TermEntry};
-use crate::lang::surface::lexer::{LexerError, Token};
 
-grammar<'input>;
+grammar;
 
-extern {
-    type Location = usize;
-    type Error = LexerError;
+match {
+    r"\|\|\|[^\n\r]*[\n\r]*"        => DocComment,
+    r#"'([^'\\]|\\')*'"#            => CharacterLiteral,
+    r#""([^"\\]|\\")*""#            => StringLiteral,
+    r"[-+]?[0-9]+(\.[0-9]+)?"       => NumericLiteral,
+    r"[a-zA-Z][a-zA-Z0-9\-]*"       => Name,
+    r"\^[0-9]+(\.[0-9]+)?"          => Shift,
 
-    enum Token<'input> {
-        "doc comment" => Token::DocComment(<&'input str>),
-        "character literal" => Token::CharLiteral(<&'input str>),
-        "string literal" => Token::StrLiteral(<&'input str>),
-        "numeric literal" => Token::NumLiteral(<&'input  str>),
-        "name" => Token::Name(<&'input str>),
-        "shift" => Token::Shift(<&'input str>),
+    "as",
+    "fun",
+    "Fun",
+    "record",
+    "Record",
 
-        "as" => Token::As,
-        "fun" => Token::FunTerm,
-        "Fun" => Token::FunType,
-        "record" => Token::RecordTerm,
-        "Record" => Token::RecordType,
+    "->",
+    "=>",
+    ":",
+    "=",
+    ",",
+    ".",
 
-        "->"  => Token::Arrow,
-        "=>"  => Token::DArrow,
-        ":"   => Token::Colon,
-        ","   => Token::Comma,
-        "."   => Token::Dot,
+    "{", "}",
+    "[", "]",
+    "(", ")",
 
-        "{" => Token::LBrace,
-        "}" => Token::RBrace,
-        "[" => Token::LBrack,
-        "]" => Token::RBrack,
-        "(" => Token::LParen,
-        ")" => Token::RParen,
-        "=" => Token::Equal,
-    }
+    r"\s*" => { },                  // Skip whitespace
+    r"--[^\n\r]*[\n\r]*" => { },    // Skip `-- comments`
 }
 
 pub Term: Term<&'input str> = Ranged<TermData>;
@@ -78,7 +72,7 @@ AppTermData: TermData<&'input str> = {
 AtomicTermData: TermData<&'input str> = {
     "(" <term: TermData> ")" => term,
     <name: Name> => TermData::Name(name),
-    <term: AtomicTerm> <shift: "shift"> => {
+    <term: AtomicTerm> <shift: Shift> => {
         TermData::Lift(Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
     },
     "Record" "{" <entries: List<TypeEntry>> "}" => TermData::RecordType(entries),
@@ -97,23 +91,19 @@ List<Entry>: Vec<Entry> = {
 
 TypeEntry: TypeEntry<&'input str> = {
     // TODO: Use doc comments
-    <_docs: "doc comment"*>
+    <_docs: DocComment*>
     <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name, term),
 };
 
 TermEntry: TermEntry<&'input str> = {
     // TODO: Use doc comments
-    <_docs: "doc comment"*> <label: Ranged<Name>> "=" <term: Term> => (label, term),
-};
-
-Name: &'input str = {
-    "name",
+    <_docs: DocComment*> <label: Ranged<Name>> "=" <term: Term> => (label, term),
 };
 
 Literal: Literal<&'input str> = {
-    "character literal" => Literal::Char(<>),
-    "string literal" => Literal::String(<>),
-    "numeric literal" => Literal::Number(<>),
+    CharacterLiteral => Literal::Char(<>),
+    StringLiteral => Literal::String(<>),
+    NumericLiteral => Literal::Number(<>),
 };
 
 Ranged<T>: Ranged<T> = {

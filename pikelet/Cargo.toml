@@ -20,10 +20,9 @@ crossbeam-channel = "0.4"
 im = "15"
 itertools = "0.9"
 lalrpop-util = "0.19"
-logos = "0.11"
 once_cell = "1.4"
 pretty = "0.10"
 regex = "1.3"
 
 [build-dependencies]
-lalrpop = "0.19"
+lalrpop = { version = "0.19", features = ["lexer"] }

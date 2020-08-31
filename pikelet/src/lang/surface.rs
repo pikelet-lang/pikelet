@@ -4,8 +4,6 @@
 
 use crate::lang::Ranged;
 
-mod lexer;
-
 #[allow(clippy::all, unused_parens)]
 mod grammar {
     include!(concat!(env!("OUT_DIR"), "/lang/surface/grammar.rs"));
@@ -79,13 +77,12 @@ pub enum TermData<S> {
     Error,
 }
 
-type ParseError<'input> = lalrpop_util::ParseError<usize, lexer::Token<'input>, lexer::LexerError>;
+type ParseError<'input> = lalrpop_util::ParseError<usize, grammar::Token<'input>, &'static str>;
 
 impl<'input> Term<&'input str> {
     /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
-        let tokens = lexer::tokens(input);
-        grammar::TermParser::new().parse(tokens)
+        grammar::TermParser::new().parse(input)
     }
 }
