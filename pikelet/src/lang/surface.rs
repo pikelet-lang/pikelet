@@ -3,6 +3,7 @@
 //! This is a user-friendly concrete syntax for the language.
 
 use crate::lang::Ranged;
+use crate::reporting::ParseError;
 
 #[allow(clippy::all, unused_parens)]
 mod grammar {
@@ -77,12 +78,12 @@ pub enum TermData<S> {
     Error,
 }
 
-type ParseError<'input> = lalrpop_util::ParseError<usize, grammar::Token<'input>, &'static str>;
-
 impl<'input> Term<&'input str> {
     /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
-        grammar::TermParser::new().parse(input)
+    pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError> {
+        grammar::TermParser::new()
+            .parse(input)
+            .map_err(ParseError::from_lalrpop)
     }
 }

@@ -101,7 +101,12 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         let surface_term = match surface::Term::from_str(file.source()) {
             Ok(surface_term) => surface_term,
             Err(error) => {
-                println!("error: {}", error);
+                codespan_reporting::term::emit(
+                    &mut writer.lock(),
+                    &reporting_config,
+                    &file,
+                    &error.to_diagnostic(),
+                )?;
                 continue;
             }
         };
