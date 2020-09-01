@@ -13,6 +13,18 @@ pub enum Message {
     SurfaceToCore(surface_to_core::Message),
 }
 
+impl From<LexerError> for Message {
+    fn from(error: LexerError) -> Self {
+        Message::Lexer(error)
+    }
+}
+
+impl From<ParseError> for Message {
+    fn from(error: ParseError) -> Self {
+        Message::Parse(error)
+    }
+}
+
 impl From<core::typing::Message> for Message {
     fn from(message: core::typing::Message) -> Self {
         Message::CoreTyping(message)
@@ -32,28 +44,28 @@ impl Message {
         use lalrpop_util::ParseError::*;
 
         match error {
-            InvalidToken { location } => Message::Lexer(LexerError::InvalidToken {
+            InvalidToken { location } => Message::from(LexerError::InvalidToken {
                 range: location..location,
             }),
-            UnrecognizedEOF { location, expected } => Message::Parse(ParseError::UnrecognizedEOF {
+            UnrecognizedEOF { location, expected } => Message::from(ParseError::UnrecognizedEOF {
                 range: location..location,
                 expected,
             }),
             UnrecognizedToken {
                 token: (start, token, end),
                 expected,
-            } => Message::Parse(ParseError::UnrecognizedToken {
+            } => Message::from(ParseError::UnrecognizedToken {
                 range: start..end,
                 token: token.to_string(),
                 expected,
             }),
             ExtraToken {
                 token: (start, token, end),
-            } => Message::Parse(ParseError::ExtraToken {
+            } => Message::from(ParseError::ExtraToken {
                 range: start..end,
                 token: token.to_string(),
             }),
-            User { error } => Message::Lexer(error),
+            User { error } => Message::from(error),
         }
     }
 
