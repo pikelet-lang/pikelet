@@ -1,6 +1,7 @@
 use crate::lang::Ranged;
 use crate::lang::surface::{Term, TermData, Literal, TypeEntry, TermEntry};
-use crate::lang::surface::lexer::{LexerError, Token};
+use crate::lang::surface::lexer::Token;
+use crate::reporting::LexerError;
 
 grammar<'input>;
 
