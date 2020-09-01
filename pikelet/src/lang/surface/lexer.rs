@@ -6,17 +6,17 @@ use crate::reporting::LexerError;
 /// Tokens in the surface language.
 #[derive(Debug, Clone, Logos)]
 pub enum Token<'a> {
-    #[regex(r"\|\|\|(.*)\n", |lexer| lexer.slice())]
+    #[regex(r"\|\|\|(.*)\n")]
     DocComment(&'a str),
-    #[regex(r#"'([^'\\]|\\')*'"#, |lexer| lexer.slice())]
+    #[regex(r#"'([^'\\]|\\')*'"#)]
     CharLiteral(&'a str),
-    #[regex(r#""([^"\\]|\\")*""#, |lexer| lexer.slice())]
+    #[regex(r#""([^"\\]|\\")*""#)]
     StrLiteral(&'a str),
-    #[regex(r"[-+]?[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
+    #[regex(r"[-+]?[0-9]+(\.[0-9]+)?")]
     NumLiteral(&'a str),
-    #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*", |lexer| lexer.slice())]
+    #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*")]
     Name(&'a str),
-    #[regex(r"\^[0-9]+(\.[0-9]+)?", |lexer| lexer.slice())]
+    #[regex(r"\^[0-9]+(\.[0-9]+)?")]
     Shift(&'a str),
 
     #[token("as")]
