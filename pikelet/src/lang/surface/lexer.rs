@@ -1,6 +1,7 @@
 use logos::Logos;
 use std::fmt;
-use std::ops::Range;
+
+use crate::reporting::LexerError;
 
 /// Tokens in the surface language.
 #[derive(Debug, Clone, Logos)]
@@ -95,19 +96,6 @@ impl<'a> fmt::Display for Token<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum LexerError {
-    InvalidToken(Range<usize>),
-}
-
-impl fmt::Display for LexerError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            LexerError::InvalidToken(range) => write!(f, "Invalid token: {:?}", range),
-        }
-    }
-}
-
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
 pub fn tokens<'a>(
@@ -116,7 +104,7 @@ pub fn tokens<'a>(
     Token::lexer(source)
         .spanned()
         .map(|(token, range)| match token {
-            Token::Error => Err(LexerError::InvalidToken(range)),
+            Token::Error => Err(LexerError::InvalidToken { range }),
             token => Ok((range.start, token, range.end)),
         })
 }
@@ -125,8 +113,7 @@ pub fn tokens<'a>(
 fn behavior_after_error() {
     let starts_with_invalid = "@.";
     // [Err(...), Some(Token::DOT)]
-    let from_lex: Vec<Spanned<Token<'static>, usize, LexerError>> =
-        tokens(starts_with_invalid).collect();
-    let result: Vec<bool> = from_lex.iter().map(Result::is_ok).collect();
+    let from_lex: Vec<_> = tokens(starts_with_invalid).collect();
+    let result: Vec<_> = from_lex.iter().map(Result::is_ok).collect();
     assert_eq!(result, vec![false, true]);
 }

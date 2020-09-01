@@ -3,6 +3,7 @@
 //! This is a user-friendly concrete syntax for the language.
 
 use crate::lang::Ranged;
+use crate::reporting::Message;
 
 mod lexer;
 
@@ -79,13 +80,13 @@ pub enum TermData<S> {
     Error,
 }
 
-type ParseError<'input> = lalrpop_util::ParseError<usize, lexer::Token<'input>, lexer::LexerError>;
-
 impl<'input> Term<&'input str> {
     /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(input: &'input str) -> Result<Term<&'input str>, ParseError<'input>> {
+    pub fn from_str(input: &'input str) -> Result<Term<&'input str>, Message> {
         let tokens = lexer::tokens(input);
-        grammar::TermParser::new().parse(tokens)
+        grammar::TermParser::new()
+            .parse(tokens)
+            .map_err(Message::from_lalrpop)
     }
 }
