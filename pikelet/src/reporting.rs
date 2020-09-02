@@ -5,11 +5,16 @@ use std::ops::Range;
 use crate::lang::core;
 use crate::pass::surface_to_core;
 
+/// Global diagnostic messages
 #[derive(Clone, Debug)]
 pub enum Message {
+    /// Errors produced during lexing
     Lexer(LexerError),
+    /// Errors produced during parsing
     Parse(ParseError),
+    /// Messages produced from [lang::core::typing]
     CoreTyping(core::typing::Message),
+    /// Messages produced from [pass::surface_to_core]
     SurfaceToCore(surface_to_core::Message),
 }
 
@@ -83,6 +88,7 @@ impl Message {
     }
 }
 
+/// Lexer errors
 #[derive(Debug, Clone)]
 pub enum LexerError {
     InvalidToken { range: Range<usize> },
@@ -98,6 +104,7 @@ impl LexerError {
     }
 }
 
+/// Parse errors
 #[derive(Clone, Debug)]
 pub enum ParseError {
     UnrecognizedEOF {
