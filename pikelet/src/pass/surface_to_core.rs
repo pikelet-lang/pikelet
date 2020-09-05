@@ -89,8 +89,8 @@ impl<'me> State<'me> {
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
         self.core_to_surface.pop_many_names(count);
-        self.names_to_levels
-            .truncate(self.names_to_levels.len().saturating_sub(count));
+        let number_of_names = self.names_to_levels.len().saturating_sub(count);
+        self.names_to_levels.truncate(number_of_names);
         self.types.pop_many(count);
         self.values.pop_many(count);
     }
@@ -421,10 +421,9 @@ impl<'me> State<'me> {
             TermData::Lift(inner_term, offset) => {
                 match self.universe_offset + core::UniverseOffset(*offset) {
                     Some(new_offset) => {
-                        let previous_offset =
-                            std::mem::replace(&mut self.universe_offset, new_offset);
+                        let old_offset = std::mem::replace(&mut self.universe_offset, new_offset);
                         let (core_term, r#type) = self.synth_type(inner_term);
-                        self.universe_offset = previous_offset;
+                        self.universe_offset = old_offset;
                         (core_term, r#type)
                     }
                     None => {
