@@ -1,6 +1,6 @@
 //! Distill the core language into the surface language.
 
-use contracts::debug_post;
+use contracts::debug_ensures;
 use std::collections::HashMap;
 
 use crate::lang::core::{Constant, Globals, Locals, Term, UniverseLevel, UniverseOffset};
@@ -104,7 +104,7 @@ impl<'me> State<'me> {
         (0..count).for_each(|_| self.pop_name());
     }
 
-    #[debug_post(self.names.size() == old(self.names.size()))]
+    #[debug_ensures(self.names.size() == old(self.names.size()))]
     pub fn from_term(&mut self, term: &Term) -> surface::Term {
         let term_data = match term {
             Term::Global(name) => match self.globals.get(name) {
