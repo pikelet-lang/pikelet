@@ -1,6 +1,6 @@
 //! Elaborates the surface language into the core language.
 
-use contracts::debug_post;
+use contracts::debug_ensures;
 use crossbeam_channel::Sender;
 use std::ops::Range;
 use std::str::FromStr;
@@ -138,10 +138,10 @@ impl<'me> State<'me> {
 
     /// Check that a term is a type return, and return the elaborated term and the
     /// universe level it inhabits.
-    #[debug_post(self.universe_offset == old(self.universe_offset))]
-    #[debug_post(self.names_to_levels.len() == old(self.names_to_levels.len()))]
-    #[debug_post(self.types.size() == old(self.types.size()))]
-    #[debug_post(self.values.size() == old(self.values.size()))]
+    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
+    #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
+    #[debug_ensures(self.types.size() == old(self.types.size()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn is_type(&mut self, term: &Term) -> (core::Term, Option<core::UniverseLevel>) {
         let (core_term, r#type) = self.synth_type(term);
         match r#type.force(self.globals) {
@@ -161,10 +161,10 @@ impl<'me> State<'me> {
     }
 
     /// Check that a term is an element of a type, and return the elaborated term.
-    #[debug_post(self.universe_offset == old(self.universe_offset))]
-    #[debug_post(self.names_to_levels.len() == old(self.names_to_levels.len()))]
-    #[debug_post(self.types.size() == old(self.types.size()))]
-    #[debug_post(self.values.size() == old(self.values.size()))]
+    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
+    #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
+    #[debug_ensures(self.types.size() == old(self.types.size()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
         match (&term.data, expected_type.force(self.globals)) {
             (_, Value::Error) => core::Term::Error,
@@ -383,10 +383,10 @@ impl<'me> State<'me> {
 
     /// Synthesize the type of a surface term, and return the elaborated term.
     #[allow(clippy::suspicious_else_formatting)] // FIXME: Bug in `contracts`?
-    #[debug_post(self.universe_offset == old(self.universe_offset))]
-    #[debug_post(self.names_to_levels.len() == old(self.names_to_levels.len()))]
-    #[debug_post(self.types.size() == old(self.types.size()))]
-    #[debug_post(self.values.size() == old(self.values.size()))]
+    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
+    #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
+    #[debug_ensures(self.types.size() == old(self.types.size()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
         use std::collections::BTreeMap;
 
