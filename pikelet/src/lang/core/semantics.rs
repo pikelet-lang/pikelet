@@ -251,6 +251,7 @@ impl LazyValue {
 }
 
 /// Fully normalize a term.
+#[contracts::debug_post(values.size() == old(values.size()))]
 pub fn normalize_term(
     globals: &Globals,
     universe_offset: UniverseOffset,
@@ -262,6 +263,7 @@ pub fn normalize_term(
 }
 
 /// Evaluate a term into a value in weak-head normal form.
+#[contracts::debug_post(values.size() == old(values.size()))]
 pub fn eval_term(
     globals: &Globals,
     universe_offset: UniverseOffset,

@@ -16,6 +16,7 @@ license = "Apache-2.0"
 
 [dependencies]
 codespan-reporting = "0.9.5"
+contracts = "0.5"
 crossbeam-channel = "0.4"
 im = "15"
 itertools = "0.9"
