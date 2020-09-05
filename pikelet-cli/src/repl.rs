@@ -111,8 +111,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
             }
         };
 
-        let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
-
+        let (core_term, r#type) = state.synth_type(&surface_term);
         if !messages_rx.is_empty() {
             for message in &messages_rx {
                 codespan_reporting::term::emit(

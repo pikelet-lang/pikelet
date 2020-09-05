@@ -18,7 +18,7 @@ fn run_test(path: &str, source: &str) {
     let surface_term = surface::Term::from_str(file.source()).unwrap();
 
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
-    let (core_term, r#type) = surface_to_core::synth_type(&mut state, &surface_term);
+    let (core_term, r#type) = state.synth_type(&surface_term);
     if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("surface_to_core::synth_type messages:");
@@ -32,7 +32,7 @@ fn run_test(path: &str, source: &str) {
 
     let mut state = core::typing::State::new(&globals, messages_tx.clone());
 
-    core::typing::synth_type(&mut state, &core_term);
+    state.synth_type(&core_term);
     if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("core::typing::synth_term messages:");
@@ -44,7 +44,7 @@ fn run_test(path: &str, source: &str) {
         eprintln!();
     }
 
-    core::typing::check_type(&mut state, &core_term, &r#type);
+    state.check_type(&core_term, &r#type);
     if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("core::typing::check_term messages:");
