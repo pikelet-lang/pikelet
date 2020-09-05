@@ -1,5 +1,6 @@
 //! The operational semantics of the language.
 
+use contracts::debug_post;
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -251,6 +252,7 @@ impl LazyValue {
 }
 
 /// Fully normalize a term.
+#[debug_post(values.size() == old(values.size()))]
 pub fn normalize_term(
     globals: &Globals,
     universe_offset: UniverseOffset,
@@ -262,6 +264,7 @@ pub fn normalize_term(
 }
 
 /// Evaluate a term into a value in weak-head normal form.
+#[debug_post(values.size() == old(values.size()))]
 pub fn eval_term(
     globals: &Globals,
     universe_offset: UniverseOffset,

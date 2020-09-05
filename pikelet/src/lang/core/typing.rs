@@ -5,6 +5,7 @@
 //! and doesn't need to perform any additional elaboration.
 //! We can use it as a way to validate that elaborated terms are well-formed for debugging and development purposes.
 
+use contracts::debug_post;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 
@@ -82,7 +83,7 @@ impl<'me> State<'me> {
 
     /// Return the type of the record elimination.
     pub fn record_elim_type(
-        &mut self,
+        &self,
         head_value: Arc<Value>,
         name: &str,
         closure: &RecordTypeClosure,
@@ -91,7 +92,7 @@ impl<'me> State<'me> {
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
-    pub fn read_back_value(&mut self, value: &Value) -> Term {
+    pub fn read_back_value(&self, value: &Value) -> Term {
         semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
     }
 
@@ -101,6 +102,9 @@ impl<'me> State<'me> {
     }
 
     /// Check that a term is a type and return the universe level it inhabits.
+    #[debug_post(self.universe_offset == old(self.universe_offset))]
+    #[debug_post(self.types.size() == old(self.types.size()))]
+    #[debug_post(self.values.size() == old(self.values.size()))]
     pub fn is_type(&mut self, term: &Term) -> Option<UniverseLevel> {
         let r#type = self.synth_type(term);
         match r#type.force(self.globals) {
@@ -118,6 +122,9 @@ impl<'me> State<'me> {
     }
 
     /// Check that a term is an element of a type.
+    #[debug_post(self.universe_offset == old(self.universe_offset))]
+    #[debug_post(self.types.size() == old(self.types.size()))]
+    #[debug_post(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) {
         match (term, expected_type.force(self.globals)) {
             (_, Value::Error) => {}
@@ -216,6 +223,9 @@ impl<'me> State<'me> {
     }
 
     /// Synthesize the type of a term.
+    #[debug_post(self.universe_offset == old(self.universe_offset))]
+    #[debug_post(self.types.size() == old(self.types.size()))]
+    #[debug_post(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> Arc<Value> {
         match term {
             Term::Global(name) => match self.globals.get(name) {

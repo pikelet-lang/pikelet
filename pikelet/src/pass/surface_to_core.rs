@@ -1,5 +1,6 @@
 //! Elaborates the surface language into the core language.
 
+use contracts::debug_post;
 use crossbeam_channel::Sender;
 use std::ops::Range;
 use std::str::FromStr;
@@ -89,8 +90,8 @@ impl<'me> State<'me> {
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
         self.core_to_surface.pop_many_names(count);
-        self.names_to_levels
-            .truncate(self.names_to_levels.len().saturating_sub(count));
+        let number_of_names = self.names_to_levels.len().saturating_sub(count);
+        self.names_to_levels.truncate(number_of_names);
         self.types.pop_many(count);
         self.values.pop_many(count);
     }
@@ -107,7 +108,7 @@ impl<'me> State<'me> {
 
     /// Return the type of the record elimination.
     pub fn record_elim_type(
-        &mut self,
+        &self,
         head_value: Arc<Value>,
         label: &str,
         closure: &RecordTypeClosure,
@@ -121,7 +122,7 @@ impl<'me> State<'me> {
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
-    pub fn read_back_value(&mut self, value: &Value) -> core::Term {
+    pub fn read_back_value(&self, value: &Value) -> core::Term {
         semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
     }
 
@@ -137,6 +138,10 @@ impl<'me> State<'me> {
 
     /// Check that a term is a type return, and return the elaborated term and the
     /// universe level it inhabits.
+    #[debug_post(self.universe_offset == old(self.universe_offset))]
+    #[debug_post(self.names_to_levels.len() == old(self.names_to_levels.len()))]
+    #[debug_post(self.types.size() == old(self.types.size()))]
+    #[debug_post(self.values.size() == old(self.values.size()))]
     pub fn is_type(&mut self, term: &Term) -> (core::Term, Option<core::UniverseLevel>) {
         let (core_term, r#type) = self.synth_type(term);
         match r#type.force(self.globals) {
@@ -156,6 +161,10 @@ impl<'me> State<'me> {
     }
 
     /// Check that a term is an element of a type, and return the elaborated term.
+    #[debug_post(self.universe_offset == old(self.universe_offset))]
+    #[debug_post(self.names_to_levels.len() == old(self.names_to_levels.len()))]
+    #[debug_post(self.types.size() == old(self.types.size()))]
+    #[debug_post(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
         match (&term.data, expected_type.force(self.globals)) {
             (_, Value::Error) => core::Term::Error,
@@ -373,6 +382,11 @@ impl<'me> State<'me> {
     }
 
     /// Synthesize the type of a surface term, and return the elaborated term.
+    #[allow(clippy::suspicious_else_formatting)] // FIXME: Bug in `contracts`?
+    #[debug_post(self.universe_offset == old(self.universe_offset))]
+    #[debug_post(self.names_to_levels.len() == old(self.names_to_levels.len()))]
+    #[debug_post(self.types.size() == old(self.types.size()))]
+    #[debug_post(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
         use std::collections::BTreeMap;
 
@@ -407,10 +421,9 @@ impl<'me> State<'me> {
             TermData::Lift(inner_term, offset) => {
                 match self.universe_offset + core::UniverseOffset(*offset) {
                     Some(new_offset) => {
-                        let previous_offset =
-                            std::mem::replace(&mut self.universe_offset, new_offset);
+                        let old_offset = std::mem::replace(&mut self.universe_offset, new_offset);
                         let (core_term, r#type) = self.synth_type(inner_term);
-                        self.universe_offset = previous_offset;
+                        self.universe_offset = old_offset;
                         (core_term, r#type)
                     }
                     None => {
