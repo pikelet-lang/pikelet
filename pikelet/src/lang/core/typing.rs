@@ -1,10 +1,9 @@
 //! Bidirectional type checker for the core language.
 //!
-//! This is a simpler implementation of type checking than the one found in
-//! `surface::projections::core`,
+//! This is a simpler implementation of type checking than the one found in [pass::surface_to_core],
 //! because it only needs to check the (much simpler) core language,
 //! and doesn't need to perform any additional elaboration.
-//! We can use it as a way to validate that elaborated terms are well-formed.
+//! We can use it as a way to validate that elaborated terms are well-formed for debugging and development purposes.
 
 use crossbeam_channel::Sender;
 use std::sync::Arc;
