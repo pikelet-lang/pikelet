@@ -9,10 +9,7 @@ use crate::lang::core;
 use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, Value};
 use crate::lang::surface::{Literal, Term, TermData};
 use crate::pass::core_to_surface;
-
-mod reporting;
-
-pub use self::reporting::*;
+use crate::reporting::{AmbiguousTerm, ExpectedType, InvalidLiteral, SurfaceToCoreMessage};
 
 /// The state of the elaborator.
 pub struct State<'me> {
@@ -99,7 +96,7 @@ impl<'me> State<'me> {
     }
 
     /// Report a diagnostic message.
-    fn report(&mut self, error: Message) {
+    fn report(&mut self, error: SurfaceToCoreMessage) {
         self.message_tx.send(error.into()).unwrap();
     }
 
@@ -157,7 +154,7 @@ pub fn is_type(state: &mut State<'_>, term: &Term) -> (core::Term, Option<core::
         found_type => {
             let found_type = state.read_back_value(&found_type);
             let found_type = state.core_to_surface_term(&found_type);
-            state.report(Message::MismatchedTypes {
+            state.report(SurfaceToCoreMessage::MismatchedTypes {
                 range: term.range(),
                 found_type,
                 expected_type: ExpectedType::Universe,
@@ -190,7 +187,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         return core::Term::Error;
                     }
                     _ => {
-                        state.report(Message::TooManyInputsInFunctionTerm {
+                        state.report(SurfaceToCoreMessage::TooManyInputsInFunctionTerm {
                             unexpected_inputs: std::iter::once(input_name.range())
                                 .chain(pending_input_names.map(|input_name| input_name.range()))
                                 .collect(),
@@ -251,7 +248,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 let unexpected_labels = (pending_term_entries.into_iter())
                     .map(|(label, (label_range, _))| (label, label_range))
                     .collect();
-                state.report(Message::InvalidRecordTerm {
+                state.report(SurfaceToCoreMessage::InvalidRecordTerm {
                     range: term.range(),
                     duplicate_labels,
                     missing_labels,
@@ -282,7 +279,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                         _ => {
                             let expected_len = state.read_back_value(&len);
                             let expected_len = state.core_to_surface_term(&expected_len);
-                            state.report(Message::MismatchedSequenceLength {
+                            state.report(SurfaceToCoreMessage::MismatchedSequenceLength {
                                 range: term.range(),
                                 found_len: entry_terms.len(),
                                 expected_len,
@@ -303,7 +300,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 _ => {
                     let expected_type = state.read_back_value(expected_type);
                     let expected_type = state.core_to_surface_term(&expected_type);
-                    state.report(Message::NoSequenceConversion {
+                    state.report(SurfaceToCoreMessage::NoSequenceConversion {
                         range: term.range(),
                         expected_type,
                     });
@@ -314,7 +311,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
         (TermData::Sequence(_), _) => {
             let expected_type = state.read_back_value(expected_type);
             let expected_type = state.core_to_surface_term(&expected_type);
-            state.report(Message::NoSequenceConversion {
+            state.report(SurfaceToCoreMessage::NoSequenceConversion {
                 range: term.range(),
                 expected_type,
             });
@@ -340,7 +337,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 (_, _, _) => {
                     let expected_type = state.read_back_value(expected_type);
                     let expected_type = state.core_to_surface_term(&expected_type);
-                    state.report(Message::NoLiteralConversion {
+                    state.report(SurfaceToCoreMessage::NoLiteralConversion {
                         range: term.range(),
                         expected_type,
                     });
@@ -351,7 +348,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
         (TermData::Literal(_), _) => {
             let expected_type = state.read_back_value(expected_type);
             let expected_type = state.core_to_surface_term(&expected_type);
-            state.report(Message::NoLiteralConversion {
+            state.report(SurfaceToCoreMessage::NoLiteralConversion {
                 range: term.range(),
                 expected_type,
             });
@@ -365,7 +362,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 let found_type = state.core_to_surface_term(&found_type);
                 let expected_type = state.read_back_value(expected_type);
                 let expected_type = state.core_to_surface_term(&expected_type);
-                state.report(Message::MismatchedTypes {
+                state.report(SurfaceToCoreMessage::MismatchedTypes {
                     range: term.range(),
                     found_type,
                     expected_type: ExpectedType::Type(expected_type),
@@ -391,7 +388,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
                 return (global.lift(state.universe_offset), state.eval_term(r#type));
             }
 
-            state.report(Message::UnboundName {
+            state.report(SurfaceToCoreMessage::UnboundName {
                 range: term.range(),
                 name: name.clone(),
             });
@@ -417,7 +414,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
                     (core_term, r#type)
                 }
                 None => {
-                    state.report(Message::MaximumUniverseLevelReached {
+                    state.report(SurfaceToCoreMessage::MaximumUniverseLevelReached {
                         range: term.range(),
                     });
                     (core::Term::Error, Arc::new(Value::Error))
@@ -490,7 +487,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
             }
         }
         TermData::FunctionTerm(_, _) => {
-            state.report(Message::AmbiguousTerm {
+            state.report(SurfaceToCoreMessage::AmbiguousTerm {
                 range: term.range(),
                 term: AmbiguousTerm::FunctionTerm,
             });
@@ -518,7 +515,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
                         let head_type = state.read_back_value(&head_type);
                         let head_type = state.core_to_surface_term(&head_type);
                         let unexpected_input_terms = input_terms.map(|arg| arg.range()).collect();
-                        state.report(Message::TooManyInputsInFunctionElim {
+                        state.report(SurfaceToCoreMessage::TooManyInputsInFunctionElim {
                             head_range,
                             head_type,
                             unexpected_input_terms,
@@ -542,7 +539,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
                     ))),
                 )
             } else {
-                state.report(Message::AmbiguousTerm {
+                state.report(SurfaceToCoreMessage::AmbiguousTerm {
                     range: term.range(),
                     term: AmbiguousTerm::RecordTerm,
                 });
@@ -587,7 +584,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
             }
 
             if !duplicate_labels.is_empty() {
-                state.report(Message::InvalidRecordType { duplicate_labels });
+                state.report(SurfaceToCoreMessage::InvalidRecordType { duplicate_labels });
             }
 
             state.pop_many_locals(seen_labels.len());
@@ -616,7 +613,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
 
             let head_type = state.read_back_value(&head_type);
             let head_type = state.core_to_surface_term(&head_type);
-            state.report(Message::LabelNotFound {
+            state.report(SurfaceToCoreMessage::LabelNotFound {
                 head_range: head_term.range(),
                 label_range: label.range(),
                 expected_label: label.data.clone(),
@@ -626,7 +623,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
         }
 
         TermData::Sequence(_) => {
-            state.report(Message::AmbiguousTerm {
+            state.report(SurfaceToCoreMessage::AmbiguousTerm {
                 range: term.range(),
                 term: AmbiguousTerm::Sequence,
             });
@@ -635,7 +632,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>
 
         TermData::Literal(literal) => match literal {
             Literal::Number(_) => {
-                state.report(Message::AmbiguousTerm {
+                state.report(SurfaceToCoreMessage::AmbiguousTerm {
                     range: term.range(),
                     term: AmbiguousTerm::NumberLiteral,
                 });
@@ -665,7 +662,7 @@ fn parse_number<T: FromStr>(
     match data.parse() {
         Ok(value) => core::Term::from(f(value)),
         Err(_) => {
-            state.report(Message::InvalidLiteral {
+            state.report(SurfaceToCoreMessage::InvalidLiteral {
                 range,
                 literal: InvalidLiteral::Number,
             });
@@ -679,7 +676,7 @@ fn parse_char(state: &mut State<'_>, range: Range<usize>, data: &str) -> core::T
     match data.chars().nth(1) {
         Some(value) => core::Term::from(core::Constant::Char(value)),
         None => {
-            state.report(Message::InvalidLiteral {
+            state.report(SurfaceToCoreMessage::InvalidLiteral {
                 range,
                 literal: InvalidLiteral::Char,
             });
@@ -693,7 +690,7 @@ fn parse_string(state: &mut State<'_>, range: Range<usize>, data: &str) -> core:
     match data.get(1..data.len() - 1) {
         Some(value) => core::Term::from(core::Constant::String(value.to_owned())),
         None => {
-            state.report(Message::InvalidLiteral {
+            state.report(SurfaceToCoreMessage::InvalidLiteral {
                 range,
                 literal: InvalidLiteral::String,
             });

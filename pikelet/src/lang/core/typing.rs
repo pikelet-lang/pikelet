@@ -13,10 +13,7 @@ use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, 
 use crate::lang::core::{
     Constant, Globals, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset,
 };
-
-mod reporting;
-
-pub use self::reporting::*;
+use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType};
 
 /// The state of the type checker.
 pub struct State<'me> {
@@ -75,7 +72,7 @@ impl<'me> State<'me> {
     }
 
     /// Report a diagnostic message.
-    fn report(&mut self, message: Message) {
+    fn report(&mut self, message: CoreTypingMessage) {
         self.message_tx.send(message.into()).unwrap();
     }
 
@@ -120,7 +117,7 @@ pub fn is_type(state: &mut State<'_>, term: &Term) -> Option<UniverseLevel> {
         Value::Error => None,
         _ => {
             let r#type = state.read_back_value(&r#type);
-            state.report(Message::MismatchedTypes {
+            state.report(CoreTypingMessage::MismatchedTypes {
                 found_type: r#type,
                 expected_type: ExpectedType::Universe,
             });
@@ -144,7 +141,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             state.pop_local();
         }
         (Term::FunctionTerm(_, _), _) => {
-            state.report(Message::TooManyInputsInFunctionTerm);
+            state.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
         }
 
         (Term::RecordTerm(term_entries), Value::RecordType(closure)) => {
@@ -169,7 +166,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 let unexpected_labels = (pending_term_entries.into_iter())
                     .map(|(label, _)| label)
                     .collect();
-                state.report(Message::InvalidRecordTerm {
+                state.report(CoreTypingMessage::InvalidRecordTerm {
                     missing_labels,
                     unexpected_labels,
                 });
@@ -189,7 +186,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                             if *len as usize == entry_terms.len() => {}
                         len => {
                             let expected_len = state.read_back_value(len);
-                            state.report(Message::MismatchedSequenceLength {
+                            state.report(CoreTypingMessage::MismatchedSequenceLength {
                                 found_len: entry_terms.len(),
                                 expected_len,
                             })
@@ -204,13 +201,13 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
                 }
                 _ => {
                     let expected_type = state.read_back_value(expected_type);
-                    state.report(Message::NoSequenceConversion { expected_type })
+                    state.report(CoreTypingMessage::NoSequenceConversion { expected_type })
                 }
             }
         }
         (Term::Sequence(_), _) => {
             let expected_type = state.read_back_value(expected_type);
-            state.report(Message::NoSequenceConversion { expected_type })
+            state.report(CoreTypingMessage::NoSequenceConversion { expected_type })
         }
 
         (term, _) => match synth_type(state, term) {
@@ -218,7 +215,7 @@ pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>
             found_type => {
                 let found_type = state.read_back_value(&found_type);
                 let expected_type = ExpectedType::Type(state.read_back_value(expected_type));
-                state.report(Message::MismatchedTypes {
+                state.report(CoreTypingMessage::MismatchedTypes {
                     found_type,
                     expected_type,
                 })
@@ -233,7 +230,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Global(name) => match state.globals.get(name) {
             Some((r#type, _)) => state.eval_term(r#type),
             None => {
-                state.report(Message::UnboundGlobal {
+                state.report(CoreTypingMessage::UnboundGlobal {
                     name: name.to_owned(),
                 });
                 Arc::new(Value::Error)
@@ -242,7 +239,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::Local(index) => match state.types.get(*index) {
             Some(r#type) => r#type.clone(),
             None => {
-                state.report(Message::UnboundLocal);
+                state.report(CoreTypingMessage::UnboundLocal);
                 Arc::new(Value::Error)
             }
         },
@@ -257,7 +254,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         Term::TypeType(level) => match *level + UniverseOffset(1) {
             Some(level) => Arc::new(Value::type_type(level)),
             None => {
-                state.report(Message::MaximumUniverseLevelReached);
+                state.report(CoreTypingMessage::MaximumUniverseLevelReached);
                 Arc::new(Value::Error)
             }
         },
@@ -269,7 +266,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 r#type
             }
             None => {
-                state.report(Message::MaximumUniverseLevelReached);
+                state.report(CoreTypingMessage::MaximumUniverseLevelReached);
                 Arc::new(Value::Error)
             }
         },
@@ -293,7 +290,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
         }
         Term::FunctionTerm(_, _) => {
-            state.report(Message::AmbiguousTerm {
+            state.report(CoreTypingMessage::AmbiguousTerm {
                 term: AmbiguousTerm::FunctionTerm,
             });
             Arc::new(Value::Error)
@@ -309,7 +306,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                 Value::Error => Arc::new(Value::Error),
                 _ => {
                     let head_type = state.read_back_value(&head_type);
-                    state.report(Message::TooManyInputsInFunctionElim { head_type });
+                    state.report(CoreTypingMessage::TooManyInputsInFunctionElim { head_type });
                     Arc::new(Value::Error)
                 }
             }
@@ -323,7 +320,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
                     Arc::new([]),
                 )))
             } else {
-                state.report(Message::AmbiguousTerm {
+                state.report(CoreTypingMessage::AmbiguousTerm {
                     term: AmbiguousTerm::RecordTerm,
                 });
                 Arc::new(Value::Error)
@@ -354,7 +351,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             state.pop_many_locals(seen_labels.len());
 
             if !duplicate_labels.is_empty() {
-                state.report(Message::InvalidRecordType { duplicate_labels });
+                state.report(CoreTypingMessage::InvalidRecordType { duplicate_labels });
             }
 
             Arc::new(Value::TypeType(max_level))
@@ -375,7 +372,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
             }
 
             let head_type = state.read_back_value(&head_type);
-            state.report(Message::LabelNotFound {
+            state.report(CoreTypingMessage::LabelNotFound {
                 expected_label: label.clone(),
                 head_type,
             });
@@ -383,7 +380,7 @@ pub fn synth_type(state: &mut State<'_>, term: &Term) -> Arc<Value> {
         }
 
         Term::Sequence(_) => {
-            state.report(Message::AmbiguousTerm {
+            state.report(CoreTypingMessage::AmbiguousTerm {
                 term: AmbiguousTerm::Sequence,
             });
             Arc::new(Value::Error)
