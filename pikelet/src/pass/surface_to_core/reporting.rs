@@ -22,7 +22,7 @@ pub enum AmbiguousTerm {
 #[derive(Clone, Debug)]
 pub enum ExpectedType {
     Universe,
-    Type(Term<String>),
+    Type(Term),
 }
 
 #[derive(Clone, Debug)]
@@ -47,14 +47,14 @@ pub enum Message {
         head_range: Range<usize>,
         label_range: Range<usize>,
         expected_label: String,
-        head_type: Term<String>,
+        head_type: Term,
     },
     TooManyInputsInFunctionTerm {
         unexpected_inputs: Vec<Range<usize>>,
     },
     TooManyInputsInFunctionElim {
         head_range: Range<usize>,
-        head_type: Term<String>,
+        head_type: Term,
         unexpected_input_terms: Vec<Range<usize>>,
     },
     InvalidLiteral {
@@ -63,16 +63,16 @@ pub enum Message {
     },
     NoLiteralConversion {
         range: Range<usize>,
-        expected_type: Term<String>,
+        expected_type: Term,
     },
     MismatchedSequenceLength {
         range: Range<usize>,
         found_len: usize,
-        expected_len: Term<String>,
+        expected_len: Term,
     },
     NoSequenceConversion {
         range: Range<usize>,
-        expected_type: Term<String>,
+        expected_type: Term,
     },
     AmbiguousTerm {
         range: Range<usize>,
@@ -80,7 +80,7 @@ pub enum Message {
     },
     MismatchedTypes {
         range: Range<usize>,
-        found_type: Term<String>,
+        found_type: Term,
         expected_type: ExpectedType,
     },
 }

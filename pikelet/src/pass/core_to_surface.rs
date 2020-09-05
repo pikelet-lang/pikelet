@@ -103,7 +103,7 @@ impl<'me> State<'me> {
     }
 }
 
-pub fn from_term(state: &mut State<'_>, term: &Term) -> surface::Term<String> {
+pub fn from_term(state: &mut State<'_>, term: &Term) -> surface::Term {
     let term_data = match term {
         Term::Global(name) => match state.globals.get(name) {
             Some(_) => surface::TermData::Name(name.to_owned()),
@@ -228,7 +228,7 @@ pub fn from_term(state: &mut State<'_>, term: &Term) -> surface::Term<String> {
     surface::Term::from(term_data)
 }
 
-pub fn from_constant(constant: &Constant) -> surface::TermData<String> {
+pub fn from_constant(constant: &Constant) -> surface::TermData {
     use crate::lang::surface::Literal::{Char, Number, String};
 
     match constant {

@@ -14,23 +14,21 @@ pub enum Prec {
     Atomic,
 }
 
-pub fn from_term<'a, D, S>(alloc: &'a D, term: &'a Term<S>) -> DocBuilder<'a, D>
+pub fn from_term<'a, D>(alloc: &'a D, term: &'a Term) -> DocBuilder<'a, D>
 where
-    S: 'a + AsRef<str>,
     D: DocAllocator<'a>,
     D::Doc: Clone,
 {
     from_term_prec(alloc, term, Prec::Term)
 }
 
-pub fn from_term_prec<'a, D, S>(alloc: &'a D, term: &'a Term<S>, prec: Prec) -> DocBuilder<'a, D>
+pub fn from_term_prec<'a, D>(alloc: &'a D, term: &'a Term, prec: Prec) -> DocBuilder<'a, D>
 where
-    S: 'a + AsRef<str>,
     D: DocAllocator<'a>,
     D::Doc: Clone,
 {
     match &term.data {
-        TermData::Name(name) => alloc.text(name.as_ref()),
+        TermData::Name(name) => alloc.text(name),
 
         TermData::Ann(term, r#type) => paren(
             alloc,
@@ -62,14 +60,10 @@ where
                     input_type_groups.iter().map(|(input_names, input_type)| {
                         (alloc.nil())
                             .append("(")
-                            .append(
-                                alloc.intersperse(
-                                    input_names
-                                        .iter()
-                                        .map(|input_name| input_name.data.as_ref()),
-                                    alloc.space(),
-                                ),
-                            )
+                            .append(alloc.intersperse(
+                                input_names.iter().map(|input_name| &input_name.data),
+                                alloc.space(),
+                            ))
                             .append(alloc.space())
                             .append(":")
                             .append(alloc.space())
@@ -105,14 +99,10 @@ where
             (alloc.nil())
                 .append("fun")
                 .append(alloc.space())
-                .append(
-                    alloc.intersperse(
-                        input_names
-                            .iter()
-                            .map(|input_name| input_name.data.as_ref()),
-                        alloc.space(),
-                    ),
-                )
+                .append(alloc.intersperse(
+                    input_names.iter().map(|input_name| &input_name.data),
+                    alloc.space(),
+                ))
                 .append(alloc.space())
                 .append("=>")
                 .group()
@@ -149,13 +139,13 @@ where
                     (alloc.nil())
                         .append(alloc.hardline())
                         .append(match name {
-                            None => alloc.text(label.data.as_ref()).append(alloc.space()),
+                            None => alloc.text(&label.data).append(alloc.space()),
                             Some(name) => alloc
-                                .text(label.data.as_ref())
+                                .text(&label.data)
                                 .append(alloc.space())
                                 .append("as")
                                 .append(alloc.space())
-                                .append(name.data.as_ref())
+                                .append(&name.data)
                                 .append(alloc.space()),
                         })
                         .append(":")
@@ -180,7 +170,7 @@ where
             .append(alloc.concat(term_entries.iter().map(|(label, entry_term)| {
                 (alloc.nil())
                     .append(alloc.hardline())
-                    .append(alloc.text(label.data.as_ref()))
+                    .append(alloc.text(&label.data))
                     .append(alloc.space())
                     .append("=")
                     .group()
@@ -198,7 +188,7 @@ where
         TermData::RecordElim(head_term, label) => (alloc.nil())
             .append(from_term_prec(alloc, head_term, Prec::Atomic))
             .append(".")
-            .append(label.data.as_ref()),
+            .append(&label.data),
 
         TermData::Sequence(term_entries) => (alloc.nil())
             .append("[")
@@ -219,16 +209,13 @@ where
     }
 }
 
-pub fn from_literal<'a, D, S>(alloc: &'a D, literal: &'a Literal<S>) -> DocBuilder<'a, D>
+pub fn from_literal<'a, D>(alloc: &'a D, literal: &'a Literal) -> DocBuilder<'a, D>
 where
-    S: 'a + AsRef<str>,
     D: DocAllocator<'a>,
     D::Doc: Clone,
 {
     match literal {
-        Literal::Char(text) | Literal::String(text) | Literal::Number(text) => {
-            alloc.text(text.as_ref())
-        }
+        Literal::Char(text) | Literal::String(text) | Literal::Number(text) => alloc.text(text),
     }
 }
 

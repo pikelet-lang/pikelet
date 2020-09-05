@@ -14,76 +14,76 @@ mod grammar {
 
 /// Literals.
 #[derive(Debug, Clone)]
-pub enum Literal<S> {
+pub enum Literal {
     /// Character literals.
-    Char(S),
+    Char(String),
     /// String literals.
-    String(S),
+    String(String),
     /// Numeric literals.
-    Number(S),
+    Number(String),
 }
 
 /// Entry in a [record type](Term::RecordType).
-pub type TypeEntry<S> = (Ranged<S>, Option<Ranged<S>>, Term<S>);
+pub type TypeEntry = (Ranged<String>, Option<Ranged<String>>, Term);
 /// Entry in a [record term](Term::RecordTerm).
-pub type TermEntry<S> = (Ranged<S>, Term<S>);
+pub type TermEntry = (Ranged<String>, Term);
 /// A group of function inputs that are elements of the same type.
-pub type InputGroup<S> = (Vec<Ranged<S>>, Term<S>);
+pub type InputGroup = (Vec<Ranged<String>>, Term);
 
-pub type Term<S> = Ranged<TermData<S>>;
+pub type Term = Ranged<TermData>;
 
 /// Terms in the surface language.
 #[derive(Debug, Clone)]
-pub enum TermData<S> {
+pub enum TermData {
     /// Names.
-    Name(S),
+    Name(String),
 
     /// Annotated terms.
-    Ann(Box<Term<S>>, Box<Term<S>>),
+    Ann(Box<Term>, Box<Term>),
 
     /// Lift a term by the given number of universe levels.
-    Lift(Box<Term<S>>, u32),
+    Lift(Box<Term>, u32),
 
     /// Function types.
     ///
     /// Also known as: pi type, dependent product type.
-    FunctionType(Vec<InputGroup<S>>, Box<Term<S>>),
+    FunctionType(Vec<InputGroup>, Box<Term>),
     /// Arrow function types.
     ///
     /// Also known as: non-dependent function type.
-    FunctionArrowType(Box<Term<S>>, Box<Term<S>>),
+    FunctionArrowType(Box<Term>, Box<Term>),
     /// Function terms.
     ///
     /// Also known as: lambda abstraction, anonymous function.
-    FunctionTerm(Vec<Ranged<S>>, Box<Term<S>>),
+    FunctionTerm(Vec<Ranged<String>>, Box<Term>),
     /// Function eliminations.
     ///
     /// Also known as: function application.
-    FunctionElim(Box<Term<S>>, Vec<Term<S>>),
+    FunctionElim(Box<Term>, Vec<Term>),
 
     /// Record types.
-    RecordType(Vec<TypeEntry<S>>),
+    RecordType(Vec<TypeEntry>),
     /// Record terms.
-    RecordTerm(Vec<TermEntry<S>>),
+    RecordTerm(Vec<TermEntry>),
     /// Record eliminations.
     ///
     /// Also known as: record projections, field lookup.
-    RecordElim(Box<Term<S>>, Ranged<S>),
+    RecordElim(Box<Term>, Ranged<String>),
 
     /// Ordered sequences.
-    Sequence(Vec<Term<S>>),
+    Sequence(Vec<Term>),
 
     /// Literals.
-    Literal(Literal<S>),
+    Literal(Literal),
 
     /// Error sentinel.
     Error,
 }
 
-impl<'input> Term<&'input str> {
+impl<'input> Term {
     /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(input: &'input str) -> Result<Term<&'input str>, Message> {
+    pub fn from_str(input: &str) -> Result<Term, Message> {
         let tokens = lexer::tokens(input);
         grammar::TermParser::new()
             .parse(tokens)

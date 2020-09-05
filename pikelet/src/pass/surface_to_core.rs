@@ -142,17 +142,14 @@ impl<'me> State<'me> {
     }
 
     /// Distill a `core::Term` into a `surface::Term`.
-    pub fn core_to_surface_term(&mut self, core_term: &core::Term) -> Term<String> {
+    pub fn core_to_surface_term(&mut self, core_term: &core::Term) -> Term {
         core_to_surface::from_term(&mut self.core_to_surface, &core_term)
     }
 }
 
 /// Check that a term is a type return, and return the elaborated term and the
 /// universe level it inhabits.
-pub fn is_type<S: AsRef<str>>(
-    state: &mut State<'_>,
-    term: &Term<S>,
-) -> (core::Term, Option<core::UniverseLevel>) {
+pub fn is_type(state: &mut State<'_>, term: &Term) -> (core::Term, Option<core::UniverseLevel>) {
     let (core_term, r#type) = synth_type(state, term);
     match r#type.force(state.globals) {
         Value::TypeType(level) => (core_term, Some(*level)),
@@ -171,11 +168,7 @@ pub fn is_type<S: AsRef<str>>(
 }
 
 /// Check that a term is an element of a type, and return the elaborated term.
-pub fn check_type<S: AsRef<str>>(
-    state: &mut State<'_>,
-    term: &Term<S>,
-    expected_type: &Arc<Value>,
-) -> core::Term {
+pub fn check_type(state: &mut State<'_>, term: &Term, expected_type: &Arc<Value>) -> core::Term {
     match (&term.data, expected_type.force(state.globals)) {
         (_, Value::Error) => core::Term::Error,
 
@@ -187,8 +180,8 @@ pub fn check_type<S: AsRef<str>>(
             while let Some(input_name) = pending_input_names.next() {
                 match expected_type.force(state.globals) {
                     Value::FunctionType(_, input_type, output_closure) => {
-                        let input_value = state
-                            .push_local_param(Some(input_name.data.as_ref()), input_type.clone());
+                        let input_value =
+                            state.push_local_param(Some(&input_name.data), input_type.clone());
                         seen_input_count += 1;
                         expected_type = output_closure.elim(state.globals, input_value);
                     }
@@ -212,10 +205,7 @@ pub fn check_type<S: AsRef<str>>(
             let core_output_term = check_type(state, output_term, &expected_type);
             state.pop_many_locals(seen_input_count);
             (input_names.iter().rev()).fold(core_output_term, |core_output_term, input_name| {
-                core::Term::FunctionTerm(
-                    input_name.data.as_ref().to_owned(),
-                    Arc::new(core_output_term),
-                )
+                core::Term::FunctionTerm(input_name.data.clone(), Arc::new(core_output_term))
             })
         }
 
@@ -230,7 +220,7 @@ pub fn check_type<S: AsRef<str>>(
             let mut pending_term_entries = BTreeMap::new();
             for (label, entry_term) in term_entries {
                 let range = label.range();
-                match pending_term_entries.entry(label.data.as_ref().to_owned()) {
+                match pending_term_entries.entry(label.data.clone()) {
                     Entry::Vacant(entry) => drop(entry.insert((range, entry_term))),
                     Entry::Occupied(entry) => {
                         duplicate_labels.push((entry.key().clone(), entry.get().0.clone(), range));
@@ -387,10 +377,7 @@ pub fn check_type<S: AsRef<str>>(
 }
 
 /// Synthesize the type of a surface term, and return the elaborated term.
-pub fn synth_type<S: AsRef<str>>(
-    state: &mut State<'_>,
-    term: &Term<S>,
-) -> (core::Term, Arc<Value>) {
+pub fn synth_type(state: &mut State<'_>, term: &Term) -> (core::Term, Arc<Value>) {
     use std::collections::BTreeMap;
 
     match &term.data {
@@ -400,13 +387,13 @@ pub fn synth_type<S: AsRef<str>>(
             }
 
             if let Some((r#type, _)) = state.globals.get(name.as_ref()) {
-                let global = core::Term::Global(name.as_ref().to_owned());
+                let global = core::Term::Global(name.clone());
                 return (global.lift(state.universe_offset), state.eval_term(r#type));
             }
 
             state.report(Message::UnboundName {
                 range: term.range(),
-                name: name.as_ref().to_owned(),
+                name: name.clone(),
             });
             (core::Term::Error, Arc::new(Value::Error))
         }
@@ -452,8 +439,8 @@ pub fn synth_type<S: AsRef<str>>(
                     max_level = update_level(max_level, input_level);
 
                     let core_input_type_value = state.eval_term(&core_input_type);
-                    state.push_local_param(Some(input_name.data.as_ref()), core_input_type_value);
-                    core_inputs.push((Some(input_name.data.as_ref().to_owned()), core_input_type));
+                    state.push_local_param(Some(&input_name.data), core_input_type_value);
+                    core_inputs.push((Some(input_name.data.clone()), core_input_type));
                 }
             }
 
@@ -572,7 +559,7 @@ pub fn synth_type<S: AsRef<str>>(
 
             for (label, name, entry_type) in type_entries {
                 let name = name.as_ref().unwrap_or(label);
-                match seen_labels.entry(label.data.as_ref()) {
+                match seen_labels.entry(&label.data) {
                     Entry::Vacant(entry) => {
                         let (core_type, level) = is_type(state, entry_type);
                         max_level = match level {
@@ -584,8 +571,8 @@ pub fn synth_type<S: AsRef<str>>(
                         };
                         let core_type = Arc::new(core_type);
                         let core_type_value = state.eval_term(&core_type);
-                        core_type_entries.push((label.data.as_ref().to_owned(), core_type));
-                        state.push_local_param(Some(name.data.as_ref()), core_type_value);
+                        core_type_entries.push((label.data.clone(), core_type));
+                        state.push_local_param(Some(&name.data), core_type_value);
                         entry.insert(label.range());
                     }
                     Entry::Occupied(entry) => {
@@ -615,11 +602,11 @@ pub fn synth_type<S: AsRef<str>>(
             match head_type.force(state.globals) {
                 Value::RecordType(closure) => {
                     let head_value = state.eval_term(&core_head_term);
-                    let label = label.data.as_ref();
+                    let label = &label.data;
 
                     if let Some(entry_type) = state.record_elim_type(head_value, label, closure) {
                         let core_head_term = Arc::new(core_head_term);
-                        let core_term = core::Term::RecordElim(core_head_term, label.to_owned());
+                        let core_term = core::Term::RecordElim(core_head_term, label.clone());
                         return (core_term, entry_type);
                     }
                 }
@@ -632,7 +619,7 @@ pub fn synth_type<S: AsRef<str>>(
             state.report(Message::LabelNotFound {
                 head_range: head_term.range(),
                 label_range: label.range(),
-                expected_label: label.data.as_ref().to_owned(),
+                expected_label: label.data.clone(),
                 head_type,
             });
             (core::Term::Error, Arc::new(Value::Error))
@@ -668,14 +655,14 @@ pub fn synth_type<S: AsRef<str>>(
     }
 }
 
-fn parse_number<S: AsRef<str>, T: FromStr>(
+fn parse_number<T: FromStr>(
     state: &mut State<'_>,
     range: Range<usize>,
-    data: &S,
+    data: &str,
     f: impl Fn(T) -> core::Constant,
 ) -> core::Term {
     // TODO: improve parser (eg. numeric separators, positive sign)
-    match data.as_ref().parse() {
+    match data.parse() {
         Ok(value) => core::Term::from(f(value)),
         Err(_) => {
             state.report(Message::InvalidLiteral {
@@ -687,9 +674,9 @@ fn parse_number<S: AsRef<str>, T: FromStr>(
     }
 }
 
-fn parse_char<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &S) -> core::Term {
+fn parse_char(state: &mut State<'_>, range: Range<usize>, data: &str) -> core::Term {
     // TODO: Improve parser (escapes)
-    match data.as_ref().chars().nth(1) {
+    match data.chars().nth(1) {
         Some(value) => core::Term::from(core::Constant::Char(value)),
         None => {
             state.report(Message::InvalidLiteral {
@@ -701,9 +688,9 @@ fn parse_char<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &
     }
 }
 
-fn parse_string<S: AsRef<str>>(state: &mut State<'_>, range: Range<usize>, data: &S) -> core::Term {
+fn parse_string(state: &mut State<'_>, range: Range<usize>, data: &str) -> core::Term {
     // TODO: Improve parser (escapes)
-    match data.as_ref().get(1..data.as_ref().len() - 1) {
+    match data.get(1..data.len() - 1) {
         Some(value) => core::Term::from(core::Constant::String(value.to_owned())),
         None => {
             state.report(Message::InvalidLiteral {

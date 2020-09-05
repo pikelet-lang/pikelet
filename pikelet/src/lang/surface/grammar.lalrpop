@@ -39,25 +39,25 @@ extern {
     }
 }
 
-pub Term: Term<&'input str> = Ranged<TermData>;
-ArrowTerm: Term<&'input str> = Ranged<ArrowTermData>;
-ExprTerm: Term<&'input str> = Ranged<ExprTermData>;
-AppTerm: Term<&'input str> = Ranged<AppTermData>;
-AtomicTerm: Term<&'input str> = Ranged<AtomicTermData>;
+pub Term: Term = Ranged<TermData>;
+ArrowTerm: Term = Ranged<ArrowTermData>;
+ExprTerm: Term = Ranged<ExprTermData>;
+AppTerm: Term = Ranged<AppTermData>;
+AtomicTerm: Term = Ranged<AtomicTermData>;
 
-TermData: TermData<&'input str> = {
+TermData: TermData = {
     ExprTermData,
     <term: ExprTerm> ":" <ty: Term> => TermData::Ann(Box::new(term), Box::new(ty)),
 };
 
-ExprTermData: TermData<&'input str> = {
+ExprTermData: TermData = {
     ArrowTermData,
     "fun" <input_names: Ranged<Name>+> "=>" <output_term: ExprTerm> => {
         TermData::FunctionTerm(input_names, Box::new(output_term))
     },
 };
 
-ArrowTermData: TermData<&'input str> = {
+ArrowTermData: TermData = {
     AppTermData,
     "Fun" <input_type_groups: ("(" <Ranged<Name>+> ":" <ArrowTerm> ")")+>
         "->" <output_type: ArrowTerm> =>
@@ -69,14 +69,14 @@ ArrowTermData: TermData<&'input str> = {
     },
 };
 
-AppTermData: TermData<&'input str> = {
+AppTermData: TermData = {
     AtomicTermData,
     <head_term: AtomicTerm> <input_terms: AtomicTerm+> => {
         TermData::FunctionElim(Box::new(head_term), input_terms)
     },
 };
 
-AtomicTermData: TermData<&'input str> = {
+AtomicTermData: TermData = {
     "(" <term: TermData> ")" => term,
     <name: Name> => TermData::Name(name),
     <term: AtomicTerm> <shift: "shift"> => {
@@ -96,25 +96,25 @@ List<Entry>: Vec<Entry> = {
     }
 }
 
-TypeEntry: TypeEntry<&'input str> = {
+TypeEntry: TypeEntry = {
     // TODO: Use doc comments
     <_docs: "doc comment"*>
-    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name, term),
+    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name.to_owned(), term),
 };
 
-TermEntry: TermEntry<&'input str> = {
+TermEntry: TermEntry = {
     // TODO: Use doc comments
-    <_docs: "doc comment"*> <label: Ranged<Name>> "=" <term: Term> => (label, term),
+    <_docs: "doc comment"*> <label: Ranged<Name>> "=" <term: Term> => (label.to_owned(), term),
 };
 
-Name: &'input str = {
-    "name",
+Name: String = {
+    "name" => (<>).to_owned(),
 };
 
-Literal: Literal<&'input str> = {
-    "character literal" => Literal::Char(<>),
-    "string literal" => Literal::String(<>),
-    "numeric literal" => Literal::Number(<>),
+Literal: Literal = {
+    "character literal" => Literal::Char(<>.to_owned()),
+    "string literal" => Literal::String(<>.to_owned()),
+    "numeric literal" => Literal::Number(<>.to_owned()),
 };
 
 Ranged<T>: Ranged<T> = {
