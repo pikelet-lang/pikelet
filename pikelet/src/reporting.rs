@@ -14,9 +14,13 @@ pub enum Message {
     Lexer(LexerError),
     /// Errors produced during parsing
     Parse(ParseError),
-    /// Messages produced from [lang::core::typing]
+    /// Messages produced from [`lang::core::typing`]
+    ///
+    /// [`lang::core::typing`]: crate::lang::core::typing
     CoreTyping(CoreTypingMessage),
-    /// Messages produced from [pass::surface_to_core]
+    /// Messages produced from [`pass::surface_to_core`]
+    ///
+    /// [`pass::surface_to_core`]: crate::pass::surface_to_core
     SurfaceToCore(SurfaceToCoreMessage),
 }
 
