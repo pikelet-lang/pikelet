@@ -153,6 +153,19 @@ impl<'me> State<'me> {
         self.core_to_surface.from_term(&core_term)
     }
 
+    /// Read back a [`Value`] into a [`surface::Term`] using the
+    /// current state of the elaborator.
+    ///
+    /// Unstuck eliminations are not unfolded, making this useful for printing
+    /// terms and types in user-facing diagnostics.
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
+    /// [`surface::Term`]: crate::lang::surface::Term
+    pub fn read_back_to_surface_term(&mut self, value: &Value) -> Term {
+        let core_term = self.read_back_value(value);
+        self.core_to_surface_term(&core_term)
+    }
+
     /// Check that a term is a type return, and return the elaborated term and the
     /// universe level it inhabits.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
@@ -165,8 +178,7 @@ impl<'me> State<'me> {
             Value::TypeType(level) => (core_term, Some(*level)),
             Value::Error => (core::Term::Error, None),
             found_type => {
-                let found_type = self.read_back_value(&found_type);
-                let found_type = self.core_to_surface_term(&found_type);
+                let found_type = self.read_back_to_surface_term(&found_type);
                 self.report(SurfaceToCoreMessage::MismatchedTypes {
                     range: term.range(),
                     found_type,
@@ -299,8 +311,7 @@ impl<'me> State<'me> {
                             }
                             Value::Error => core::Term::Error,
                             _ => {
-                                let expected_len = self.read_back_value(&len);
-                                let expected_len = self.core_to_surface_term(&expected_len);
+                                let expected_len = self.read_back_to_surface_term(&len);
                                 self.report(SurfaceToCoreMessage::MismatchedSequenceLength {
                                     range: term.range(),
                                     found_len: entry_terms.len(),
@@ -322,8 +333,7 @@ impl<'me> State<'me> {
                         core::Term::Sequence(core_entry_terms)
                     }
                     _ => {
-                        let expected_type = self.read_back_value(expected_type);
-                        let expected_type = self.core_to_surface_term(&expected_type);
+                        let expected_type = self.read_back_to_surface_term(expected_type);
                         self.report(SurfaceToCoreMessage::NoSequenceConversion {
                             range: term.range(),
                             expected_type,
@@ -333,8 +343,7 @@ impl<'me> State<'me> {
                 }
             }
             (TermData::Sequence(_), _) => {
-                let expected_type = self.read_back_value(expected_type);
-                let expected_type = self.core_to_surface_term(&expected_type);
+                let expected_type = self.read_back_to_surface_term(expected_type);
                 self.report(SurfaceToCoreMessage::NoSequenceConversion {
                     range: term.range(),
                     expected_type,
@@ -360,8 +369,7 @@ impl<'me> State<'me> {
                     (Literal::Char(data), "Char", []) => self.parse_char(range, data),
                     (Literal::String(data), "String", []) => self.parse_string(range, data),
                     (_, _, _) => {
-                        let expected_type = self.read_back_value(expected_type);
-                        let expected_type = self.core_to_surface_term(&expected_type);
+                        let expected_type = self.read_back_to_surface_term(expected_type);
                         self.report(SurfaceToCoreMessage::NoLiteralConversion {
                             range,
                             expected_type,
@@ -371,8 +379,7 @@ impl<'me> State<'me> {
                 }
             }
             (TermData::Literal(_), _) => {
-                let expected_type = self.read_back_value(expected_type);
-                let expected_type = self.core_to_surface_term(&expected_type);
+                let expected_type = self.read_back_to_surface_term(expected_type);
                 self.report(SurfaceToCoreMessage::NoLiteralConversion {
                     range: term.range(),
                     expected_type,
@@ -383,10 +390,8 @@ impl<'me> State<'me> {
             (_, _) => match self.synth_type(term) {
                 (term, found_type) if self.is_subtype(&found_type, expected_type) => term,
                 (_, found_type) => {
-                    let found_type = self.read_back_value(&found_type);
-                    let found_type = self.core_to_surface_term(&found_type);
-                    let expected_type = self.read_back_value(expected_type);
-                    let expected_type = self.core_to_surface_term(&expected_type);
+                    let found_type = self.read_back_to_surface_term(&found_type);
+                    let expected_type = self.read_back_to_surface_term(expected_type);
                     self.report(SurfaceToCoreMessage::MismatchedTypes {
                         range: term.range(),
                         found_type,
@@ -399,7 +404,6 @@ impl<'me> State<'me> {
     }
 
     /// Synthesize the type of a surface term, and return the elaborated term.
-    #[allow(clippy::suspicious_else_formatting)] // FIXME: Bug in `contracts`?
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
     #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
     #[debug_ensures(self.types.size() == old(self.types.size()))]
@@ -541,8 +545,7 @@ impl<'me> State<'me> {
                         }
                         Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
                         _ => {
-                            let head_type = self.read_back_value(&head_type);
-                            let head_type = self.core_to_surface_term(&head_type);
+                            let head_type = self.read_back_to_surface_term(&head_type);
                             let unexpected_input_terms =
                                 input_terms.map(|arg| arg.range()).collect();
                             self.report(SurfaceToCoreMessage::TooManyInputsInFunctionElim {
@@ -642,8 +645,7 @@ impl<'me> State<'me> {
                     _ => {}
                 }
 
-                let head_type = self.read_back_value(&head_type);
-                let head_type = self.core_to_surface_term(&head_type);
+                let head_type = self.read_back_to_surface_term(&head_type);
                 self.report(SurfaceToCoreMessage::LabelNotFound {
                     head_range: head_term.range(),
                     label_range: label.range(),
