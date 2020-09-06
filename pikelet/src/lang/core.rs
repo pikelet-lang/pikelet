@@ -14,17 +14,43 @@ pub mod typing;
 // FIXME: Partial eq for floating point numbers
 #[derive(Clone, Debug, PartialEq)]
 pub enum Constant {
+    /// 8-bit unsigned integers.
     U8(u8),
+    /// 16-bit unsigned integers.
     U16(u16),
+    /// 32-bit unsigned integers.
     U32(u32),
+    /// 64-bit unsigned integers.
     U64(u64),
+    /// 8-bit signed [two's complement] integers.
+    ///
+    /// [two's complement]: https://en.wikipedia.org/wiki/Two%27s_complement
     S8(i8),
+    /// 16-bit signed [two's complement] integers.
+    ///
+    /// [two's complement]: https://en.wikipedia.org/wiki/Two%27s_complement
     S16(i16),
+    /// 32-bit signed [two's complement] integers.
+    ///
+    /// [two's complement]: https://en.wikipedia.org/wiki/Two%27s_complement
     S32(i32),
+    /// 64-bit signed [two's complement] integers.
+    ///
+    /// [two's complement]: https://en.wikipedia.org/wiki/Two%27s_complement
     S64(i64),
+    /// 32-bit [IEEE-754] floating point numbers.
+    ///
+    /// [IEEE-754]: https://en.wikipedia.org/wiki/IEEE_754
     F32(f32),
+    /// 64-bit [IEEE-754] floating point numbers.
+    ///
+    /// [IEEE-754]: https://en.wikipedia.org/wiki/IEEE_754
     F64(f64),
+    /// [Unicode scalar values](http://www.unicode.org/glossary/#unicode_scalar_value).
     Char(char),
+    /// [UTF-8] encoded strings.
+    ///
+    /// [UTF-8]: http://www.unicode.org/glossary/#UTF_8
     String(String),
 }
 
