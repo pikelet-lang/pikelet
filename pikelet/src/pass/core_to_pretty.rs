@@ -1,4 +1,6 @@
-//! Pretty prints the core language to a textual form.
+//! Pretty prints the [core language] to a [pretty] document.
+//!
+//! [core language]: crate::lang::core
 
 use pretty::{DocAllocator, DocBuilder};
 

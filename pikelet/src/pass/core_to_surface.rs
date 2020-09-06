@@ -1,4 +1,11 @@
-//! Distill the core language into the surface language.
+//! Distills the [core language] into the [surface language].
+//!
+//! This is the inverse of [`pass::surface_to_core`], and is useful for pretty
+//! printing terms when presenting them to the user.
+//!
+//! [surface language]: crate::lang::surface
+//! [core language]: crate::lang::core
+//! [`pass::surface_to_core`]: crate::pass::surface_to_core
 
 use contracts::debug_ensures;
 use std::collections::HashMap;

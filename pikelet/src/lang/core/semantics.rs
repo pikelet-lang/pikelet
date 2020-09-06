@@ -1,4 +1,6 @@
-//! The operational semantics of the language.
+//! The operational semantics of the language, implemented using [normalisation-by-evaluation].
+//!
+//! [normalisation-by-evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
 
 use contracts::debug_ensures;
 use once_cell::sync::OnceCell;
@@ -188,8 +190,10 @@ impl RecordTypeClosure {
 
 /// Initialization operation for lazy values.
 ///
-/// We need to use a defunctionalized representation because Rust does not allow
+/// We need to use a [defunctionalized] representation because Rust does not allow
 /// closures of type `dyn (Clone + FnOnce() -> Arc<Value>)`.
+///
+/// [defunctionalized]: https://en.wikipedia.org/wiki/Defunctionalization
 #[derive(Clone, Debug)]
 enum LazyInit {
     EvalTerm(UniverseOffset, Locals<Arc<Value>>, Arc<Term>),
@@ -535,8 +539,8 @@ pub fn read_back_value(
     }
 }
 
-/// Check that one elimination is equal to another elimination.
-pub fn is_equal_spine(
+/// Check that one suspended elimination is equal to another suspended elimination.
+fn is_equal_stuck_elim(
     globals: &Globals,
     local_size: LocalSize,
     (head0, spine0): (&Head, &[Elim]),
@@ -564,14 +568,16 @@ pub fn is_equal_spine(
     true
 }
 
-/// Check that one value is definitionally equal to another value.
+/// Check that one value is [computationally equal] to another value.
+///
+/// [computationally equal]: https://ncatlab.org/nlab/show/equality#computational_equality
 fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the spines are the same!
                 return true;
             }
@@ -681,7 +687,9 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
     }
 }
 
-/// Check that one type is a subtype of another type.
+/// Check that one value is a subtype of another value.
+///
+/// Returns `false` if either value is not a type.
 pub fn is_subtype(
     globals: &Globals,
     local_size: LocalSize,
@@ -690,10 +698,10 @@ pub fn is_subtype(
 ) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_spine(globals, local_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the spines are the same!
                 return true;
             }
