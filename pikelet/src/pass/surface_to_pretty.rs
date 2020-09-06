@@ -1,4 +1,6 @@
-//! Pretty prints the surface language to a textual form.
+//! Pretty prints the [surface language] to a [pretty] document.
+//!
+//! [surface language]: crate::lang::surface
 
 use pretty::{DocAllocator, DocBuilder};
 

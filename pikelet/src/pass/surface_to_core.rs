@@ -1,4 +1,9 @@
-//! Elaborates the surface language into the core language.
+//! Elaborates the [surface language] into the [core language].
+//!
+//! This translation pass is the main place where user-facing type errors will be returned.
+//!
+//! [surface language]: crate::lang::surface
+//! [core language]: crate::lang::core
 
 use contracts::debug_ensures;
 use crossbeam_channel::Sender;
@@ -121,17 +126,29 @@ impl<'me> State<'me> {
         semantics::normalize_term(self.globals, self.universe_offset, &mut self.values, term)
     }
 
-    /// Read back a value into a normal form using the current state of the elaborator.
+    /// Read back a [`Value`] to a [`core::Term`] using the current
+    /// state of the elaborator.
+    ///
+    /// Unstuck eliminations are not unfolded, making this useful for printing
+    /// terms and types in user-facing diagnostics.
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
+    /// [`core::Term`]: crate::lang::core::Term
     pub fn read_back_value(&self, value: &Value) -> core::Term {
         semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
     }
 
-    /// Check if `value0` is a subtype of `value1`.
+    /// Check that one value is a subtype of another value.
+    ///
+    /// Returns `false` if either value is not a type.
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
 
-    /// Distill a `core::Term` into a `surface::Term`.
+    /// Distill a [`core::Term`] into a [`surface::Term`].
+    ///
+    /// [`core::Term`]: crate::lang::core::Term
+    /// [`surface::Term`]: crate::lang::surface::Term
     pub fn core_to_surface_term(&mut self, core_term: &core::Term) -> Term {
         self.core_to_surface.from_term(&core_term)
     }
