@@ -76,7 +76,7 @@ impl<'me> State<'me> {
     }
 
     /// Report a diagnostic message.
-    fn report(&mut self, message: CoreTypingMessage) {
+    fn report(&self, message: CoreTypingMessage) {
         self.message_tx.send(message.into()).unwrap();
     }
 

@@ -102,7 +102,7 @@ impl<'me> State<'me> {
     }
 
     /// Report a diagnostic message.
-    fn report(&mut self, error: SurfaceToCoreMessage) {
+    fn report(&self, error: SurfaceToCoreMessage) {
         self.message_tx.send(error.into()).unwrap();
     }
 
