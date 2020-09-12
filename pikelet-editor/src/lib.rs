@@ -89,42 +89,42 @@ impl Sandbox for State {
 }
 
 fn view_term<M: 'static>(term: &pikelet::lang::core::Term) -> Element<M> {
-    use pikelet::lang::core::{Constant, Term, UniverseLevel, UniverseOffset};
+    use pikelet::lang::core::{Constant, TermData, UniverseLevel, UniverseOffset};
 
-    match term {
-        Term::TypeType(UniverseLevel(level)) => Row::new()
+    match &term.data {
+        TermData::TypeType(UniverseLevel(level)) => Row::new()
             .push(Text::new(format!("Univ^{}", level))) // TODO: superscript?
             .into(),
-        Term::Global(name) => Text::new(name).into(),
-        Term::Local(_) => Text::new("todo").into(),
-        Term::Constant(Constant::U8(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::U16(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::U32(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::U64(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::S8(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::S16(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::S32(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::S64(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::F32(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::F64(data)) => Text::new(data.to_string()).into(),
-        Term::Constant(Constant::Char(data)) => Text::new(format!("{:?}", data)).into(),
-        Term::Constant(Constant::String(data)) => Text::new(format!("{:?}", data)).into(),
-        Term::Sequence(_) => Text::new("todo").into(),
-        Term::Ann(term, r#type) => Row::new()
+        TermData::Global(name) => Text::new(name).into(),
+        TermData::Local(_) => Text::new("todo").into(),
+        TermData::Constant(Constant::U8(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::U16(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::U32(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::U64(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::S8(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::S16(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::S32(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::S64(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::F32(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::F64(data)) => Text::new(data.to_string()).into(),
+        TermData::Constant(Constant::Char(data)) => Text::new(format!("{:?}", data)).into(),
+        TermData::Constant(Constant::String(data)) => Text::new(format!("{:?}", data)).into(),
+        TermData::Sequence(_) => Text::new("todo").into(),
+        TermData::Ann(term, r#type) => Row::new()
             .push(view_term(term))
             .push(Text::new(" : "))
             .push(view_term(r#type))
             .into(),
-        Term::RecordTerm(_) => Text::new("todo").into(),
-        Term::RecordType(_) => Text::new("todo").into(),
-        Term::RecordElim(_, _) => Text::new("todo").into(),
-        Term::FunctionType(_, _, _) => Text::new("todo").into(),
-        Term::FunctionTerm(_, _) => Text::new("todo").into(),
-        Term::FunctionElim(_, _) => Text::new("todo").into(),
-        Term::Lift(term, UniverseOffset(offset)) => Row::new()
+        TermData::RecordTerm(_) => Text::new("todo").into(),
+        TermData::RecordType(_) => Text::new("todo").into(),
+        TermData::RecordElim(_, _) => Text::new("todo").into(),
+        TermData::FunctionType(_, _, _) => Text::new("todo").into(),
+        TermData::FunctionTerm(_, _) => Text::new("todo").into(),
+        TermData::FunctionElim(_, _) => Text::new("todo").into(),
+        TermData::Lift(term, UniverseOffset(offset)) => Row::new()
             .push(view_term(term))
             .push(Text::new(format!("^{}", offset)))
             .into(),
-        Term::Error => Text::new("ERROR!").into(),
+        TermData::Error => Text::new("ERROR!").into(),
     }
 }

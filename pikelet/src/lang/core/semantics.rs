@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::lang::core::{
-    Constant, Globals, LocalLevel, LocalSize, Locals, Term, UniverseLevel, UniverseOffset,
+    Constant, Globals, LocalLevel, LocalSize, Locals, Term, TermData, UniverseLevel, UniverseOffset,
 };
 
 /// Values in the core language.
@@ -281,8 +281,8 @@ pub fn eval_term(
     values: &mut Locals<Arc<Value>>,
     term: &Term,
 ) -> Arc<Value> {
-    match term {
-        Term::Global(name) => {
+    match &term.data {
+        TermData::Global(name) => {
             let head = Head::Global(name.into(), universe_offset);
             match globals.get(name) {
                 Some((_, Some(term))) => {
@@ -292,7 +292,7 @@ pub fn eval_term(
                 Some((_, None)) | None => Arc::new(Value::Stuck(head, Vec::new())),
             }
         }
-        Term::Local(index) => {
+        TermData::Local(index) => {
             let head = Head::Local(values.size().level(*index));
             match values.get(*index) {
                 Some(value) => {
@@ -303,22 +303,22 @@ pub fn eval_term(
             }
         }
 
-        Term::Ann(term, _) => eval_term(globals, universe_offset, values, term),
+        TermData::Ann(term, _) => eval_term(globals, universe_offset, values, term),
 
-        Term::TypeType(level) => Arc::new(Value::type_type(
+        TermData::TypeType(level) => Arc::new(Value::type_type(
             (*level + universe_offset).unwrap(), // FIXME: Handle overflow
         )),
-        Term::Lift(term, offset) => {
+        TermData::Lift(term, offset) => {
             let universe_offset = (universe_offset + *offset).unwrap(); // FIXME: Handle overflow
             eval_term(globals, universe_offset, values, term)
         }
 
-        Term::RecordType(type_entries) => Arc::new(Value::RecordType(RecordTypeClosure::new(
+        TermData::RecordType(type_entries) => Arc::new(Value::RecordType(RecordTypeClosure::new(
             universe_offset,
             values.clone(),
             type_entries.clone(),
         ))),
-        Term::RecordTerm(term_entries) => {
+        TermData::RecordTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
                 .map(|(label, entry_term)| {
@@ -329,29 +329,29 @@ pub fn eval_term(
 
             Arc::new(Value::RecordTerm(value_entries))
         }
-        Term::RecordElim(head, label) => {
+        TermData::RecordElim(head, label) => {
             let head = eval_term(globals, universe_offset, values, head);
             apply_record_elim(head, label)
         }
 
-        Term::FunctionType(input_name_hint, input_type, output_type) => {
+        TermData::FunctionType(input_name_hint, input_type, output_type) => {
             Arc::new(Value::FunctionType(
                 input_name_hint.clone(),
                 eval_term(globals, universe_offset, values, input_type),
                 Closure::new(universe_offset, values.clone(), output_type.clone()),
             ))
         }
-        Term::FunctionTerm(input_name, output_term) => Arc::new(Value::FunctionTerm(
+        TermData::FunctionTerm(input_name, output_term) => Arc::new(Value::FunctionTerm(
             input_name.clone(),
             Closure::new(universe_offset, values.clone(), output_term.clone()),
         )),
-        Term::FunctionElim(head, input) => {
+        TermData::FunctionElim(head, input) => {
             let head = eval_term(globals, universe_offset, values, head);
             let input = LazyValue::eval_term(universe_offset, values.clone(), input.clone());
             apply_function_elim(globals, head, Arc::new(input))
         }
 
-        Term::Sequence(term_entries) => {
+        TermData::Sequence(term_entries) => {
             let value_entries = term_entries
                 .iter()
                 .map(|entry_term| eval_term(globals, universe_offset, values, entry_term))
@@ -360,9 +360,9 @@ pub fn eval_term(
             Arc::new(Value::Sequence(value_entries))
         }
 
-        Term::Constant(constant) => Arc::new(Value::from(constant.clone())),
+        TermData::Constant(constant) => Arc::new(Value::from(constant.clone())),
 
-        Term::Error => Arc::new(Value::Error),
+        TermData::Error => Arc::new(Value::Error),
     }
 }
 
@@ -453,16 +453,20 @@ fn read_back_spine(
     spine: &[Elim],
 ) -> Term {
     let head = match head {
-        Head::Global(name, shift) => Term::Global(name.clone()).lift(*shift),
-        Head::Local(level) => Term::Local(local_size.index(*level)),
+        Head::Global(name, UniverseOffset(0)) => Term::from(TermData::Global(name.clone())),
+        Head::Global(name, shift) => Term::from(TermData::Lift(
+            Arc::new(Term::from(TermData::Global(name.clone()))),
+            *shift,
+        )),
+        Head::Local(level) => Term::from(TermData::Local(local_size.index(*level))),
     };
 
     spine.iter().fold(head, |head, elim| match elim {
         Elim::Function(input) => {
             let input = read_back_value(globals, local_size, unfold, input.force(globals));
-            Term::FunctionElim(Arc::new(head), Arc::new(input))
+            Term::from(TermData::FunctionElim(Arc::new(head), Arc::new(input)))
         }
-        Elim::Record(label) => Term::RecordElim(Arc::new(head), label.clone()),
+        Elim::Record(label) => Term::from(TermData::RecordElim(Arc::new(head), label.clone())),
     })
 }
 
@@ -480,7 +484,7 @@ pub fn read_back_value(
             Unfold::All => read_back_value(globals, local_size, unfold, value.force(globals)),
         },
 
-        Value::TypeType(level) => Term::TypeType(*level),
+        Value::TypeType(level) => Term::from(TermData::TypeType(*level)),
 
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level()));
@@ -489,7 +493,11 @@ pub fn read_back_value(
             let output_type =
                 read_back_value(globals, local_size.increment(), unfold, &output_type);
 
-            Term::FunctionType(input_name_hint.clone(), input_type, Arc::new(output_type))
+            Term::from(TermData::FunctionType(
+                input_name_hint.clone(),
+                input_type,
+                Arc::new(output_type),
+            ))
         }
         Value::FunctionTerm(input_name_hint, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level()));
@@ -497,7 +505,10 @@ pub fn read_back_value(
             let output_term =
                 read_back_value(globals, local_size.increment(), unfold, &output_term);
 
-            Term::FunctionTerm(input_name_hint.clone(), Arc::new(output_term))
+            Term::from(TermData::FunctionTerm(
+                input_name_hint.clone(),
+                Arc::new(output_term),
+            ))
         }
 
         Value::RecordType(closure) => {
@@ -514,7 +525,7 @@ pub fn read_back_value(
                 Arc::new(Value::local(local_level))
             });
 
-            Term::RecordType(type_entries.into())
+            Term::from(TermData::RecordType(type_entries.into()))
         }
         Value::RecordTerm(value_entries) => {
             let term_entries = value_entries
@@ -525,7 +536,7 @@ pub fn read_back_value(
                 })
                 .collect();
 
-            Term::RecordTerm(term_entries)
+            Term::from(TermData::RecordTerm(term_entries))
         }
 
         Value::Sequence(value_entries) => {
@@ -536,12 +547,12 @@ pub fn read_back_value(
                 })
                 .collect();
 
-            Term::Sequence(term_entries)
+            Term::from(TermData::Sequence(term_entries))
         }
 
-        Value::Constant(constant) => Term::from(constant.clone()),
+        Value::Constant(constant) => Term::from(TermData::from(constant.clone())),
 
-        Value::Error => Term::Error,
+        Value::Error => Term::from(TermData::Error),
     }
 }
 

@@ -184,7 +184,7 @@ impl<'me> State<'me> {
         let (core_term, r#type) = self.synth_type(term);
         match r#type.force(self.globals) {
             Value::TypeType(level) => (core_term, Some(*level)),
-            Value::Error => (core::Term::Error, None),
+            Value::Error => (core::Term::new(term.range(), core::TermData::Error), None),
             found_type => {
                 let found_type = self.read_back_to_surface_term(&found_type);
                 self.report(SurfaceToCoreMessage::MismatchedTypes {
@@ -192,7 +192,7 @@ impl<'me> State<'me> {
                     found_type,
                     expected_type: ExpectedType::Universe,
                 });
-                (core::Term::Error, None)
+                (core::Term::new(term.range(), core::TermData::Error), None)
             }
         }
     }
@@ -204,7 +204,7 @@ impl<'me> State<'me> {
     #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
         match (&term.data, expected_type.force(self.globals)) {
-            (_, Value::Error) => core::Term::Error,
+            (_, Value::Error) => core::Term::new(term.range(), core::TermData::Error),
 
             (TermData::FunctionTerm(input_names, output_term), _) => {
                 let mut seen_input_count = 0;
@@ -221,7 +221,7 @@ impl<'me> State<'me> {
                         }
                         Value::Error => {
                             self.pop_many_locals(seen_input_count);
-                            return core::Term::Error;
+                            return core::Term::new(term.range(), core::TermData::Error);
                         }
                         _ => {
                             self.report(SurfaceToCoreMessage::TooManyInputsInFunctionTerm {
@@ -231,7 +231,7 @@ impl<'me> State<'me> {
                             });
                             self.check_type(output_term, &expected_type);
                             self.pop_many_locals(seen_input_count);
-                            return core::Term::Error;
+                            return core::Term::new(term.range(), core::TermData::Error);
                         }
                     }
                 }
@@ -239,7 +239,13 @@ impl<'me> State<'me> {
                 let core_output_term = self.check_type(output_term, &expected_type);
                 self.pop_many_locals(seen_input_count);
                 (input_names.iter().rev()).fold(core_output_term, |core_output_term, input_name| {
-                    core::Term::FunctionTerm(input_name.data.clone(), Arc::new(core_output_term))
+                    core::Term::new(
+                        input_name.range().start..core_output_term.range().end,
+                        core::TermData::FunctionTerm(
+                            input_name.data.clone(),
+                            Arc::new(core_output_term),
+                        ),
+                    )
                 })
             }
 
@@ -296,7 +302,7 @@ impl<'me> State<'me> {
                     });
                 }
 
-                core::Term::RecordTerm(core_term_entries)
+                core::Term::new(term.range(), core::TermData::RecordTerm(core_term_entries))
             }
 
             (TermData::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
@@ -315,9 +321,12 @@ impl<'me> State<'me> {
                             Value::Constant(core::Constant::U32(len))
                                 if *len as usize == entry_terms.len() =>
                             {
-                                core::Term::Sequence(core_entry_terms)
+                                core::Term::new(
+                                    term.range(),
+                                    core::TermData::Sequence(core_entry_terms),
+                                )
                             }
-                            Value::Error => core::Term::Error,
+                            Value::Error => core::Term::new(term.range(), core::TermData::Error),
                             _ => {
                                 let expected_len = self.read_back_to_surface_term(&len);
                                 self.report(SurfaceToCoreMessage::MismatchedSequenceLength {
@@ -325,7 +334,7 @@ impl<'me> State<'me> {
                                     found_len: entry_terms.len(),
                                     expected_len,
                                 });
-                                core::Term::Error
+                                core::Term::new(term.range(), core::TermData::Error)
                             }
                         }
                     }
@@ -338,7 +347,7 @@ impl<'me> State<'me> {
                             })
                             .collect();
 
-                        core::Term::Sequence(core_entry_terms)
+                        core::Term::new(term.range(), core::TermData::Sequence(core_entry_terms))
                     }
                     _ => {
                         let expected_type = self.read_back_to_surface_term(expected_type);
@@ -346,7 +355,7 @@ impl<'me> State<'me> {
                             range: term.range(),
                             expected_type,
                         });
-                        core::Term::Error
+                        core::Term::new(term.range(), core::TermData::Error)
                     }
                 }
             }
@@ -356,7 +365,7 @@ impl<'me> State<'me> {
                     range: term.range(),
                     expected_type,
                 });
-                core::Term::Error
+                core::Term::new(term.range(), core::TermData::Error)
             }
 
             (TermData::Literal(literal), Value::Stuck(Head::Global(name, _), spine)) => {
@@ -382,7 +391,7 @@ impl<'me> State<'me> {
                             range,
                             expected_type,
                         });
-                        core::Term::Error
+                        core::Term::new(term.range(), core::TermData::Error)
                     }
                 }
             }
@@ -392,7 +401,7 @@ impl<'me> State<'me> {
                     range: term.range(),
                     expected_type,
                 });
-                core::Term::Error
+                core::Term::new(term.range(), core::TermData::Error)
             }
 
             (_, _) => match self.synth_type(term) {
@@ -405,7 +414,7 @@ impl<'me> State<'me> {
                         found_type,
                         expected_type: ExpectedType::Type(expected_type),
                     });
-                    core::Term::Error
+                    core::Term::new(term.range(), core::TermData::Error)
                 }
             },
         }
@@ -419,22 +428,30 @@ impl<'me> State<'me> {
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
         use std::collections::BTreeMap;
 
+        let error_term = || core::Term::new(term.range(), core::TermData::Error);
+
         match &term.data {
             TermData::Name(name) => {
                 if let Some((index, r#type)) = self.get_local(name.as_ref()) {
-                    return (core::Term::Local(index), r#type.clone());
+                    let core_term = core::Term::new(term.range(), core::TermData::Local(index));
+                    return (core_term, r#type.clone());
                 }
 
                 if let Some((r#type, _)) = self.globals.get(name.as_ref()) {
-                    let global = core::Term::Global(name.clone());
-                    return (global.lift(self.universe_offset), self.eval_term(r#type));
+                    let name = name.clone();
+                    let global = core::Term::new(term.range(), core::TermData::Global(name));
+                    let core_term = match self.universe_offset {
+                        core::UniverseOffset(0) => global,
+                        offset => core::Term::from(core::TermData::Lift(Arc::new(global), offset)),
+                    };
+                    return (core_term, self.eval_term(r#type));
                 }
 
                 self.report(SurfaceToCoreMessage::UnboundName {
                     range: term.range(),
                     name: name.clone(),
                 });
-                (core::Term::Error, Arc::new(Value::Error))
+                (error_term(), Arc::new(Value::Error))
             }
 
             TermData::Ann(term, r#type) => {
@@ -442,7 +459,10 @@ impl<'me> State<'me> {
                 let core_type_value = self.eval_term(&core_type);
                 let core_term = self.check_type(term, &core_type_value);
                 (
-                    core::Term::Ann(Arc::new(core_term), Arc::new(core_type)),
+                    core::Term::new(
+                        term.range(),
+                        core::TermData::Ann(Arc::new(core_term), Arc::new(core_type)),
+                    ),
                     core_type_value,
                 )
             }
@@ -459,7 +479,7 @@ impl<'me> State<'me> {
                         self.report(SurfaceToCoreMessage::MaximumUniverseLevelReached {
                             range: term.range(),
                         });
-                        (core::Term::Error, Arc::new(Value::Error))
+                        (error_term(), Arc::new(Value::Error))
                     }
                 }
             }
@@ -479,7 +499,7 @@ impl<'me> State<'me> {
 
                         let core_input_type_value = self.eval_term(&core_input_type);
                         self.push_local_param(Some(&input_name.data), core_input_type_value);
-                        core_inputs.push((Some(input_name.data.clone()), core_input_type));
+                        core_inputs.push((input_name.clone(), core_input_type));
                     }
                 }
 
@@ -489,14 +509,17 @@ impl<'me> State<'me> {
                 self.pop_many_locals(core_inputs.len());
 
                 match max_level {
-                    None => (core::Term::Error, Arc::new(Value::Error)),
+                    None => (error_term(), Arc::new(Value::Error)),
                     Some(max_level) => {
                         let mut core_type = core_output_type;
                         for (input_name, input_type) in core_inputs.into_iter().rev() {
-                            core_type = core::Term::FunctionType(
-                                input_name,
-                                Arc::new(input_type),
-                                Arc::new(core_type),
+                            core_type = core::Term::new(
+                                input_name.range().start..output_type.range().end,
+                                core::TermData::FunctionType(
+                                    Some(input_name.data),
+                                    Arc::new(input_type),
+                                    Arc::new(core_type),
+                                ),
                             );
                         }
 
@@ -517,14 +540,17 @@ impl<'me> State<'me> {
 
                 match (input_level, output_level) {
                     (Some(input_level), Some(output_level)) => (
-                        core::Term::FunctionType(
-                            None,
-                            Arc::new(core_input_type),
-                            Arc::new(core_output_type),
+                        core::Term::new(
+                            term.range(),
+                            core::TermData::FunctionType(
+                                None,
+                                Arc::new(core_input_type),
+                                Arc::new(core_output_type),
+                            ),
                         ),
                         Arc::new(Value::TypeType(std::cmp::max(input_level, output_level))),
                     ),
-                    (_, _) => (core::Term::Error, Arc::new(Value::Error)),
+                    (_, _) => (error_term(), Arc::new(Value::Error)),
                 }
             }
             TermData::FunctionTerm(_, _) => {
@@ -532,7 +558,7 @@ impl<'me> State<'me> {
                     range: term.range(),
                     term: AmbiguousTerm::FunctionTerm,
                 });
-                (core::Term::Error, Arc::new(Value::Error))
+                (error_term(), Arc::new(Value::Error))
             }
             TermData::FunctionElim(head_term, input_terms) => {
                 let mut head_range = head_term.range();
@@ -545,13 +571,16 @@ impl<'me> State<'me> {
                             head_range.end = input.range().end;
                             let core_input = self.check_type(input, &input_type);
                             let core_input_value = self.eval_term(&core_input);
-                            core_head_term = core::Term::FunctionElim(
-                                Arc::new(core_head_term),
-                                Arc::new(core_input),
+                            core_head_term = core::Term::new(
+                                head_range.start..input.range().end,
+                                core::TermData::FunctionElim(
+                                    Arc::new(core_head_term),
+                                    Arc::new(core_input),
+                                ),
                             );
                             head_type = output_closure.elim(self.globals, core_input_value);
                         }
-                        Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
+                        Value::Error => return (error_term(), Arc::new(Value::Error)),
                         _ => {
                             let head_type = self.read_back_to_surface_term(&head_type);
                             let unexpected_input_terms =
@@ -561,7 +590,7 @@ impl<'me> State<'me> {
                                 head_type,
                                 unexpected_input_terms,
                             });
-                            return (core::Term::Error, Arc::new(Value::Error));
+                            return (error_term(), Arc::new(Value::Error));
                         }
                     }
                 }
@@ -572,7 +601,7 @@ impl<'me> State<'me> {
             TermData::RecordTerm(term_entries) => {
                 if term_entries.is_empty() {
                     (
-                        core::Term::RecordTerm(BTreeMap::new()),
+                        core::Term::new(term.range(), core::TermData::RecordTerm(BTreeMap::new())),
                         Arc::from(Value::RecordType(RecordTypeClosure::new(
                             self.universe_offset,
                             self.values.clone(),
@@ -584,7 +613,7 @@ impl<'me> State<'me> {
                         range: term.range(),
                         term: AmbiguousTerm::RecordTerm,
                     });
-                    (core::Term::Error, Arc::new(Value::Error))
+                    (error_term(), Arc::new(Value::Error))
                 }
             }
             TermData::RecordType(type_entries) => {
@@ -604,7 +633,7 @@ impl<'me> State<'me> {
                                 Some(level) => std::cmp::max(max_level, level),
                                 None => {
                                     self.pop_many_locals(seen_labels.len());
-                                    return (core::Term::Error, Arc::new(Value::Error));
+                                    return (error_term(), Arc::new(Value::Error));
                                 }
                             };
                             let core_type = Arc::new(core_type);
@@ -630,7 +659,10 @@ impl<'me> State<'me> {
 
                 self.pop_many_locals(seen_labels.len());
                 (
-                    core::Term::RecordType(core_type_entries.into()),
+                    core::Term::new(
+                        term.range(),
+                        core::TermData::RecordType(core_type_entries.into()),
+                    ),
                     Arc::new(Value::TypeType(max_level)),
                 )
             }
@@ -640,16 +672,19 @@ impl<'me> State<'me> {
                 match head_type.force(self.globals) {
                     Value::RecordType(closure) => {
                         let head_value = self.eval_term(&core_head_term);
-                        let label = &label.data;
 
-                        if let Some(entry_type) = self.record_elim_type(head_value, label, closure)
+                        if let Some(entry_type) =
+                            self.record_elim_type(head_value, &label.data, closure)
                         {
                             let core_head_term = Arc::new(core_head_term);
-                            let core_term = core::Term::RecordElim(core_head_term, label.clone());
+                            let core_term = core::Term::new(
+                                term.range(),
+                                core::TermData::RecordElim(core_head_term, label.data.clone()),
+                            );
                             return (core_term, entry_type);
                         }
                     }
-                    Value::Error => return (core::Term::Error, Arc::new(Value::Error)),
+                    Value::Error => return (error_term(), Arc::new(Value::Error)),
                     _ => {}
                 }
 
@@ -660,7 +695,7 @@ impl<'me> State<'me> {
                     expected_label: label.data.clone(),
                     head_type,
                 });
-                (core::Term::Error, Arc::new(Value::Error))
+                (error_term(), Arc::new(Value::Error))
             }
 
             TermData::Sequence(_) => {
@@ -668,7 +703,7 @@ impl<'me> State<'me> {
                     range: term.range(),
                     term: AmbiguousTerm::Sequence,
                 });
-                (core::Term::Error, Arc::new(Value::Error))
+                (error_term(), Arc::new(Value::Error))
             }
 
             TermData::Literal(literal) => match literal {
@@ -677,7 +712,7 @@ impl<'me> State<'me> {
                         range: term.range(),
                         term: AmbiguousTerm::NumberLiteral,
                     });
-                    (core::Term::Error, Arc::new(Value::Error))
+                    (error_term(), Arc::new(Value::Error))
                 }
                 Literal::Char(data) => (
                     self.parse_char(term.range(), data),
@@ -689,7 +724,7 @@ impl<'me> State<'me> {
                 ),
             },
 
-            TermData::Error => (core::Term::Error, Arc::new(Value::Error)),
+            TermData::Error => (error_term(), Arc::new(Value::Error)),
         }
     }
 
@@ -700,43 +735,46 @@ impl<'me> State<'me> {
         f: impl Fn(T) -> core::Constant,
     ) -> core::Term {
         // TODO: improve parser (eg. numeric separators, positive sign)
-        match data.parse() {
-            Ok(value) => core::Term::from(f(value)),
+        let term_data = match data.parse() {
+            Ok(value) => core::TermData::from(f(value)),
             Err(_) => {
                 self.report(SurfaceToCoreMessage::InvalidLiteral {
-                    range,
+                    range: range.clone(),
                     literal: InvalidLiteral::Number,
                 });
-                core::Term::Error
+                core::TermData::Error
             }
-        }
+        };
+        core::Term::new(range, term_data)
     }
 
     fn parse_char(&mut self, range: Range<usize>, data: &str) -> core::Term {
         // TODO: Improve parser (escapes)
-        match data.chars().nth(1) {
-            Some(value) => core::Term::from(core::Constant::Char(value)),
+        let term_data = match data.chars().nth(1) {
+            Some(value) => core::TermData::from(core::Constant::Char(value)),
             None => {
                 self.report(SurfaceToCoreMessage::InvalidLiteral {
-                    range,
+                    range: range.clone(),
                     literal: InvalidLiteral::Char,
                 });
-                core::Term::Error
+                core::TermData::Error
             }
-        }
+        };
+        core::Term::new(range, term_data)
     }
 
     fn parse_string(&mut self, range: Range<usize>, data: &str) -> core::Term {
         // TODO: Improve parser (escapes)
-        match data.get(1..data.len() - 1) {
-            Some(value) => core::Term::from(core::Constant::String(value.to_owned())),
+        let term_data = match data.get(1..data.len() - 1) {
+            Some(value) => core::TermData::from(core::Constant::String(value.to_owned())),
             None => {
                 self.report(SurfaceToCoreMessage::InvalidLiteral {
-                    range,
+                    range: range.clone(),
                     literal: InvalidLiteral::String,
                 });
-                core::Term::Error
+                core::TermData::Error
             }
-        }
+        };
+        core::Term::new(range, term_data)
     }
 }
