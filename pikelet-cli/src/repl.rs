@@ -122,10 +122,10 @@ pub fn run(options: Options) -> anyhow::Result<()> {
                 )?;
             }
         } else {
-            let ann_term = core::Term::Ann(
+            let ann_term = core::Term::from(core::TermData::Ann(
                 Arc::new(state.normalize_term(&core_term)),
                 Arc::new(state.read_back_value(&r#type)),
-            );
+            ));
             let term = state.core_to_surface_term(&ann_term);
             let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
 

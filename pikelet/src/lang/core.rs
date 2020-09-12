@@ -7,6 +7,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
 
+use crate::lang::Ranged;
+
 pub mod semantics;
 pub mod typing;
 
@@ -90,9 +92,11 @@ impl From<u32> for UniverseOffset {
     }
 }
 
+pub type Term = Ranged<TermData>;
+
 /// Terms in the core language.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Term {
+#[derive(Clone, Debug)]
+pub enum TermData {
     /// Global variables.
     Global(String),
     /// Local variables.
@@ -138,29 +142,9 @@ pub enum Term {
     Error,
 }
 
-impl Term {
-    /// Create a type of types at the given level.
-    pub fn type_type(level: impl Into<UniverseLevel>) -> Term {
-        Term::TypeType(level.into())
-    }
-
-    /// Create a global variable.
-    pub fn global(name: impl Into<String>) -> Term {
-        Term::Global(name.into())
-    }
-
-    /// Lift a term by the given offset.
-    pub fn lift(self, offset: impl Into<UniverseOffset>) -> Term {
-        match offset.into() {
-            UniverseOffset(0) => self,
-            offset => Term::Lift(Arc::new(self), offset),
-        }
-    }
-}
-
-impl From<Constant> for Term {
-    fn from(constant: Constant) -> Term {
-        Term::Constant(constant)
+impl From<Constant> for TermData {
+    fn from(constant: Constant) -> TermData {
+        TermData::Constant(constant)
     }
 }
 
@@ -187,53 +171,42 @@ impl Default for Globals {
     fn default() -> Globals {
         let mut entries = BTreeMap::new();
 
-        entries.insert(
-            "Type".to_owned(),
-            (
-                Arc::new(Term::type_type(1)),
-                Some(Arc::new(Term::type_type(0))),
-            ),
-        );
-        entries.insert("Bool".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("U8".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("U16".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("U32".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("U64".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("S8".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("S16".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("S32".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("S64".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("F32".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("F64".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("Char".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("String".to_owned(), (Arc::new(Term::global("Type")), None));
-        entries.insert("true".to_owned(), (Arc::new(Term::global("Bool")), None));
-        entries.insert("false".to_owned(), (Arc::new(Term::global("Bool")), None));
+        let global = |name: &str| Arc::new(Term::from(TermData::Global(name.to_owned())));
+        let type_type = |level| Arc::new(Term::from(TermData::TypeType(UniverseLevel(level))));
+        let function_type = |input_type, output_type| {
+            Arc::new(Term::from(TermData::FunctionType(
+                None,
+                input_type,
+                output_type,
+            )))
+        };
+
+        entries.insert("Type".to_owned(), (type_type(1), Some(type_type(0))));
+        entries.insert("Bool".to_owned(), (global("Type"), None));
+        entries.insert("U8".to_owned(), (global("Type"), None));
+        entries.insert("U16".to_owned(), (global("Type"), None));
+        entries.insert("U32".to_owned(), (global("Type"), None));
+        entries.insert("U64".to_owned(), (global("Type"), None));
+        entries.insert("S8".to_owned(), (global("Type"), None));
+        entries.insert("S16".to_owned(), (global("Type"), None));
+        entries.insert("S32".to_owned(), (global("Type"), None));
+        entries.insert("S64".to_owned(), (global("Type"), None));
+        entries.insert("F32".to_owned(), (global("Type"), None));
+        entries.insert("F64".to_owned(), (global("Type"), None));
+        entries.insert("Char".to_owned(), (global("Type"), None));
+        entries.insert("String".to_owned(), (global("Type"), None));
+        entries.insert("true".to_owned(), (global("Bool"), None));
+        entries.insert("false".to_owned(), (global("Bool"), None));
         entries.insert(
             "Array".to_owned(),
             (
-                Arc::new(Term::FunctionType(
-                    None,
-                    Arc::new(Term::Global("U32".to_owned())),
-                    Arc::new(Term::FunctionType(
-                        None,
-                        Arc::new(Term::type_type(0)),
-                        Arc::new(Term::type_type(0)),
-                    )),
-                )),
+                function_type(global("U32"), function_type(type_type(0), type_type(0))),
                 None,
             ),
         );
         entries.insert(
             "List".to_owned(),
-            (
-                Arc::new(Term::FunctionType(
-                    None,
-                    Arc::new(Term::type_type(0)),
-                    Arc::new(Term::type_type(0)),
-                )),
-                None,
-            ),
+            (function_type(type_type(0), type_type(0)), None),
         );
 
         Globals::new(entries)
@@ -343,27 +316,27 @@ macro_rules! impl_has_type {
     };
 }
 
-impl_has_type!(bool, Term::global("Bool"));
-impl_has_type!(u8, Term::global("U8"));
-impl_has_type!(u16, Term::global("U16"));
-impl_has_type!(u32, Term::global("U32"));
-impl_has_type!(u64, Term::global("U64"));
-impl_has_type!(i8, Term::global("S8"));
-impl_has_type!(i16, Term::global("S16"));
-impl_has_type!(i32, Term::global("S32"));
-impl_has_type!(i64, Term::global("S64"));
-impl_has_type!(f32, Term::global("F32"));
-impl_has_type!(f64, Term::global("F64"));
-impl_has_type!(char, Term::global("Char"));
-impl_has_type!(String, Term::global("String"));
-impl_has_type!(str, Term::global("String"));
+impl_has_type!(bool, Term::from(TermData::Global("Bool".to_owned())));
+impl_has_type!(u8, Term::from(TermData::Global("U8".to_owned())));
+impl_has_type!(u16, Term::from(TermData::Global("U16".to_owned())));
+impl_has_type!(u32, Term::from(TermData::Global("U32".to_owned())));
+impl_has_type!(u64, Term::from(TermData::Global("U64".to_owned())));
+impl_has_type!(i8, Term::from(TermData::Global("S8".to_owned())));
+impl_has_type!(i16, Term::from(TermData::Global("S16".to_owned())));
+impl_has_type!(i32, Term::from(TermData::Global("S32".to_owned())));
+impl_has_type!(i64, Term::from(TermData::Global("S64".to_owned())));
+impl_has_type!(f32, Term::from(TermData::Global("F32".to_owned())));
+impl_has_type!(f64, Term::from(TermData::Global("F64".to_owned())));
+impl_has_type!(char, Term::from(TermData::Global("Char".to_owned())));
+impl_has_type!(String, Term::from(TermData::Global("String".to_owned())));
+impl_has_type!(str, Term::from(TermData::Global("String".to_owned())));
 
 impl<T: HasType> HasType for Vec<T> {
     fn r#type() -> Arc<Term> {
-        Arc::new(Term::FunctionElim(
-            Arc::new(Term::global("List")),
+        Arc::new(Term::from(TermData::FunctionElim(
+            Arc::new(Term::from(TermData::Global("List".to_owned()))),
             T::r#type(),
-        ))
+        )))
     }
 }
 
@@ -371,13 +344,13 @@ macro_rules! impl_has_type_array {
     ($($len:expr),*) => {
         $(impl<T: HasType> HasType for [T; $len] {
             fn r#type() -> Arc<Term> {
-                Arc::new(Term::FunctionElim(
-                    Arc::new(Term::FunctionElim(
-                        Arc::new(Term::global("Array")),
-                        Arc::new(Term::from(Constant::U32($len as u32))),
-                    )),
+                Arc::new(Term::from(TermData::FunctionElim(
+                    Arc::new(Term::from(TermData::FunctionElim(
+                        Arc::new(Term::from(TermData::Global("List".to_owned()))),
+                        Arc::new(Term::from(TermData::from(Constant::U32($len as u32)))),
+                    ))),
                     T::r#type(),
-                ))
+                )))
             }
         })*
     };
@@ -407,7 +380,7 @@ macro_rules! impl_try_from_term {
             type Error = ();
 
             fn try_from_term(term: &Term) -> Result<$Self, ()> {
-                match term {
+                match &term.data {
                     $p => $term,
                     _ => Err(()),
                 }
@@ -416,23 +389,23 @@ macro_rules! impl_try_from_term {
     };
 }
 
-impl_try_from_term!(bool, |Term::Global(name)| match name.as_str() {
+impl_try_from_term!(bool, |TermData::Global(name)| match name.as_str() {
     "true" => Ok(true),
     "false" => Ok(false),
     _ => Err(()),
 });
-impl_try_from_term!(u8, |Term::Constant(Constant::U8(value))| Ok(*value));
-impl_try_from_term!(u16, |Term::Constant(Constant::U16(value))| Ok(*value));
-impl_try_from_term!(u32, |Term::Constant(Constant::U32(value))| Ok(*value));
-impl_try_from_term!(u64, |Term::Constant(Constant::U64(value))| Ok(*value));
-impl_try_from_term!(i8, |Term::Constant(Constant::S8(value))| Ok(*value));
-impl_try_from_term!(i16, |Term::Constant(Constant::S16(value))| Ok(*value));
-impl_try_from_term!(i32, |Term::Constant(Constant::S32(value))| Ok(*value));
-impl_try_from_term!(i64, |Term::Constant(Constant::S64(value))| Ok(*value));
-impl_try_from_term!(f32, |Term::Constant(Constant::F32(value))| Ok(*value));
-impl_try_from_term!(f64, |Term::Constant(Constant::F64(value))| Ok(*value));
-impl_try_from_term!(char, |Term::Constant(Constant::Char(value))| Ok(*value));
-impl_try_from_term!(String, |Term::Constant(Constant::String(value))| Ok(
+impl_try_from_term!(u8, |TermData::Constant(Constant::U8(value))| Ok(*value));
+impl_try_from_term!(u16, |TermData::Constant(Constant::U16(value))| Ok(*value));
+impl_try_from_term!(u32, |TermData::Constant(Constant::U32(value))| Ok(*value));
+impl_try_from_term!(u64, |TermData::Constant(Constant::U64(value))| Ok(*value));
+impl_try_from_term!(i8, |TermData::Constant(Constant::S8(value))| Ok(*value));
+impl_try_from_term!(i16, |TermData::Constant(Constant::S16(value))| Ok(*value));
+impl_try_from_term!(i32, |TermData::Constant(Constant::S32(value))| Ok(*value));
+impl_try_from_term!(i64, |TermData::Constant(Constant::S64(value))| Ok(*value));
+impl_try_from_term!(f32, |TermData::Constant(Constant::F32(value))| Ok(*value));
+impl_try_from_term!(f64, |TermData::Constant(Constant::F64(value))| Ok(*value));
+impl_try_from_term!(char, |TermData::Constant(Constant::Char(value))| Ok(*value));
+impl_try_from_term!(String, |TermData::Constant(Constant::String(value))| Ok(
     value.clone(),
 ));
 
@@ -440,8 +413,8 @@ impl<T: TryFromTerm> TryFromTerm for Vec<T> {
     type Error = ();
 
     fn try_from_term(term: &Term) -> Result<Vec<T>, ()> {
-        match term {
-            Term::Sequence(entry_terms) => entry_terms
+        match &term.data {
+            TermData::Sequence(entry_terms) => entry_terms
                 .iter()
                 .map(|entry_term| T::try_from_term(entry_term).map_err(|_| ()))
                 .collect::<Result<Vec<_>, ()>>(),
@@ -456,8 +429,8 @@ macro_rules! impl_try_from_term_array {
             type Error = ();
 
             fn try_from_term(term: &Term) -> Result<[T; $len], ()> {
-                match term {
-                    Term::Sequence(entry_terms) if entry_terms.len() == $len => {
+                match &term.data {
+                    TermData::Sequence(entry_terms) if entry_terms.len() == $len => {
                         use std::mem::MaybeUninit;
 
                         let mut entries: [MaybeUninit::<T>; $len] = unsafe {
@@ -506,41 +479,45 @@ pub trait ToTerm: HasType {
 }
 
 macro_rules! impl_to_term {
-    ($Self:ty, |$p:pat| $term:expr) => {
+    ($Self:ty, |$p:pat| $term_data:expr) => {
         impl ToTerm for $Self {
             fn to_term(&self) -> Term {
                 let $p = self;
-                $term
+                Term::from($term_data)
             }
         }
     };
 }
 
-impl_to_term!(bool, |value| Term::Global(match value {
-    true => "true".to_owned(),
-    false => "false".to_owned(),
-}));
-impl_to_term!(u8, |value| Term::from(Constant::U8(*value)));
-impl_to_term!(u16, |value| Term::from(Constant::U16(*value)));
-impl_to_term!(u32, |value| Term::from(Constant::U32(*value)));
-impl_to_term!(u64, |value| Term::from(Constant::U64(*value)));
-impl_to_term!(i8, |value| Term::from(Constant::S8(*value)));
-impl_to_term!(i16, |value| Term::from(Constant::S16(*value)));
-impl_to_term!(i32, |value| Term::from(Constant::S32(*value)));
-impl_to_term!(i64, |value| Term::from(Constant::S64(*value)));
-impl_to_term!(f32, |value| Term::from(Constant::F32(*value)));
-impl_to_term!(f64, |value| Term::from(Constant::F64(*value)));
-impl_to_term!(char, |value| Term::from(Constant::Char(*value)));
-impl_to_term!(String, |value| Term::from(Constant::String(value.clone())));
-impl_to_term!(str, |value| Term::from(Constant::String(value.to_owned())));
+impl_to_term!(bool, |value| match value {
+    true => TermData::Global("true".to_owned()),
+    false => TermData::Global("false".to_owned()),
+});
+impl_to_term!(u8, |value| TermData::from(Constant::U8(*value)));
+impl_to_term!(u16, |value| TermData::from(Constant::U16(*value)));
+impl_to_term!(u32, |value| TermData::from(Constant::U32(*value)));
+impl_to_term!(u64, |value| TermData::from(Constant::U64(*value)));
+impl_to_term!(i8, |value| TermData::from(Constant::S8(*value)));
+impl_to_term!(i16, |value| TermData::from(Constant::S16(*value)));
+impl_to_term!(i32, |value| TermData::from(Constant::S32(*value)));
+impl_to_term!(i64, |value| TermData::from(Constant::S64(*value)));
+impl_to_term!(f32, |value| TermData::from(Constant::F32(*value)));
+impl_to_term!(f64, |value| TermData::from(Constant::F64(*value)));
+impl_to_term!(char, |value| TermData::from(Constant::Char(*value)));
+impl_to_term!(String, |value| TermData::from(Constant::String(
+    value.clone()
+)));
+impl_to_term!(str, |value| TermData::from(Constant::String(
+    value.to_owned()
+)));
 
 impl<T: ToTerm> ToTerm for Vec<T> {
     fn to_term(&self) -> Term {
-        Term::Sequence(
+        Term::from(TermData::Sequence(
             self.iter()
                 .map(|entry_term| Arc::new(T::to_term(entry_term)))
                 .collect(),
-        )
+        ))
     }
 }
 
@@ -548,11 +525,11 @@ macro_rules! impl_to_term_array {
     ($($len:expr),*) => {
         $(impl<T: ToTerm> ToTerm for [T; $len] {
             fn to_term(&self) -> Term {
-                Term::Sequence(
+                Term::from(TermData::Sequence(
                     self.iter()
                         .map(|entry_term| Arc::new(T::to_term(entry_term)))
                         .collect(),
-                )
+                ))
             }
         })*
     };

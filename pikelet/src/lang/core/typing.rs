@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, Value};
 use crate::lang::core::{
-    Constant, Globals, LocalLevel, Locals, Term, UniverseLevel, UniverseOffset,
+    Constant, Globals, LocalLevel, Locals, Term, TermData, UniverseLevel, UniverseOffset,
 };
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType};
 
@@ -80,7 +80,10 @@ impl<'me> State<'me> {
         self.message_tx.send(message.into()).unwrap();
     }
 
-    /// Evaluate a term using the current state of the type checker.
+    /// Evaluate a [`Term`] into a [`Value`].
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
+    /// [`Term`]: crate::lang::core::Term
     pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
@@ -100,7 +103,11 @@ impl<'me> State<'me> {
         semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
     }
 
-    /// Check if `value0` is a subtype of `value1`.
+    /// Check that one [`Value`] is a subtype of another [`Value`].
+    ///
+    /// Returns `false` if either value is not a type.
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
@@ -115,9 +122,8 @@ impl<'me> State<'me> {
             Value::TypeType(level) => Some(*level),
             Value::Error => None,
             _ => {
-                let r#type = self.read_back_value(&r#type);
                 self.report(CoreTypingMessage::MismatchedTypes {
-                    found_type: r#type,
+                    found_type: self.read_back_value(&r#type),
                     expected_type: ExpectedType::Universe,
                 });
                 None
@@ -130,11 +136,11 @@ impl<'me> State<'me> {
     #[debug_ensures(self.types.size() == old(self.types.size()))]
     #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) {
-        match (term, expected_type.force(self.globals)) {
+        match (&term.data, expected_type.force(self.globals)) {
             (_, Value::Error) => {}
 
             (
-                Term::FunctionTerm(_, output_term),
+                TermData::FunctionTerm(_, output_term),
                 Value::FunctionType(_, input_type, output_closure),
             ) => {
                 let input_term = self.push_local_param(input_type.clone());
@@ -142,11 +148,11 @@ impl<'me> State<'me> {
                 self.check_type(output_term, &output_type);
                 self.pop_local();
             }
-            (Term::FunctionTerm(_, _), _) => {
+            (TermData::FunctionTerm(_, _), _) => {
                 self.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
             }
 
-            (Term::RecordTerm(term_entries), Value::RecordType(closure)) => {
+            (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
                 let mut missing_labels = Vec::new();
 
                 let mut pending_term_entries = term_entries.clone();
@@ -175,7 +181,7 @@ impl<'me> State<'me> {
                 }
             }
 
-            (Term::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
+            (TermData::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
                 match (name.as_ref(), spine.as_slice()) {
                     ("Array", [Elim::Function(len), Elim::Function(entry_type)]) => {
                         let entry_type = entry_type.force(self.globals);
@@ -186,13 +192,10 @@ impl<'me> State<'me> {
                         match len.force(self.globals).as_ref() {
                             Value::Constant(Constant::U32(len))
                                 if *len as usize == entry_terms.len() => {}
-                            len => {
-                                let expected_len = self.read_back_value(len);
-                                self.report(CoreTypingMessage::MismatchedSequenceLength {
-                                    found_len: entry_terms.len(),
-                                    expected_len,
-                                })
-                            }
+                            len => self.report(CoreTypingMessage::MismatchedSequenceLength {
+                                found_len: entry_terms.len(),
+                                expected_len: self.read_back_value(len),
+                            }),
                         }
                     }
                     ("List", [Elim::Function(entry_type)]) => {
@@ -207,21 +210,17 @@ impl<'me> State<'me> {
                     }
                 }
             }
-            (Term::Sequence(_), _) => {
+            (TermData::Sequence(_), _) => {
                 let expected_type = self.read_back_value(expected_type);
                 self.report(CoreTypingMessage::NoSequenceConversion { expected_type })
             }
 
-            (term, _) => match self.synth_type(term) {
+            (_, _) => match self.synth_type(term) {
                 found_type if self.is_subtype(&found_type, expected_type) => {}
-                found_type => {
-                    let found_type = self.read_back_value(&found_type);
-                    let expected_type = ExpectedType::Type(self.read_back_value(expected_type));
-                    self.report(CoreTypingMessage::MismatchedTypes {
-                        found_type,
-                        expected_type,
-                    })
-                }
+                found_type => self.report(CoreTypingMessage::MismatchedTypes {
+                    found_type: self.read_back_value(&found_type),
+                    expected_type: ExpectedType::Type(self.read_back_value(expected_type)),
+                }),
             },
         }
     }
@@ -231,8 +230,8 @@ impl<'me> State<'me> {
     #[debug_ensures(self.types.size() == old(self.types.size()))]
     #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> Arc<Value> {
-        match term {
-            Term::Global(name) => match self.globals.get(name) {
+        match &term.data {
+            TermData::Global(name) => match self.globals.get(name) {
                 Some((r#type, _)) => self.eval_term(r#type),
                 None => {
                     self.report(CoreTypingMessage::UnboundGlobal {
@@ -241,7 +240,7 @@ impl<'me> State<'me> {
                     Arc::new(Value::Error)
                 }
             },
-            Term::Local(index) => match self.types.get(*index) {
+            TermData::Local(index) => match self.types.get(*index) {
                 Some(r#type) => r#type.clone(),
                 None => {
                     self.report(CoreTypingMessage::UnboundLocal);
@@ -249,21 +248,21 @@ impl<'me> State<'me> {
                 }
             },
 
-            Term::Ann(term, r#type) => {
+            TermData::Ann(term, r#type) => {
                 self.is_type(r#type);
                 let r#type = self.eval_term(r#type);
                 self.check_type(term, &r#type);
                 r#type
             }
 
-            Term::TypeType(level) => match *level + UniverseOffset(1) {
+            TermData::TypeType(level) => match *level + UniverseOffset(1) {
                 Some(level) => Arc::new(Value::type_type(level)),
                 None => {
                     self.report(CoreTypingMessage::MaximumUniverseLevelReached);
                     Arc::new(Value::Error)
                 }
             },
-            Term::Lift(term, offset) => match self.universe_offset + *offset {
+            TermData::Lift(term, offset) => match self.universe_offset + *offset {
                 Some(new_offset) => {
                     let previous_offset = std::mem::replace(&mut self.universe_offset, new_offset);
                     let r#type = self.synth_type(term);
@@ -276,7 +275,7 @@ impl<'me> State<'me> {
                 }
             },
 
-            Term::FunctionType(_, input_type, output_type) => {
+            TermData::FunctionType(_, input_type, output_type) => {
                 let input_level = self.is_type(input_type);
                 let input_type = match input_level {
                     None => Arc::new(Value::Error),
@@ -294,13 +293,13 @@ impl<'me> State<'me> {
                     (_, _) => Arc::new(Value::Error),
                 }
             }
-            Term::FunctionTerm(_, _) => {
+            TermData::FunctionTerm(_, _) => {
                 self.report(CoreTypingMessage::AmbiguousTerm {
                     term: AmbiguousTerm::FunctionTerm,
                 });
                 Arc::new(Value::Error)
             }
-            Term::FunctionElim(head_term, input_term) => {
+            TermData::FunctionElim(head_term, input_term) => {
                 let head_type = self.synth_type(head_term);
                 match head_type.force(self.globals) {
                     Value::FunctionType(_, input_type, output_closure) => {
@@ -317,7 +316,7 @@ impl<'me> State<'me> {
                 }
             }
 
-            Term::RecordTerm(term_entries) => {
+            TermData::RecordTerm(term_entries) => {
                 if term_entries.is_empty() {
                     Arc::from(Value::RecordType(RecordTypeClosure::new(
                         self.universe_offset,
@@ -331,7 +330,7 @@ impl<'me> State<'me> {
                     Arc::new(Value::Error)
                 }
             }
-            Term::RecordType(type_entries) => {
+            TermData::RecordType(type_entries) => {
                 use std::collections::BTreeSet;
 
                 let mut max_level = UniverseLevel(0);
@@ -361,7 +360,7 @@ impl<'me> State<'me> {
 
                 Arc::new(Value::TypeType(max_level))
             }
-            Term::RecordElim(head_term, label) => {
+            TermData::RecordElim(head_term, label) => {
                 let head_type = self.synth_type(head_term);
 
                 match head_type.force(self.globals) {
@@ -385,14 +384,14 @@ impl<'me> State<'me> {
                 Arc::new(Value::Error)
             }
 
-            Term::Sequence(_) => {
+            TermData::Sequence(_) => {
                 self.report(CoreTypingMessage::AmbiguousTerm {
                     term: AmbiguousTerm::Sequence,
                 });
                 Arc::new(Value::Error)
             }
 
-            Term::Constant(constant) => Arc::new(match constant {
+            TermData::Constant(constant) => Arc::new(match constant {
                 Constant::U8(_) => Value::global("U8", 0),
                 Constant::U16(_) => Value::global("U16", 0),
                 Constant::U32(_) => Value::global("U32", 0),
@@ -407,7 +406,7 @@ impl<'me> State<'me> {
                 Constant::String(_) => Value::global("String", 0),
             }),
 
-            Term::Error => Arc::new(Value::Error),
+            TermData::Error => Arc::new(Value::Error),
         }
     }
 }
