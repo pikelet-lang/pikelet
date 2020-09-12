@@ -80,7 +80,10 @@ impl<'me> State<'me> {
         self.message_tx.send(message.into()).unwrap();
     }
 
-    /// Evaluate a term using the current state of the type checker.
+    /// Evaluate a [`Term`] into a [`Value`].
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
+    /// [`Term`]: crate::lang::core::Term
     pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
@@ -100,7 +103,11 @@ impl<'me> State<'me> {
         semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
     }
 
-    /// Check if `value0` is a subtype of `value1`.
+    /// Check that one [`Value`] is a subtype of another [`Value`].
+    ///
+    /// Returns `false` if either value is not a type.
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }

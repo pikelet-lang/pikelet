@@ -106,7 +106,10 @@ impl<'me> State<'me> {
         self.message_tx.send(error.into()).unwrap();
     }
 
-    /// Evaluate a term using the current state of the elaborator.
+    /// Evaluate a [`core::Term`] into a [`Value`].
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
+    /// [`core::Term`]: crate::lang::core::Term
     pub fn eval_term(&mut self, term: &core::Term) -> Arc<Value> {
         semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
     }
@@ -121,7 +124,10 @@ impl<'me> State<'me> {
         semantics::record_elim_type(self.globals, head_value, label, closure)
     }
 
-    /// Normalize a term using the current state of the elaborator.
+    /// Fully normalize a [`core::Term`] using [normalization by evaluation].
+    ///
+    /// [`core::Term`]: crate::lang::core::Term
+    /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
     pub fn normalize_term(&mut self, term: &core::Term) -> core::Term {
         semantics::normalize_term(self.globals, self.universe_offset, &mut self.values, term)
     }
@@ -138,9 +144,11 @@ impl<'me> State<'me> {
         semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
     }
 
-    /// Check that one value is a subtype of another value.
+    /// Check that one [`Value`] is a subtype of another [`Value`].
     ///
     /// Returns `false` if either value is not a type.
+    ///
+    /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
         semantics::is_subtype(self.globals, self.values.size(), value0, value1)
     }
@@ -166,7 +174,7 @@ impl<'me> State<'me> {
         self.core_to_surface_term(&core_term)
     }
 
-    /// Check that a term is a type return, and return the elaborated term and the
+    /// Check that a term is a type, and return the elaborated term and the
     /// universe level it inhabits.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
     #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]

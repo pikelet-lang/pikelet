@@ -255,7 +255,10 @@ impl LazyValue {
     }
 }
 
-/// Fully normalize a term.
+/// Fully normalize a [`Term`] using [normalization by evaluation].
+///
+/// [`Term`]: crate::lang::core::Term
+/// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
 #[debug_ensures(values.size() == old(values.size()))]
 pub fn normalize_term(
     globals: &Globals,
@@ -267,7 +270,10 @@ pub fn normalize_term(
     read_back_value(globals, values.size(), Unfold::All, &value)
 }
 
-/// Evaluate a term into a value in weak-head normal form.
+/// Evaluate a [`Term`] into a [`Value`].
+///
+/// [`Value`]: crate::lang::core::semantics::Value
+/// [`Term`]: crate::lang::core::Term
 #[debug_ensures(values.size() == old(values.size()))]
 pub fn eval_term(
     globals: &Globals,
@@ -687,9 +693,11 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
     }
 }
 
-/// Check that one value is a subtype of another value.
+/// Check that one [`Value`] is a subtype of another [`Value`].
 ///
 /// Returns `false` if either value is not a type.
+///
+/// [`Value`]: crate::lang::core::semantics::Value
 pub fn is_subtype(
     globals: &Globals,
     local_size: LocalSize,

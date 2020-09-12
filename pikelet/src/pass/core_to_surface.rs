@@ -14,6 +14,7 @@ use crate::lang::core::{Constant, Globals, Locals, Term, UniverseLevel, Universe
 use crate::lang::surface;
 use crate::lang::Ranged;
 
+/// Distillation state.
 pub struct State<'me> {
     globals: &'me Globals,
     usages: HashMap<String, Usage>,
@@ -37,6 +38,7 @@ impl Usage {
 const DEFAULT_NAME: &str = "t";
 
 impl<'me> State<'me> {
+    /// Construct a new distillation state.
     pub fn new(globals: &'me Globals) -> State<'me> {
         let usages = globals
             .entries()
@@ -111,6 +113,10 @@ impl<'me> State<'me> {
         (0..count).for_each(|_| self.pop_name());
     }
 
+    /// Distill a [`core::Term`] into a [`surface::Term`].
+    ///
+    /// [`core::Term`]: crate::lang::core::Term
+    /// [`surface::Term`]: crate::lang::surface::Term
     #[debug_ensures(self.names.size() == old(self.names.size()))]
     pub fn from_term(&mut self, term: &Term) -> surface::Term {
         let term_data = match term {
