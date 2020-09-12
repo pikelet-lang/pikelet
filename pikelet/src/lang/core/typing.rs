@@ -115,9 +115,8 @@ impl<'me> State<'me> {
             Value::TypeType(level) => Some(*level),
             Value::Error => None,
             _ => {
-                let r#type = self.read_back_value(&r#type);
                 self.report(CoreTypingMessage::MismatchedTypes {
-                    found_type: r#type,
+                    found_type: self.read_back_value(&r#type),
                     expected_type: ExpectedType::Universe,
                 });
                 None
@@ -186,13 +185,10 @@ impl<'me> State<'me> {
                         match len.force(self.globals).as_ref() {
                             Value::Constant(Constant::U32(len))
                                 if *len as usize == entry_terms.len() => {}
-                            len => {
-                                let expected_len = self.read_back_value(len);
-                                self.report(CoreTypingMessage::MismatchedSequenceLength {
-                                    found_len: entry_terms.len(),
-                                    expected_len,
-                                })
-                            }
+                            len => self.report(CoreTypingMessage::MismatchedSequenceLength {
+                                found_len: entry_terms.len(),
+                                expected_len: self.read_back_value(len),
+                            }),
                         }
                     }
                     ("List", [Elim::Function(entry_type)]) => {
@@ -214,14 +210,10 @@ impl<'me> State<'me> {
 
             (term, _) => match self.synth_type(term) {
                 found_type if self.is_subtype(&found_type, expected_type) => {}
-                found_type => {
-                    let found_type = self.read_back_value(&found_type);
-                    let expected_type = ExpectedType::Type(self.read_back_value(expected_type));
-                    self.report(CoreTypingMessage::MismatchedTypes {
-                        found_type,
-                        expected_type,
-                    })
-                }
+                found_type => self.report(CoreTypingMessage::MismatchedTypes {
+                    found_type: self.read_back_value(&found_type),
+                    expected_type: ExpectedType::Type(self.read_back_value(expected_type)),
+                }),
             },
         }
     }
