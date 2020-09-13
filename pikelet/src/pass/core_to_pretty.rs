@@ -124,28 +124,32 @@ where
                 )),
             )
             .append("}"),
-        TermData::RecordTerm(term_entries) => (alloc.nil())
+        TermData::RecordTerm(labels, entry_terms) => (alloc.nil())
             .append("record")
             .append(alloc.space())
             .append("{")
             .group()
-            .append(alloc.concat(term_entries.iter().map(|(label, term)| {
-                (alloc.nil())
-                    .append(alloc.hardline())
-                    .append(alloc.text(label))
-                    .append(alloc.space())
-                    .append("=")
-                    .group()
-                    .append(
-                        (alloc.space())
-                            .append(from_term_prec(alloc, term, Prec::Term))
-                            .append(",")
+            .append(
+                alloc.concat(Iterator::zip(labels.iter(), entry_terms.iter()).map(
+                    |(label, entry_term)| {
+                        (alloc.nil())
+                            .append(alloc.hardline())
+                            .append(alloc.text(label))
+                            .append(alloc.space())
+                            .append("=")
                             .group()
-                            .nest(4),
-                    )
-                    .nest(4)
-                    .group()
-            })))
+                            .append(
+                                (alloc.space())
+                                    .append(from_term_prec(alloc, entry_term, Prec::Term))
+                                    .append(",")
+                                    .group()
+                                    .nest(4),
+                            )
+                            .nest(4)
+                            .group()
+                    },
+                )),
+            )
             .append("}"),
         TermData::RecordElim(head_term, label) => (alloc.nil())
             .append(from_term_prec(alloc, head_term, Prec::Atomic))

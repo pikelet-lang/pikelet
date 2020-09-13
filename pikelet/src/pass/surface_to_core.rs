@@ -426,8 +426,6 @@ impl<'me> State<'me> {
     #[debug_ensures(self.types.size() == old(self.types.size()))]
     #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
-        use std::collections::BTreeMap;
-
         let error_term = || core::Term::new(term.range(), core::TermData::Error);
 
         match &term.data {
@@ -600,12 +598,16 @@ impl<'me> State<'me> {
 
             TermData::RecordTerm(term_entries) => {
                 if term_entries.is_empty() {
+                    let labels = Arc::new([]);
                     (
-                        core::Term::new(term.range(), core::TermData::RecordTerm(BTreeMap::new())),
+                        core::Term::new(
+                            term.range(),
+                            core::TermData::RecordTerm(labels.clone(), Arc::new([])),
+                        ),
                         Arc::from(Value::RecordType(RecordTypeClosure::new(
                             self.universe_offset,
                             self.values.clone(),
-                            Arc::new([]),
+                            labels,
                             Arc::new([]),
                         ))),
                     )

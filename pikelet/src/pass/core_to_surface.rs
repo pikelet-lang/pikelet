@@ -209,15 +209,13 @@ impl<'me> State<'me> {
 
                 surface::TermData::RecordType(core_type_entries)
             }
-            TermData::RecordTerm(term_entries) => {
-                let core_term_entries = term_entries
-                    .iter()
-                    .map(|(entry_name, entry_term)| {
-                        let entry_name = entry_name.clone();
-                        (Ranged::from(entry_name), self.from_term(entry_term))
+            TermData::RecordTerm(labels, entry_terms) => {
+                let core_term_entries = Iterator::zip(labels.iter(), entry_terms.iter())
+                    .map(|(label, entry_term)| {
+                        (Ranged::from(label.clone()), self.from_term(entry_term))
                     })
                     .collect();
-                self.pop_many_names(term_entries.len());
+                self.pop_many_names(labels.len());
 
                 surface::TermData::RecordTerm(core_term_entries)
             }

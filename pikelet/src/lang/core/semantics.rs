@@ -5,7 +5,6 @@
 use contracts::debug_ensures;
 use once_cell::sync::OnceCell;
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::lang::core::{
@@ -58,7 +57,7 @@ pub enum Value {
     /// Record types.
     RecordType(RecordTypeClosure),
     /// Record terms.
-    RecordTerm(BTreeMap<String, Arc<Value>>),
+    RecordTerm(Arc<[String]>, Arc<[Arc<Value>]>),
 
     /// Ordered sequences.
     Sequence(Vec<Arc<Value>>),
@@ -324,16 +323,13 @@ pub fn eval_term(
                 entry_types.clone(),
             )))
         }
-        TermData::RecordTerm(term_entries) => {
-            let value_entries = term_entries
+        TermData::RecordTerm(labels, entry_terms) => {
+            let entry_values = entry_terms
                 .iter()
-                .map(|(label, entry_term)| {
-                    let entry_term = eval_term(globals, universe_offset, values, entry_term);
-                    (label.clone(), entry_term)
-                })
+                .map(|entry_term| eval_term(globals, universe_offset, values, entry_term))
                 .collect();
 
-            Arc::new(Value::RecordTerm(value_entries))
+            Arc::new(Value::RecordTerm(labels.clone(), entry_values))
         }
         TermData::RecordElim(head, label) => {
             let head = eval_term(globals, universe_offset, values, head);
@@ -408,7 +404,11 @@ fn apply_record_elim(mut head_value: Arc<Value>, label: &str) -> Arc<Value> {
             head_value
         }
 
-        Value::RecordTerm(term_entries) => match term_entries.get(label) {
+        Value::RecordTerm(labels, entry_terms) => match labels
+            .iter()
+            .position(|l| l == label)
+            .and_then(|i| entry_terms.get(i))
+        {
             Some(value) => value.clone(),
             None => Arc::new(Value::Error),
         },
@@ -538,16 +538,15 @@ pub fn read_back_value(
                 entry_types.into(),
             ))
         }
-        Value::RecordTerm(value_entries) => {
-            let term_entries = value_entries
+        Value::RecordTerm(labels, entry_values) => {
+            let term_entries = entry_values
                 .iter()
-                .map(|(label, entry_value)| {
-                    let entry_term = read_back_value(globals, local_size, unfold, &entry_value);
-                    (label.to_owned(), Arc::new(entry_term))
+                .map(|entry_value| {
+                    Arc::new(read_back_value(globals, local_size, unfold, &entry_value))
                 })
                 .collect();
 
-            Term::from(TermData::RecordTerm(term_entries))
+            Term::from(TermData::RecordTerm(labels.clone(), term_entries))
         }
 
         Value::Sequence(value_entries) => {
@@ -678,14 +677,14 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
 
             true
         }
-        (Value::RecordTerm(value_entries0), Value::RecordTerm(value_entries1)) => {
-            if value_entries0.len() != value_entries1.len() {
+        (Value::RecordTerm(labels0, entry_values0), Value::RecordTerm(labels1, entry_values1)) => {
+            if labels0 == labels1 {
                 return false;
             }
 
-            Iterator::zip(value_entries0.iter(), value_entries1.iter()).all(
-                |((label0, entry_value0), (label1, entry_value1))| {
-                    label0 == label1 && is_equal(globals, local_size, entry_value0, entry_value1)
+            Iterator::zip(entry_values0.iter(), entry_values1.iter()).all(
+                |(entry_value0, entry_value1)| {
+                    is_equal(globals, local_size, entry_value0, entry_value1)
                 },
             )
         }

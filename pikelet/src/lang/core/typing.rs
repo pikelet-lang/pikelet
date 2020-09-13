@@ -152,10 +152,20 @@ impl<'me> State<'me> {
                 self.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
             }
 
-            (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
+            (TermData::RecordTerm(labels, entry_terms), Value::RecordType(closure)) => {
+                if labels.len() != entry_terms.len() {
+                    self.report(CoreTypingMessage::MismatchedRecordEntryLengths {
+                        labels_len: labels.len(),
+                        entries_len: entry_terms.len(),
+                    });
+                    return;
+                }
+
+                // TODO: check labels == closure.labels()
+
                 let mut missing_labels = Vec::new();
 
-                let mut pending_term_entries = term_entries.clone();
+                let mut pending_term_entries = entry_terms.clone();
 
                 closure.entries(self.globals, |label, r#type| {
                     match pending_term_entries.remove(label) {
@@ -316,8 +326,16 @@ impl<'me> State<'me> {
                 }
             }
 
-            TermData::RecordTerm(term_entries) => {
-                if term_entries.is_empty() {
+            TermData::RecordTerm(labels, entry_terms) => {
+                if labels.len() != entry_terms.len() {
+                    self.report(CoreTypingMessage::MismatchedRecordEntryLengths {
+                        labels_len: labels.len(),
+                        entries_len: entry_terms.len(),
+                    });
+                    return Arc::new(Value::Error);
+                }
+
+                if entry_terms.is_empty() {
                     Arc::from(Value::RecordType(RecordTypeClosure::new(
                         self.universe_offset,
                         self.values.clone(),
@@ -341,7 +359,7 @@ impl<'me> State<'me> {
                 if labels.len() != entry_types.len() {
                     self.report(CoreTypingMessage::MismatchedRecordEntryLengths {
                         labels_len: labels.len(),
-                        entry_types_len: labels.len(),
+                        entries_len: entry_types.len(),
                     });
                     return Arc::new(Value::Error);
                 }

@@ -221,7 +221,7 @@ pub enum CoreTypingMessage {
     },
     MismatchedRecordEntryLengths {
         labels_len: usize,
-        entry_types_len: usize,
+        entries_len: usize,
     },
     InvalidRecordTerm {
         missing_labels: Vec<String>,
@@ -283,12 +283,12 @@ impl CoreTypingMessage {
                 ),
             CoreTypingMessage::MismatchedRecordEntryLengths {
                 labels_len,
-                entry_types_len,
+                entries_len,
             } => Diagnostic::bug()
                 .with_message("mismatched record entry lengths")
                 .with_notes(vec![
                     format!("found {} labels", labels_len),
-                    format!("found {} entry types", entry_types_len),
+                    format!("found {} entries", entries_len),
                 ]),
             CoreTypingMessage::InvalidRecordTerm {
                 missing_labels,
