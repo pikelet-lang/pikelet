@@ -124,7 +124,7 @@ pub enum TermData {
     FunctionElim(Arc<Term>, Arc<Term>),
 
     /// Record types.
-    RecordType(Arc<[(String, Arc<Term>)]>),
+    RecordType(Arc<[String]>, Arc<[Arc<Term>]>),
     /// Record terms.
     RecordTerm(BTreeMap<String, Arc<Term>>),
     /// Record eliminations.

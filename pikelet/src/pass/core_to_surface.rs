@@ -195,15 +195,14 @@ impl<'me> State<'me> {
                 surface::TermData::FunctionElim(Box::new(head_term), input_terms)
             }
 
-            TermData::RecordType(type_entries) => {
-                let core_type_entries = type_entries
-                    .iter()
-                    .map(|(label, r#type)| {
-                        let r#type = self.from_term(r#type);
+            TermData::RecordType(labels, entry_types) => {
+                let core_type_entries = Iterator::zip(labels.iter(), entry_types.iter())
+                    .map(|(label, entry_type)| {
                         let label = label.clone();
+                        let entry_type = self.from_term(entry_type);
                         match self.push_name(Some(&label)) {
-                            name if name == label => (Ranged::from(label), None, r#type),
-                            name => (Ranged::from(label), Some(Ranged::from(name)), r#type),
+                            name if name == label => (Ranged::from(label), None, entry_type),
+                            name => (Ranged::from(label), Some(Ranged::from(name)), entry_type),
                         }
                     })
                     .collect();

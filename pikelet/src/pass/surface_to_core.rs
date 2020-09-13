@@ -606,6 +606,7 @@ impl<'me> State<'me> {
                             self.universe_offset,
                             self.values.clone(),
                             Arc::new([]),
+                            Arc::new([]),
                         ))),
                     )
                 } else {
@@ -617,38 +618,39 @@ impl<'me> State<'me> {
                 }
             }
             TermData::RecordType(type_entries) => {
-                use std::collections::btree_map::Entry;
+                let mut duplicate_labels = Vec::new();
 
                 let mut max_level = core::UniverseLevel(0);
-                let mut duplicate_labels = Vec::new();
-                let mut seen_labels = BTreeMap::new();
-                let mut core_type_entries = Vec::new();
+                let mut labels = Vec::<String>::with_capacity(type_entries.len());
+                let mut label_ranges = Vec::<Range<_>>::with_capacity(type_entries.len());
+                let mut core_entry_types = Vec::with_capacity(type_entries.len());
 
                 for (label, name, entry_type) in type_entries {
                     let name = name.as_ref().unwrap_or(label);
-                    match seen_labels.entry(&label.data) {
-                        Entry::Vacant(entry) => {
+                    match labels.iter().position(|l| l == &label.data) {
+                        Some(index) => {
+                            duplicate_labels.push((
+                                label.data.clone(),
+                                label_ranges[index].clone(),
+                                label.range(),
+                            ));
+                            self.is_type(entry_type);
+                        }
+                        None => {
                             let (core_type, level) = self.is_type(entry_type);
                             max_level = match level {
                                 Some(level) => std::cmp::max(max_level, level),
                                 None => {
-                                    self.pop_many_locals(seen_labels.len());
+                                    self.pop_many_locals(labels.len());
                                     return (error_term(), Arc::new(Value::Error));
                                 }
                             };
                             let core_type = Arc::new(core_type);
                             let core_type_value = self.eval_term(&core_type);
-                            core_type_entries.push((label.data.clone(), core_type));
+                            labels.push(label.data.clone());
+                            label_ranges.push(label.range());
+                            core_entry_types.push(core_type);
                             self.push_local_param(Some(&name.data), core_type_value);
-                            entry.insert(label.range());
-                        }
-                        Entry::Occupied(entry) => {
-                            duplicate_labels.push((
-                                (*entry.key()).to_owned(),
-                                entry.get().clone(),
-                                label.range(),
-                            ));
-                            self.is_type(entry_type);
                         }
                     }
                 }
@@ -657,11 +659,11 @@ impl<'me> State<'me> {
                     self.report(SurfaceToCoreMessage::InvalidRecordType { duplicate_labels });
                 }
 
-                self.pop_many_locals(seen_labels.len());
+                self.pop_many_locals(labels.len());
                 (
                     core::Term::new(
                         term.range(),
-                        core::TermData::RecordType(core_type_entries.into()),
+                        core::TermData::RecordType(labels.into(), core_entry_types.into()),
                     ),
                     Arc::new(Value::TypeType(max_level)),
                 )

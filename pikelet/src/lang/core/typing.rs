@@ -322,6 +322,7 @@ impl<'me> State<'me> {
                         self.universe_offset,
                         self.values.clone(),
                         Arc::new([]),
+                        Arc::new([]),
                     )))
                 } else {
                     self.report(CoreTypingMessage::AmbiguousTerm {
@@ -330,26 +331,34 @@ impl<'me> State<'me> {
                     Arc::new(Value::Error)
                 }
             }
-            TermData::RecordType(type_entries) => {
+            TermData::RecordType(labels, entry_types) => {
                 use std::collections::BTreeSet;
 
                 let mut max_level = UniverseLevel(0);
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeSet::new();
 
-                for (name, r#type) in type_entries.iter() {
-                    if !seen_labels.insert(name) {
-                        duplicate_labels.push(name.clone());
+                if labels.len() != entry_types.len() {
+                    self.report(CoreTypingMessage::MismatchedRecordEntryLengths {
+                        labels_len: labels.len(),
+                        entry_types_len: labels.len(),
+                    });
+                    return Arc::new(Value::Error);
+                }
+
+                for (label, entry_type) in Iterator::zip(labels.iter(), entry_types.iter()) {
+                    if !seen_labels.insert(label) {
+                        duplicate_labels.push(label.clone());
                     }
-                    max_level = match self.is_type(r#type) {
+                    max_level = match self.is_type(entry_type) {
                         Some(level) => std::cmp::max(max_level, level),
                         None => {
                             self.pop_many_locals(seen_labels.len());
                             return Arc::new(Value::Error);
                         }
                     };
-                    let r#type = self.eval_term(r#type);
-                    self.push_local_param(r#type);
+                    let entry_type = self.eval_term(entry_type);
+                    self.push_local_param(entry_type);
                 }
 
                 self.pop_many_locals(seen_labels.len());

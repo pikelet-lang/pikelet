@@ -97,28 +97,32 @@ where
             ),
         ),
 
-        TermData::RecordType(type_entries) => (alloc.nil())
+        TermData::RecordType(labels, entry_types) => (alloc.nil())
             .append("Record")
             .append(alloc.space())
             .append("{")
             .group()
-            .append(alloc.concat(type_entries.iter().map(|(label, r#type)| {
-                (alloc.nil())
-                    .append(alloc.hardline())
-                    .append(alloc.text(label))
-                    .append(alloc.space())
-                    .append(":")
-                    .group()
-                    .append(
-                        (alloc.space())
-                            .append(from_term_prec(alloc, r#type, Prec::Term))
-                            .append(",")
+            .append(
+                alloc.concat(Iterator::zip(labels.iter(), entry_types.iter()).map(
+                    |(label, entry_type)| {
+                        (alloc.nil())
+                            .append(alloc.hardline())
+                            .append(alloc.text(label))
+                            .append(alloc.space())
+                            .append(":")
                             .group()
-                            .nest(4),
-                    )
-                    .nest(4)
-                    .group()
-            })))
+                            .append(
+                                (alloc.space())
+                                    .append(from_term_prec(alloc, entry_type, Prec::Term))
+                                    .append(",")
+                                    .group()
+                                    .nest(4),
+                            )
+                            .nest(4)
+                            .group()
+                    },
+                )),
+            )
             .append("}"),
         TermData::RecordTerm(term_entries) => (alloc.nil())
             .append("record")

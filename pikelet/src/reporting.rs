@@ -219,6 +219,10 @@ pub enum CoreTypingMessage {
     InvalidRecordType {
         duplicate_labels: Vec<String>,
     },
+    MismatchedRecordEntryLengths {
+        labels_len: usize,
+        entry_types_len: usize,
+    },
     InvalidRecordTerm {
         missing_labels: Vec<String>,
         unexpected_labels: Vec<String>,
@@ -277,6 +281,15 @@ impl CoreTypingMessage {
                         .map(|name| format!("label `{}` was used more than once", name))
                         .collect(),
                 ),
+            CoreTypingMessage::MismatchedRecordEntryLengths {
+                labels_len,
+                entry_types_len,
+            } => Diagnostic::bug()
+                .with_message("mismatched record entry lengths")
+                .with_notes(vec![
+                    format!("found {} labels", labels_len),
+                    format!("found {} entry types", entry_types_len),
+                ]),
             CoreTypingMessage::InvalidRecordTerm {
                 missing_labels,
                 unexpected_labels,
