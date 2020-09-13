@@ -22,7 +22,7 @@ fn run_test(path: &str, source: &str) {
     if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("surface_to_core::synth_type messages:");
-        for message in &messages_rx {
+        for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
                 .unwrap();
@@ -36,7 +36,7 @@ fn run_test(path: &str, source: &str) {
     if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("core::typing::synth_term messages:");
-        for message in &messages_rx {
+        for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
                 .unwrap();
@@ -48,7 +48,7 @@ fn run_test(path: &str, source: &str) {
     if !messages_rx.is_empty() {
         is_failed = true;
         eprintln!("core::typing::check_term messages:");
-        for message in &messages_rx {
+        for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
                 .unwrap();

@@ -113,7 +113,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
 
         let (core_term, r#type) = state.synth_type(&surface_term);
         if !messages_rx.is_empty() {
-            for message in &messages_rx {
+            for message in messages_rx.try_iter() {
                 codespan_reporting::term::emit(
                     &mut writer.lock(),
                     &reporting_config,
