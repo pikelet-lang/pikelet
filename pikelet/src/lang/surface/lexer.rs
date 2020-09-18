@@ -57,7 +57,8 @@ pub enum Token<'a> {
     RBrace,
 
     #[error]
-    #[regex(r"\p{Whitespace}|--(.*)\n", logos::skip)]
+    #[regex(r"\p{Whitespace}", logos::skip)]
+    #[regex(r"--(.*)\n", logos::skip)]
     Error,
 }
 
