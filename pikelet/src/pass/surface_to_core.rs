@@ -7,15 +7,16 @@
 
 use contracts::debug_ensures;
 use crossbeam_channel::Sender;
+use num_traits::{Float, PrimInt, Signed, Unsigned};
 use std::ops::Range;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::lang::core;
 use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, Value};
 use crate::lang::surface::{Literal, Term, TermData};
+use crate::literal;
 use crate::pass::core_to_surface;
-use crate::reporting::{AmbiguousTerm, ExpectedType, InvalidLiteral, SurfaceToCoreMessage};
+use crate::reporting::{AmbiguousTerm, ExpectedType, SurfaceToCoreMessage};
 
 /// The state of the elaborator.
 pub struct State<'me> {
@@ -373,16 +374,16 @@ impl<'me> State<'me> {
 
                 let range = term.range();
                 match (literal, name.as_ref(), spine.as_slice()) {
-                    (Literal::Number(data), "U8", []) => self.parse_number(range, data, U8),
-                    (Literal::Number(data), "U16", []) => self.parse_number(range, data, U16),
-                    (Literal::Number(data), "U32", []) => self.parse_number(range, data, U32),
-                    (Literal::Number(data), "U64", []) => self.parse_number(range, data, U64),
-                    (Literal::Number(data), "S8", []) => self.parse_number(range, data, S8),
-                    (Literal::Number(data), "S16", []) => self.parse_number(range, data, S16),
-                    (Literal::Number(data), "S32", []) => self.parse_number(range, data, S32),
-                    (Literal::Number(data), "S64", []) => self.parse_number(range, data, S64),
-                    (Literal::Number(data), "F32", []) => self.parse_number(range, data, F32),
-                    (Literal::Number(data), "F64", []) => self.parse_number(range, data, F64),
+                    (Literal::Number(data), "U8", []) => self.parse_unsigned(range, data, U8),
+                    (Literal::Number(data), "U16", []) => self.parse_unsigned(range, data, U16),
+                    (Literal::Number(data), "U32", []) => self.parse_unsigned(range, data, U32),
+                    (Literal::Number(data), "U64", []) => self.parse_unsigned(range, data, U64),
+                    (Literal::Number(data), "S8", []) => self.parse_signed(range, data, S8),
+                    (Literal::Number(data), "S16", []) => self.parse_signed(range, data, S16),
+                    (Literal::Number(data), "S32", []) => self.parse_signed(range, data, S32),
+                    (Literal::Number(data), "S64", []) => self.parse_signed(range, data, S64),
+                    (Literal::Number(data), "F32", []) => self.parse_float(range, data, F32),
+                    (Literal::Number(data), "F64", []) => self.parse_float(range, data, F64),
                     (Literal::Char(data), "Char", []) => self.parse_char(range, data),
                     (Literal::String(data), "String", []) => self.parse_string(range, data),
                     (_, _, _) => {
@@ -728,53 +729,63 @@ impl<'me> State<'me> {
         }
     }
 
-    fn parse_number<T: FromStr>(
+    fn parse_float<T: Float + From<u8>>(
         &mut self,
         range: Range<usize>,
         data: &str,
-        f: impl Fn(T) -> core::Constant,
+        make_constant: fn(T) -> core::Constant,
     ) -> core::Term {
-        // TODO: improve parser (eg. numeric separators, positive sign)
-        let term_data = match data.parse() {
-            Ok(value) => core::TermData::from(f(value)),
-            Err(_) => {
-                self.report(SurfaceToCoreMessage::InvalidLiteral {
-                    range: range.clone(),
-                    literal: InvalidLiteral::Number,
-                });
-                core::TermData::Error
-            }
-        };
+        let term_data = literal::State::new(range.clone(), data, &self.message_tx)
+            .number_to_float()
+            .map(make_constant)
+            .map_or(core::TermData::Error, core::TermData::from);
+
         core::Term::new(range, term_data)
     }
 
-    fn parse_char(&mut self, range: Range<usize>, data: &str) -> core::Term {
-        // TODO: Improve parser (escapes)
-        let term_data = match data.chars().nth(1) {
-            Some(value) => core::TermData::from(core::Constant::Char(value)),
-            None => {
-                self.report(SurfaceToCoreMessage::InvalidLiteral {
-                    range: range.clone(),
-                    literal: InvalidLiteral::Char,
-                });
-                core::TermData::Error
-            }
-        };
+    fn parse_unsigned<T: PrimInt + Unsigned>(
+        &mut self,
+        range: Range<usize>,
+        source: &str,
+        make_constant: fn(T) -> core::Constant,
+    ) -> core::Term {
+        let term_data = literal::State::new(range.clone(), source, &self.message_tx)
+            .number_to_unsigned_int()
+            .map(make_constant)
+            .map_or(core::TermData::Error, core::TermData::from);
+
         core::Term::new(range, term_data)
     }
 
-    fn parse_string(&mut self, range: Range<usize>, data: &str) -> core::Term {
-        // TODO: Improve parser (escapes)
-        let term_data = match data.get(1..data.len() - 1) {
-            Some(value) => core::TermData::from(core::Constant::String(value.to_owned())),
-            None => {
-                self.report(SurfaceToCoreMessage::InvalidLiteral {
-                    range: range.clone(),
-                    literal: InvalidLiteral::String,
-                });
-                core::TermData::Error
-            }
-        };
+    fn parse_signed<T: PrimInt + Signed>(
+        &mut self,
+        range: Range<usize>,
+        source: &str,
+        make_constant: fn(T) -> core::Constant,
+    ) -> core::Term {
+        let term_data = literal::State::new(range.clone(), source, &self.message_tx)
+            .number_to_signed_int()
+            .map(make_constant)
+            .map_or(core::TermData::Error, core::TermData::from);
+
+        core::Term::new(range, term_data)
+    }
+
+    fn parse_char(&mut self, range: Range<usize>, source: &str) -> core::Term {
+        let term_data = literal::State::new(range.clone(), source, &self.message_tx)
+            .quoted_to_unicode_char()
+            .map(core::Constant::Char)
+            .map_or(core::TermData::Error, core::TermData::from);
+
+        core::Term::new(range, term_data)
+    }
+
+    fn parse_string(&mut self, range: Range<usize>, source: &str) -> core::Term {
+        let term_data = literal::State::new(range.clone(), source, &self.message_tx)
+            .quoted_to_utf8_string()
+            .map(core::Constant::String)
+            .map_or(core::TermData::Error, core::TermData::from);
+
         core::Term::new(range, term_data)
     }
 }

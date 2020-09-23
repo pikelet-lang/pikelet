@@ -8,12 +8,12 @@ use crate::reporting::LexerError;
 pub enum Token<'a> {
     #[regex(r"\|\|\|(.*)\n")]
     DocComment(&'a str),
-    #[regex(r#"'([^'\\]|\\')*'"#)]
+    #[regex(r#"'([^'\\]|\\.)*'"#)]
     CharLiteral(&'a str),
-    #[regex(r#""([^"\\]|\\")*""#)]
-    StrLiteral(&'a str),
-    #[regex(r"[-+]?[0-9]+(\.[0-9]+)?")]
-    NumLiteral(&'a str),
+    #[regex(r#""([^"\\]|\\.)*""#)] // workaround editor highlighting: "
+    StringLiteral(&'a str),
+    #[regex(r"[-+]?[0-9][a-zA-Z0-9_\.]*")]
+    NumericLiteral(&'a str),
     #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*")]
     Name(&'a str),
     #[regex(r"\^[0-9]+(\.[0-9]+)?")]
@@ -67,8 +67,8 @@ impl<'a> fmt::Display for Token<'a> {
         match self {
             Token::DocComment(s) => write!(f, "{}", s),
             Token::CharLiteral(s) => write!(f, "{}", s),
-            Token::StrLiteral(s) => write!(f, "{}", s),
-            Token::NumLiteral(s) => write!(f, "{}", s),
+            Token::StringLiteral(s) => write!(f, "{}", s),
+            Token::NumericLiteral(s) => write!(f, "{}", s),
             Token::Name(s) => write!(f, "{}", s),
             Token::Shift(s) => write!(f, "{}", s),
 
