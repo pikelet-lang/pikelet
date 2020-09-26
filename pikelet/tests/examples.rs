@@ -15,7 +15,15 @@ fn run_test(path: &str, source: &str) {
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
 
     let file = SimpleFile::new(path, source);
-    let surface_term = surface::Term::from_str(file.source()).unwrap();
+    let surface_term = match surface::Term::from_str(file.source()) {
+        Ok(term) => term,
+        Err(message) => {
+            let diagnostic = message.to_diagnostic(&pretty_alloc);
+            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
+                .unwrap();
+            panic!("parse error");
+        }
+    };
 
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
     let (core_term, r#type) = state.synth_type(&surface_term);
@@ -87,6 +95,14 @@ fn hello_world() {
     run_test(
         "examples/hello-world.pi",
         include_str!("../../examples/hello-world.pi"),
+    );
+}
+
+#[test]
+fn literals() {
+    run_test(
+        "examples/literals.pi",
+        include_str!("../../examples/literals.pi"),
     );
 }
 

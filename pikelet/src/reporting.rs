@@ -6,19 +6,22 @@ use std::ops::Range;
 
 use crate::lang::core;
 use crate::lang::surface;
+use crate::literal;
 
 /// Global diagnostic messages
 #[derive(Clone, Debug)]
 pub enum Message {
-    /// Errors produced during lexing
+    /// Errors produced during lexing.
     Lexer(LexerError),
-    /// Errors produced during parsing
+    /// Errors produced during parsing.
     Parse(ParseError),
-    /// Messages produced from [`lang::core::typing`]
+    /// Messages produced when parsing literals.
+    LiteralParse(LiteralParseMessage),
+    /// Messages produced from [`lang::core::typing`].
     ///
     /// [`lang::core::typing`]: crate::lang::core::typing
     CoreTyping(CoreTypingMessage),
-    /// Messages produced from [`pass::surface_to_core`]
+    /// Messages produced from [`pass::surface_to_core`].
     ///
     /// [`pass::surface_to_core`]: crate::pass::surface_to_core
     SurfaceToCore(SurfaceToCoreMessage),
@@ -33,6 +36,12 @@ impl From<LexerError> for Message {
 impl From<ParseError> for Message {
     fn from(error: ParseError) -> Self {
         Message::Parse(error)
+    }
+}
+
+impl From<LiteralParseMessage> for Message {
+    fn from(message: LiteralParseMessage) -> Self {
+        Message::LiteralParse(message)
     }
 }
 
@@ -88,6 +97,7 @@ impl Message {
         match self {
             Message::Lexer(error) => error.to_diagnostic(),
             Message::Parse(error) => error.to_diagnostic(),
+            Message::LiteralParse(message) => message.to_diagnostic(),
             Message::CoreTyping(message) => message.to_diagnostic(pretty_alloc),
             Message::SurfaceToCore(message) => message.to_diagnostic(pretty_alloc),
         }
@@ -167,18 +177,135 @@ fn format_expected(expected: &[String]) -> Option<String> {
 }
 
 #[derive(Clone, Debug)]
-pub enum InvalidLiteral {
-    Char,
-    String,
-    Number,
+pub enum LiteralParseMessage {
+    ExpectedRadixOrDecimalDigit(Range<usize>),
+    ExpectedStartOfNumericLiteral(Range<usize>),
+    NegativeUnsignedInteger(Range<usize>),
+    ExpectedDigit(Range<usize>, literal::Base),
+    ExpectedDigitOrSeparator(Range<usize>, literal::Base),
+    ExpectedDigitSeparatorOrExp(Range<usize>, literal::Base),
+    ExpectedDigitSeparatorFracOrExp(Range<usize>, literal::Base),
+    FloatLiteralExponentNotSupported(Range<usize>),
+    UnsupportedFloatLiteralBase(Range<usize>, literal::Base),
+    LiteralOutOfRange(Range<usize>),
+    OverlongCharLiteral(Range<usize>),
+    EmptyCharLiteral(Range<usize>),
+    OversizedUnicodeEscapeCode(Range<usize>),
+    EmptyUnicodeEscapeCode(Range<usize>),
+    OverlongUnicodeEscapeCode(Range<usize>),
+    InvalidUnicodeEscapeCode(Range<usize>),
+    InvalidUnicodeEscape(Range<usize>),
+    OversizedAsciiEscapeCode(Range<usize>),
+    InvalidAsciiEscape(Range<usize>),
+    UnknownEscapeSequence(Range<usize>),
+    InvalidToken(Range<usize>),
+    ExpectedEndOfLiteral(Range<usize>),
+    UnexpectedEndOfLiteral(Range<usize>),
 }
 
-impl InvalidLiteral {
-    fn description(&self) -> &'static str {
+impl LiteralParseMessage {
+    pub fn to_diagnostic(&self) -> Diagnostic<()> {
         match self {
-            InvalidLiteral::Char => "character",
-            InvalidLiteral::String => "string",
-            InvalidLiteral::Number => "numeric",
+            LiteralParseMessage::ExpectedRadixOrDecimalDigit(range) => Diagnostic::error()
+                .with_message("expected a radix or decimal digit")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::ExpectedStartOfNumericLiteral(range) => Diagnostic::error()
+                .with_message("expected the start of a numeric literal")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::NegativeUnsignedInteger(range) => Diagnostic::error()
+                .with_message("unsigned integer literals cannot be negative")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::ExpectedDigit(range, base) => Diagnostic::error()
+                .with_message(format!("expected a base {} digit", base.to_u8()))
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::ExpectedDigitOrSeparator(range, base) => Diagnostic::error()
+                .with_message(format!(
+                    "expected a base {} digit or digit separator",
+                    base.to_u8(),
+                ))
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::ExpectedDigitSeparatorOrExp(range, base) => Diagnostic::error()
+                .with_message(format!(
+                    "expected a base {} digit, digit separator, or exponent",
+                    base.to_u8(),
+                ))
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::ExpectedDigitSeparatorFracOrExp(range, base) => {
+                Diagnostic::error()
+                    .with_message(format!(
+                        "expected a base {} digit, digit separator, period, or exponent",
+                        base.to_u8(),
+                    ))
+                    .with_labels(vec![Label::primary((), range.clone())])
+            }
+            LiteralParseMessage::FloatLiteralExponentNotSupported(range) => Diagnostic::error()
+                .with_message("exponents are not yet supported for float literals")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::UnsupportedFloatLiteralBase(range, base) => Diagnostic::error()
+                .with_message(format!(
+                    "base {} float literals are not yet supported",
+                    base.to_u8(),
+                ))
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec![
+                    "only base 10 float literals are currently supported".to_owned()
+                ]),
+            LiteralParseMessage::LiteralOutOfRange(range) => Diagnostic::error()
+                .with_message("literal out of range")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::OverlongCharLiteral(range) => Diagnostic::error()
+                .with_message("too many codepoints in character literal")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec![
+                    "character literals may only contain one codepoint".to_owned()
+                ]),
+            LiteralParseMessage::EmptyCharLiteral(range) => Diagnostic::error()
+                .with_message("empty character literal")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec!["character literals must not be empty".to_owned()]),
+            LiteralParseMessage::OversizedUnicodeEscapeCode(range) => Diagnostic::error()
+                .with_message("unicode escape code exceeds maximum allowed range")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec![format!("must be at most {:X} ", literal::MAX_UNICODE)]),
+            LiteralParseMessage::EmptyUnicodeEscapeCode(range) => Diagnostic::error()
+                .with_message("empty unicode character code")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec!["must contain at least one hex digit".to_owned()]),
+            LiteralParseMessage::OverlongUnicodeEscapeCode(range) => Diagnostic::error()
+                .with_message("too many digits in unicode character code")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec!["must contain at most six hex digits".to_owned()]),
+            LiteralParseMessage::InvalidUnicodeEscapeCode(range) => Diagnostic::error()
+                .with_message("invalid unicode escape code")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec!["must contain only hex digits".to_owned()]),
+            LiteralParseMessage::InvalidUnicodeEscape(range) => Diagnostic::error()
+                .with_message("invalid unicode escape sequence")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec![
+                    "must be followed with a braced sequence of hex digits".to_owned(),
+                    "for example: `\\u{..}`".to_owned(),
+                ]),
+            LiteralParseMessage::OversizedAsciiEscapeCode(range) => Diagnostic::error()
+                .with_message("ACII escape code exceeds maximum allowed range")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec![format!("must be at most {:X} ", literal::MAX_ASCII)]),
+            LiteralParseMessage::InvalidAsciiEscape(range) => Diagnostic::error()
+                .with_message("invalid ASCII escape")
+                .with_labels(vec![Label::primary((), range.clone())])
+                .with_notes(vec!["must contain exactly two hex digits ".to_owned()]),
+            LiteralParseMessage::UnknownEscapeSequence(range) => Diagnostic::error()
+                .with_message("unknown escape sequence")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::InvalidToken(range) => Diagnostic::error()
+                .with_message("invalid token")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::ExpectedEndOfLiteral(range) => Diagnostic::error()
+                .with_message("expected end of literal")
+                .with_labels(vec![Label::primary((), range.clone())]),
+            LiteralParseMessage::UnexpectedEndOfLiteral(range) => Diagnostic::error()
+                .with_message("unexpected end of literal")
+                .with_labels(vec![Label::primary((), range.clone())]),
         }
     }
 }
@@ -394,10 +521,6 @@ pub enum SurfaceToCoreMessage {
         head_type: surface::Term,
         unexpected_input_terms: Vec<Range<usize>>,
     },
-    InvalidLiteral {
-        range: Range<usize>,
-        literal: InvalidLiteral,
-    },
     NoLiteralConversion {
         range: Range<usize>,
         expected_type: surface::Term,
@@ -564,13 +687,6 @@ impl SurfaceToCoreMessage {
                     }))
                     .collect(),
                 ),
-
-            SurfaceToCoreMessage::InvalidLiteral { range, literal } => Diagnostic::error()
-                // TODO: supply expected type information
-                .with_message(format!("invalid {} literal", literal.description()))
-                .with_labels(vec![
-                    Label::primary((), range.clone()).with_message("failed to parse literal")
-                ]),
 
             SurfaceToCoreMessage::NoLiteralConversion {
                 range,

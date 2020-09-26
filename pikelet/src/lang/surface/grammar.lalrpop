@@ -12,8 +12,8 @@ extern {
     enum Token<'input> {
         "doc comment" => Token::DocComment(<&'input str>),
         "character literal" => Token::CharLiteral(<&'input str>),
-        "string literal" => Token::StrLiteral(<&'input str>),
-        "numeric literal" => Token::NumLiteral(<&'input  str>),
+        "string literal" => Token::StringLiteral(<&'input str>),
+        "numeric literal" => Token::NumericLiteral(<&'input  str>),
         "name" => Token::Name(<&'input str>),
         "shift" => Token::Shift(<&'input str>),
 

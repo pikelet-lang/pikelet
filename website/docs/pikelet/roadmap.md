@@ -34,7 +34,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [x] Dynamically sized arrays
   - [x] Fixed sized arrays
 - Basic programming language
-  - [ ] Improved literal parsing
+  - [x] Improved literal parsing
   - [x] Annotated terms
   - [ ] Let expressions
   - [x] Record field lookups
