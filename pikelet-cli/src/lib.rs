@@ -4,7 +4,6 @@ pub mod repl;
 
 /// The Pikelet command line interface.
 #[derive(structopt::StructOpt)]
-#[structopt(name = "mltt")]
 pub enum Options {
     /// Type check some files (not yet implemented).
     #[structopt(name = "check")]
