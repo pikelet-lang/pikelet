@@ -70,7 +70,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
 
     let globals = core::Globals::default();
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
-    let mut state = surface_to_core::State::new(&globals, messages_tx);
+    let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
 
     loop {
         let file = match editor.readline(&options.prompt) {
@@ -88,18 +88,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         }
 
         // TODO: Parse REPL commands
-        let surface_term = match surface::Term::from_str(file.source()) {
-            Ok(surface_term) => surface_term,
-            Err(error) => {
-                codespan_reporting::term::emit(
-                    &mut writer.lock(),
-                    &reporting_config,
-                    &file,
-                    &error.to_diagnostic(&pretty_alloc),
-                )?;
-                continue;
-            }
-        };
+        let surface_term = surface::Term::from_str(file.source(), &messages_tx);
 
         let (core_term, r#type) = state.synth_type(&surface_term);
         if !messages_rx.is_empty() {

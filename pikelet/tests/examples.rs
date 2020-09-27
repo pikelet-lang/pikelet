@@ -15,21 +15,23 @@ fn run_test(path: &str, source: &str) {
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
 
     let file = SimpleFile::new(path, source);
-    let surface_term = match surface::Term::from_str(file.source()) {
-        Ok(term) => term,
-        Err(message) => {
+    let surface_term = surface::Term::from_str(file.source(), &messages_tx);
+    if !messages_rx.is_empty() {
+        is_failed = true;
+        eprintln!("surface::Term::from_str messages:");
+        for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
                 .unwrap();
-            panic!("parse error");
         }
-    };
+        eprintln!();
+    }
 
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
     let (core_term, r#type) = state.synth_type(&surface_term);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("surface_to_core::synth_type messages:");
+        eprintln!("surface_to_core::State::synth_type messages:");
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
@@ -43,7 +45,7 @@ fn run_test(path: &str, source: &str) {
     state.synth_type(&core_term);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("core::typing::synth_term messages:");
+        eprintln!("core::typing::State::synth_term messages:");
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
@@ -55,7 +57,7 @@ fn run_test(path: &str, source: &str) {
     state.check_type(&core_term, &r#type);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("core::typing::check_term messages:");
+        eprintln!("core::typing::State::check_term messages:");
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)

@@ -2,6 +2,8 @@
 //!
 //! This is a user-friendly concrete syntax for the language.
 
+use crossbeam_channel::Sender;
+
 use crate::lang::Ranged;
 use crate::reporting::Message;
 
@@ -83,10 +85,13 @@ pub enum TermData {
 impl<'input> Term {
     /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(input: &str) -> Result<Term, Message> {
+    pub fn from_str(input: &str, messages_tx: &Sender<Message>) -> Term {
         let tokens = lexer::tokens(input);
         grammar::TermParser::new()
             .parse(tokens)
-            .map_err(Message::from_lalrpop)
+            .unwrap_or_else(|error| {
+                messages_tx.send(Message::from_lalrpop(error)).unwrap();
+                Term::from(TermData::Error)
+            })
     }
 }

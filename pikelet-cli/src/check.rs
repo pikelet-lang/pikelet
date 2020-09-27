@@ -35,17 +35,11 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         let source = std::fs::read_to_string(file_name)?;
         let file = SimpleFile::new(file_name.display().to_string(), source);
 
-        let surface_term = match surface::Term::from_str(file.source()) {
-            Ok(surface_term) => surface_term,
-            Err(error) => {
-                messages_tx.send(error.into()).unwrap();
-                surface::Term::from(surface::TermData::Error)
-            }
-        };
+        let surface_term = surface::Term::from_str(file.source(), &messages_tx);
 
-        let (term, _) = surface_to_core.synth_type(&surface_term);
+        let (core_term, _) = surface_to_core.synth_type(&surface_term);
         if let Some(core_typing) = &mut core_typing {
-            let _ = core_typing.synth_type(&term);
+            let _ = core_typing.synth_type(&core_term);
         }
 
         for message in messages_rx.try_iter() {
