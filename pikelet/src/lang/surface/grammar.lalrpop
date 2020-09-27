@@ -40,10 +40,10 @@ extern {
 }
 
 pub Term: Term = Ranged<TermData>;
-ArrowTerm: Term = Ranged<ArrowTermData>;
-ExprTerm: Term = Ranged<ExprTermData>;
-AppTerm: Term = Ranged<AppTermData>;
-AtomicTerm: Term = Ranged<AtomicTermData>;
+#[inline] ArrowTerm: Term = Ranged<ArrowTermData>;
+#[inline] ExprTerm: Term = Ranged<ExprTermData>;
+#[inline] AppTerm: Term = Ranged<AppTermData>;
+#[inline] AtomicTerm: Term = Ranged<AtomicTermData>;
 
 TermData: TermData = {
     ExprTermData,
@@ -89,6 +89,7 @@ AtomicTermData: TermData = {
     <literal: Literal> => TermData::Literal(literal),
 };
 
+#[inline]
 List<Entry>: Vec<Entry> = {
     <mut entries: (<Entry> ",")*> <last: Entry?> => {
         entries.extend(last);
@@ -96,27 +97,32 @@ List<Entry>: Vec<Entry> = {
     }
 }
 
+#[inline]
 TypeEntry: TypeEntry = {
     // TODO: Use doc comments
     <_docs: "doc comment"*>
     <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name.to_owned(), term),
 };
 
+#[inline]
 TermEntry: TermEntry = {
     // TODO: Use doc comments
     <_docs: "doc comment"*> <label: Ranged<Name>> "=" <term: Term> => (label.to_owned(), term),
 };
 
+#[inline]
 Name: String = {
     "name" => (<>).to_owned(),
 };
 
+#[inline]
 Literal: Literal = {
     "character literal" => Literal::Char(<>.to_owned()),
     "string literal" => Literal::String(<>.to_owned()),
     "numeric literal" => Literal::Number(<>.to_owned()),
 };
 
+#[inline]
 Ranged<T>: Ranged<T> = {
     <start: @L> <data: T> <end: @R> => Ranged::new(start..end, data),
 };
