@@ -17,7 +17,7 @@ use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, 
 use crate::lang::core::{
     Constant, Globals, LocalLevel, Locals, Term, TermData, UniverseLevel, UniverseOffset,
 };
-use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType};
+use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
 /// The state of the type checker.
 pub struct State<'me> {
@@ -30,12 +30,12 @@ pub struct State<'me> {
     /// Local value environment (used for evaluation).
     values: Locals<Arc<Value>>,
     /// The diagnostic messages accumulated during type checking.
-    message_tx: Sender<crate::reporting::Message>,
+    message_tx: Sender<Message>,
 }
 
 impl<'me> State<'me> {
     /// Construct a new type checker state.
-    pub fn new(globals: &'me Globals, message_tx: Sender<crate::reporting::Message>) -> State<'me> {
+    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> State<'me> {
         State {
             globals,
             universe_offset: UniverseOffset(0),

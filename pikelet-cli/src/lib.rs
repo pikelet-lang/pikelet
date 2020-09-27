@@ -1,14 +1,12 @@
-use anyhow::anyhow;
-
+pub mod check;
 pub mod repl;
 
 /// The Pikelet command line interface.
 #[derive(structopt::StructOpt)]
-#[structopt(name = "mltt")]
 pub enum Options {
-    /// Type check some files (not yet implemented).
+    /// Check some Pikelet source files.
     #[structopt(name = "check")]
-    Check,
+    Check(check::Options),
     /// Runs the structured editor.
     #[cfg(feature = "editor")]
     #[structopt(name = "editor")]
@@ -25,13 +23,21 @@ pub enum Options {
 /// Run the CLI with the given options
 pub fn run(options: Options) -> anyhow::Result<()> {
     match options {
-        Options::Check => return Err(anyhow!("not yet implemented")),
+        Options::Check(options) => check::run(options),
         #[cfg(feature = "editor")]
-        Options::Editor => pikelet_editor::run(),
+        Options::Editor => {
+            pikelet_editor::run();
+            Ok(())
+        }
         #[cfg(feature = "language-server")]
-        Options::LanguageServer => pikelet_language_server::run()?,
-        Options::Repl(options) => repl::run(options)?,
+        Options::LanguageServer => pikelet_language_server::run(),
+        Options::Repl(options) => repl::run(options),
     }
+}
 
-    Ok(())
+fn term_width() -> usize {
+    match term_size::dimensions() {
+        Some((width, _)) => width,
+        None => std::usize::MAX,
+    }
 }
