@@ -1,3 +1,8 @@
+use codespan_reporting::files::SimpleFile;
+use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use pikelet::lang::{core, surface};
+use pikelet::pass::{surface_to_core, surface_to_pretty};
+use rustyline::error::ReadlineError;
 use std::sync::Arc;
 
 const HISTORY_FILE_NAME: &str = "history";
@@ -38,29 +43,14 @@ fn print_welcome_banner() {
     }
 }
 
-fn term_width() -> usize {
-    match term_size::dimensions() {
-        Some((width, _)) => width,
-        None => std::usize::MAX,
-    }
-}
-
-/// Run the REPL with the given options.
 pub fn run(options: Options) -> anyhow::Result<()> {
-    use codespan_reporting::files::SimpleFile;
-    use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
-    use pikelet::lang::{core, surface};
-    use pikelet::pass::{surface_to_core, surface_to_pretty};
-    use rustyline::error::ReadlineError;
-    use rustyline::{Config, Editor};
-
     let mut editor = {
-        let config = Config::builder()
+        let config = rustyline::Config::builder()
             .history_ignore_space(true)
             .history_ignore_dups(true)
             .build();
 
-        Editor::<()>::with_config(config)
+        rustyline::Editor::<()>::with_config(config)
     };
 
     if !options.no_banner {
@@ -129,7 +119,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
             let term = state.core_to_surface_term(&ann_term);
             let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
 
-            println!("{}", doc.1.pretty(term_width()));
+            println!("{}", doc.1.pretty(crate::term_width()));
         }
     }
 
