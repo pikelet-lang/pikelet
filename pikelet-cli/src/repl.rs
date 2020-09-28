@@ -1,3 +1,4 @@
+use codespan_reporting::diagnostic::Severity;
 use codespan_reporting::files::SimpleFile;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use pikelet::lang::{core, surface};
@@ -89,18 +90,22 @@ pub fn run(options: Options) -> anyhow::Result<()> {
 
         // TODO: Parse REPL commands
         let surface_term = surface::Term::from_str(file.source(), &messages_tx);
-
         let (core_term, r#type) = state.synth_type(&surface_term);
-        if !messages_rx.is_empty() {
-            for message in messages_rx.try_iter() {
-                codespan_reporting::term::emit(
-                    &mut writer.lock(),
-                    &reporting_config,
-                    &file,
-                    &message.to_diagnostic(&pretty_alloc),
-                )?;
-            }
-        } else {
+
+        let mut is_ok = true;
+        for message in messages_rx.try_iter() {
+            let diagnostic = message.to_diagnostic(&pretty_alloc);
+            is_ok &= diagnostic.severity < Severity::Error;
+
+            codespan_reporting::term::emit(
+                &mut writer.lock(),
+                &reporting_config,
+                &file,
+                &diagnostic,
+            )?;
+        }
+
+        if is_ok {
             let ann_term = core::Term::from(core::TermData::Ann(
                 Arc::new(state.normalize_term(&core_term)),
                 Arc::new(state.read_back_value(&r#type)),
