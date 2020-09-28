@@ -73,14 +73,14 @@ pub fn run(options: Options) -> anyhow::Result<()> {
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
 
-    loop {
+    'repl: loop {
         let file = match editor.readline(&options.prompt) {
             Ok(line) => SimpleFile::new("<input>", line),
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted!");
-                continue;
+                continue 'repl;
             }
-            Err(ReadlineError::Eof) => break,
+            Err(ReadlineError::Eof) => break 'repl,
             Err(error) => return Err(error.into()),
         };
 
