@@ -1,9 +1,10 @@
 use codespan_reporting::diagnostic::Severity;
 use codespan_reporting::files::SimpleFile;
-use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
 use pikelet::lang::{core, surface};
 use pikelet::pass::{surface_to_core, surface_to_pretty};
 use rustyline::error::ReadlineError;
+use std::io::Write;
 use std::sync::Arc;
 
 const HISTORY_FILE_NAME: &str = "history";
@@ -66,7 +67,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
     }
 
     let pretty_alloc = pretty::BoxAllocator;
-    let writer = StandardStream::stderr(ColorChoice::Always);
+    let mut writer = BufferedStandardStream::stderr(ColorChoice::Always);
     let reporting_config = codespan_reporting::term::Config::default();
 
     let globals = core::Globals::default();
@@ -97,12 +98,8 @@ pub fn run(options: Options) -> anyhow::Result<()> {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             is_ok &= diagnostic.severity < Severity::Error;
 
-            codespan_reporting::term::emit(
-                &mut writer.lock(),
-                &reporting_config,
-                &file,
-                &diagnostic,
-            )?;
+            codespan_reporting::term::emit(&mut writer, &reporting_config, &file, &diagnostic)?;
+            writer.flush()?;
         }
 
         if is_ok {
