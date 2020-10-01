@@ -1,8 +1,10 @@
+use codespan_reporting::diagnostic::Severity;
 use codespan_reporting::files::SimpleFile;
-use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
 use pikelet::lang::{core, surface};
 use pikelet::pass::{surface_to_core, surface_to_pretty};
 use rustyline::error::ReadlineError;
+use std::io::Write;
 use std::sync::Arc;
 
 const HISTORY_FILE_NAME: &str = "history";
@@ -65,21 +67,21 @@ pub fn run(options: Options) -> anyhow::Result<()> {
     }
 
     let pretty_alloc = pretty::BoxAllocator;
-    let writer = StandardStream::stderr(ColorChoice::Always);
+    let mut writer = BufferedStandardStream::stderr(ColorChoice::Always);
     let reporting_config = codespan_reporting::term::Config::default();
 
     let globals = core::Globals::default();
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
 
-    loop {
+    'repl: loop {
         let file = match editor.readline(&options.prompt) {
             Ok(line) => SimpleFile::new("<input>", line),
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted!");
-                continue;
+                continue 'repl;
             }
-            Err(ReadlineError::Eof) => break,
+            Err(ReadlineError::Eof) => break 'repl,
             Err(error) => return Err(error.into()),
         };
 
@@ -89,18 +91,18 @@ pub fn run(options: Options) -> anyhow::Result<()> {
 
         // TODO: Parse REPL commands
         let surface_term = surface::Term::from_str(file.source(), &messages_tx);
-
         let (core_term, r#type) = state.synth_type(&surface_term);
-        if !messages_rx.is_empty() {
-            for message in messages_rx.try_iter() {
-                codespan_reporting::term::emit(
-                    &mut writer.lock(),
-                    &reporting_config,
-                    &file,
-                    &message.to_diagnostic(&pretty_alloc),
-                )?;
-            }
-        } else {
+
+        let mut is_ok = true;
+        for message in messages_rx.try_iter() {
+            let diagnostic = message.to_diagnostic(&pretty_alloc);
+            is_ok &= diagnostic.severity < Severity::Error;
+
+            codespan_reporting::term::emit(&mut writer, &reporting_config, &file, &diagnostic)?;
+            writer.flush()?;
+        }
+
+        if is_ok {
             let ann_term = core::Term::from(core::TermData::Ann(
                 Arc::new(state.normalize_term(&core_term)),
                 Arc::new(state.read_back_value(&r#type)),

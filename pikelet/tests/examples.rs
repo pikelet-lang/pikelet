@@ -1,14 +1,15 @@
 //! Integration tests against the language samples directory.
 
 use codespan_reporting::files::SimpleFile;
-use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
 use pikelet::lang::{core, surface};
 use pikelet::pass::surface_to_core;
+use std::io::Write;
 
-fn run_test(path: &str, source: &str) {
+fn run_test(path: &str, source: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut is_failed = false;
 
-    let writer = StandardStream::stdout(ColorChoice::Always);
+    let mut writer = BufferedStandardStream::stdout(ColorChoice::Always);
     let globals = core::Globals::default();
     let pretty_alloc = pretty::BoxAllocator;
     let config = codespan_reporting::term::Config::default();
@@ -18,26 +19,26 @@ fn run_test(path: &str, source: &str) {
     let surface_term = surface::Term::from_str(file.source(), &messages_tx);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("surface::Term::from_str messages:");
+        writeln!(writer, "surface::Term::from_str messages:")?;
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
-            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
-                .unwrap();
+            codespan_reporting::term::emit(&mut writer, &config, &file, &diagnostic)?;
+            writer.flush()?;
         }
-        eprintln!();
+        writeln!(writer)?;
     }
 
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
     let (core_term, r#type) = state.synth_type(&surface_term);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("surface_to_core::State::synth_type messages:");
+        writeln!(writer, "surface_to_core::State::synth_type messages:")?;
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
-            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
-                .unwrap();
+            codespan_reporting::term::emit(&mut writer, &config, &file, &diagnostic)?;
+            writer.flush()?;
         }
-        eprintln!();
+        writeln!(writer)?;
     }
 
     let mut state = core::typing::State::new(&globals, messages_tx.clone());
@@ -45,97 +46,52 @@ fn run_test(path: &str, source: &str) {
     state.synth_type(&core_term);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("core::typing::State::synth_term messages:");
+        writeln!(writer, "core::typing::State::synth_term messages:")?;
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
-            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
-                .unwrap();
+            codespan_reporting::term::emit(&mut writer, &config, &file, &diagnostic)?;
+            writer.flush()?;
         }
-        eprintln!();
+        writeln!(writer)?;
     }
 
     state.check_type(&core_term, &r#type);
     if !messages_rx.is_empty() {
         is_failed = true;
-        eprintln!("core::typing::State::check_term messages:");
+        writeln!(writer, "core::typing::State::check_term messages:")?;
         for message in messages_rx.try_iter() {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
-            codespan_reporting::term::emit(&mut writer.lock(), &config, &file, &diagnostic)
-                .unwrap();
+            codespan_reporting::term::emit(&mut writer, &config, &file, &diagnostic)?;
+            writer.flush()?;
         }
-        eprintln!();
+        writeln!(writer)?;
     }
 
     if is_failed {
-        panic!("failed sample");
+        Err("failed sample".into())
+    } else {
+        Ok(())
     }
 }
 
-#[test]
-fn comments() {
-    run_test(
-        "examples/comments.pi",
-        include_str!("../../examples/comments.pi"),
-    );
+macro_rules! example_test {
+    ($test_name:ident, $path:literal) => {
+        #[test]
+        fn $test_name() -> Result<(), Box<dyn std::error::Error>> {
+            run_test(
+                concat!("examples/", $path, ".pi"),
+                include_str!(concat!("../../examples/", $path, ".pi")),
+            )
+        }
+    };
 }
 
-#[test]
-fn cube() {
-    run_test("examples/cube.pi", include_str!("../../examples/cube.pi"));
-}
-
-#[test]
-fn functions() {
-    run_test(
-        "examples/functions.pi",
-        include_str!("../../examples/functions.pi"),
-    );
-}
-
-#[test]
-fn hello_world() {
-    run_test(
-        "examples/hello-world.pi",
-        include_str!("../../examples/hello-world.pi"),
-    );
-}
-
-#[test]
-fn literals() {
-    run_test(
-        "examples/literals.pi",
-        include_str!("../../examples/literals.pi"),
-    );
-}
-
-#[test]
-fn module() {
-    run_test(
-        "examples/module.pi",
-        include_str!("../../examples/module.pi"),
-    );
-}
-
-#[test]
-fn prelude() {
-    run_test(
-        "examples/prelude.pi",
-        include_str!("../../examples/prelude.pi"),
-    );
-}
-
-#[test]
-fn universes() {
-    run_test(
-        "examples/universes.pi",
-        include_str!("../../examples/universes.pi"),
-    );
-}
-
-#[test]
-fn window_settings() {
-    run_test(
-        "examples/window-settings.pi",
-        include_str!("../../examples/window-settings.pi"),
-    );
-}
+example_test!(comments, "comments");
+example_test!(cube, "cube");
+example_test!(functions, "functions");
+example_test!(hello_world, "hello-world");
+example_test!(literals, "literals");
+example_test!(module, "module");
+example_test!(prelude, "prelude");
+example_test!(universes, "universes");
+example_test!(window_settings, "window-settings");
