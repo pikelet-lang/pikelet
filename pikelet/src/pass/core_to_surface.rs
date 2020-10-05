@@ -153,14 +153,12 @@ impl<'me> State<'me> {
             TermData::FunctionType(input_name_hint, input_type, output_type) => {
                 // FIXME: properly group inputs!
                 let input_type = self.from_term(input_type);
-                let fresh_input_name =
-                    self.push_name(input_name_hint.as_ref().map(|name| name.as_str()));
+                let fresh_input_name = self.push_name(input_name_hint.as_ref().map(String::as_str));
                 let input_type_groups = vec![(vec![Ranged::from(fresh_input_name)], input_type)];
+                let output_type = self.from_term(output_type);
+                self.pop_many_names(input_type_groups.iter().map(|(ns, _)| ns.len()).sum());
 
-                surface::TermData::FunctionType(
-                    input_type_groups,
-                    Box::new(self.from_term(output_type)),
-                )
+                surface::TermData::FunctionType(input_type_groups, Box::new(output_type))
             }
             TermData::FunctionTerm(input_name_hint, output_term) => {
                 let mut current_output_term = output_term;
@@ -206,7 +204,8 @@ impl<'me> State<'me> {
                             name => (Ranged::from(label), Some(Ranged::from(name)), r#type),
                         }
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
+                self.pop_many_names(core_type_entries.len());
 
                 surface::TermData::RecordType(core_type_entries)
             }
@@ -218,7 +217,6 @@ impl<'me> State<'me> {
                         (Ranged::from(entry_name), self.from_term(entry_term))
                     })
                     .collect();
-                self.pop_many_names(term_entries.len());
 
                 surface::TermData::RecordTerm(core_term_entries)
             }
