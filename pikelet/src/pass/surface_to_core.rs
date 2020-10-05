@@ -61,7 +61,7 @@ impl<'me> State<'me> {
             Some(n) => n == name,
             None => false,
         })?;
-        let index = self.values.size().index(*level);
+        let index = self.values.size().index(*level).unwrap(); // TODO: Handle overflow
         let ty = self.types.get(index)?;
         Some((index, ty))
     }

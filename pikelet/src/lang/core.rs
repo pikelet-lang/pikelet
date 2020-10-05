@@ -236,13 +236,13 @@ impl LocalSize {
     }
 
     /// Convert a variable level to a variable index in the current environment.
-    pub fn index(self, level: LocalLevel) -> LocalIndex {
-        LocalIndex(self.0 - (level.0 + 1)) // FIXME: Check for over/underflow?
+    pub fn index(self, level: LocalLevel) -> Option<LocalIndex> {
+        Some(LocalIndex(u32::checked_sub(self.0, level.0 + 1)?))
     }
 
     /// Convert a variable index to a variable level in the current environment.
-    pub fn level(self, index: LocalIndex) -> LocalLevel {
-        LocalLevel(self.0 - (index.0 + 1)) // FIXME: Check for over/underflow?
+    pub fn level(self, index: LocalIndex) -> Option<LocalLevel> {
+        Some(LocalLevel(u32::checked_sub(self.0, index.0 + 1)?))
     }
 }
 
