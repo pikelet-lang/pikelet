@@ -217,9 +217,29 @@ impl Default for Globals {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LocalIndex(pub u32);
 
+impl LocalIndex {
+    /// Convert a local index to a local level in the current environment.
+    ///
+    /// `None` is returned if the local environment is not large enough to
+    /// contain the local variable.
+    pub fn to_level(self, size: LocalSize) -> Option<LocalLevel> {
+        Some(LocalLevel(u32::checked_sub(size.0, self.0 + 1)?))
+    }
+}
+
 /// A De Bruijn level into the local environment.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LocalLevel(u32);
+
+impl LocalLevel {
+    /// Convert a local level to a local index in the current environment.
+    ///
+    /// `None` is returned if the local environment is not large enough to
+    /// contain the local variable.
+    pub fn to_index(self, size: LocalSize) -> Option<LocalIndex> {
+        Some(LocalIndex(u32::checked_sub(size.0, self.0 + 1)?))
+    }
+}
 
 /// The size of the local environment, used for index-to-level conversions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -233,16 +253,6 @@ impl LocalSize {
     /// Return the level of the next variable to be added to the environment.
     pub fn next_level(self) -> LocalLevel {
         LocalLevel(self.0)
-    }
-
-    /// Convert a variable level to a variable index in the current environment.
-    pub fn index(self, level: LocalLevel) -> LocalIndex {
-        LocalIndex(self.0 - (level.0 + 1)) // FIXME: Check for over/underflow?
-    }
-
-    /// Convert a variable index to a variable level in the current environment.
-    pub fn level(self, index: LocalIndex) -> LocalLevel {
-        LocalLevel(self.0 - (index.0 + 1)) // FIXME: Check for over/underflow?
     }
 }
 

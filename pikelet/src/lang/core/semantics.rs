@@ -293,7 +293,7 @@ pub fn eval_term(
             }
         }
         TermData::Local(index) => {
-            let head = Head::Local(values.size().level(*index));
+            let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
             match values.get(*index) {
                 Some(value) => {
                     let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
@@ -453,12 +453,17 @@ fn read_back_spine(
     spine: &[Elim],
 ) -> Term {
     let head = match head {
-        Head::Global(name, UniverseOffset(0)) => Term::from(TermData::Global(name.clone())),
-        Head::Global(name, shift) => Term::from(TermData::Lift(
-            Arc::new(Term::from(TermData::Global(name.clone()))),
-            *shift,
-        )),
-        Head::Local(level) => Term::from(TermData::Local(local_size.index(*level))),
+        Head::Global(name, shift) => {
+            let global = Term::from(TermData::Global(name.clone()));
+            match shift {
+                UniverseOffset(0) => global,
+                shift => Term::from(TermData::Lift(Arc::new(global), *shift)),
+            }
+        }
+        Head::Local(level) => {
+            let index = level.to_index(local_size).unwrap();
+            Term::from(TermData::Local(index)) // TODO: Handle overflow
+        }
     };
 
     spine.iter().fold(head, |head, elim| match elim {
