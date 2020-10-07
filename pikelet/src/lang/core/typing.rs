@@ -13,7 +13,7 @@ use contracts::debug_ensures;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 
-use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, Value};
+use crate::lang::core::semantics::{self, Elim, Head, RecordClosure, Unfold, Value};
 use crate::lang::core::{
     Constant, Globals, LocalLevel, Locals, Term, TermData, UniverseLevel, UniverseOffset,
 };
@@ -93,7 +93,7 @@ impl<'me> State<'me> {
         &self,
         head_value: Arc<Value>,
         name: &str,
-        closure: &RecordTypeClosure,
+        closure: &RecordClosure,
     ) -> Option<Arc<Value>> {
         semantics::record_elim_type(self.globals, head_value, name, closure)
     }
@@ -153,27 +153,34 @@ impl<'me> State<'me> {
             }
 
             (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
+                let mut pending_term_entries = term_entries.iter();
                 let mut missing_labels = Vec::new();
+                let mut unexpected_labels = Vec::new();
+                let mut term_entry_count = 0;
 
-                let mut pending_term_entries = term_entries.clone();
+                closure.for_each_entry(self.globals, |label, entry_type| loop {
+                    match pending_term_entries.next() {
+                        Some((next_label, entry_term)) if next_label == label => {
+                            self.check_type(&entry_term, &entry_type);
+                            let entry_value = self.eval_term(&entry_term);
 
-                closure.entries(self.globals, |label, r#type| {
-                    match pending_term_entries.remove(label) {
-                        Some(entry_term) => {
-                            self.check_type(&entry_term, &r#type);
-                            self.eval_term(&entry_term)
+                            self.push_local(entry_value.clone(), entry_type);
+                            term_entry_count += 1;
+
+                            break entry_value;
                         }
+                        Some((next_label, _)) => unexpected_labels.push(next_label.to_owned()),
                         None => {
                             missing_labels.push(label.to_owned());
-                            Arc::new(Value::Error)
+                            break Arc::new(Value::Error);
                         }
                     }
                 });
 
-                if !missing_labels.is_empty() && !pending_term_entries.is_empty() {
-                    let unexpected_labels = (pending_term_entries.into_iter())
-                        .map(|(label, _)| label)
-                        .collect();
+                self.pop_many_locals(term_entry_count);
+                unexpected_labels.extend(pending_term_entries.map(|(label, _)| label.clone()));
+
+                if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
                     self.report(CoreTypingMessage::InvalidRecordTerm {
                         missing_labels,
                         unexpected_labels,
@@ -318,7 +325,7 @@ impl<'me> State<'me> {
 
             TermData::RecordTerm(term_entries) => {
                 if term_entries.is_empty() {
-                    Arc::from(Value::RecordType(RecordTypeClosure::new(
+                    Arc::from(Value::RecordType(RecordClosure::new(
                         self.universe_offset,
                         self.values.clone(),
                         Arc::new([]),

@@ -28,7 +28,7 @@ pub enum Literal {
 /// Entry in a [record type](Term::RecordType).
 pub type TypeEntry = (Ranged<String>, Option<Ranged<String>>, Term);
 /// Entry in a [record term](Term::RecordTerm).
-pub type TermEntry = (Ranged<String>, Term);
+pub type TermEntry = (Ranged<String>, Option<Ranged<String>>, Term);
 /// A group of function inputs that are elements of the same type.
 pub type InputGroup = (Vec<Ranged<String>>, Term);
 

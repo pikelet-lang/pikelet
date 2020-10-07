@@ -101,13 +101,14 @@ List<Entry>: Vec<Entry> = {
 TypeEntry: TypeEntry = {
     // TODO: Use doc comments
     <_docs: "doc comment"*>
-    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name.to_owned(), term),
+    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name, term),
 };
 
 #[inline]
 TermEntry: TermEntry = {
     // TODO: Use doc comments
-    <_docs: "doc comment"*> <label: Ranged<Name>> "=" <term: Term> => (label.to_owned(), term),
+    <_docs: "doc comment"*>
+    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> "=" <term: Term> => (label, name, term),
 };
 
 #[inline]

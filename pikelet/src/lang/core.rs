@@ -126,7 +126,7 @@ pub enum TermData {
     /// Record types.
     RecordType(Arc<[(String, Arc<Term>)]>),
     /// Record terms.
-    RecordTerm(BTreeMap<String, Arc<Term>>),
+    RecordTerm(Arc<[(String, Arc<Term>)]>),
     /// Record eliminations.
     ///
     /// Also known as: record projection, field lookup.

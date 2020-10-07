@@ -2,12 +2,22 @@
 record {
     id = fun A a => a,
     always = fun A B a b => a,
-    compose = fun A B C a-b b-c a => b-c (a-b a),
+
     dep-compose = fun A B C a-b a-b-c a => a-b-c a (a-b a),
-    flip = fun A B C a-b-c a b => a-b-c b a,
+    compose = fun A B C a-b b-c a => b-c (a-b a),
+    -- FIXME: Variable binding bug
+    -- compose = fun A B C => dep-compose A (fun a => B) (fun a b => C),
+    -- compose = fun A B C => dep-compose A (always B) (always (always C)),
+
     dep-flip = fun A B C a-b-c b a => a-b-c a b,
-    subst = fun A B C a-b-c a-b a => a-b-c a (a-b a),
+    flip = fun A B C => dep-flip A B (fun a b => C),
+    -- FIXME: Variable binding bug
+    -- flip = fun A B C => dep-flip A B (always (always C)),
+
     dep-subst = fun A B C a-b-c a-b a => a-b-c a (a-b a),
+    subst = fun A B C => dep-subst A (fun a => B) (fun a b => C),
+    -- FIXME: Variable binding bug
+    -- subst = fun A B C => dep-subst A (always B) (always (always C)),
 
     Unit = Record {},
     unit = record {},
@@ -48,8 +58,6 @@ record {
     ||| Creates a function that always returns the same value.
     always : Fun (A B : Type) -> A -> B -> A,
 
-    ||| Function composition.
-    compose : Fun (A B C : Type) -> (A -> B) -> (B -> C) -> (A -> C),
 
     ||| Dependent function composition.
     dep-compose :
@@ -60,8 +68,9 @@ record {
             (a-b-c : Fun (a : A) (b : B a) -> C a b)
             -> (Fun (a : A) -> C a (a-b a)),
 
-    ||| Flip the order of the first two inputs to a function
-    flip : Fun (A B C : Type) -> (A -> B -> C) -> (B -> A -> C),
+    ||| Function composition.
+    compose : Fun (A B C : Type) -> (A -> B) -> (B -> C) -> (A -> C),
+
 
     ||| Flip the order of the first two inputs to a dependent function.
     dep-flip :
@@ -70,8 +79,9 @@ record {
             (a-b-c : Fun (a : A) (b : B) -> C a b)
             -> (Fun (b : B) (a : A) -> C a b),
 
-    ||| Substitution.
-    subst : Fun (A B C : Type) -> (A -> B -> C) -> (A -> B) -> (A -> C),
+    ||| Flip the order of the first two inputs to a function
+    flip : Fun (A B C : Type) -> (A -> B -> C) -> (B -> A -> C),
+
 
     ||| Dependent substitution.
     |||
@@ -94,6 +104,9 @@ record {
             (a-b-c : Fun (a : A) (b : B a) -> C a b)
             (a-b : Fun (a : A) -> B a)
             -> (Fun (a : A) -> C a (a-b a)),
+
+    ||| Substitution.
+    subst : Fun (A B C : Type) -> (A -> B -> C) -> (A -> B) -> (A -> C),
 
 
     ||| The unit type

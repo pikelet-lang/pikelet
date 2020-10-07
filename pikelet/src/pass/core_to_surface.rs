@@ -194,31 +194,36 @@ impl<'me> State<'me> {
             }
 
             TermData::RecordType(type_entries) => {
-                let core_type_entries = type_entries
+                let type_entries = type_entries
                     .iter()
-                    .map(|(label, r#type)| {
-                        let r#type = self.from_term(r#type);
+                    .map(|(label, entry_type)| {
+                        let entry_type = self.from_term(entry_type);
                         let label = label.clone();
                         match self.push_name(Some(&label)) {
-                            name if name == label => (Ranged::from(label), None, r#type),
-                            name => (Ranged::from(label), Some(Ranged::from(name)), r#type),
+                            name if name == label => (Ranged::from(label), None, entry_type),
+                            name => (Ranged::from(label), Some(Ranged::from(name)), entry_type),
                         }
                     })
                     .collect::<Vec<_>>();
-                self.pop_many_names(core_type_entries.len());
+                self.pop_many_names(type_entries.len());
 
-                surface::TermData::RecordType(core_type_entries)
+                surface::TermData::RecordType(type_entries)
             }
             TermData::RecordTerm(term_entries) => {
-                let core_term_entries = term_entries
+                let term_entries = term_entries
                     .iter()
-                    .map(|(entry_name, entry_term)| {
-                        let entry_name = entry_name.clone();
-                        (Ranged::from(entry_name), self.from_term(entry_term))
+                    .map(|(label, entry_type)| {
+                        let entry_type = self.from_term(entry_type);
+                        let label = label.clone();
+                        match self.push_name(Some(&label)) {
+                            name if name == label => (Ranged::from(label), None, entry_type),
+                            name => (Ranged::from(label), Some(Ranged::from(name)), entry_type),
+                        }
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
+                self.pop_many_names(term_entries.len());
 
-                surface::TermData::RecordTerm(core_term_entries)
+                surface::TermData::RecordTerm(term_entries)
             }
             TermData::RecordElim(head_term, label) => surface::TermData::RecordElim(
                 Box::new(self.from_term(head_term)),
