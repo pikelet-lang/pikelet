@@ -467,7 +467,7 @@ pub enum Unfold {
 }
 
 /// Read-back a spine of eliminators into the term syntax.
-fn read_back_spine(
+fn read_back_stuck_value(
     globals: &Globals,
     local_size: LocalSize,
     unfold: Unfold,
@@ -505,9 +505,11 @@ pub fn read_back_value(
     value: &Value,
 ) -> Term {
     match value {
-        Value::Stuck(head, spine) => read_back_spine(globals, local_size, unfold, head, spine),
+        Value::Stuck(head, spine) => {
+            read_back_stuck_value(globals, local_size, unfold, head, spine)
+        }
         Value::Unstuck(head, spine, value) => match unfold {
-            Unfold::Never => read_back_spine(globals, local_size, unfold, head, spine),
+            Unfold::Never => read_back_stuck_value(globals, local_size, unfold, head, spine),
             Unfold::Always => read_back_value(globals, local_size, unfold, value.force(globals)),
         },
 
@@ -588,8 +590,8 @@ pub fn read_back_value(
     }
 }
 
-/// Check that one suspended elimination is equal to another suspended elimination.
-fn is_equal_stuck_elim(
+/// Check that one stuck value is equal to another stuck value.
+fn is_equal_stuck_value(
     globals: &Globals,
     local_size: LocalSize,
     (head0, spine0): (&Head, &[Elim]),
@@ -623,11 +625,11 @@ fn is_equal_stuck_elim(
 fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1)) {
-                // No need to force computation if the spines are the same!
+            if is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1)) {
+                // No need to force computation if the stuck values are the same!
                 return true;
             }
 
@@ -771,10 +773,10 @@ pub fn is_subtype(
 ) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the spines are the same!
                 return true;
             }
