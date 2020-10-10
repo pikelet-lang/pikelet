@@ -14,22 +14,18 @@ use crate::lang::core::{
 /// Values in the core language.
 #[derive(Clone, Debug)]
 pub enum Value {
-    /// A suspended elimination.
+    /// A value that is stuck on some head that cannot be reduced further.
     ///
-    /// This is more commonly known as a 'neutral value' or sometimes as an
-    /// 'accumulator'.
-    ///
-    /// These eliminations cannot be reduced further as a result of being stuck
-    /// on some head that also cannot be reduced further (eg. a parameter, an
-    /// abstract global, or an unsolved metavariable).
+    /// This is sometimes called a 'neutral value' or an 'accumulator'.
     Stuck(Head, Vec<Elim>),
-    /// An elimination that is now 'unstuck'.
+    /// A value that was previously stuck on some head, but is now unstuck due
+    /// to its definition now being known.
     ///
     /// This is sometimes called a 'glued value'.
     ///
-    /// We keep the original head and spine around in order to reduce the
-    /// size-blowup that can result from deeply-normalizing terms. This can help
-    /// with:
+    /// We keep the head and eliminations around from the stuck value in order
+    /// to reduce the size-blowup that can result from deeply-normalizing terms.
+    /// This can help with:
     ///
     /// - reducing the size of elaborated terms when read-back is needed
     /// - making displayed terms easier to understand in error messages
