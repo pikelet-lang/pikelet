@@ -14,22 +14,18 @@ use crate::lang::core::{
 /// Values in the core language.
 #[derive(Clone, Debug)]
 pub enum Value {
-    /// A suspended elimination.
+    /// A value that is stuck on some head that cannot be reduced further.
     ///
-    /// This is more commonly known as a 'neutral value' or sometimes as an
-    /// 'accumulator'.
-    ///
-    /// These eliminations cannot be reduced further as a result of being stuck
-    /// on some head that also cannot be reduced further (eg. a parameter, an
-    /// abstract global, or an unsolved metavariable).
+    /// This is sometimes called a 'neutral value' or an 'accumulator'.
     Stuck(Head, Vec<Elim>),
-    /// An elimination that is now 'unstuck'.
+    /// A value that was previously stuck on some head, but is now unstuck due
+    /// to its definition now being known.
     ///
     /// This is sometimes called a 'glued value'.
     ///
-    /// We keep the original head and spine around in order to reduce the
-    /// size-blowup that can result from deeply-normalizing terms. This can help
-    /// with:
+    /// We keep the head and eliminations around from the stuck value in order
+    /// to reduce the size-blowup that can result from deeply-normalizing terms.
+    /// This can help with:
     ///
     /// - reducing the size of elaborated terms when read-back is needed
     /// - making displayed terms easier to understand in error messages
@@ -287,7 +283,7 @@ pub fn normalize_term(
     term: &Term,
 ) -> Term {
     let value = eval_term(globals, universe_offset, values, term);
-    read_back_value(globals, values.size(), Unfold::All, &value)
+    read_back_value(globals, values.size(), Unfold::Always, &value)
 }
 
 /// Evaluate a [`Term`] into a [`Value`].
@@ -302,32 +298,35 @@ pub fn eval_term(
     term: &Term,
 ) -> Arc<Value> {
     match &term.data {
-        TermData::Global(name) => {
-            let head = Head::Global(name.into(), universe_offset);
-            match globals.get(name) {
-                Some((_, Some(term))) => {
-                    let value = LazyValue::eval_term(universe_offset, values.clone(), term.clone());
-                    Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
-                }
-                Some((_, None)) | None => Arc::new(Value::Stuck(head, Vec::new())),
+        TermData::Global(name) => match globals.get(name) {
+            Some((_, Some(term))) => {
+                let head = Head::Global(name.into(), universe_offset);
+                let value = LazyValue::eval_term(universe_offset, values.clone(), term.clone());
+                Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             }
-        }
-        TermData::Local(index) => {
-            let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
-            match values.get(*index) {
-                Some(value) => {
-                    let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
-                    Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
-                }
-                None => Arc::new(Value::Stuck(head, Vec::new())),
+            Some((_, None)) | None => {
+                let head = Head::Global(name.into(), universe_offset);
+                Arc::new(Value::Stuck(head, Vec::new()))
             }
-        }
+        },
+        TermData::Local(index) => match values.get(*index) {
+            Some(value) => {
+                let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
+                let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
+                Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
+            }
+            None => {
+                let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
+                Arc::new(Value::Stuck(head, Vec::new()))
+            }
+        },
 
         TermData::Ann(term, _) => eval_term(globals, universe_offset, values, term),
 
-        TermData::TypeType(level) => Arc::new(Value::type_type(
-            (*level + universe_offset).unwrap(), // FIXME: Handle overflow
-        )),
+        TermData::TypeType(level) => {
+            let universe_level = (*level + universe_offset).unwrap(); // FIXME: Handle overflow
+            Arc::new(Value::type_type(universe_level))
+        }
         TermData::Lift(term, offset) => {
             let universe_offset = (universe_offset + *offset).unwrap(); // FIXME: Handle overflow
             eval_term(globals, universe_offset, values, term)
@@ -451,18 +450,27 @@ fn apply_function_elim(
     }
 }
 
-/// The type of unfolding to perform when reading back values.
+/// Describes how definitions should be unfolded to when reading back values.
 #[derive(Copy, Clone, Debug)]
 pub enum Unfold {
-    /// Never unfold definitions. This is useful for displaying values to the
-    /// user, or when reading them back during elaboration.
-    None,
+    /// Never unfold definitions.
+    ///
+    /// This avoids generating bloated terms, which can be detrimental for
+    /// performance and difficult for humans to read. Examples of where this
+    /// might be useful include:
+    ///
+    /// - elaborating partially annotated surface terms into core terms that
+    ///   require explicit type annotations
+    /// - displaying terms in diagnostic messages to the user
+    Never,
     /// Always unfold global and local definitions.
-    All,
+    ///
+    /// This is useful for fully normalizing terms.
+    Always,
 }
 
 /// Read-back a spine of eliminators into the term syntax.
-fn read_back_spine(
+fn read_back_stuck_value(
     globals: &Globals,
     local_size: LocalSize,
     unfold: Unfold,
@@ -500,10 +508,12 @@ pub fn read_back_value(
     value: &Value,
 ) -> Term {
     match value {
-        Value::Stuck(head, spine) => read_back_spine(globals, local_size, unfold, head, spine),
+        Value::Stuck(head, spine) => {
+            read_back_stuck_value(globals, local_size, unfold, head, spine)
+        }
         Value::Unstuck(head, spine, value) => match unfold {
-            Unfold::None => read_back_spine(globals, local_size, unfold, head, spine),
-            Unfold::All => read_back_value(globals, local_size, unfold, value.force(globals)),
+            Unfold::Never => read_back_stuck_value(globals, local_size, unfold, head, spine),
+            Unfold::Always => read_back_value(globals, local_size, unfold, value.force(globals)),
         },
 
         Value::TypeType(level) => Term::from(TermData::TypeType(*level)),
@@ -583,8 +593,8 @@ pub fn read_back_value(
     }
 }
 
-/// Check that one suspended elimination is equal to another suspended elimination.
-fn is_equal_stuck_elim(
+/// Check that one stuck value is equal to another stuck value.
+fn is_equal_stuck_value(
     globals: &Globals,
     local_size: LocalSize,
     (head0, spine0): (&Head, &[Elim]),
@@ -618,11 +628,11 @@ fn is_equal_stuck_elim(
 fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1)) {
-                // No need to force computation if the spines are the same!
+            if is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1)) {
+                // No need to force computation if the stuck values are the same!
                 return true;
             }
 
@@ -766,10 +776,10 @@ pub fn is_subtype(
 ) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck_elim(globals, local_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the spines are the same!
                 return true;
             }
