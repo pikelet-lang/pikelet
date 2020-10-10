@@ -287,7 +287,7 @@ pub fn normalize_term(
     term: &Term,
 ) -> Term {
     let value = eval_term(globals, universe_offset, values, term);
-    read_back_value(globals, values.size(), Unfold::All, &value)
+    read_back_value(globals, values.size(), Unfold::Always, &value)
 }
 
 /// Evaluate a [`Term`] into a [`Value`].
@@ -451,14 +451,23 @@ fn apply_function_elim(
     }
 }
 
-/// The type of unfolding to perform when reading back values.
+/// Describes how definitions should be unfolded to when reading back values.
 #[derive(Copy, Clone, Debug)]
 pub enum Unfold {
-    /// Never unfold definitions. This is useful for displaying values to the
-    /// user, or when reading them back during elaboration.
-    None,
+    /// Never unfold definitions.
+    ///
+    /// This avoids generating bloated terms, which can be detrimental for
+    /// performance and difficult for humans to read. Examples of where this
+    /// might be useful include:
+    ///
+    /// - elaborating partially annotated surface terms into core terms that
+    ///   require explicit type annotations
+    /// - displaying terms in diagnostic messages to the user
+    Never,
     /// Always unfold global and local definitions.
-    All,
+    ///
+    /// This is useful for fully normalizing terms.
+    Always,
 }
 
 /// Read-back a spine of eliminators into the term syntax.
@@ -502,8 +511,8 @@ pub fn read_back_value(
     match value {
         Value::Stuck(head, spine) => read_back_spine(globals, local_size, unfold, head, spine),
         Value::Unstuck(head, spine, value) => match unfold {
-            Unfold::None => read_back_spine(globals, local_size, unfold, head, spine),
-            Unfold::All => read_back_value(globals, local_size, unfold, value.force(globals)),
+            Unfold::Never => read_back_spine(globals, local_size, unfold, head, spine),
+            Unfold::Always => read_back_value(globals, local_size, unfold, value.force(globals)),
         },
 
         Value::TypeType(level) => Term::from(TermData::TypeType(*level)),

@@ -100,7 +100,7 @@ impl<'me> State<'me> {
 
     /// Read back a value into a normal form using the current state of the elaborator.
     pub fn read_back_value(&self, value: &Value) -> Term {
-        semantics::read_back_value(self.globals, self.values.size(), Unfold::None, value)
+        semantics::read_back_value(self.globals, self.values.size(), Unfold::Never, value)
     }
 
     /// Check that one [`Value`] is a subtype of another [`Value`].
