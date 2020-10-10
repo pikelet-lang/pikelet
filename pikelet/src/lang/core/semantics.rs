@@ -298,32 +298,35 @@ pub fn eval_term(
     term: &Term,
 ) -> Arc<Value> {
     match &term.data {
-        TermData::Global(name) => {
-            let head = Head::Global(name.into(), universe_offset);
-            match globals.get(name) {
-                Some((_, Some(term))) => {
-                    let value = LazyValue::eval_term(universe_offset, values.clone(), term.clone());
-                    Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
-                }
-                Some((_, None)) | None => Arc::new(Value::Stuck(head, Vec::new())),
+        TermData::Global(name) => match globals.get(name) {
+            Some((_, Some(term))) => {
+                let head = Head::Global(name.into(), universe_offset);
+                let value = LazyValue::eval_term(universe_offset, values.clone(), term.clone());
+                Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             }
-        }
-        TermData::Local(index) => {
-            let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
-            match values.get(*index) {
-                Some(value) => {
-                    let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
-                    Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
-                }
-                None => Arc::new(Value::Stuck(head, Vec::new())),
+            Some((_, None)) | None => {
+                let head = Head::Global(name.into(), universe_offset);
+                Arc::new(Value::Stuck(head, Vec::new()))
             }
-        }
+        },
+        TermData::Local(index) => match values.get(*index) {
+            Some(value) => {
+                let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
+                let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
+                Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
+            }
+            None => {
+                let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
+                Arc::new(Value::Stuck(head, Vec::new()))
+            }
+        },
 
         TermData::Ann(term, _) => eval_term(globals, universe_offset, values, term),
 
-        TermData::TypeType(level) => Arc::new(Value::type_type(
-            (*level + universe_offset).unwrap(), // FIXME: Handle overflow
-        )),
+        TermData::TypeType(level) => {
+            let universe_level = (*level + universe_offset).unwrap(); // FIXME: Handle overflow
+            Arc::new(Value::type_type(universe_level))
+        }
         TermData::Lift(term, offset) => {
             let universe_offset = (universe_offset + *offset).unwrap(); // FIXME: Handle overflow
             eval_term(globals, universe_offset, values, term)
