@@ -87,11 +87,12 @@ macro_rules! example_test {
 }
 
 example_test!(comments, "comments");
-example_test!(cube, "cube");
 example_test!(functions, "functions");
 example_test!(hello_world, "hello-world");
 example_test!(literals, "literals");
-example_test!(module, "module");
 example_test!(prelude, "prelude");
+example_test!(record_mesh, "record-mesh");
+example_test!(record_term_deps, "record-term-deps");
+example_test!(record_type_deps, "record-type-deps");
 example_test!(universes, "universes");
 example_test!(window_settings, "window-settings");

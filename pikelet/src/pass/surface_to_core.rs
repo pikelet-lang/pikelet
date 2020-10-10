@@ -12,7 +12,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::lang::core;
-use crate::lang::core::semantics::{self, Elim, Head, RecordTypeClosure, Unfold, Value};
+use crate::lang::core::semantics::{self, Elim, Head, RecordClosure, Unfold, Value};
 use crate::lang::surface::{Literal, Term, TermData};
 use crate::literal;
 use crate::pass::core_to_surface;
@@ -117,7 +117,7 @@ impl<'me> State<'me> {
         &self,
         head_value: Arc<Value>,
         label: &str,
-        closure: &RecordTypeClosure,
+        closure: &RecordClosure,
     ) -> Option<Arc<Value>> {
         semantics::record_elim_type(self.globals, head_value, label, closure)
     }
@@ -248,59 +248,51 @@ impl<'me> State<'me> {
             }
 
             (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
-                use std::collections::btree_map::Entry;
-                use std::collections::BTreeMap;
-
-                let mut duplicate_labels = Vec::new();
+                let mut pending_term_entries = term_entries.iter();
                 let mut missing_labels = Vec::new();
+                let mut unexpected_labels = Vec::new();
 
-                let mut core_term_entries = BTreeMap::new();
-                let mut pending_term_entries = BTreeMap::new();
-                for (label, entry_term) in term_entries {
-                    let range = label.range();
-                    match pending_term_entries.entry(label.data.clone()) {
-                        Entry::Vacant(entry) => drop(entry.insert((range, entry_term))),
-                        Entry::Occupied(entry) => {
-                            duplicate_labels.push((
-                                entry.key().clone(),
-                                entry.get().0.clone(),
-                                range,
-                            ));
+                let mut core_term_entries = Vec::with_capacity(term_entries.len());
+
+                closure.for_each_entry(self.globals, |label, entry_type| loop {
+                    match pending_term_entries.next() {
+                        Some((next_label, next_name, entry_term)) if next_label.data == label => {
+                            let next_name = next_name.as_ref().unwrap_or(next_label);
+                            let core_entry_term = self.check_type(entry_term, &entry_type);
+                            let core_entry_value = self.eval_term(&core_entry_term);
+
+                            self.push_local(
+                                Some(&next_name.data),
+                                core_entry_value.clone(),
+                                entry_type,
+                            );
+                            core_term_entries.push((label.to_owned(), Arc::new(core_entry_term)));
+
+                            return core_entry_value;
                         }
-                    }
-                }
-
-                closure.entries(self.globals, |label, entry_type| match pending_term_entries
-                    .remove(label)
-                {
-                    Some((_, entry_term)) => {
-                        let core_entry_term = self.check_type(entry_term, &entry_type);
-                        let core_entry_value = self.eval_term(&core_entry_term);
-                        core_term_entries.insert(label.to_owned(), Arc::new(core_entry_term));
-                        core_entry_value
-                    }
-                    None => {
-                        missing_labels.push(label.to_owned());
-                        Arc::new(Value::Error)
+                        Some((next_label, _, _)) => unexpected_labels.push(next_label.range()),
+                        None => {
+                            missing_labels.push(label.to_owned());
+                            return Arc::new(Value::Error);
+                        }
                     }
                 });
 
-                if !duplicate_labels.is_empty()
-                    || !missing_labels.is_empty()
-                    || !pending_term_entries.is_empty()
-                {
-                    let unexpected_labels = (pending_term_entries.into_iter())
-                        .map(|(label, (label_range, _))| (label, label_range))
-                        .collect();
+                self.pop_many_locals(core_term_entries.len());
+                unexpected_labels.extend(pending_term_entries.map(|(label, _, _)| label.range()));
+
+                if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
                     self.report(SurfaceToCoreMessage::InvalidRecordTerm {
                         range: term.range(),
-                        duplicate_labels,
                         missing_labels,
                         unexpected_labels,
                     });
                 }
 
-                core::Term::new(term.range(), core::TermData::RecordTerm(core_term_entries))
+                core::Term::new(
+                    term.range(),
+                    core::TermData::RecordTerm(core_term_entries.into()),
+                )
             }
 
             (TermData::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
@@ -599,8 +591,8 @@ impl<'me> State<'me> {
             TermData::RecordTerm(term_entries) => {
                 if term_entries.is_empty() {
                     (
-                        core::Term::new(term.range(), core::TermData::RecordTerm(BTreeMap::new())),
-                        Arc::from(Value::RecordType(RecordTypeClosure::new(
+                        core::Term::new(term.range(), core::TermData::RecordTerm(Arc::new([]))),
+                        Arc::from(Value::RecordType(RecordClosure::new(
                             self.universe_offset,
                             self.values.clone(),
                             Arc::new([]),

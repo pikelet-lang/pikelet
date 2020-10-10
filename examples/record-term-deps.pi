@@ -1,0 +1,11 @@
+record {
+    A = U32,
+    B = A,
+    a = 23,
+    b = a,
+} : Record {
+    A : Type,
+    B : Type,
+    a : A,
+    b : B,
+}

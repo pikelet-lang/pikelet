@@ -169,23 +169,33 @@ where
             .append(alloc.space())
             .append("{")
             .group()
-            .append(alloc.concat(term_entries.iter().map(|(label, entry_term)| {
-                (alloc.nil())
-                    .append(alloc.hardline())
-                    .append(alloc.text(&label.data))
-                    .append(alloc.space())
-                    .append("=")
-                    .group()
-                    .append(
-                        (alloc.space())
-                            .append(from_term_prec(alloc, entry_term, Prec::Term))
-                            .append(",")
-                            .group()
-                            .nest(4),
-                    )
-                    .nest(4)
-                    .group()
-            })))
+            .append(
+                alloc.concat(term_entries.iter().map(|(label, name, entry_term)| {
+                    (alloc.nil())
+                        .append(alloc.hardline())
+                        .append(match name {
+                            None => alloc.text(&label.data).append(alloc.space()),
+                            Some(name) => alloc
+                                .text(&label.data)
+                                .append(alloc.space())
+                                .append("as")
+                                .append(alloc.space())
+                                .append(&name.data)
+                                .append(alloc.space()),
+                        })
+                        .append("=")
+                        .group()
+                        .append(
+                            (alloc.space())
+                                .append(from_term_prec(alloc, entry_term, Prec::Term))
+                                .append(",")
+                                .group()
+                                .nest(4),
+                        )
+                        .nest(4)
+                        .group()
+                })),
+            )
             .append("}"),
         TermData::RecordElim(head_term, label) => (alloc.nil())
             .append(from_term_prec(alloc, head_term, Prec::Atomic))

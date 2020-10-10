@@ -4,8 +4,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pretty::DocAllocator;
 use std::ops::Range;
 
-use crate::lang::core;
-use crate::lang::surface;
+use crate::lang::{core, surface};
 use crate::literal;
 
 /// Global diagnostic messages
@@ -503,9 +502,8 @@ pub enum SurfaceToCoreMessage {
     },
     InvalidRecordTerm {
         range: Range<usize>,
-        duplicate_labels: Vec<(String, Range<usize>, Range<usize>)>,
         missing_labels: Vec<String>,
-        unexpected_labels: Vec<(String, Range<usize>)>,
+        unexpected_labels: Vec<Range<usize>>,
     },
     LabelNotFound {
         head_range: Range<usize>,
@@ -592,30 +590,16 @@ impl SurfaceToCoreMessage {
 
             SurfaceToCoreMessage::InvalidRecordTerm {
                 range,
-                duplicate_labels,
                 missing_labels,
                 unexpected_labels,
             } => Diagnostic::error()
                 .with_message("invalid record term")
                 .with_labels({
                     let mut labels = Vec::with_capacity(
-                        duplicate_labels.len() * 2
-                            + unexpected_labels.len()
-                            + if missing_labels.is_empty() { 0 } else { 1 },
+                        unexpected_labels.len() + if missing_labels.is_empty() { 0 } else { 1 },
                     );
 
-                    for (label, label_range1, label_range2) in duplicate_labels {
-                        labels.push(
-                            Label::primary((), label_range1.clone())
-                                .with_message(format!("first use of `{}`", label)),
-                        );
-                        labels.push(
-                            Label::primary((), label_range2.clone())
-                                .with_message("entry label used more than once"),
-                        );
-                    }
-
-                    for (_, label_range) in unexpected_labels {
+                    for label_range in unexpected_labels {
                         labels.push(
                             Label::primary((), label_range.clone())
                                 .with_message("unexpected entry label"),
