@@ -2,7 +2,7 @@
 
 ![Pikelet Mascot][pikelet-mascot]
 
-[pikelet-mascot]: assets/pikelet.png
+[pikelet-mascot]: ./book/assets/pikelet.png
 
 [![Actions Status][actions-badge]][actions-url]
 [![Matrix][matrix-badge]][matrix-lobby]
