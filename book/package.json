@@ -1,0 +1,15 @@
+{
+  "name": "book",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "parcel index.js --no-source-maps",
+    "build": "parcel build index.js --no-source-maps"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4"
+  },
+  "dependencies": {
+    "highlight.js": "^10.2.0"
+  }
+}

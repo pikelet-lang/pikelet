@@ -1,3 +1,7 @@
+# Rust
 /target/
 **/*.rs.bk
 Cargo.lock
+
+# Yarn
+/node_modules
