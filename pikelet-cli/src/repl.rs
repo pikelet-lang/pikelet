@@ -59,6 +59,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         print_welcome_banner()
     }
 
+    // TODO: Use appropriate directory on Windows
     let xdg_dirs = xdg::BaseDirectories::with_prefix("pikelet/repl")?;
     let history_path = xdg_dirs.get_data_home().join(HISTORY_FILE_NAME);
 
@@ -90,6 +91,16 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         }
 
         // TODO: Parse REPL commands
+        //
+        // Command       Arguments        Purpose
+        //
+        // <term>                         normalize a term in the context
+        // :? :h :help                    display this help text
+        // :core         <term>           print the core representation of a term
+        // :local        <name> : <term>  define a local assumption in the REPL context
+        // :local        <name> = <term>  define a local definition in the REPL context
+        // :q :quit                       quit the repl
+        // :t :type      <term>           infer the type of a term
         let surface_term = surface::Term::from_str(file.source(), &messages_tx);
         let (core_term, r#type) = state.synth_type(&surface_term);
 
