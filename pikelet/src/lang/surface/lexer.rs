@@ -10,7 +10,7 @@ pub enum Token<'a> {
     DocComment(&'a str),
     #[regex(r#"'([^'\\]|\\.)*'"#)]
     CharLiteral(&'a str),
-    #[regex(r#""([^"\\]|\\.)*""#)] // workaround editor highlighting: "
+    #[regex(r#""([^"\\]|\\.)*""#)]
     StringLiteral(&'a str),
     #[regex(r"[-+]?[0-9][a-zA-Z0-9_\.]*")]
     NumericLiteral(&'a str),

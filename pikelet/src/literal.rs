@@ -130,7 +130,7 @@ enum QuotedLiteral {
 
 #[derive(Debug, Clone, Logos)]
 enum QuotedText<'source> {
-    #[regex(r#"[^\\"']+"#)] // workaround editor highlighting: "
+    #[regex(r#"[^\\"']+"#)]
     Utf8Text(&'source str),
     #[token("\\")]
     StartEscape,
@@ -150,7 +150,7 @@ enum EscapeSequence {
     #[token("t", |_| '\t')]
     #[token("0", |_| '\0')]
     #[token("\'", |_| '\'')]
-    #[token("\"", |_| '\"')] // workaround editor highlighting: "
+    #[token("\"", |_| '\"')]
     Single(char),
     #[token("u")]
     StartUnicodeEscape,
