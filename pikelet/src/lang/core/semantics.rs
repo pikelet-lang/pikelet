@@ -14,21 +14,25 @@ use crate::lang::core::{
 /// Values in the core language.
 #[derive(Clone, Debug)]
 pub enum Value {
-    /// A value that is stuck on some head that cannot be reduced further.
+    /// A computation that is stuck on a [head value][Head] that cannot be
+    /// reduced further in the current scope. We maintain a 'spine' of
+    /// [eliminators][Elim], that can be applied if the head becomes unstuck
+    /// later on.
     ///
-    /// This is sometimes called a 'neutral value' or an 'accumulator'.
+    /// This is more commonly known as a 'neutral value' in the type theory
+    /// literature.
     Stuck(Head, Vec<Elim>),
-    /// A value that was previously stuck on some head, but is now unstuck due
-    /// to its definition now being known.
+    /// A computation that was previously stuck a on [head value][Head], but is
+    /// now unstuck due to its definition now being known.
     ///
     /// This is sometimes called a 'glued value'.
     ///
-    /// We keep the head and eliminations around from the stuck value in order
-    /// to reduce the size-blowup that can result from deeply-normalizing terms.
-    /// This can help with:
+    /// It's useful to keep the head and spine of eliminations around from the
+    /// [stuck value][Value::Stuck] in order to reduce the size-blowup that
+    /// can result from deeply-normalizing terms. This can be useful for:
     ///
-    /// - reducing the size of elaborated terms when read-back is needed
-    /// - making displayed terms easier to understand in error messages
+    /// - improving the performance of conversion checking
+    /// - making it easier to understand read-back types in diagnostic messages
     ///
     /// See the following for more information:
     ///
@@ -96,7 +100,11 @@ impl From<Constant> for Value {
     }
 }
 
-/// The head of an elimination.
+/// The head of a [stuck value][Value::Stuck].
+///
+/// This cannot currently be reduced in the current scope due to its definition
+/// not being known. Once it becomes known, the head may be 'remembered' in an
+/// [unstuck value][Value::Unstuck].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Head {
     /// Global variables.
@@ -105,14 +113,22 @@ pub enum Head {
     Local(LocalLevel),
 }
 
-/// An eliminator, to be used in the spine of an elimination.
+/// An eliminator that is part of the spine of a [stuck value][`Value::Stuck`].
+///
+/// It might also be 'remembered' in an [unstuck value][Value::Unstuck].
 #[derive(Clone, Debug)]
 pub enum Elim {
     /// Function eliminators.
     ///
+    /// This eliminator can be applied to a [`Value`] with the
+    /// [`apply_function_elim`] function.
+    ///
     /// Also known as: function application.
     Function(Arc<LazyValue>),
     /// Record eliminators.
+    ///
+    /// This eliminator can be applied to a [`Value`] with the
+    /// [`apply_record_elim`] function.
     ///
     /// Also known as: record projections, field lookup.
     Record(String),
