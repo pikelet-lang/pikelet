@@ -790,6 +790,17 @@ pub fn is_subtype(
     value0: &Value,
     value1: &Value,
 ) -> bool {
+    // FIXME: It would be nice if we could replace this function with a
+    // [`crate::pass::surface_to_core::coerce`] function in the elaborator.
+    // This would allow us to remove the dependency on subtyping in the
+    // [`crate::lang::core::typing`] module.
+    //
+    // More information on using coercions for universe subtyping can be found
+    // in [“Notes on Universes in Type Theory”][notes-on-universes-in-tt]
+    // by Zhaohui Luo.
+    //
+    // [notes-on-universes-in-tt]: http://www.cs.rhul.ac.uk/home/zhaohui/universes.pdf
+
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
             is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
