@@ -25,13 +25,13 @@ pub struct State<'me> {
     /// The current universe offset.
     universe_offset: core::UniverseOffset,
     /// Substitutions from the user-defined names to the level in which they were bound.
-    names_to_levels: Vec<(Option<String>, core::LocalLevel)>,
+    local_levels: Vec<(Option<String>, core::LocalLevel)>,
+    /// Local type environment (used for getting the types of local variables).
+    local_declarations: core::Locals<Arc<Value>>,
+    /// Local value environment (used for evaluation).
+    local_definitions: core::Locals<Arc<Value>>,
     /// Distillation state (used for pretty printing).
     core_to_surface: core_to_surface::State<'me>,
-    /// Local type environment (used for getting the types of local variables).
-    types: core::Locals<Arc<Value>>,
-    /// Local value environment (used for evaluation).
-    values: core::Locals<Arc<Value>>,
     /// The diagnostic messages accumulated during elaboration.
     message_tx: Sender<Message>,
 }
@@ -42,37 +42,37 @@ impl<'me> State<'me> {
         State {
             globals,
             universe_offset: core::UniverseOffset(0),
-            names_to_levels: Vec::new(),
+            local_levels: Vec::new(),
+            local_declarations: core::Locals::new(),
+            local_definitions: core::Locals::new(),
             core_to_surface: core_to_surface::State::new(globals),
-            types: core::Locals::new(),
-            values: core::Locals::new(),
             message_tx,
         }
     }
 
     /// Get the next level to be used for a local entry.
     fn next_level(&self) -> core::LocalLevel {
-        self.values.size().next_level()
+        self.local_definitions.size().next_level()
     }
 
     /// Get a local entry.
     fn get_local(&self, name: &str) -> Option<(core::LocalIndex, &Arc<Value>)> {
-        let (_, level) = self.names_to_levels.iter().rev().find(|(n, _)| match n {
+        let (_, level) = self.local_levels.iter().rev().find(|(n, _)| match n {
             Some(n) => n == name,
             None => false,
         })?;
-        let index = level.to_index(self.values.size()).unwrap(); // TODO: Handle overflow
-        let ty = self.types.get(index)?;
-        Some((index, ty))
+        let index = level.to_index(self.local_definitions.size()).unwrap(); // TODO: Handle overflow
+        let r#type = self.local_declarations.get(index)?;
+        Some((index, r#type))
     }
 
     /// Push a local entry.
     fn push_local(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
-        self.names_to_levels
+        self.local_levels
             .push((name.map(str::to_owned), self.next_level()));
+        self.local_declarations.push(r#type);
+        self.local_definitions.push(value);
         self.core_to_surface.push_name(name);
-        self.types.push(r#type);
-        self.values.push(value);
     }
 
     /// Push a local parameter.
@@ -84,19 +84,19 @@ impl<'me> State<'me> {
 
     /// Pop a local entry.
     fn pop_local(&mut self) {
+        self.local_levels.pop();
+        self.local_declarations.pop();
+        self.local_definitions.pop();
         self.core_to_surface.pop_name();
-        self.names_to_levels.pop();
-        self.types.pop();
-        self.values.pop();
     }
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
+        self.local_levels
+            .truncate(self.local_levels.len().saturating_sub(count));
+        self.local_declarations.pop_many(count);
+        self.local_definitions.pop_many(count);
         self.core_to_surface.pop_many_names(count);
-        let number_of_names = self.names_to_levels.len().saturating_sub(count);
-        self.names_to_levels.truncate(number_of_names);
-        self.types.pop_many(count);
-        self.values.pop_many(count);
     }
 
     /// Report a diagnostic message.
@@ -109,7 +109,12 @@ impl<'me> State<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
     pub fn eval_term(&mut self, term: &core::Term) -> Arc<Value> {
-        semantics::eval_term(self.globals, self.universe_offset, &mut self.values, term)
+        semantics::eval_term(
+            self.globals,
+            self.universe_offset,
+            &mut self.local_definitions,
+            term,
+        )
     }
 
     /// Return the type of the record elimination.
@@ -127,7 +132,12 @@ impl<'me> State<'me> {
     /// [`core::Term`]: crate::lang::core::Term
     /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
     pub fn normalize_term(&mut self, term: &core::Term) -> core::Term {
-        semantics::normalize_term(self.globals, self.universe_offset, &mut self.values, term)
+        semantics::normalize_term(
+            self.globals,
+            self.universe_offset,
+            &mut self.local_definitions,
+            term,
+        )
     }
 
     /// Read back a [`Value`] to a [`core::Term`] using the current
@@ -139,7 +149,12 @@ impl<'me> State<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
     pub fn read_back_value(&self, value: &Value) -> core::Term {
-        semantics::read_back_value(self.globals, self.values.size(), Unfold::Never, value)
+        semantics::read_back_value(
+            self.globals,
+            self.local_definitions.size(),
+            Unfold::Never,
+            value,
+        )
     }
 
     /// Check that one [`Value`] is a subtype of another [`Value`].
@@ -148,7 +163,7 @@ impl<'me> State<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
-        semantics::is_subtype(self.globals, self.values.size(), value0, value1)
+        semantics::is_subtype(self.globals, self.local_definitions.size(), value0, value1)
     }
 
     /// Distill a [`core::Term`] into a [`surface::Term`].
@@ -175,9 +190,9 @@ impl<'me> State<'me> {
     /// Check that a term is a type, and return the elaborated term and the
     /// universe level it inhabits.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
-    #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
-    #[debug_ensures(self.types.size() == old(self.types.size()))]
-    #[debug_ensures(self.values.size() == old(self.values.size()))]
+    #[debug_ensures(self.local_levels.len() == old(self.local_levels.len()))]
+    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn is_type(&mut self, term: &Term) -> (core::Term, Option<core::UniverseLevel>) {
         let (core_term, r#type) = self.synth_type(term);
         match r#type.force(self.globals) {
@@ -197,9 +212,9 @@ impl<'me> State<'me> {
 
     /// Check that a term is an element of a type, and return the elaborated term.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
-    #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
-    #[debug_ensures(self.types.size() == old(self.types.size()))]
-    #[debug_ensures(self.values.size() == old(self.values.size()))]
+    #[debug_ensures(self.local_levels.len() == old(self.local_levels.len()))]
+    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
         match (&term.data, expected_type.force(self.globals)) {
             (_, Value::Error) => core::Term::new(term.range(), core::TermData::Error),
@@ -215,7 +230,7 @@ impl<'me> State<'me> {
                             let input_value =
                                 self.push_local_param(Some(&input_name.data), input_type.clone());
                             seen_input_count += 1;
-                            expected_type = output_closure.elim(self.globals, input_value);
+                            expected_type = output_closure.apply(self.globals, input_value);
                         }
                         Value::Error => {
                             self.pop_many_locals(seen_input_count);
@@ -412,9 +427,9 @@ impl<'me> State<'me> {
 
     /// Synthesize the type of a surface term, and return the elaborated term.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
-    #[debug_ensures(self.names_to_levels.len() == old(self.names_to_levels.len()))]
-    #[debug_ensures(self.types.size() == old(self.types.size()))]
-    #[debug_ensures(self.values.size() == old(self.values.size()))]
+    #[debug_ensures(self.local_levels.len() == old(self.local_levels.len()))]
+    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
         use std::collections::BTreeMap;
 
@@ -568,7 +583,7 @@ impl<'me> State<'me> {
                                     Arc::new(core_input),
                                 ),
                             );
-                            head_type = output_closure.elim(self.globals, core_input_value);
+                            head_type = output_closure.apply(self.globals, core_input_value);
                         }
                         Value::Error => return (error_term(), Arc::new(Value::Error)),
                         _ => {
@@ -594,7 +609,7 @@ impl<'me> State<'me> {
                         core::Term::new(term.range(), core::TermData::RecordTerm(Arc::new([]))),
                         Arc::from(Value::RecordType(RecordClosure::new(
                             self.universe_offset,
-                            self.values.clone(),
+                            self.local_definitions.clone(),
                             Arc::new([]),
                         ))),
                     )

@@ -18,7 +18,7 @@ use crate::lang::Ranged;
 pub struct State<'me> {
     globals: &'me Globals,
     usages: HashMap<String, Usage>,
-    names: Locals<String>,
+    local_names: Locals<String>,
 }
 
 struct Usage {
@@ -48,7 +48,7 @@ impl<'me> State<'me> {
         State {
             globals,
             usages,
-            names: Locals::new(),
+            local_names: Locals::new(),
         }
     }
 
@@ -84,12 +84,12 @@ impl<'me> State<'me> {
         };
         // TODO: Reduce cloning of names
         self.usages.insert(fresh_name.clone(), usage);
-        self.names.push(fresh_name.clone());
+        self.local_names.push(fresh_name.clone());
         fresh_name
     }
 
     pub fn pop_name(&mut self) {
-        if let Some(mut name) = self.names.pop() {
+        if let Some(mut name) = self.local_names.pop() {
             while let Some(base_name) = self.remove_usage(name) {
                 name = base_name;
             }
@@ -117,14 +117,14 @@ impl<'me> State<'me> {
     ///
     /// [`core::Term`]: crate::lang::core::Term
     /// [`surface::Term`]: crate::lang::surface::Term
-    #[debug_ensures(self.names.size() == old(self.names.size()))]
+    #[debug_ensures(self.local_names.size() == old(self.local_names.size()))]
     pub fn from_term(&mut self, term: &Term) -> surface::Term {
         let term_data = match &term.data {
             TermData::Global(name) => match self.globals.get(name) {
                 Some(_) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
-            TermData::Local(index) => match self.names.get(*index) {
+            TermData::Local(index) => match self.local_names.get(*index) {
                 Some(name) => surface::TermData::Name(name.clone()),
                 None => surface::TermData::Error, // TODO: Log error?
             },

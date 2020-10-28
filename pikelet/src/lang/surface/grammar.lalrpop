@@ -47,7 +47,7 @@ pub Term: Term = Ranged<TermData>;
 
 TermData: TermData = {
     ExprTermData,
-    <term: ExprTerm> ":" <ty: Term> => TermData::Ann(Box::new(term), Box::new(ty)),
+    <term: ExprTerm> ":" <type_: Term> => TermData::Ann(Box::new(term), Box::new(type_)),
 };
 
 ExprTermData: TermData = {

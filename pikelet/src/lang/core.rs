@@ -259,55 +259,55 @@ impl LocalSize {
 /// A local environment.
 #[derive(Clone)]
 pub struct Locals<Entry> {
-    /// The local values that are currently defined in the environment.
-    values: im::Vector<Entry>,
+    /// The local entries that are currently defined in the environment.
+    entries: im::Vector<Entry>,
 }
 
 impl<Entry: Clone> Locals<Entry> {
     /// Create a new local environment.
     pub fn new() -> Locals<Entry> {
         Locals {
-            values: im::Vector::new(),
+            entries: im::Vector::new(),
         }
     }
 
     /// Get the size of the environment.
     pub fn size(&self) -> LocalSize {
-        LocalSize(self.values.len() as u32) // FIXME: Check for overflow?
+        LocalSize(self.entries.len() as u32) // FIXME: Check for overflow?
     }
 
     /// Lookup an entry in the environment.
     pub fn get(&self, index: LocalIndex) -> Option<&Entry> {
-        self.values
-            .get(self.values.len().checked_sub(index.0 as usize + 1)?)
+        self.entries
+            .get(self.entries.len().checked_sub(index.0 as usize + 1)?)
     }
 
     /// Push an entry onto the environment.
     pub fn push(&mut self, entry: Entry) {
-        self.values.push_back(entry);
+        self.entries.push_back(entry);
     }
 
     /// Pop an entry off the environment.
     pub fn pop(&mut self) -> Option<Entry> {
-        self.values.pop_back()
+        self.entries.pop_back()
     }
 
     /// Pop a number of entries off the environment.
     pub fn pop_many(&mut self, count: usize) {
-        self.values
-            .truncate(self.values.len().saturating_sub(count));
+        self.entries
+            .truncate(self.entries.len().saturating_sub(count));
     }
 
     /// Clear the entries from the environment.
     pub fn clear(&mut self) {
-        self.values.clear();
+        self.entries.clear();
     }
 }
 
 impl<Entry: Clone + fmt::Debug> fmt::Debug for Locals<Entry> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Locals")
-            .field("entries", &self.values)
+            .field("entries", &self.entries)
             .finish()
     }
 }

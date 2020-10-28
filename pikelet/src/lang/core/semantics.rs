@@ -138,28 +138,28 @@ pub enum Elim {
 #[derive(Clone, Debug)]
 pub struct Closure {
     universe_offset: UniverseOffset,
-    values: Locals<Arc<Value>>,
+    locals: Locals<Arc<Value>>,
     term: Arc<Term>,
 }
 
 impl Closure {
     pub fn new(
         universe_offset: UniverseOffset,
-        values: Locals<Arc<Value>>,
+        locals: Locals<Arc<Value>>,
         term: Arc<Term>,
     ) -> Closure {
         Closure {
             universe_offset,
-            values,
+            locals,
             term,
         }
     }
 
-    /// Eliminate a closure.
-    pub fn elim(&self, globals: &Globals, input: Arc<Value>) -> Arc<Value> {
-        let mut values = self.values.clone();
-        values.push(input);
-        eval_term(globals, self.universe_offset, &mut values, &self.term)
+    /// Apply an input to a closure.
+    pub fn apply(&self, globals: &Globals, input: Arc<Value>) -> Arc<Value> {
+        let mut locals = self.locals.clone();
+        locals.push(input);
+        eval_term(globals, self.universe_offset, &mut locals, &self.term)
     }
 }
 
@@ -167,19 +167,19 @@ impl Closure {
 #[derive(Clone, Debug)]
 pub struct RecordClosure {
     universe_offset: UniverseOffset,
-    values: Locals<Arc<Value>>,
+    locals: Locals<Arc<Value>>,
     entries: Arc<[(String, Arc<Term>)]>,
 }
 
 impl RecordClosure {
     pub fn new(
         universe_offset: UniverseOffset,
-        values: Locals<Arc<Value>>,
+        locals: Locals<Arc<Value>>,
         entries: Arc<[(String, Arc<Term>)]>,
     ) -> RecordClosure {
         RecordClosure {
             universe_offset,
-            values,
+            locals,
             entries,
         }
     }
@@ -191,11 +191,11 @@ impl RecordClosure {
         mut on_entry: impl FnMut(&'closure str, Arc<Value>) -> Arc<Value>,
     ) {
         let universe_offset = self.universe_offset;
-        let mut values = self.values.clone();
+        let mut locals = self.locals.clone();
 
         for (label, entry_value) in self.entries.iter() {
-            let entry_value = eval_term(globals, universe_offset, &mut values, entry_value);
-            values.push(on_entry(label, entry_value));
+            let entry_value = eval_term(globals, universe_offset, &mut locals, entry_value);
+            locals.push(on_entry(label, entry_value));
         }
     }
 
@@ -206,13 +206,13 @@ impl RecordClosure {
         mut on_entry: impl FnMut(&'closure str, Arc<Value>) -> Result<T, Arc<Value>>,
     ) -> Option<T> {
         let universe_offset = self.universe_offset;
-        let mut values = self.values.clone();
+        let mut locals = self.locals.clone();
 
         for (label, entry_value) in self.entries.iter() {
-            let entry_value = eval_term(globals, universe_offset, &mut values, entry_value);
+            let entry_value = eval_term(globals, universe_offset, &mut locals, entry_value);
             match on_entry(label, entry_value) {
                 Ok(t) => return Some(t),
-                Err(entry_value) => values.push(entry_value),
+                Err(entry_value) => locals.push(entry_value),
             }
         }
 
@@ -253,11 +253,11 @@ impl LazyValue {
     /// Lazily evaluate a term using the given universe offset and local values.
     pub fn eval_term(
         universe_offset: UniverseOffset,
-        values: Locals<Arc<Value>>,
+        locals: Locals<Arc<Value>>,
         term: Arc<Term>,
     ) -> LazyValue {
         LazyValue {
-            init: RefCell::new(Some(LazyInit::EvalTerm(universe_offset, values, term))),
+            init: RefCell::new(Some(LazyInit::EvalTerm(universe_offset, locals, term))),
             cell: OnceCell::new(),
         }
     }
@@ -273,8 +273,8 @@ impl LazyValue {
     /// Force the evaluation of a lazy value.
     pub fn force(&self, globals: &Globals) -> &Arc<Value> {
         self.cell.get_or_init(|| match self.init.replace(None) {
-            Some(LazyInit::EvalTerm(universe_offset, mut values, term)) => {
-                eval_term(globals, universe_offset, &mut values, &term)
+            Some(LazyInit::EvalTerm(universe_offset, mut locals, term)) => {
+                eval_term(globals, universe_offset, &mut locals, &term)
             }
             Some(LazyInit::ApplyElim(head, Elim::Record(label))) => {
                 apply_record_elim(globals, head.force(globals).clone(), &label)
@@ -291,33 +291,33 @@ impl LazyValue {
 ///
 /// [`Term`]: crate::lang::core::Term
 /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
-#[debug_ensures(values.size() == old(values.size()))]
+#[debug_ensures(locals.size() == old(locals.size()))]
 pub fn normalize_term(
     globals: &Globals,
     universe_offset: UniverseOffset,
-    values: &mut Locals<Arc<Value>>,
+    locals: &mut Locals<Arc<Value>>,
     term: &Term,
 ) -> Term {
-    let value = eval_term(globals, universe_offset, values, term);
-    read_back_value(globals, values.size(), Unfold::Always, &value)
+    let value = eval_term(globals, universe_offset, locals, term);
+    read_back_value(globals, locals.size(), Unfold::Always, &value)
 }
 
 /// Evaluate a [`Term`] into a [`Value`].
 ///
 /// [`Value`]: crate::lang::core::semantics::Value
 /// [`Term`]: crate::lang::core::Term
-#[debug_ensures(values.size() == old(values.size()))]
+#[debug_ensures(locals.size() == old(locals.size()))]
 pub fn eval_term(
     globals: &Globals,
     universe_offset: UniverseOffset,
-    values: &mut Locals<Arc<Value>>,
+    locals: &mut Locals<Arc<Value>>,
     term: &Term,
 ) -> Arc<Value> {
     match &term.data {
         TermData::Global(name) => match globals.get(name) {
             Some((_, Some(term))) => {
                 let head = Head::Global(name.into(), universe_offset);
-                let value = LazyValue::eval_term(universe_offset, values.clone(), term.clone());
+                let value = LazyValue::eval_term(universe_offset, locals.clone(), term.clone());
                 Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             }
             Some((_, None)) | None => {
@@ -325,19 +325,19 @@ pub fn eval_term(
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },
-        TermData::Local(index) => match values.get(*index) {
+        TermData::Local(index) => match locals.get(*index) {
             Some(value) => {
-                let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
+                let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
                 let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
                 Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             }
             None => {
-                let head = Head::Local(index.to_level(values.size()).unwrap()); // TODO: Handle overflow
+                let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },
 
-        TermData::Ann(term, _) => eval_term(globals, universe_offset, values, term),
+        TermData::Ann(term, _) => eval_term(globals, universe_offset, locals, term),
 
         TermData::TypeType(level) => {
             let universe_level = (*level + universe_offset).unwrap(); // FIXME: Handle overflow
@@ -345,45 +345,45 @@ pub fn eval_term(
         }
         TermData::Lift(term, offset) => {
             let universe_offset = (universe_offset + *offset).unwrap(); // FIXME: Handle overflow
-            eval_term(globals, universe_offset, values, term)
+            eval_term(globals, universe_offset, locals, term)
         }
 
         TermData::RecordType(type_entries) => Arc::new(Value::RecordType(RecordClosure::new(
             universe_offset,
-            values.clone(),
+            locals.clone(),
             type_entries.clone(),
         ))),
         TermData::RecordTerm(term_entries) => Arc::new(Value::RecordTerm(RecordClosure::new(
             universe_offset,
-            values.clone(),
+            locals.clone(),
             term_entries.clone(),
         ))),
         TermData::RecordElim(head, label) => {
-            let head = eval_term(globals, universe_offset, values, head);
+            let head = eval_term(globals, universe_offset, locals, head);
             apply_record_elim(globals, head, label)
         }
 
         TermData::FunctionType(input_name_hint, input_type, output_type) => {
             Arc::new(Value::FunctionType(
                 input_name_hint.clone(),
-                eval_term(globals, universe_offset, values, input_type),
-                Closure::new(universe_offset, values.clone(), output_type.clone()),
+                eval_term(globals, universe_offset, locals, input_type),
+                Closure::new(universe_offset, locals.clone(), output_type.clone()),
             ))
         }
         TermData::FunctionTerm(input_name, output_term) => Arc::new(Value::FunctionTerm(
             input_name.clone(),
-            Closure::new(universe_offset, values.clone(), output_term.clone()),
+            Closure::new(universe_offset, locals.clone(), output_term.clone()),
         )),
         TermData::FunctionElim(head, input) => {
-            let head = eval_term(globals, universe_offset, values, head);
-            let input = LazyValue::eval_term(universe_offset, values.clone(), input.clone());
+            let head = eval_term(globals, universe_offset, locals, head);
+            let input = LazyValue::eval_term(universe_offset, locals.clone(), input.clone());
             apply_function_elim(globals, head, Arc::new(input))
         }
 
         TermData::Sequence(term_entries) => {
             let value_entries = term_entries
                 .iter()
-                .map(|entry_term| eval_term(globals, universe_offset, values, entry_term))
+                .map(|entry_term| eval_term(globals, universe_offset, locals, entry_term))
                 .collect();
 
             Arc::new(Value::Sequence(value_entries))
@@ -459,7 +459,7 @@ fn apply_function_elim(
         }
 
         Value::FunctionTerm(_, output_closure) => {
-            output_closure.elim(globals, input.force(globals).clone())
+            output_closure.apply(globals, input.force(globals).clone())
         }
 
         _ => Arc::new(Value::Error),
@@ -537,7 +537,7 @@ pub fn read_back_value(
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level()));
             let input_type = Arc::new(read_back_value(globals, local_size, unfold, input_type));
-            let output_type = output_closure.elim(globals, local);
+            let output_type = output_closure.apply(globals, local);
             let output_type =
                 read_back_value(globals, local_size.increment(), unfold, &output_type);
 
@@ -549,7 +549,7 @@ pub fn read_back_value(
         }
         Value::FunctionTerm(input_name_hint, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level()));
-            let output_term = output_closure.elim(globals, local);
+            let output_term = output_closure.apply(globals, local);
             let output_term =
                 read_back_value(globals, local_size.increment(), unfold, &output_term);
 
@@ -677,8 +677,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
             is_equal(
                 globals,
                 local_size.increment(),
-                &output_closure0.elim(globals, local.clone()),
-                &output_closure1.elim(globals, local),
+                &output_closure0.apply(globals, local.clone()),
+                &output_closure1.apply(globals, local),
             )
         }
         (Value::FunctionTerm(_, output_closure0), Value::FunctionTerm(_, output_closure1)) => {
@@ -686,8 +686,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
             is_equal(
                 globals,
                 local_size.increment(),
-                &output_closure0.elim(globals, local.clone()),
-                &output_closure1.elim(globals, local),
+                &output_closure0.apply(globals, local.clone()),
+                &output_closure1.apply(globals, local),
             )
         }
 
@@ -699,8 +699,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
             let mut local_size = local_size;
             let universe_offset0 = closure0.universe_offset;
             let universe_offset1 = closure1.universe_offset;
-            let mut values0 = closure0.values.clone();
-            let mut values1 = closure1.values.clone();
+            let mut locals0 = closure0.locals.clone();
+            let mut locals1 = closure1.locals.clone();
 
             for ((label0, entry_type0), (label1, entry_type1)) in
                 Iterator::zip(closure0.entries.iter(), closure1.entries.iter())
@@ -709,16 +709,16 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                     return false;
                 }
 
-                let entry_type0 = eval_term(globals, universe_offset0, &mut values0, entry_type0);
-                let entry_type1 = eval_term(globals, universe_offset1, &mut values1, entry_type1);
+                let entry_type0 = eval_term(globals, universe_offset0, &mut locals0, entry_type0);
+                let entry_type1 = eval_term(globals, universe_offset1, &mut locals1, entry_type1);
 
                 if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
                     return false;
                 }
 
                 let local_level = local_size.next_level();
-                values0.push(Arc::new(Value::local(local_level)));
-                values1.push(Arc::new(Value::local(local_level)));
+                locals0.push(Arc::new(Value::local(local_level)));
+                locals1.push(Arc::new(Value::local(local_level)));
                 local_size = local_size.increment();
             }
 
@@ -732,8 +732,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
             let mut local_size = local_size;
             let universe_offset0 = closure0.universe_offset;
             let universe_offset1 = closure1.universe_offset;
-            let mut values0 = closure0.values.clone();
-            let mut values1 = closure1.values.clone();
+            let mut locals0 = closure0.locals.clone();
+            let mut locals1 = closure1.locals.clone();
 
             for ((label0, entry_type0), (label1, entry_type1)) in
                 Iterator::zip(closure0.entries.iter(), closure1.entries.iter())
@@ -742,16 +742,16 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                     return false;
                 }
 
-                let entry_type0 = eval_term(globals, universe_offset0, &mut values0, entry_type0);
-                let entry_type1 = eval_term(globals, universe_offset1, &mut values1, entry_type1);
+                let entry_type0 = eval_term(globals, universe_offset0, &mut locals0, entry_type0);
+                let entry_type1 = eval_term(globals, universe_offset1, &mut locals1, entry_type1);
 
                 if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
                     return false;
                 }
 
                 let local_level = local_size.next_level();
-                values0.push(Arc::new(Value::local(local_level)));
-                values1.push(Arc::new(Value::local(local_level)));
+                locals0.push(Arc::new(Value::local(local_level)));
+                locals1.push(Arc::new(Value::local(local_level)));
                 local_size = local_size.increment();
             }
 
@@ -833,8 +833,8 @@ pub fn is_subtype(
             }
 
             let local = Arc::new(Value::local(local_size.next_level()));
-            let output_term0 = output_closure0.elim(globals, local.clone());
-            let output_term1 = output_closure1.elim(globals, local);
+            let output_term0 = output_closure0.apply(globals, local.clone());
+            let output_term1 = output_closure1.apply(globals, local);
 
             is_subtype(
                 globals,
@@ -852,8 +852,8 @@ pub fn is_subtype(
             let mut local_size = local_size;
             let universe_offset0 = closure0.universe_offset;
             let universe_offset1 = closure1.universe_offset;
-            let mut values0 = closure0.values.clone();
-            let mut values1 = closure1.values.clone();
+            let mut locals0 = closure0.locals.clone();
+            let mut locals1 = closure1.locals.clone();
 
             for ((label0, entry_type0), (label1, entry_type1)) in
                 Iterator::zip(closure0.entries.iter(), closure1.entries.iter())
@@ -862,16 +862,16 @@ pub fn is_subtype(
                     return false;
                 }
 
-                let entry_type0 = eval_term(globals, universe_offset0, &mut values0, entry_type0);
-                let entry_type1 = eval_term(globals, universe_offset1, &mut values1, entry_type1);
+                let entry_type0 = eval_term(globals, universe_offset0, &mut locals0, entry_type0);
+                let entry_type1 = eval_term(globals, universe_offset1, &mut locals1, entry_type1);
 
                 if !is_subtype(globals, local_size, &entry_type0, &entry_type1) {
                     return false;
                 }
 
                 let local_level = local_size.next_level();
-                values0.push(Arc::new(Value::local(local_level)));
-                values1.push(Arc::new(Value::local(local_level)));
+                locals0.push(Arc::new(Value::local(local_level)));
+                locals1.push(Arc::new(Value::local(local_level)));
                 local_size = local_size.increment();
             }
 
