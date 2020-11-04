@@ -3,21 +3,20 @@ record {
     id = fun A a => a,
     always = fun A B a b => a,
 
-    dep-compose = fun A B C a-b a-b-c a => a-b-c a (a-b a),
-    compose = fun A B C a-b b-c a => b-c (a-b a),
-    -- FIXME: Variable binding bug
-    -- compose = fun A B C => dep-compose A (fun a => B) (fun a b => C),
-    -- compose = fun A B C => dep-compose A (always B) (always (always C)),
+    dep-compose = fun A B C a-b a-b-c a =>
+        a-b-c a (a-b a),
+    compose = fun A B C a-b b-c =>
+        dep-compose A (fun a => B) (fun a b => C) a-b (fun a b => b-c b),
 
-    dep-flip = fun A B C a-b-c b a => a-b-c a b,
-    flip = fun A B C => dep-flip A B (fun a b => C),
-    -- FIXME: Variable binding bug
-    -- flip = fun A B C => dep-flip A B (always (always C)),
+    dep-flip = fun A B C a-b-c b a =>
+        a-b-c a b,
+    flip = fun A B C =>
+        dep-flip A B (fun a b => C),
 
-    dep-subst = fun A B C a-b-c a-b a => a-b-c a (a-b a),
-    subst = fun A B C => dep-subst A (fun a => B) (fun a b => C),
-    -- FIXME: Variable binding bug
-    -- subst = fun A B C => dep-subst A (always B) (always (always C)),
+    dep-subst = fun A B C a-b-c a-b a =>
+        a-b-c a (a-b a),
+    subst = fun A B C =>
+        dep-subst A (fun a => B) (fun a b => C),
 
     Unit = Record {},
     unit = record {},

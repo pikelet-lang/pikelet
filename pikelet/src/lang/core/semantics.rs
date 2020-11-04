@@ -326,11 +326,13 @@ pub fn eval_term(
             }
         },
         TermData::Local(index) => match locals.get(*index) {
-            Some(value) => {
-                let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
-                let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
-                Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
-            }
+            Some(value) => value.clone(),
+            // FIXME: Local gluing is kind of broken right now :(
+            // Some(value) => {
+            //     let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
+            //     let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
+            //     Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
+            // }
             None => {
                 let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
                 Arc::new(Value::Stuck(head, Vec::new()))
