@@ -48,11 +48,11 @@ pub enum Value {
     /// Function types.
     ///
     /// Also known as: pi type, dependent product type.
-    FunctionType(Option<String>, Arc<Value>, Closure),
+    FunctionType(Option<String>, Arc<Value>, FunctionClosure),
     /// Function terms.
     ///
     /// Also known as: lambda abstraction, anonymous function.
-    FunctionTerm(String, Closure),
+    FunctionTerm(String, FunctionClosure),
 
     /// Record types.
     RecordType(RecordClosure),
@@ -134,28 +134,28 @@ pub enum Elim {
     Record(String),
 }
 
-/// Closure, capturing the current universe offset and the current locals in scope.
+/// Function closure, capturing the current universe offset and the current locals in scope.
 #[derive(Clone, Debug)]
-pub struct Closure {
+pub struct FunctionClosure {
     universe_offset: UniverseOffset,
     locals: Locals<Arc<Value>>,
     term: Arc<Term>,
 }
 
-impl Closure {
+impl FunctionClosure {
     pub fn new(
         universe_offset: UniverseOffset,
         locals: Locals<Arc<Value>>,
         term: Arc<Term>,
-    ) -> Closure {
-        Closure {
+    ) -> FunctionClosure {
+        FunctionClosure {
             universe_offset,
             locals,
             term,
         }
     }
 
-    /// Apply an input to a closure.
+    /// Apply an input to the function closure.
     pub fn apply(&self, globals: &Globals, input: Arc<Value>) -> Arc<Value> {
         let mut locals = self.locals.clone();
         locals.push(input);
@@ -369,12 +369,12 @@ pub fn eval_term(
             Arc::new(Value::FunctionType(
                 input_name_hint.clone(),
                 eval_term(globals, universe_offset, locals, input_type),
-                Closure::new(universe_offset, locals.clone(), output_type.clone()),
+                FunctionClosure::new(universe_offset, locals.clone(), output_type.clone()),
             ))
         }
         TermData::FunctionTerm(input_name, output_term) => Arc::new(Value::FunctionTerm(
             input_name.clone(),
-            Closure::new(universe_offset, locals.clone(), output_term.clone()),
+            FunctionClosure::new(universe_offset, locals.clone(), output_term.clone()),
         )),
         TermData::FunctionElim(head, input) => {
             let head = eval_term(globals, universe_offset, locals, head);
