@@ -12,7 +12,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use crate::lang::core;
-use crate::lang::core::semantics::{self, Elim, Head, RecordClosure, Unfold, Value};
+use crate::lang::core::semantics::{self, Elim, RecordClosure, Unfold, Value};
 use crate::lang::surface::{Term, TermData};
 use crate::literal;
 use crate::pass::core_to_surface;
@@ -310,85 +310,69 @@ impl<'me> State<'me> {
                 )
             }
 
-            (TermData::SequenceTerm(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
-                match (name.as_ref(), spine.as_slice()) {
-                    ("Array", [Elim::Function(len), Elim::Function(core_entry_type)]) => {
-                        let core_entry_type = core_entry_type.force(self.globals);
-                        let core_entry_terms = entry_terms
-                            .iter()
-                            .map(|entry_term| {
-                                Arc::new(self.check_type(entry_term, core_entry_type))
-                            })
-                            .collect();
+            (TermData::SequenceTerm(entry_terms), forced_type) => match forced_type.try_global() {
+                Some(("Array", _, [Elim::Function(len), Elim::Function(core_entry_type)])) => {
+                    let core_entry_type = core_entry_type.force(self.globals);
+                    let core_entry_terms = entry_terms
+                        .iter()
+                        .map(|entry_term| Arc::new(self.check_type(entry_term, core_entry_type)))
+                        .collect();
 
-                        let len = len.force(self.globals);
-                        match len.as_ref() {
-                            Value::Constant(core::Constant::U32(len))
-                                if *len as usize == entry_terms.len() =>
-                            {
-                                core::Term::new(
-                                    term.range(),
-                                    core::TermData::SequenceTerm(core_entry_terms),
-                                )
-                            }
-                            Value::Error => core::Term::new(term.range(), core::TermData::Error),
-                            _ => {
-                                let expected_len = self.read_back_to_surface_term(&len);
-                                self.report(SurfaceToCoreMessage::MismatchedSequenceLength {
-                                    range: term.range(),
-                                    found_len: entry_terms.len(),
-                                    expected_len,
-                                });
-                                core::Term::new(term.range(), core::TermData::Error)
-                            }
+                    let len = len.force(self.globals);
+                    match len.as_ref() {
+                        Value::Constant(core::Constant::U32(len))
+                            if *len as usize == entry_terms.len() =>
+                        {
+                            core::Term::new(
+                                term.range(),
+                                core::TermData::SequenceTerm(core_entry_terms),
+                            )
+                        }
+                        Value::Error => core::Term::new(term.range(), core::TermData::Error),
+                        _ => {
+                            let expected_len = self.read_back_to_surface_term(&len);
+                            self.report(SurfaceToCoreMessage::MismatchedSequenceLength {
+                                range: term.range(),
+                                found_len: entry_terms.len(),
+                                expected_len,
+                            });
+                            core::Term::new(term.range(), core::TermData::Error)
                         }
                     }
-                    ("List", [Elim::Function(core_entry_type)]) => {
-                        let core_entry_type = core_entry_type.force(self.globals);
-                        let core_entry_terms = entry_terms
-                            .iter()
-                            .map(|entry_term| {
-                                Arc::new(self.check_type(entry_term, core_entry_type))
-                            })
-                            .collect();
+                }
+                Some(("List", _, [Elim::Function(core_entry_type)])) => {
+                    let core_entry_type = core_entry_type.force(self.globals);
+                    let core_entry_terms = entry_terms
+                        .iter()
+                        .map(|entry_term| Arc::new(self.check_type(entry_term, core_entry_type)))
+                        .collect();
 
-                        core::Term::new(
-                            term.range(),
-                            core::TermData::SequenceTerm(core_entry_terms),
-                        )
-                    }
-                    _ => {
-                        let expected_type = self.read_back_to_surface_term(expected_type);
-                        self.report(SurfaceToCoreMessage::NoSequenceConversion {
-                            range: term.range(),
-                            expected_type,
-                        });
-                        core::Term::new(term.range(), core::TermData::Error)
-                    }
+                    core::Term::new(term.range(), core::TermData::SequenceTerm(core_entry_terms))
                 }
-            }
-            (TermData::SequenceTerm(_), _) => {
-                let expected_type = self.read_back_to_surface_term(expected_type);
-                self.report(SurfaceToCoreMessage::NoSequenceConversion {
-                    range: term.range(),
-                    expected_type,
-                });
-                core::Term::new(term.range(), core::TermData::Error)
-            }
+                Some(_) | None => {
+                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    self.report(SurfaceToCoreMessage::NoSequenceConversion {
+                        range: term.range(),
+                        expected_type,
+                    });
+                    core::Term::new(term.range(), core::TermData::Error)
+                }
+            },
+            (TermData::NumberTerm(data), forced_type) => {
+                use crate::lang::core::Constant::*;
 
-            (TermData::NumberTerm(data), Value::Stuck(Head::Global(name, _), spine)) => {
-                match (name.as_ref(), spine.as_slice()) {
-                    ("U8", []) => self.parse_unsigned(term.range(), data, core::Constant::U8),
-                    ("U16", []) => self.parse_unsigned(term.range(), data, core::Constant::U16),
-                    ("U32", []) => self.parse_unsigned(term.range(), data, core::Constant::U32),
-                    ("U64", []) => self.parse_unsigned(term.range(), data, core::Constant::U64),
-                    ("S8", []) => self.parse_signed(term.range(), data, core::Constant::S8),
-                    ("S16", []) => self.parse_signed(term.range(), data, core::Constant::S16),
-                    ("S32", []) => self.parse_signed(term.range(), data, core::Constant::S32),
-                    ("S64", []) => self.parse_signed(term.range(), data, core::Constant::S64),
-                    ("F32", []) => self.parse_float(term.range(), data, core::Constant::F32),
-                    ("F64", []) => self.parse_float(term.range(), data, core::Constant::F64),
-                    (_, _) => {
+                match forced_type.try_global() {
+                    Some(("U8", _, [])) => self.parse_unsigned(term.range(), data, U8),
+                    Some(("U16", _, [])) => self.parse_unsigned(term.range(), data, U16),
+                    Some(("U32", _, [])) => self.parse_unsigned(term.range(), data, U32),
+                    Some(("U64", _, [])) => self.parse_unsigned(term.range(), data, U64),
+                    Some(("S8", _, [])) => self.parse_signed(term.range(), data, S8),
+                    Some(("S16", _, [])) => self.parse_signed(term.range(), data, S16),
+                    Some(("S32", _, [])) => self.parse_signed(term.range(), data, S32),
+                    Some(("S64", _, [])) => self.parse_signed(term.range(), data, S64),
+                    Some(("F32", _, [])) => self.parse_float(term.range(), data, F32),
+                    Some(("F64", _, [])) => self.parse_float(term.range(), data, F64),
+                    Some(_) | None => {
                         let expected_type = self.read_back_to_surface_term(expected_type);
                         self.report(SurfaceToCoreMessage::NoLiteralConversion {
                             range: term.range(),
@@ -398,42 +382,28 @@ impl<'me> State<'me> {
                     }
                 }
             }
-            (TermData::CharTerm(data), Value::Stuck(Head::Global(name, _), spine)) => {
-                match (name.as_ref(), spine.as_slice()) {
-                    ("Char", []) => self.parse_char(term.range(), data),
-                    (_, _) => {
-                        let expected_type = self.read_back_to_surface_term(expected_type);
-                        self.report(SurfaceToCoreMessage::NoLiteralConversion {
-                            range: term.range(),
-                            expected_type,
-                        });
-                        core::Term::new(term.range(), core::TermData::Error)
-                    }
+            (TermData::CharTerm(data), forced_type) => match forced_type.try_global() {
+                Some(("Char", _, [])) => self.parse_char(term.range(), data),
+                Some(_) | None => {
+                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    self.report(SurfaceToCoreMessage::NoLiteralConversion {
+                        range: term.range(),
+                        expected_type,
+                    });
+                    core::Term::new(term.range(), core::TermData::Error)
                 }
-            }
-            (TermData::StringTerm(data), Value::Stuck(Head::Global(name, _), spine)) => {
-                match (name.as_ref(), spine.as_slice()) {
-                    ("String", []) => self.parse_string(term.range(), data),
-                    (_, _) => {
-                        let expected_type = self.read_back_to_surface_term(expected_type);
-                        self.report(SurfaceToCoreMessage::NoLiteralConversion {
-                            range: term.range(),
-                            expected_type,
-                        });
-                        core::Term::new(term.range(), core::TermData::Error)
-                    }
+            },
+            (TermData::StringTerm(data), forced_type) => match forced_type.try_global() {
+                Some(("String", _, [])) => self.parse_string(term.range(), data),
+                Some(_) | None => {
+                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    self.report(SurfaceToCoreMessage::NoLiteralConversion {
+                        range: term.range(),
+                        expected_type,
+                    });
+                    core::Term::new(term.range(), core::TermData::Error)
                 }
-            }
-            (TermData::NumberTerm(_), _)
-            | (TermData::CharTerm(_), _)
-            | (TermData::StringTerm(_), _) => {
-                let expected_type = self.read_back_to_surface_term(expected_type);
-                self.report(SurfaceToCoreMessage::NoLiteralConversion {
-                    range: term.range(),
-                    expected_type,
-                });
-                core::Term::new(term.range(), core::TermData::Error)
-            }
+            },
 
             (_, _) => match self.synth_type(term) {
                 (term, found_type) if self.is_subtype(&found_type, expected_type) => term,

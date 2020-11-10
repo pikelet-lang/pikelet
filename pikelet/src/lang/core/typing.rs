@@ -13,7 +13,7 @@ use contracts::debug_ensures;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 
-use crate::lang::core::semantics::{self, Elim, Head, RecordClosure, Unfold, Value};
+use crate::lang::core::semantics::{self, Elim, RecordClosure, Unfold, Value};
 use crate::lang::core::{
     Constant, Globals, LocalLevel, Locals, Term, TermData, UniverseLevel, UniverseOffset,
 };
@@ -198,39 +198,33 @@ impl<'me> State<'me> {
                 }
             }
 
-            (TermData::SequenceTerm(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
-                match (name.as_ref(), spine.as_slice()) {
-                    ("Array", [Elim::Function(len), Elim::Function(entry_type)]) => {
-                        let entry_type = entry_type.force(self.globals);
-                        for entry_term in entry_terms {
-                            self.check_type(entry_term, entry_type);
-                        }
+            (TermData::SequenceTerm(entry_terms), forced_type) => match forced_type.try_global() {
+                Some(("Array", _, [Elim::Function(len), Elim::Function(entry_type)])) => {
+                    let entry_type = entry_type.force(self.globals);
+                    for entry_term in entry_terms {
+                        self.check_type(entry_term, entry_type);
+                    }
 
-                        match len.force(self.globals).as_ref() {
-                            Value::Constant(Constant::U32(len))
-                                if *len as usize == entry_terms.len() => {}
-                            len => self.report(CoreTypingMessage::MismatchedSequenceLength {
-                                found_len: entry_terms.len(),
-                                expected_len: self.read_back_value(len),
-                            }),
-                        }
-                    }
-                    ("List", [Elim::Function(entry_type)]) => {
-                        let entry_type = entry_type.force(self.globals);
-                        for entry_term in entry_terms {
-                            self.check_type(entry_term, entry_type);
-                        }
-                    }
-                    _ => {
-                        let expected_type = self.read_back_value(expected_type);
-                        self.report(CoreTypingMessage::NoSequenceConversion { expected_type })
+                    match len.force(self.globals).as_ref() {
+                        Value::Constant(Constant::U32(len))
+                            if *len as usize == entry_terms.len() => {}
+                        len => self.report(CoreTypingMessage::MismatchedSequenceLength {
+                            found_len: entry_terms.len(),
+                            expected_len: self.read_back_value(len),
+                        }),
                     }
                 }
-            }
-            (TermData::SequenceTerm(_), _) => {
-                let expected_type = self.read_back_value(expected_type);
-                self.report(CoreTypingMessage::NoSequenceConversion { expected_type })
-            }
+                Some(("List", _, [Elim::Function(entry_type)])) => {
+                    let entry_type = entry_type.force(self.globals);
+                    for entry_term in entry_terms {
+                        self.check_type(entry_term, entry_type);
+                    }
+                }
+                Some(_) | None => {
+                    let expected_type = self.read_back_value(expected_type);
+                    self.report(CoreTypingMessage::NoSequenceConversion { expected_type })
+                }
+            },
 
             (_, _) => match self.synth_type(term) {
                 found_type if self.is_subtype(&found_type, expected_type) => {}

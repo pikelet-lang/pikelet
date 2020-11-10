@@ -134,7 +134,6 @@ pub enum TermData {
 
     /// Ordered sequences.
     SequenceTerm(Vec<Arc<Term>>),
-
     /// Constants.
     Constant(Constant),
 

@@ -85,6 +85,19 @@ impl Value {
         Value::Stuck(Head::Local(level.into()), Vec::new())
     }
 
+    /// Attempt to match against a stuck global.
+    ///
+    /// This can help to clean up pattern matches in lieu of
+    /// [`match_default_bindings`](https://github.com/rust-lang/rust/issues/42640).
+    pub fn try_global(&self) -> Option<(&str, UniverseOffset, &[Elim])> {
+        match self {
+            Value::Stuck(Head::Global(name, universe_offset), elims) => {
+                Some((name, *universe_offset, elims))
+            }
+            _ => None,
+        }
+    }
+
     /// Force any unstuck values.
     pub fn force(&self, globals: &Globals) -> &Value {
         match self {
