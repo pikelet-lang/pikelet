@@ -1,5 +1,5 @@
 use crate::lang::Ranged;
-use crate::lang::surface::{Term, TermData, Literal, TypeEntry, TermEntry};
+use crate::lang::surface::{Term, TermData, TypeEntry, TermEntry};
 use crate::lang::surface::lexer::Token;
 use crate::reporting::LexerError;
 
@@ -85,8 +85,10 @@ AtomicTermData: TermData = {
     "Record" "{" <entries: List<TypeEntry>> "}" => TermData::RecordType(entries),
     "record" "{" <entries: List<TermEntry>> "}" => TermData::RecordTerm(entries),
     <head_term: AtomicTerm> "." <label: Ranged<Name>> => TermData::RecordElim(Box::new(head_term), label),
-    "[" <entries: List<Term>> "]" => TermData::Sequence(entries),
-    <literal: Literal> => TermData::Literal(literal),
+    "[" <entries: List<Term>> "]" => TermData::SequenceTerm(entries),
+    "character literal" => TermData::CharTerm(<>.to_owned()),
+    "string literal" => TermData::StringTerm(<>.to_owned()),
+    "numeric literal" => TermData::NumberTerm(<>.to_owned()),
 };
 
 #[inline]
@@ -114,13 +116,6 @@ TermEntry: TermEntry = {
 #[inline]
 Name: String = {
     "name" => (<>).to_owned(),
-};
-
-#[inline]
-Literal: Literal = {
-    "character literal" => Literal::Char(<>.to_owned()),
-    "string literal" => Literal::String(<>.to_owned()),
-    "numeric literal" => Literal::Number(<>.to_owned()),
 };
 
 #[inline]

@@ -230,29 +230,29 @@ impl<'me> State<'me> {
                 Ranged::from(label.clone()),
             ),
 
-            TermData::Sequence(entry_terms) => {
+            TermData::SequenceTerm(entry_terms) => {
                 let core_entry_terms = entry_terms
                     .iter()
                     .map(|entry_term| self.from_term(entry_term))
                     .collect();
 
-                surface::TermData::Sequence(core_entry_terms)
+                surface::TermData::SequenceTerm(core_entry_terms)
             }
 
-            TermData::Constant(constant) => surface::TermData::Literal(match constant {
-                Constant::U8(value) => surface::Literal::Number(value.to_string()),
-                Constant::U16(value) => surface::Literal::Number(value.to_string()),
-                Constant::U32(value) => surface::Literal::Number(value.to_string()),
-                Constant::U64(value) => surface::Literal::Number(value.to_string()),
-                Constant::S8(value) => surface::Literal::Number(value.to_string()),
-                Constant::S16(value) => surface::Literal::Number(value.to_string()),
-                Constant::S32(value) => surface::Literal::Number(value.to_string()),
-                Constant::S64(value) => surface::Literal::Number(value.to_string()),
-                Constant::F32(value) => surface::Literal::Number(value.to_string()),
-                Constant::F64(value) => surface::Literal::Number(value.to_string()),
-                Constant::Char(value) => surface::Literal::Char(format!("{:?}", value)),
-                Constant::String(value) => surface::Literal::String(format!("{:?}", value)),
-            }),
+            TermData::Constant(constant) => match constant {
+                Constant::U8(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::U16(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::U32(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::U64(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::S8(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::S16(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::S32(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::S64(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::F32(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::F64(value) => surface::TermData::NumberTerm(value.to_string()),
+                Constant::Char(value) => surface::TermData::CharTerm(format!("{:?}", value)),
+                Constant::String(value) => surface::TermData::StringTerm(format!("{:?}", value)),
+            },
 
             TermData::Error => surface::TermData::Error,
         };

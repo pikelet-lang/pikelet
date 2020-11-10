@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use crate::lang::core;
 use crate::lang::core::semantics::{self, Elim, Head, RecordClosure, Unfold, Value};
-use crate::lang::surface::{Literal, Term, TermData};
+use crate::lang::surface::{Term, TermData};
 use crate::literal;
 use crate::pass::core_to_surface;
 use crate::reporting::{AmbiguousTerm, ExpectedType, Message, SurfaceToCoreMessage};
@@ -310,7 +310,7 @@ impl<'me> State<'me> {
                 )
             }
 
-            (TermData::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
+            (TermData::SequenceTerm(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
                 match (name.as_ref(), spine.as_slice()) {
                     ("Array", [Elim::Function(len), Elim::Function(core_entry_type)]) => {
                         let core_entry_type = core_entry_type.force(self.globals);
@@ -328,7 +328,7 @@ impl<'me> State<'me> {
                             {
                                 core::Term::new(
                                     term.range(),
-                                    core::TermData::Sequence(core_entry_terms),
+                                    core::TermData::SequenceTerm(core_entry_terms),
                                 )
                             }
                             Value::Error => core::Term::new(term.range(), core::TermData::Error),
@@ -352,7 +352,10 @@ impl<'me> State<'me> {
                             })
                             .collect();
 
-                        core::Term::new(term.range(), core::TermData::Sequence(core_entry_terms))
+                        core::Term::new(
+                            term.range(),
+                            core::TermData::SequenceTerm(core_entry_terms),
+                        )
                     }
                     _ => {
                         let expected_type = self.read_back_to_surface_term(expected_type);
@@ -364,7 +367,7 @@ impl<'me> State<'me> {
                     }
                 }
             }
-            (TermData::Sequence(_), _) => {
+            (TermData::SequenceTerm(_), _) => {
                 let expected_type = self.read_back_to_surface_term(expected_type);
                 self.report(SurfaceToCoreMessage::NoSequenceConversion {
                     range: term.range(),
@@ -373,34 +376,57 @@ impl<'me> State<'me> {
                 core::Term::new(term.range(), core::TermData::Error)
             }
 
-            (TermData::Literal(literal), Value::Stuck(Head::Global(name, _), spine)) => {
-                use crate::lang::core::Constant::*;
-
-                let range = term.range();
-                match (literal, name.as_ref(), spine.as_slice()) {
-                    (Literal::Number(data), "U8", []) => self.parse_unsigned(range, data, U8),
-                    (Literal::Number(data), "U16", []) => self.parse_unsigned(range, data, U16),
-                    (Literal::Number(data), "U32", []) => self.parse_unsigned(range, data, U32),
-                    (Literal::Number(data), "U64", []) => self.parse_unsigned(range, data, U64),
-                    (Literal::Number(data), "S8", []) => self.parse_signed(range, data, S8),
-                    (Literal::Number(data), "S16", []) => self.parse_signed(range, data, S16),
-                    (Literal::Number(data), "S32", []) => self.parse_signed(range, data, S32),
-                    (Literal::Number(data), "S64", []) => self.parse_signed(range, data, S64),
-                    (Literal::Number(data), "F32", []) => self.parse_float(range, data, F32),
-                    (Literal::Number(data), "F64", []) => self.parse_float(range, data, F64),
-                    (Literal::Char(data), "Char", []) => self.parse_char(range, data),
-                    (Literal::String(data), "String", []) => self.parse_string(range, data),
-                    (_, _, _) => {
+            (TermData::NumberTerm(data), Value::Stuck(Head::Global(name, _), spine)) => {
+                match (name.as_ref(), spine.as_slice()) {
+                    ("U8", []) => self.parse_unsigned(term.range(), data, core::Constant::U8),
+                    ("U16", []) => self.parse_unsigned(term.range(), data, core::Constant::U16),
+                    ("U32", []) => self.parse_unsigned(term.range(), data, core::Constant::U32),
+                    ("U64", []) => self.parse_unsigned(term.range(), data, core::Constant::U64),
+                    ("S8", []) => self.parse_signed(term.range(), data, core::Constant::S8),
+                    ("S16", []) => self.parse_signed(term.range(), data, core::Constant::S16),
+                    ("S32", []) => self.parse_signed(term.range(), data, core::Constant::S32),
+                    ("S64", []) => self.parse_signed(term.range(), data, core::Constant::S64),
+                    ("F32", []) => self.parse_float(term.range(), data, core::Constant::F32),
+                    ("F64", []) => self.parse_float(term.range(), data, core::Constant::F64),
+                    (_, _) => {
                         let expected_type = self.read_back_to_surface_term(expected_type);
                         self.report(SurfaceToCoreMessage::NoLiteralConversion {
-                            range,
+                            range: term.range(),
                             expected_type,
                         });
                         core::Term::new(term.range(), core::TermData::Error)
                     }
                 }
             }
-            (TermData::Literal(_), _) => {
+            (TermData::CharTerm(data), Value::Stuck(Head::Global(name, _), spine)) => {
+                match (name.as_ref(), spine.as_slice()) {
+                    ("Char", []) => self.parse_char(term.range(), data),
+                    (_, _) => {
+                        let expected_type = self.read_back_to_surface_term(expected_type);
+                        self.report(SurfaceToCoreMessage::NoLiteralConversion {
+                            range: term.range(),
+                            expected_type,
+                        });
+                        core::Term::new(term.range(), core::TermData::Error)
+                    }
+                }
+            }
+            (TermData::StringTerm(data), Value::Stuck(Head::Global(name, _), spine)) => {
+                match (name.as_ref(), spine.as_slice()) {
+                    ("String", []) => self.parse_string(term.range(), data),
+                    (_, _) => {
+                        let expected_type = self.read_back_to_surface_term(expected_type);
+                        self.report(SurfaceToCoreMessage::NoLiteralConversion {
+                            range: term.range(),
+                            expected_type,
+                        });
+                        core::Term::new(term.range(), core::TermData::Error)
+                    }
+                }
+            }
+            (TermData::NumberTerm(_), _)
+            | (TermData::CharTerm(_), _)
+            | (TermData::StringTerm(_), _) => {
                 let expected_type = self.read_back_to_surface_term(expected_type);
                 self.report(SurfaceToCoreMessage::NoLiteralConversion {
                     range: term.range(),
@@ -703,7 +729,7 @@ impl<'me> State<'me> {
                 (error_term(), Arc::new(Value::Error))
             }
 
-            TermData::Sequence(_) => {
+            TermData::SequenceTerm(_) => {
                 self.report(SurfaceToCoreMessage::AmbiguousTerm {
                     range: term.range(),
                     term: AmbiguousTerm::Sequence,
@@ -711,23 +737,21 @@ impl<'me> State<'me> {
                 (error_term(), Arc::new(Value::Error))
             }
 
-            TermData::Literal(literal) => match literal {
-                Literal::Number(_) => {
-                    self.report(SurfaceToCoreMessage::AmbiguousTerm {
-                        range: term.range(),
-                        term: AmbiguousTerm::NumberLiteral,
-                    });
-                    (error_term(), Arc::new(Value::Error))
-                }
-                Literal::Char(data) => (
-                    self.parse_char(term.range(), data),
-                    Arc::new(Value::global("Char", 0)),
-                ),
-                Literal::String(data) => (
-                    self.parse_string(term.range(), data),
-                    Arc::new(Value::global("String", 0)),
-                ),
-            },
+            TermData::NumberTerm(_) => {
+                self.report(SurfaceToCoreMessage::AmbiguousTerm {
+                    range: term.range(),
+                    term: AmbiguousTerm::NumberLiteral,
+                });
+                (error_term(), Arc::new(Value::Error))
+            }
+            TermData::CharTerm(data) => (
+                self.parse_char(term.range(), data),
+                Arc::new(Value::global("Char", 0)),
+            ),
+            TermData::StringTerm(data) => (
+                self.parse_string(term.range(), data),
+                Arc::new(Value::global("String", 0)),
+            ),
 
             TermData::Error => (error_term(), Arc::new(Value::Error)),
         }

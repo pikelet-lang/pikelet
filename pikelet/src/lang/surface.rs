@@ -14,17 +14,6 @@ mod grammar {
     include!(concat!(env!("OUT_DIR"), "/lang/surface/grammar.rs"));
 }
 
-/// Literals.
-#[derive(Debug, Clone)]
-pub enum Literal {
-    /// Character literals.
-    Char(String),
-    /// String literals.
-    String(String),
-    /// Numeric literals.
-    Number(String),
-}
-
 /// Entry in a [record type](Term::RecordType).
 pub type TypeEntry = (Ranged<String>, Option<Ranged<String>>, Term);
 /// Entry in a [record term](Term::RecordTerm).
@@ -73,10 +62,13 @@ pub enum TermData {
     RecordElim(Box<Term>, Ranged<String>),
 
     /// Ordered sequences.
-    Sequence(Vec<Term>),
-
-    /// Literals.
-    Literal(Literal),
+    SequenceTerm(Vec<Term>),
+    /// Character literals.
+    CharTerm(String),
+    /// String literals.
+    StringTerm(String),
+    /// Numeric literals.
+    NumberTerm(String),
 
     /// Error sentinel.
     Error,

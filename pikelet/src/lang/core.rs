@@ -133,7 +133,7 @@ pub enum TermData {
     RecordElim(Arc<Term>, String),
 
     /// Ordered sequences.
-    Sequence(Vec<Arc<Term>>),
+    SequenceTerm(Vec<Arc<Term>>),
 
     /// Constants.
     Constant(Constant),
@@ -424,7 +424,7 @@ impl<T: TryFromTerm> TryFromTerm for Vec<T> {
 
     fn try_from_term(term: &Term) -> Result<Vec<T>, ()> {
         match &term.data {
-            TermData::Sequence(entry_terms) => entry_terms
+            TermData::SequenceTerm(entry_terms) => entry_terms
                 .iter()
                 .map(|entry_term| T::try_from_term(entry_term).map_err(|_| ()))
                 .collect::<Result<Vec<_>, ()>>(),
@@ -440,7 +440,7 @@ macro_rules! impl_try_from_term_array {
 
             fn try_from_term(term: &Term) -> Result<[T; $len], ()> {
                 match &term.data {
-                    TermData::Sequence(entry_terms) if entry_terms.len() == $len => {
+                    TermData::SequenceTerm(entry_terms) if entry_terms.len() == $len => {
                         use std::mem::MaybeUninit;
 
                         let mut entries: [MaybeUninit::<T>; $len] = unsafe {
@@ -523,7 +523,7 @@ impl_to_term!(str, |value| TermData::from(Constant::String(
 
 impl<T: ToTerm> ToTerm for Vec<T> {
     fn to_term(&self) -> Term {
-        Term::from(TermData::Sequence(
+        Term::from(TermData::SequenceTerm(
             self.iter()
                 .map(|entry_term| Arc::new(T::to_term(entry_term)))
                 .collect(),
@@ -535,7 +535,7 @@ macro_rules! impl_to_term_array {
     ($($len:expr),*) => {
         $(impl<T: ToTerm> ToTerm for [T; $len] {
             fn to_term(&self) -> Term {
-                Term::from(TermData::Sequence(
+                Term::from(TermData::SequenceTerm(
                     self.iter()
                         .map(|entry_term| Arc::new(T::to_term(entry_term)))
                         .collect(),

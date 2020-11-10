@@ -198,7 +198,7 @@ impl<'me> State<'me> {
                 }
             }
 
-            (TermData::Sequence(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
+            (TermData::SequenceTerm(entry_terms), Value::Stuck(Head::Global(name, _), spine)) => {
                 match (name.as_ref(), spine.as_slice()) {
                     ("Array", [Elim::Function(len), Elim::Function(entry_type)]) => {
                         let entry_type = entry_type.force(self.globals);
@@ -227,7 +227,7 @@ impl<'me> State<'me> {
                     }
                 }
             }
-            (TermData::Sequence(_), _) => {
+            (TermData::SequenceTerm(_), _) => {
                 let expected_type = self.read_back_value(expected_type);
                 self.report(CoreTypingMessage::NoSequenceConversion { expected_type })
             }
@@ -401,7 +401,7 @@ impl<'me> State<'me> {
                 Arc::new(Value::Error)
             }
 
-            TermData::Sequence(_) => {
+            TermData::SequenceTerm(_) => {
                 self.report(CoreTypingMessage::AmbiguousTerm {
                     term: AmbiguousTerm::Sequence,
                 });

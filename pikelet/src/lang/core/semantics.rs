@@ -60,7 +60,7 @@ pub enum Value {
     RecordTerm(RecordClosure),
 
     /// Ordered sequences.
-    Sequence(Vec<Arc<Value>>),
+    SequenceTerm(Vec<Arc<Value>>),
 
     /// Constants.
     Constant(Constant),
@@ -382,13 +382,13 @@ pub fn eval_term(
             apply_function_elim(globals, head, Arc::new(input))
         }
 
-        TermData::Sequence(term_entries) => {
+        TermData::SequenceTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
                 .map(|entry_term| eval_term(globals, universe_offset, locals, entry_term))
                 .collect();
 
-            Arc::new(Value::Sequence(value_entries))
+            Arc::new(Value::SequenceTerm(value_entries))
         }
 
         TermData::Constant(constant) => Arc::new(Value::from(constant.clone())),
@@ -594,7 +594,7 @@ pub fn read_back_value(
             Term::from(TermData::RecordTerm(term_entries.into()))
         }
 
-        Value::Sequence(value_entries) => {
+        Value::SequenceTerm(value_entries) => {
             let term_entries = value_entries
                 .iter()
                 .map(|value_entry| {
@@ -602,7 +602,7 @@ pub fn read_back_value(
                 })
                 .collect();
 
-            Term::from(TermData::Sequence(term_entries))
+            Term::from(TermData::SequenceTerm(term_entries))
         }
 
         Value::Constant(constant) => Term::from(TermData::from(constant.clone())),
@@ -760,7 +760,7 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
             true
         }
 
-        (Value::Sequence(value_entries0), Value::Sequence(value_entries1)) => {
+        (Value::SequenceTerm(value_entries0), Value::SequenceTerm(value_entries1)) => {
             if value_entries0.len() != value_entries1.len() {
                 return false;
             }

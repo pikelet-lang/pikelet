@@ -4,7 +4,7 @@
 
 use pretty::{DocAllocator, DocBuilder};
 
-use crate::lang::surface::{Literal, Term, TermData};
+use crate::lang::surface::{Term, TermData};
 
 /// The precedence of a term.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -202,7 +202,7 @@ where
             .append(".")
             .append(&label.data),
 
-        TermData::Sequence(term_entries) => (alloc.nil())
+        TermData::SequenceTerm(term_entries) => (alloc.nil())
             .append("[")
             .group()
             .append(
@@ -215,19 +215,11 @@ where
             )
             .append("]"),
 
-        TermData::Literal(literal) => from_literal(alloc, literal),
+        TermData::CharTerm(text) | TermData::StringTerm(text) | TermData::NumberTerm(text) => {
+            alloc.text(text)
+        }
 
         TermData::Error => alloc.text("!"),
-    }
-}
-
-pub fn from_literal<'a, D>(alloc: &'a D, literal: &'a Literal) -> DocBuilder<'a, D>
-where
-    D: DocAllocator<'a>,
-    D::Doc: Clone,
-{
-    match literal {
-        Literal::Char(text) | Literal::String(text) | Literal::Number(text) => alloc.text(text),
     }
 }
 

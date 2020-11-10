@@ -92,11 +92,32 @@ fn view_term<M: 'static>(term: &pikelet::lang::core::Term) -> Element<M> {
     use pikelet::lang::core::{Constant, TermData, UniverseLevel, UniverseOffset};
 
     match &term.data {
+        TermData::Global(name) => Text::new(name).into(),
+        TermData::Local(_) => Text::new("todo").into(),
+
+        TermData::Ann(term, r#type) => Row::new()
+            .push(view_term(term))
+            .push(Text::new(" : "))
+            .push(view_term(r#type))
+            .into(),
+
         TermData::TypeType(UniverseLevel(level)) => Row::new()
             .push(Text::new(format!("Univ^{}", level))) // TODO: superscript?
             .into(),
-        TermData::Global(name) => Text::new(name).into(),
-        TermData::Local(_) => Text::new("todo").into(),
+        TermData::Lift(term, UniverseOffset(offset)) => Row::new()
+            .push(view_term(term))
+            .push(Text::new(format!("^{}", offset)))
+            .into(),
+
+        TermData::FunctionType(_, _, _) => Text::new("todo").into(),
+        TermData::FunctionTerm(_, _) => Text::new("todo").into(),
+        TermData::FunctionElim(_, _) => Text::new("todo").into(),
+
+        TermData::RecordTerm(_) => Text::new("todo").into(),
+        TermData::RecordType(_) => Text::new("todo").into(),
+        TermData::RecordElim(_, _) => Text::new("todo").into(),
+
+        TermData::SequenceTerm(_) => Text::new("todo").into(),
         TermData::Constant(Constant::U8(data)) => Text::new(data.to_string()).into(),
         TermData::Constant(Constant::U16(data)) => Text::new(data.to_string()).into(),
         TermData::Constant(Constant::U32(data)) => Text::new(data.to_string()).into(),
@@ -109,22 +130,7 @@ fn view_term<M: 'static>(term: &pikelet::lang::core::Term) -> Element<M> {
         TermData::Constant(Constant::F64(data)) => Text::new(data.to_string()).into(),
         TermData::Constant(Constant::Char(data)) => Text::new(format!("{:?}", data)).into(),
         TermData::Constant(Constant::String(data)) => Text::new(format!("{:?}", data)).into(),
-        TermData::Sequence(_) => Text::new("todo").into(),
-        TermData::Ann(term, r#type) => Row::new()
-            .push(view_term(term))
-            .push(Text::new(" : "))
-            .push(view_term(r#type))
-            .into(),
-        TermData::RecordTerm(_) => Text::new("todo").into(),
-        TermData::RecordType(_) => Text::new("todo").into(),
-        TermData::RecordElim(_, _) => Text::new("todo").into(),
-        TermData::FunctionType(_, _, _) => Text::new("todo").into(),
-        TermData::FunctionTerm(_, _) => Text::new("todo").into(),
-        TermData::FunctionElim(_, _) => Text::new("todo").into(),
-        TermData::Lift(term, UniverseOffset(offset)) => Row::new()
-            .push(view_term(term))
-            .push(Text::new(format!("^{}", offset)))
-            .into(),
+
         TermData::Error => Text::new("ERROR!").into(),
     }
 }
