@@ -105,7 +105,9 @@ pub fn tokens<'a>(
     Token::lexer(source)
         .spanned()
         .map(|(token, range)| match token {
-            Token::Error => Err(LexerError::InvalidToken { range }),
+            Token::Error => Err(LexerError::InvalidToken {
+                range: range.into(),
+            }),
             token => Ok((range.start, token, range.end)),
         })
 }

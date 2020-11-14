@@ -1,4 +1,4 @@
-use crate::lang::Ranged;
+use crate::lang::{Range, Ranged};
 use crate::lang::surface::{Term, TermData, TypeEntry, TermEntry};
 use crate::lang::surface::lexer::Token;
 use crate::reporting::LexerError;
@@ -120,5 +120,5 @@ Name: String = {
 
 #[inline]
 Ranged<T>: Ranged<T> = {
-    <start: @L> <data: T> <end: @R> => Ranged::new(start..end, data),
+    <start: @L> <data: T> <end: @R> => Ranged::new(Range::from(start..end), data),
 };

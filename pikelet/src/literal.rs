@@ -5,8 +5,8 @@
 use crossbeam_channel::Sender;
 use logos::Logos;
 use num_traits::{Float, PrimInt, Signed, Unsigned};
-use std::ops::Range;
 
+use crate::lang::Range;
 use crate::reporting::LiteralParseMessage::*;
 use crate::reporting::Message;
 
@@ -193,14 +193,14 @@ enum AsciiEscape<'source> {
 
 /// Literal parser state.
 pub struct State<'source, 'messages> {
-    range: Range<usize>,
+    range: Range,
     source: &'source str,
     message_tx: &'messages Sender<Message>,
 }
 
 impl<'source, 'messages> State<'source, 'messages> {
     pub fn new(
-        range: Range<usize>,
+        range: Range,
         source: &'source str,
         message_tx: &'messages Sender<Message>,
     ) -> State<'source, 'messages> {
@@ -217,18 +217,13 @@ impl<'source, 'messages> State<'source, 'messages> {
         None
     }
 
-    /// The range of the entire literal.
-    fn range(&self) -> Range<usize> {
-        self.range.clone()
-    }
-
     /// Get the file-relative range of the current token.
-    fn token_range<Token>(&self, lexer: &logos::Lexer<'source, Token>) -> Range<usize>
+    fn token_range<Token>(&self, lexer: &logos::Lexer<'source, Token>) -> Range
     where
         Token: Logos<'source>,
     {
         let span = lexer.span();
-        (self.range.start + span.start)..(self.range.start + span.end)
+        Range::from((self.range.start + span.start)..(self.range.start + span.end))
     }
 
     /// Parse a numeric literal into an unsigned integer.
@@ -242,7 +237,7 @@ impl<'source, 'messages> State<'source, 'messages> {
 
         let (base, start_digit) = match self.expect_numeric_literal_start(&mut lexer)? {
             (Sign::Positive, base, start_digit) => (base, start_digit),
-            (Sign::Negative, _, _) => return self.report(NegativeUnsignedInteger(self.range())),
+            (Sign::Negative, _, _) => return self.report(NegativeUnsignedInteger(self.range)),
         };
 
         let mut lexer = lexer.morph();
@@ -420,7 +415,7 @@ impl<'source, 'messages> State<'source, 'messages> {
 
             Some(float)
         } else {
-            self.report(UnsupportedFloatLiteralBase(self.range(), base))
+            self.report(UnsupportedFloatLiteralBase(self.range, base))
         }
     }
 
@@ -454,7 +449,7 @@ impl<'source, 'messages> State<'source, 'messages> {
                 Sign::Positive => T::checked_add(&place_shifted, &T::from(digit).unwrap()),
                 Sign::Negative => T::checked_sub(&place_shifted, &T::from(digit).unwrap()),
             })
-            .or_else(|| self.report(LiteralOutOfRange(self.range())))
+            .or_else(|| self.report(LiteralOutOfRange(self.range)))
     }
 
     /// Parse a quoted literal into a Unicode encoded character.
@@ -479,7 +474,7 @@ impl<'source, 'messages> State<'source, 'messages> {
                     for ch in text.chars() {
                         match character {
                             None => character = Some(ch),
-                            Some(_) => return self.report(OverlongCharLiteral(self.range())),
+                            Some(_) => return self.report(OverlongCharLiteral(self.range)),
                         }
                     }
                 }
@@ -499,7 +494,7 @@ impl<'source, 'messages> State<'source, 'messages> {
                 },
                 QuotedText::End(quote) => match character {
                     None => character = Some(quote.to_char()),
-                    Some(_) => return self.report(OverlongCharLiteral(self.range())),
+                    Some(_) => return self.report(OverlongCharLiteral(self.range)),
                 },
 
                 QuotedText::Error => return self.report(InvalidToken(self.token_range(&lexer))),
@@ -508,7 +503,7 @@ impl<'source, 'messages> State<'source, 'messages> {
 
         match character {
             Some(ch) => Some(ch),
-            None => self.report(EmptyCharLiteral(self.range())),
+            None => self.report(EmptyCharLiteral(self.range)),
         }
     }
 
