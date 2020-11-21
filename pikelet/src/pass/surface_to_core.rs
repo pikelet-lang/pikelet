@@ -76,7 +76,7 @@ impl<'me> State<'me> {
 
     /// Push a local parameter.
     fn push_local_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.next_level()));
+        let value = Arc::new(Value::local(self.next_level(), []));
         self.push_local(name, value.clone(), r#type);
         value
     }
@@ -322,10 +322,7 @@ impl<'me> State<'me> {
                         Value::Constant(core::Constant::U32(len))
                             if *len as usize == entry_terms.len() =>
                         {
-                            core::Term::new(
-                                term.range,
-                                core::TermData::SequenceTerm(core_entry_terms),
-                            )
+                            core::Term::new(term.range, core::TermData::ArrayTerm(core_entry_terms))
                         }
                         Value::Error => core::Term::new(term.range, core::TermData::Error),
                         _ => {
@@ -346,7 +343,7 @@ impl<'me> State<'me> {
                         .map(|entry_term| Arc::new(self.check_type(entry_term, core_entry_type)))
                         .collect();
 
-                    core::Term::new(term.range, core::TermData::SequenceTerm(core_entry_terms))
+                    core::Term::new(term.range, core::TermData::ListTerm(core_entry_terms))
                 }
                 Some(_) | None => {
                     let expected_type = self.read_back_to_surface_term(expected_type);
@@ -714,11 +711,11 @@ impl<'me> State<'me> {
             }
             TermData::CharTerm(data) => (
                 self.parse_char(term.range, data),
-                Arc::new(Value::global("Char", 0)),
+                Arc::new(Value::global("Char", 0, [])),
             ),
             TermData::StringTerm(data) => (
                 self.parse_string(term.range, data),
-                Arc::new(Value::global("String", 0)),
+                Arc::new(Value::global("String", 0, [])),
             ),
 
             TermData::Error => (error_term(), Arc::new(Value::Error)),

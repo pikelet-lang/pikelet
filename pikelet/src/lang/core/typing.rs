@@ -58,7 +58,7 @@ impl<'me> State<'me> {
 
     /// Push a local parameter.
     fn push_local_param(&mut self, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.next_level()));
+        let value = Arc::new(Value::local(self.next_level(), []));
         self.push_local(value.clone(), r#type);
         value
     }
@@ -198,31 +198,48 @@ impl<'me> State<'me> {
                 }
             }
 
-            (TermData::SequenceTerm(entry_terms), forced_type) => match forced_type.try_global() {
+            (TermData::ArrayTerm(entry_terms), forced_type) => match forced_type.try_global() {
                 Some(("Array", _, [Elim::Function(len), Elim::Function(entry_type)])) => {
-                    let entry_type = entry_type.force(self.globals);
+                    let forced_entry_type = entry_type.force(self.globals);
                     for entry_term in entry_terms {
-                        self.check_type(entry_term, entry_type);
+                        self.check_type(entry_term, forced_entry_type);
                     }
 
                     match len.force(self.globals).as_ref() {
                         Value::Constant(Constant::U32(len))
                             if *len as usize == entry_terms.len() => {}
-                        len => self.report(CoreTypingMessage::MismatchedSequenceLength {
-                            found_len: entry_terms.len(),
-                            expected_len: self.read_back_value(len),
-                        }),
-                    }
-                }
-                Some(("List", _, [Elim::Function(entry_type)])) => {
-                    let entry_type = entry_type.force(self.globals);
-                    for entry_term in entry_terms {
-                        self.check_type(entry_term, entry_type);
+                        _ => {
+                            self.report(CoreTypingMessage::MismatchedTypes {
+                                expected_type: ExpectedType::Type(
+                                    self.read_back_value(expected_type),
+                                ),
+                                found_type: self.read_back_value(&Value::global(
+                                    "Array",
+                                    0,
+                                    [
+                                        Elim::Function(len.clone()),
+                                        Elim::Function(entry_type.clone()),
+                                    ],
+                                )),
+                            });
+                        }
                     }
                 }
                 Some(_) | None => {
                     let expected_type = self.read_back_value(expected_type);
-                    self.report(CoreTypingMessage::NoSequenceConversion { expected_type })
+                    self.report(CoreTypingMessage::UnexpectedArrayTerm { expected_type })
+                }
+            },
+            (TermData::ListTerm(entry_terms), forced_type) => match forced_type.try_global() {
+                Some(("List", _, [Elim::Function(entry_type)])) => {
+                    let forced_entry_type = entry_type.force(self.globals);
+                    for entry_term in entry_terms {
+                        self.check_type(entry_term, forced_entry_type);
+                    }
+                }
+                Some(_) | None => {
+                    let expected_type = self.read_back_value(expected_type);
+                    self.report(CoreTypingMessage::UnexpectedListTerm { expected_type })
                 }
             },
 
@@ -395,7 +412,13 @@ impl<'me> State<'me> {
                 Arc::new(Value::Error)
             }
 
-            TermData::SequenceTerm(_) => {
+            TermData::ArrayTerm(_) => {
+                self.report(CoreTypingMessage::AmbiguousTerm {
+                    term: AmbiguousTerm::Sequence,
+                });
+                Arc::new(Value::Error)
+            }
+            TermData::ListTerm(_) => {
                 self.report(CoreTypingMessage::AmbiguousTerm {
                     term: AmbiguousTerm::Sequence,
                 });
@@ -403,18 +426,18 @@ impl<'me> State<'me> {
             }
 
             TermData::Constant(constant) => Arc::new(match constant {
-                Constant::U8(_) => Value::global("U8", 0),
-                Constant::U16(_) => Value::global("U16", 0),
-                Constant::U32(_) => Value::global("U32", 0),
-                Constant::U64(_) => Value::global("U64", 0),
-                Constant::S8(_) => Value::global("S8", 0),
-                Constant::S16(_) => Value::global("S16", 0),
-                Constant::S32(_) => Value::global("S32", 0),
-                Constant::S64(_) => Value::global("S64", 0),
-                Constant::F32(_) => Value::global("F32", 0),
-                Constant::F64(_) => Value::global("F64", 0),
-                Constant::Char(_) => Value::global("Char", 0),
-                Constant::String(_) => Value::global("String", 0),
+                Constant::U8(_) => Value::global("U8", 0, []),
+                Constant::U16(_) => Value::global("U16", 0, []),
+                Constant::U32(_) => Value::global("U32", 0, []),
+                Constant::U64(_) => Value::global("U64", 0, []),
+                Constant::S8(_) => Value::global("S8", 0, []),
+                Constant::S16(_) => Value::global("S16", 0, []),
+                Constant::S32(_) => Value::global("S32", 0, []),
+                Constant::S64(_) => Value::global("S64", 0, []),
+                Constant::F32(_) => Value::global("F32", 0, []),
+                Constant::F64(_) => Value::global("F64", 0, []),
+                Constant::Char(_) => Value::global("Char", 0, []),
+                Constant::String(_) => Value::global("String", 0, []),
             }),
 
             TermData::Error => Arc::new(Value::Error),

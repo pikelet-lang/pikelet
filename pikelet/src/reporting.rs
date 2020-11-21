@@ -354,11 +354,10 @@ pub enum CoreTypingMessage {
     TooManyInputsInFunctionElim {
         head_type: core::Term,
     },
-    MismatchedSequenceLength {
-        found_len: usize,
-        expected_len: core::Term,
+    UnexpectedArrayTerm {
+        expected_type: core::Term,
     },
-    NoSequenceConversion {
+    UnexpectedListTerm {
         expected_type: core::Term,
     },
     AmbiguousTerm {
@@ -445,20 +444,16 @@ impl CoreTypingMessage {
                     "eliminating a term of type `{}`",
                     to_doc(head_type).pretty(std::usize::MAX),
                 )]),
-            CoreTypingMessage::MismatchedSequenceLength {
-                found_len,
-                expected_len,
-            } => Diagnostic::bug()
-                .with_message("mismatched sequence length")
+            CoreTypingMessage::UnexpectedArrayTerm { expected_type } => Diagnostic::bug()
+                .with_message("unexpected array term")
                 .with_notes(vec![format!(
-                    "expected `{}` entries, found `{}` entries",
-                    to_doc(&expected_len).pretty(std::usize::MAX),
-                    found_len,
+                    "expected `{}`, found an array",
+                    to_doc(&expected_type).pretty(std::usize::MAX),
                 )]),
-            CoreTypingMessage::NoSequenceConversion { expected_type } => Diagnostic::bug()
-                .with_message("no known sequence conversion")
+            CoreTypingMessage::UnexpectedListTerm { expected_type } => Diagnostic::bug()
+                .with_message("unexpected list term")
                 .with_notes(vec![format!(
-                    "expected `{}`, found a sequence",
+                    "expected `{}`, found a list",
                     to_doc(&expected_type).pretty(std::usize::MAX),
                 )]),
             CoreTypingMessage::AmbiguousTerm { term } => {

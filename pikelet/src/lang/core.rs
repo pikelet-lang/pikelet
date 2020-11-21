@@ -132,8 +132,11 @@ pub enum TermData {
     /// Also known as: record projection, field lookup.
     RecordElim(Arc<Term>, String),
 
-    /// Ordered sequences.
-    SequenceTerm(Vec<Arc<Term>>),
+    /// Array terms.
+    ArrayTerm(Vec<Arc<Term>>),
+    /// List terms.
+    ListTerm(Vec<Arc<Term>>),
+
     /// Constants.
     Constant(Constant),
 
@@ -423,7 +426,7 @@ impl<T: TryFromTerm> TryFromTerm for Vec<T> {
 
     fn try_from_term(term: &Term) -> Result<Vec<T>, ()> {
         match &term.data {
-            TermData::SequenceTerm(entry_terms) => entry_terms
+            TermData::ListTerm(entry_terms) => entry_terms
                 .iter()
                 .map(|entry_term| T::try_from_term(entry_term).map_err(|_| ()))
                 .collect::<Result<Vec<_>, ()>>(),
@@ -439,7 +442,7 @@ macro_rules! impl_try_from_term_array {
 
             fn try_from_term(term: &Term) -> Result<[T; $len], ()> {
                 match &term.data {
-                    TermData::SequenceTerm(entry_terms) if entry_terms.len() == $len => {
+                    TermData::ArrayTerm(entry_terms) if entry_terms.len() == $len => {
                         use std::mem::MaybeUninit;
 
                         let mut entries: [MaybeUninit::<T>; $len] = unsafe {
@@ -522,7 +525,7 @@ impl_to_term!(str, |value| TermData::from(Constant::String(
 
 impl<T: ToTerm> ToTerm for Vec<T> {
     fn to_term(&self) -> Term {
-        Term::from(TermData::SequenceTerm(
+        Term::from(TermData::ListTerm(
             self.iter()
                 .map(|entry_term| Arc::new(T::to_term(entry_term)))
                 .collect(),
@@ -534,7 +537,7 @@ macro_rules! impl_to_term_array {
     ($($len:expr),*) => {
         $(impl<T: ToTerm> ToTerm for [T; $len] {
             fn to_term(&self) -> Term {
-                Term::from(TermData::SequenceTerm(
+                Term::from(TermData::ArrayTerm(
                     self.iter()
                         .map(|entry_term| Arc::new(T::to_term(entry_term)))
                         .collect(),

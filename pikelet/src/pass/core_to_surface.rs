@@ -230,7 +230,7 @@ impl<'me> State<'me> {
                 Ranged::from(label.clone()),
             ),
 
-            TermData::SequenceTerm(entry_terms) => {
+            TermData::ArrayTerm(entry_terms) | TermData::ListTerm(entry_terms) => {
                 let core_entry_terms = entry_terms
                     .iter()
                     .map(|entry_term| self.from_term(entry_term))

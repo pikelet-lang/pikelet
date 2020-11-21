@@ -59,8 +59,10 @@ pub enum Value {
     /// Record terms.
     RecordTerm(RecordClosure),
 
-    /// Ordered sequences.
-    SequenceTerm(Vec<Arc<Value>>),
+    /// Array terms.
+    ArrayTerm(Vec<Arc<Value>>),
+    /// List terms.
+    ListTerm(Vec<Arc<Value>>),
 
     /// Constants.
     Constant(Constant),
@@ -76,13 +78,17 @@ impl Value {
     }
 
     /// Create a global variable.
-    pub fn global(name: impl Into<String>, offset: impl Into<UniverseOffset>) -> Value {
-        Value::Stuck(Head::Global(name.into(), offset.into()), Vec::new())
+    pub fn global(
+        name: impl Into<String>,
+        offset: impl Into<UniverseOffset>,
+        elims: impl Into<Vec<Elim>>,
+    ) -> Value {
+        Value::Stuck(Head::Global(name.into(), offset.into()), elims.into())
     }
 
     /// Create a local variable.
-    pub fn local(level: impl Into<LocalLevel>) -> Value {
-        Value::Stuck(Head::Local(level.into()), Vec::new())
+    pub fn local(level: impl Into<LocalLevel>, elims: impl Into<Vec<Elim>>) -> Value {
+        Value::Stuck(Head::Local(level.into()), elims.into())
     }
 
     /// Attempt to match against a stuck global.
@@ -395,13 +401,21 @@ pub fn eval_term(
             apply_function_elim(globals, head, Arc::new(input))
         }
 
-        TermData::SequenceTerm(term_entries) => {
+        TermData::ArrayTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
                 .map(|entry_term| eval_term(globals, universe_offset, locals, entry_term))
                 .collect();
 
-            Arc::new(Value::SequenceTerm(value_entries))
+            Arc::new(Value::ArrayTerm(value_entries))
+        }
+        TermData::ListTerm(term_entries) => {
+            let value_entries = term_entries
+                .iter()
+                .map(|entry_term| eval_term(globals, universe_offset, locals, entry_term))
+                .collect();
+
+            Arc::new(Value::ListTerm(value_entries))
         }
 
         TermData::Constant(constant) => Arc::new(Value::from(constant.clone())),
@@ -550,7 +564,7 @@ pub fn read_back_value(
         Value::TypeType(level) => Term::from(TermData::TypeType(*level)),
 
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
-            let local = Arc::new(Value::local(local_size.next_level()));
+            let local = Arc::new(Value::local(local_size.next_level(), []));
             let input_type = Arc::new(read_back_value(globals, local_size, unfold, input_type));
             let output_type = output_closure.apply(globals, local);
             let output_type =
@@ -563,7 +577,7 @@ pub fn read_back_value(
             ))
         }
         Value::FunctionTerm(input_name_hint, output_closure) => {
-            let local = Arc::new(Value::local(local_size.next_level()));
+            let local = Arc::new(Value::local(local_size.next_level(), []));
             let output_term = output_closure.apply(globals, local);
             let output_term =
                 read_back_value(globals, local_size.increment(), unfold, &output_term);
@@ -585,7 +599,7 @@ pub fn read_back_value(
                 let local_level = local_size.next_level();
                 local_size = local_size.increment();
 
-                Arc::new(Value::local(local_level))
+                Arc::new(Value::local(local_level, []))
             });
 
             Term::from(TermData::RecordType(type_entries.into()))
@@ -601,13 +615,13 @@ pub fn read_back_value(
                 let local_level = local_size.next_level();
                 local_size = local_size.increment();
 
-                Arc::new(Value::local(local_level))
+                Arc::new(Value::local(local_level, []))
             });
 
             Term::from(TermData::RecordTerm(term_entries.into()))
         }
 
-        Value::SequenceTerm(value_entries) => {
+        Value::ArrayTerm(value_entries) => {
             let term_entries = value_entries
                 .iter()
                 .map(|value_entry| {
@@ -615,7 +629,17 @@ pub fn read_back_value(
                 })
                 .collect();
 
-            Term::from(TermData::SequenceTerm(term_entries))
+            Term::from(TermData::ArrayTerm(term_entries))
+        }
+        Value::ListTerm(value_entries) => {
+            let term_entries = value_entries
+                .iter()
+                .map(|value_entry| {
+                    Arc::new(read_back_value(globals, local_size, unfold, value_entry))
+                })
+                .collect();
+
+            Term::from(TermData::ListTerm(term_entries))
         }
 
         Value::Constant(constant) => Term::from(TermData::from(constant.clone())),
@@ -688,7 +712,7 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                 return false;
             }
 
-            let local = Arc::new(Value::local(local_size.next_level()));
+            let local = Arc::new(Value::local(local_size.next_level(), []));
             is_equal(
                 globals,
                 local_size.increment(),
@@ -697,7 +721,7 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
             )
         }
         (Value::FunctionTerm(_, output_closure0), Value::FunctionTerm(_, output_closure1)) => {
-            let local = Arc::new(Value::local(local_size.next_level()));
+            let local = Arc::new(Value::local(local_size.next_level(), []));
             is_equal(
                 globals,
                 local_size.increment(),
@@ -732,8 +756,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                 }
 
                 let local_level = local_size.next_level();
-                locals0.push(Arc::new(Value::local(local_level)));
-                locals1.push(Arc::new(Value::local(local_level)));
+                locals0.push(Arc::new(Value::local(local_level, [])));
+                locals1.push(Arc::new(Value::local(local_level, [])));
                 local_size = local_size.increment();
             }
 
@@ -765,15 +789,16 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                 }
 
                 let local_level = local_size.next_level();
-                locals0.push(Arc::new(Value::local(local_level)));
-                locals1.push(Arc::new(Value::local(local_level)));
+                locals0.push(Arc::new(Value::local(local_level, [])));
+                locals1.push(Arc::new(Value::local(local_level, [])));
                 local_size = local_size.increment();
             }
 
             true
         }
 
-        (Value::SequenceTerm(value_entries0), Value::SequenceTerm(value_entries1)) => {
+        (Value::ArrayTerm(value_entries0), Value::ArrayTerm(value_entries1))
+        | (Value::ListTerm(value_entries0), Value::ListTerm(value_entries1)) => {
             if value_entries0.len() != value_entries1.len() {
                 return false;
             }
@@ -847,7 +872,7 @@ pub fn is_subtype(
                 return false;
             }
 
-            let local = Arc::new(Value::local(local_size.next_level()));
+            let local = Arc::new(Value::local(local_size.next_level(), []));
             let output_term0 = output_closure0.apply(globals, local.clone());
             let output_term1 = output_closure1.apply(globals, local);
 
@@ -885,8 +910,8 @@ pub fn is_subtype(
                 }
 
                 let local_level = local_size.next_level();
-                locals0.push(Arc::new(Value::local(local_level)));
-                locals1.push(Arc::new(Value::local(local_level)));
+                locals0.push(Arc::new(Value::local(local_level, [])));
+                locals1.push(Arc::new(Value::local(local_level, [])));
                 local_size = local_size.increment();
             }
 

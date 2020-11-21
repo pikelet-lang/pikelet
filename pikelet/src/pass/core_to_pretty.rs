@@ -148,7 +148,7 @@ where
             .append(".")
             .append(alloc.text(label)),
 
-        TermData::SequenceTerm(term_entries) => (alloc.nil())
+        TermData::ArrayTerm(term_entries) | TermData::ListTerm(term_entries) => (alloc.nil())
             .append("[")
             .group()
             .append(
