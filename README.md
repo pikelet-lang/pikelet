@@ -30,7 +30,7 @@ whole lot to do before it is even remotely useful to anyone! 😅
 
 ## Roadmap
 
-Check out our plans in [the roadmap](./website/docs/contributing/roadmap.md).
+Check out our plans in [the roadmap](./book/src/development/roadmap.md).
 
 ## Code of Conduct
 
