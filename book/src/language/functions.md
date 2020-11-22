@@ -57,9 +57,9 @@ We now have a polymorphic identity function! We can specialize this function by
 applying a type to it:
 
 ```pikelet-repl
-Pikelet> (\(x : Type) (x : a) => x) String "hello"
+Pikelet> (\(a : Type) (x : a) => x) String "hello"
 "hello" : String
-Pikelet> (\(x : Type) (x : a) => x) S32 1
+Pikelet> (\(a : Type) (x : a) => x) S32 1
 1 : S32
 ```
 
@@ -69,8 +69,8 @@ In Pikelet, all functions take a single argument - in order to pass multiple
 arguments we use currying. The following functions are equivalent:
 
 ```pikelet
-\(x : Type) (x : a) => x
-\(x : Type) => \(x : a) => x
+\(a : Type) (x : a) => x
+\(a : Type) => \(x : a) => x
 ```
 
 Non-dependent functions can be expressed without explicit parameter names. For
