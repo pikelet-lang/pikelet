@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-20.04
     name: Build and Test Book
     env:
-      MDBOOK_VERSION: '0.4.2'
+      MDBOOK_VERSION: '0.4.4'
       MDBOOK_LINKCHECK_VERSION: '0.7.0'
     steps:
       - uses: actions/checkout@v2
