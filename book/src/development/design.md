@@ -2,16 +2,15 @@
 
 ## Design Principles
 
-- We aim to empower our users through careful design and great documentation,
-  rather than being driven by what assume is familiar.
-- Pikelet should be able to be progressively disclosed, with surface level features being built out of simpler parts.
+- Empower our users through careful design, rather than being driven by familiarity.
+- Surface level features should decompose into a simple, typed core.
+- The top-level should not be [hopeless](https://gist.github.com/samth/3083053).
+- Programs should not have to pay for things that they do not use.
 - Pikelet should work well for high level and low level, resource constrained applications.
-- Pikelet should be easy to bootstrap and cross-compile.
-- Pikelet should have excellent compile time error messages and diagnostics.
-- Pikelet programs should not have to pay for things that they do not use.
-- Language features should behave predictably, as opposed to relying on complicated, hard to understand heuristics.
-- Language features should simple to implement, with a high power-to-weight ratio.
-- Language features should work in harmony together.
+- It should be easy to bootstrap the language fro a new platform and cross-compile programs.
+- Diagnostics should be clear and easy to understand.
+- Features should behave predictably, without relying on complicated, hard to understand heuristics.
+- Features should have a high power-to-weight ratio.
 
 ## Research to Watch
 
