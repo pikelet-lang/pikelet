@@ -1,6 +1,6 @@
 use iced::{Column, Container, Element, Row, Sandbox, Settings, Text, TextInput};
 
-pub fn run() {
+pub fn run() -> Result<(), iced::Error> {
     State::run(Settings::default())
 }
 

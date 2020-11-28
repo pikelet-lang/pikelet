@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+
 pub mod check;
 pub mod repl;
 
@@ -26,8 +28,9 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         Options::Check(options) => check::run(options),
         #[cfg(feature = "editor")]
         Options::Editor => {
-            pikelet_editor::run();
-            Ok(())
+            // FIXME: `iced::Error` is not `Send + Sync`, and so is incompatible with `anyhow::Result`.
+            // See this issue for more information: https://github.com/hecrj/iced/issues/516
+            pikelet_editor::run().map_err(|err| anyhow!("{}", err))
         }
         #[cfg(feature = "language-server")]
         Options::LanguageServer => pikelet_language_server::run(),
