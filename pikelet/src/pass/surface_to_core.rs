@@ -622,7 +622,7 @@ impl<'me> State<'me> {
 
                 for (label, name, entry_type) in type_entries {
                     let name = name.as_ref().unwrap_or(label);
-                    match seen_labels.entry(&label.data) {
+                    match seen_labels.entry(label.data.as_str()) {
                         Entry::Vacant(entry) => {
                             let (core_type, level) = self.is_type(entry_type);
                             max_level = match level {
@@ -639,11 +639,9 @@ impl<'me> State<'me> {
                             entry.insert(label.range);
                         }
                         Entry::Occupied(entry) => {
-                            duplicate_labels.push((
-                                (*entry.key()).clone(),
-                                *entry.get(),
-                                label.range,
-                            ));
+                            let seen_range = *entry.get();
+                            let current_range = label.range;
+                            duplicate_labels.push((label.data.clone(), seen_range, current_range));
                             self.is_type(entry_type);
                         }
                     }
