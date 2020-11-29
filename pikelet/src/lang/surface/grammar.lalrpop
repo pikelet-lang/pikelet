@@ -1,4 +1,4 @@
-use crate::lang::{FileId, Location, Ranged};
+use crate::lang::{FileId, Located, Location};
 use crate::lang::surface::{Term, TermData, TypeEntry, TermEntry};
 use crate::lang::surface::lexer::Token;
 use crate::reporting::LexerError;
@@ -39,11 +39,11 @@ extern {
     }
 }
 
-pub Term: Term = Ranged<TermData>;
-#[inline] ArrowTerm: Term = Ranged<ArrowTermData>;
-#[inline] ExprTerm: Term = Ranged<ExprTermData>;
-#[inline] AppTerm: Term = Ranged<AppTermData>;
-#[inline] AtomicTerm: Term = Ranged<AtomicTermData>;
+pub Term: Term = Located<TermData>;
+#[inline] ArrowTerm: Term = Located<ArrowTermData>;
+#[inline] ExprTerm: Term = Located<ExprTermData>;
+#[inline] AppTerm: Term = Located<AppTermData>;
+#[inline] AtomicTerm: Term = Located<AtomicTermData>;
 
 TermData: TermData = {
     ExprTermData,
@@ -52,14 +52,14 @@ TermData: TermData = {
 
 ExprTermData: TermData = {
     ArrowTermData,
-    "fun" <input_names: Ranged<Name>+> "=>" <output_term: ExprTerm> => {
+    "fun" <input_names: Located<Name>+> "=>" <output_term: ExprTerm> => {
         TermData::FunctionTerm(input_names, Box::new(output_term))
     },
 };
 
 ArrowTermData: TermData = {
     AppTermData,
-    "Fun" <input_type_groups: ("(" <Ranged<Name>+> ":" <ArrowTerm> ")")+>
+    "Fun" <input_type_groups: ("(" <Located<Name>+> ":" <ArrowTerm> ")")+>
         "->" <output_type: ArrowTerm> =>
     {
         TermData::FunctionType(input_type_groups, Box::new(output_type))
@@ -84,7 +84,7 @@ AtomicTermData: TermData = {
     },
     "Record" "{" <entries: List<TypeEntry>> "}" => TermData::RecordType(entries),
     "record" "{" <entries: List<TermEntry>> "}" => TermData::RecordTerm(entries),
-    <head_term: AtomicTerm> "." <label: Ranged<Name>> => TermData::RecordElim(Box::new(head_term), label),
+    <head_term: AtomicTerm> "." <label: Located<Name>> => TermData::RecordElim(Box::new(head_term), label),
     "[" <entries: List<Term>> "]" => TermData::SequenceTerm(entries),
     "character literal" => TermData::CharTerm(<>.to_owned()),
     "string literal" => TermData::StringTerm(<>.to_owned()),
@@ -103,14 +103,14 @@ List<Entry>: Vec<Entry> = {
 TypeEntry: TypeEntry = {
     // TODO: Use doc comments
     <_docs: "doc comment"*>
-    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> ":" <term: Term> => (label, name, term),
+    <label: Located<Name>> <name: ("as" <Located<Name>>)?> ":" <term: Term> => (label, name, term),
 };
 
 #[inline]
 TermEntry: TermEntry = {
     // TODO: Use doc comments
     <_docs: "doc comment"*>
-    <label: Ranged<Name>> <name: ("as" <Ranged<Name>>)?> "=" <term: Term> => (label, name, term),
+    <label: Located<Name>> <name: ("as" <Located<Name>>)?> "=" <term: Term> => (label, name, term),
 };
 
 #[inline]
@@ -119,6 +119,6 @@ Name: String = {
 };
 
 #[inline]
-Ranged<T>: Ranged<T> = {
-    <start: @L> <data: T> <end: @R> => Ranged::new(Location::file_range(file_id, start..end), data),
+Located<T>: Located<T> = {
+    <start: @L> <data: T> <end: @R> => Located::new(Location::file_range(file_id, start..end), data),
 };

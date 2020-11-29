@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::Arc;
 
-use crate::lang::Ranged;
+use crate::lang::Located;
 
 pub mod semantics;
 pub mod typing;
@@ -92,7 +92,7 @@ impl From<u32> for UniverseOffset {
     }
 }
 
-pub type Term = Ranged<TermData>;
+pub type Term = Located<TermData>;
 
 /// Terms in the core language.
 #[derive(Clone, Debug)]

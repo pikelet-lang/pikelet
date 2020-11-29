@@ -4,7 +4,7 @@
 
 use crossbeam_channel::Sender;
 
-use crate::lang::{FileId, Location, Ranged};
+use crate::lang::{FileId, Located, Location};
 use crate::reporting::Message;
 
 mod lexer;
@@ -15,13 +15,13 @@ mod grammar {
 }
 
 /// Entry in a [record type](Term::RecordType).
-pub type TypeEntry = (Ranged<String>, Option<Ranged<String>>, Term);
+pub type TypeEntry = (Located<String>, Option<Located<String>>, Term);
 /// Entry in a [record term](Term::RecordTerm).
-pub type TermEntry = (Ranged<String>, Option<Ranged<String>>, Term);
+pub type TermEntry = (Located<String>, Option<Located<String>>, Term);
 /// A group of function inputs that are elements of the same type.
-pub type InputGroup = (Vec<Ranged<String>>, Term);
+pub type InputGroup = (Vec<Located<String>>, Term);
 
-pub type Term = Ranged<TermData>;
+pub type Term = Located<TermData>;
 
 /// Terms in the surface language.
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ pub enum TermData {
     /// Function terms.
     ///
     /// Also known as: lambda abstraction, anonymous function.
-    FunctionTerm(Vec<Ranged<String>>, Box<Term>),
+    FunctionTerm(Vec<Located<String>>, Box<Term>),
     /// Function eliminations.
     ///
     /// Also known as: function application.
@@ -59,7 +59,7 @@ pub enum TermData {
     /// Record eliminations.
     ///
     /// Also known as: record projections, field lookup.
-    RecordElim(Box<Term>, Ranged<String>),
+    RecordElim(Box<Term>, Located<String>),
 
     /// Ordered sequences.
     SequenceTerm(Vec<Term>),

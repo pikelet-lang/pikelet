@@ -79,17 +79,17 @@ impl From<std::ops::Range<usize>> for Range {
 
 /// Data that covers some range of source code.
 #[derive(Debug, Clone)]
-pub struct Ranged<Data> {
+pub struct Located<Data> {
     pub location: Location,
     pub data: Data,
 }
 
-impl<Data> Ranged<Data> {
-    pub fn new(location: Location, data: Data) -> Ranged<Data> {
-        Ranged { location, data }
+impl<Data> Located<Data> {
+    pub fn new(location: Location, data: Data) -> Located<Data> {
+        Located { location, data }
     }
 
-    pub fn generated(data: Data) -> Ranged<Data> {
-        Ranged::new(Location::generated(), data)
+    pub fn generated(data: Data) -> Located<Data> {
+        Located::new(Location::generated(), data)
     }
 }
