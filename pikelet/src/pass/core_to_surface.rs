@@ -142,7 +142,7 @@ impl<'me> State<'me> {
                 match level {
                     UniverseLevel(0) => universe0,
                     UniverseLevel(level) => {
-                        surface::TermData::Lift(Box::new(Ranged::from(universe0)), *level)
+                        surface::TermData::Lift(Box::new(Ranged::generated(universe0)), *level)
                     }
                 }
             }
@@ -154,7 +154,8 @@ impl<'me> State<'me> {
                 // FIXME: properly group inputs!
                 let input_type = self.from_term(input_type);
                 let fresh_input_name = self.push_name(input_name_hint.as_ref().map(String::as_str));
-                let input_type_groups = vec![(vec![Ranged::from(fresh_input_name)], input_type)];
+                let input_type_groups =
+                    vec![(vec![Ranged::generated(fresh_input_name)], input_type)];
                 let output_type = self.from_term(output_type);
                 self.pop_many_names(input_type_groups.iter().map(|(ns, _)| ns.len()).sum());
 
@@ -164,13 +165,13 @@ impl<'me> State<'me> {
                 let mut current_output_term = output_term;
 
                 let fresh_input_name = self.push_name(Some(input_name_hint));
-                let mut input_names = vec![Ranged::from(fresh_input_name)];
+                let mut input_names = vec![Ranged::generated(fresh_input_name)];
 
                 while let TermData::FunctionTerm(input_name_hint, output_term) =
                     &current_output_term.data
                 {
                     let fresh_input_name = self.push_name(Some(input_name_hint));
-                    input_names.push(Ranged::from(fresh_input_name));
+                    input_names.push(Ranged::generated(fresh_input_name));
                     current_output_term = output_term;
                 }
 
@@ -200,8 +201,12 @@ impl<'me> State<'me> {
                         let entry_type = self.from_term(entry_type);
                         let label = label.clone();
                         match self.push_name(Some(&label)) {
-                            name if name == label => (Ranged::from(label), None, entry_type),
-                            name => (Ranged::from(label), Some(Ranged::from(name)), entry_type),
+                            name if name == label => (Ranged::generated(label), None, entry_type),
+                            name => (
+                                Ranged::generated(label),
+                                Some(Ranged::generated(name)),
+                                entry_type,
+                            ),
                         }
                     })
                     .collect::<Vec<_>>();
@@ -216,8 +221,12 @@ impl<'me> State<'me> {
                         let entry_type = self.from_term(entry_type);
                         let label = label.clone();
                         match self.push_name(Some(&label)) {
-                            name if name == label => (Ranged::from(label), None, entry_type),
-                            name => (Ranged::from(label), Some(Ranged::from(name)), entry_type),
+                            name if name == label => (Ranged::generated(label), None, entry_type),
+                            name => (
+                                Ranged::generated(label),
+                                Some(Ranged::generated(name)),
+                                entry_type,
+                            ),
                         }
                     })
                     .collect::<Vec<_>>();
@@ -227,7 +236,7 @@ impl<'me> State<'me> {
             }
             TermData::RecordElim(head_term, label) => surface::TermData::RecordElim(
                 Box::new(self.from_term(head_term)),
-                Ranged::from(label.clone()),
+                Ranged::generated(label.clone()),
             ),
 
             TermData::ArrayTerm(entry_terms) | TermData::ListTerm(entry_terms) => {
@@ -257,7 +266,7 @@ impl<'me> State<'me> {
             TermData::Error => surface::TermData::Error,
         };
 
-        surface::Term::from(term_data)
+        surface::Term::generated(term_data)
     }
 }
 

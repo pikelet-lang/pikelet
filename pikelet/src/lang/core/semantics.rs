@@ -524,24 +524,24 @@ fn read_back_stuck_value(
 ) -> Term {
     let head = match head {
         Head::Global(name, shift) => {
-            let global = Term::from(TermData::Global(name.clone()));
+            let global = Term::generated(TermData::Global(name.clone()));
             match shift {
                 UniverseOffset(0) => global,
-                shift => Term::from(TermData::Lift(Arc::new(global), *shift)),
+                shift => Term::generated(TermData::Lift(Arc::new(global), *shift)),
             }
         }
         Head::Local(level) => {
             let index = level.to_index(local_size).unwrap();
-            Term::from(TermData::Local(index)) // TODO: Handle overflow
+            Term::generated(TermData::Local(index)) // TODO: Handle overflow
         }
     };
 
     spine.iter().fold(head, |head, elim| match elim {
         Elim::Function(input) => {
             let input = read_back_value(globals, local_size, unfold, input.force(globals));
-            Term::from(TermData::FunctionElim(Arc::new(head), Arc::new(input)))
+            Term::generated(TermData::FunctionElim(Arc::new(head), Arc::new(input)))
         }
-        Elim::Record(label) => Term::from(TermData::RecordElim(Arc::new(head), label.clone())),
+        Elim::Record(label) => Term::generated(TermData::RecordElim(Arc::new(head), label.clone())),
     })
 }
 
@@ -561,7 +561,7 @@ pub fn read_back_value(
             Unfold::Always => read_back_value(globals, local_size, unfold, value.force(globals)),
         },
 
-        Value::TypeType(level) => Term::from(TermData::TypeType(*level)),
+        Value::TypeType(level) => Term::generated(TermData::TypeType(*level)),
 
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level(), []));
@@ -570,7 +570,7 @@ pub fn read_back_value(
             let output_type =
                 read_back_value(globals, local_size.increment(), unfold, &output_type);
 
-            Term::from(TermData::FunctionType(
+            Term::generated(TermData::FunctionType(
                 input_name_hint.clone(),
                 input_type,
                 Arc::new(output_type),
@@ -582,7 +582,7 @@ pub fn read_back_value(
             let output_term =
                 read_back_value(globals, local_size.increment(), unfold, &output_term);
 
-            Term::from(TermData::FunctionTerm(
+            Term::generated(TermData::FunctionTerm(
                 input_name_hint.clone(),
                 Arc::new(output_term),
             ))
@@ -602,7 +602,7 @@ pub fn read_back_value(
                 Arc::new(Value::local(local_level, []))
             });
 
-            Term::from(TermData::RecordType(type_entries.into()))
+            Term::generated(TermData::RecordType(type_entries.into()))
         }
         Value::RecordTerm(closure) => {
             let mut local_size = local_size;
@@ -618,7 +618,7 @@ pub fn read_back_value(
                 Arc::new(Value::local(local_level, []))
             });
 
-            Term::from(TermData::RecordTerm(term_entries.into()))
+            Term::generated(TermData::RecordTerm(term_entries.into()))
         }
 
         Value::ArrayTerm(value_entries) => {
@@ -629,7 +629,7 @@ pub fn read_back_value(
                 })
                 .collect();
 
-            Term::from(TermData::ArrayTerm(term_entries))
+            Term::generated(TermData::ArrayTerm(term_entries))
         }
         Value::ListTerm(value_entries) => {
             let term_entries = value_entries
@@ -639,12 +639,12 @@ pub fn read_back_value(
                 })
                 .collect();
 
-            Term::from(TermData::ListTerm(term_entries))
+            Term::generated(TermData::ListTerm(term_entries))
         }
 
-        Value::Constant(constant) => Term::from(TermData::from(constant.clone())),
+        Value::Constant(constant) => Term::generated(TermData::from(constant.clone())),
 
-        Value::Error => Term::from(TermData::Error),
+        Value::Error => Term::generated(TermData::Error),
     }
 }
 

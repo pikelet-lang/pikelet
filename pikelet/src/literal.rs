@@ -6,7 +6,7 @@ use crossbeam_channel::Sender;
 use logos::Logos;
 use num_traits::{Float, PrimInt, Signed, Unsigned};
 
-use crate::lang::Range;
+use crate::lang::Location;
 use crate::reporting::LiteralParseMessage::*;
 use crate::reporting::Message;
 
@@ -193,19 +193,19 @@ enum AsciiEscape<'source> {
 
 /// Literal parser state.
 pub struct State<'source, 'messages> {
-    range: Range,
+    location: Location,
     source: &'source str,
     message_tx: &'messages Sender<Message>,
 }
 
 impl<'source, 'messages> State<'source, 'messages> {
     pub fn new(
-        range: Range,
+        location: Location,
         source: &'source str,
         message_tx: &'messages Sender<Message>,
     ) -> State<'source, 'messages> {
         State {
-            range,
+            location,
             source,
             message_tx,
         }
@@ -217,13 +217,18 @@ impl<'source, 'messages> State<'source, 'messages> {
         None
     }
 
-    /// Get the file-relative range of the current token.
-    fn token_range<Token>(&self, lexer: &logos::Lexer<'source, Token>) -> Range
+    /// Get the file-relative location of the current token.
+    fn token_location<Token>(&self, lexer: &logos::Lexer<'source, Token>) -> Location
     where
         Token: Logos<'source>,
     {
-        let span = lexer.span();
-        Range::from((self.range.start + span.start)..(self.range.start + span.end))
+        match self.location {
+            Location::Generated => Location::Generated,
+            Location::FileRange(file_id, range) => Location::file_range(
+                file_id,
+                (range.start + lexer.span().start)..(range.start + lexer.span().end),
+            ),
+        }
     }
 
     /// Parse a numeric literal into an unsigned integer.
@@ -237,7 +242,7 @@ impl<'source, 'messages> State<'source, 'messages> {
 
         let (base, start_digit) = match self.expect_numeric_literal_start(&mut lexer)? {
             (Sign::Positive, base, start_digit) => (base, start_digit),
-            (Sign::Negative, _, _) => return self.report(NegativeUnsignedInteger(self.range)),
+            (Sign::Negative, _, _) => return self.report(NegativeUnsignedInteger(self.location)),
         };
 
         let mut lexer = lexer.morph();
@@ -250,23 +255,23 @@ impl<'source, 'messages> State<'source, 'messages> {
         }
 
         while let Some(token) = lexer.next() {
-            let range = self.token_range(&lexer);
+            let location = self.token_location(&lexer);
             match token {
                 Digit36::Digit(digit) if digit < base.to_u8() => {
                     integer = self.add_integer_digit(Sign::Positive, base, integer, digit)?;
                     num_digits += 1;
                 }
                 Digit36::Separator if num_digits != 0 => {}
-                Digit36::Separator => return self.report(ExpectedDigit(range, base)),
+                Digit36::Separator => return self.report(ExpectedDigit(location, base)),
                 Digit36::Digit(_) | Digit36::Error => match num_digits {
-                    0 => return self.report(ExpectedDigit(range, base)),
-                    _ => return self.report(ExpectedDigitOrSeparator(range, base)),
+                    0 => return self.report(ExpectedDigit(location, base)),
+                    _ => return self.report(ExpectedDigitOrSeparator(location, base)),
                 },
             }
         }
 
         if num_digits == 0 {
-            return self.report(UnexpectedEndOfLiteral(self.token_range(&lexer)));
+            return self.report(UnexpectedEndOfLiteral(self.token_location(&lexer)));
         }
 
         Some(integer)
@@ -293,23 +298,23 @@ impl<'source, 'messages> State<'source, 'messages> {
         }
 
         while let Some(token) = lexer.next() {
-            let range = self.token_range(&lexer);
+            let location = self.token_location(&lexer);
             match token {
                 Digit36::Digit(digit) if digit < base.to_u8() => {
                     integer = self.add_integer_digit(sign, base, integer, digit)?;
                     num_digits += 1;
                 }
                 Digit36::Separator if num_digits != 0 => {}
-                Digit36::Separator => return self.report(ExpectedDigit(range, base)),
+                Digit36::Separator => return self.report(ExpectedDigit(location, base)),
                 Digit36::Digit(_) | Digit36::Error => match num_digits {
-                    0 => return self.report(ExpectedDigit(range, base)),
-                    _ => return self.report(ExpectedDigitOrSeparator(range, base)),
+                    0 => return self.report(ExpectedDigit(location, base)),
+                    _ => return self.report(ExpectedDigitOrSeparator(location, base)),
                 },
             }
         }
 
         if num_digits == 0 {
-            return self.report(UnexpectedEndOfLiteral(self.token_range(&lexer)));
+            return self.report(UnexpectedEndOfLiteral(self.token_location(&lexer)));
         }
 
         Some(integer)
@@ -349,14 +354,14 @@ impl<'source, 'messages> State<'source, 'messages> {
             let mut has_exponent = false;
 
             while let Some(token) = lexer.next() {
-                let range = self.token_range(&lexer);
+                let location = self.token_location(&lexer);
                 match token {
                     Digit10::Digit(digit) if digit < base.to_u8() => {
                         float = add_digit(sign, base, float, digit);
                         num_integer_digits += 1;
                     }
                     Digit10::Separator if num_integer_digits != 0 => {}
-                    Digit10::Separator => return self.report(ExpectedDigit(range, base)),
+                    Digit10::Separator => return self.report(ExpectedDigit(location, base)),
                     Digit10::StartFractional => {
                         has_fractional = true;
                         break;
@@ -366,14 +371,14 @@ impl<'source, 'messages> State<'source, 'messages> {
                         break;
                     }
                     Digit10::Digit(_) | Digit10::Error => match num_integer_digits {
-                        0 => return self.report(ExpectedDigit(range, base)),
-                        _ => return self.report(ExpectedDigitSeparatorFracOrExp(range, base)),
+                        0 => return self.report(ExpectedDigit(location, base)),
+                        _ => return self.report(ExpectedDigitSeparatorFracOrExp(location, base)),
                     },
                 }
             }
 
             if num_integer_digits == 0 {
-                return self.report(ExpectedDigit(self.token_range(&lexer), base));
+                return self.report(ExpectedDigit(self.token_location(&lexer), base));
             }
 
             if has_fractional {
@@ -381,41 +386,45 @@ impl<'source, 'messages> State<'source, 'messages> {
                 let mut num_frac_digits = 0;
 
                 while let Some(token) = lexer.next() {
-                    let range = self.token_range(&lexer);
+                    let location = self.token_location(&lexer);
                     match token {
                         Digit10::Digit(digit) if digit < base.to_u8() => {
                             frac = add_digit(sign, base, frac, digit);
                             num_frac_digits += 1;
                         }
                         Digit10::Separator if num_frac_digits != 0 => {}
-                        Digit10::Separator => return self.report(ExpectedDigit(range, base)),
+                        Digit10::Separator => return self.report(ExpectedDigit(location, base)),
                         Digit10::StartExponent => {
                             has_exponent = true;
                             break;
                         }
                         Digit10::Digit(_) | Digit10::StartFractional | Digit10::Error => {
                             match num_frac_digits {
-                                0 => return self.report(ExpectedDigit(range, base)),
-                                _ => return self.report(ExpectedDigitSeparatorOrExp(range, base)),
+                                0 => return self.report(ExpectedDigit(location, base)),
+                                _ => {
+                                    return self.report(ExpectedDigitSeparatorOrExp(location, base))
+                                }
                             }
                         }
                     }
                 }
 
                 if num_frac_digits == 0 {
-                    return self.report(ExpectedDigit(self.token_range(&lexer), base));
+                    return self.report(ExpectedDigit(self.token_location(&lexer), base));
                 }
 
                 float = float + frac / T::powi(base.to_u8().into(), num_frac_digits);
             }
 
             if has_exponent {
-                return self.report(FloatLiteralExponentNotSupported(self.token_range(&lexer)));
+                return self.report(FloatLiteralExponentNotSupported(
+                    self.token_location(&lexer),
+                ));
             }
 
             Some(float)
         } else {
-            self.report(UnsupportedFloatLiteralBase(self.range, base))
+            self.report(UnsupportedFloatLiteralBase(self.location, base))
         }
     }
 
@@ -428,13 +437,13 @@ impl<'source, 'messages> State<'source, 'messages> {
                 NumericLiteral::Base(base) => Some((sign, base, None)),
                 NumericLiteral::Digit(digit) => Some((sign, Base::Decimal, Some(digit))),
                 NumericLiteral::Sign(_) | NumericLiteral::Error => {
-                    self.report(ExpectedRadixOrDecimalDigit(self.token_range(&lexer)))
+                    self.report(ExpectedRadixOrDecimalDigit(self.token_location(&lexer)))
                 }
             },
             NumericLiteral::Base(base) => Some((Sign::Positive, base, None)),
             NumericLiteral::Digit(digit) => Some((Sign::Positive, Base::Decimal, Some(digit))),
             NumericLiteral::Error => {
-                self.report(ExpectedStartOfNumericLiteral(self.token_range(&lexer)))
+                self.report(ExpectedStartOfNumericLiteral(self.token_location(&lexer)))
             }
         }
     }
@@ -449,7 +458,7 @@ impl<'source, 'messages> State<'source, 'messages> {
                 Sign::Positive => T::checked_add(&place_shifted, &T::from(digit).unwrap()),
                 Sign::Negative => T::checked_sub(&place_shifted, &T::from(digit).unwrap()),
             })
-            .or_else(|| self.report(LiteralOutOfRange(self.range)))
+            .or_else(|| self.report(LiteralOutOfRange(self.location)))
     }
 
     /// Parse a quoted literal into a Unicode encoded character.
@@ -463,7 +472,7 @@ impl<'source, 'messages> State<'source, 'messages> {
 
         let (mut lexer, end_quote) = match self.expect_token(&mut lexer)? {
             QuotedLiteral::Start(quote) => (lexer.morph(), quote),
-            QuotedLiteral::Error => return self.report(InvalidToken(self.token_range(&lexer))),
+            QuotedLiteral::Error => return self.report(InvalidToken(self.token_location(&lexer))),
         };
 
         let mut character = None;
@@ -474,7 +483,7 @@ impl<'source, 'messages> State<'source, 'messages> {
                     for ch in text.chars() {
                         match character {
                             None => character = Some(ch),
-                            Some(_) => return self.report(OverlongCharLiteral(self.range)),
+                            Some(_) => return self.report(OverlongCharLiteral(self.location)),
                         }
                     }
                 }
@@ -486,24 +495,28 @@ impl<'source, 'messages> State<'source, 'messages> {
                             lexer = escape.morph();
                         }
                     },
-                    Some(_) => return self.report(OverlongCharLiteral(self.token_range(&lexer))),
+                    Some(_) => {
+                        return self.report(OverlongCharLiteral(self.token_location(&lexer)))
+                    }
                 },
                 QuotedText::End(quote) if quote == end_quote => match lexer.next() {
                     None => break 'quoted_text,
-                    Some(_) => return self.report(ExpectedEndOfLiteral(self.token_range(&lexer))),
+                    Some(_) => {
+                        return self.report(ExpectedEndOfLiteral(self.token_location(&lexer)))
+                    }
                 },
                 QuotedText::End(quote) => match character {
                     None => character = Some(quote.to_char()),
-                    Some(_) => return self.report(OverlongCharLiteral(self.range)),
+                    Some(_) => return self.report(OverlongCharLiteral(self.location)),
                 },
 
-                QuotedText::Error => return self.report(InvalidToken(self.token_range(&lexer))),
+                QuotedText::Error => return self.report(InvalidToken(self.token_location(&lexer))),
             }
         }
 
         match character {
             Some(ch) => Some(ch),
-            None => self.report(EmptyCharLiteral(self.range)),
+            None => self.report(EmptyCharLiteral(self.location)),
         }
     }
 
@@ -513,7 +526,7 @@ impl<'source, 'messages> State<'source, 'messages> {
 
         let (mut lexer, end_quote) = match self.expect_token(&mut lexer)? {
             QuotedLiteral::Start(quote) => (lexer.morph(), quote),
-            QuotedLiteral::Error => return self.report(InvalidToken(self.token_range(&lexer))),
+            QuotedLiteral::Error => return self.report(InvalidToken(self.token_location(&lexer))),
         };
 
         let mut string = Some(String::new());
@@ -541,7 +554,9 @@ impl<'source, 'messages> State<'source, 'messages> {
                 }
                 QuotedText::End(quote) if quote == end_quote => match lexer.next() {
                     None => break 'quoted_text,
-                    Some(_) => return self.report(ExpectedEndOfLiteral(self.token_range(&lexer))),
+                    Some(_) => {
+                        return self.report(ExpectedEndOfLiteral(self.token_location(&lexer)))
+                    }
                 },
                 QuotedText::End(quote) => {
                     if let Some(string) = &mut string {
@@ -549,7 +564,7 @@ impl<'source, 'messages> State<'source, 'messages> {
                     }
                 }
 
-                QuotedText::Error => return self.report(InvalidToken(self.token_range(&lexer))),
+                QuotedText::Error => return self.report(InvalidToken(self.token_location(&lexer))),
             }
         }
 
@@ -568,7 +583,7 @@ impl<'source, 'messages> State<'source, 'messages> {
     ) -> Option<Token> {
         match lexer.next() {
             Some(token) => Some(token),
-            None => self.report(UnexpectedEndOfLiteral(self.token_range(&lexer))),
+            None => self.report(UnexpectedEndOfLiteral(self.token_location(&lexer))),
         }
     }
 
@@ -589,24 +604,26 @@ impl<'source, 'messages> State<'source, 'messages> {
             EscapeSequence::StartUnicodeEscape => {
                 let mut unicode_lexer = lexer.morph();
                 let next = self.expect_token(&mut unicode_lexer)?;
-                let range = self.token_range(&unicode_lexer);
+                let location = self.token_location(&unicode_lexer);
                 lexer = unicode_lexer.morph();
 
                 let ch = match next {
                     UnicodeEscape::CharCode(code) => match code.len() {
                         1..=6 => match u32::from_str_radix(code, 16).unwrap() {
                             code @ 0..=MAX_UNICODE => Some(std::char::from_u32(code).unwrap()),
-                            _ => self.report(OversizedUnicodeEscapeCode(range)),
+                            _ => self.report(OversizedUnicodeEscapeCode(location)),
                         },
-                        0 => self.report(EmptyUnicodeEscapeCode(range)),
-                        _ => self.report(OverlongUnicodeEscapeCode(range)),
+                        0 => self.report(EmptyUnicodeEscapeCode(location)),
+                        _ => self.report(OverlongUnicodeEscapeCode(location)),
                     },
-                    UnicodeEscape::InvalidCharCode => self.report(InvalidUnicodeEscapeCode(range)),
+                    UnicodeEscape::InvalidCharCode => {
+                        self.report(InvalidUnicodeEscapeCode(location))
+                    }
                     UnicodeEscape::End(quote) if end_quote == quote => {
-                        return self.report(InvalidUnicodeEscape(range));
+                        return self.report(InvalidUnicodeEscape(location));
                     }
                     UnicodeEscape::End(_) | UnicodeEscape::Error => {
-                        self.report(InvalidUnicodeEscape(range))
+                        self.report(InvalidUnicodeEscape(location))
                     }
                 };
 
@@ -615,21 +632,21 @@ impl<'source, 'messages> State<'source, 'messages> {
             EscapeSequence::StartAsciiEscape => {
                 let mut ascii_lexer = lexer.morph();
                 let next = self.expect_token(&mut ascii_lexer)?;
-                let range = self.token_range(&ascii_lexer);
+                let location = self.token_location(&ascii_lexer);
                 lexer = ascii_lexer.morph();
 
                 let ch = match next {
                     AsciiEscape::CharCode(code) if code.len() == 2 => {
                         match u32::from_str_radix(code, 16).unwrap() {
                             code @ 0..=MAX_ASCII => Some(std::char::from_u32(code).unwrap()),
-                            _ => self.report(OversizedAsciiEscapeCode(range)),
+                            _ => self.report(OversizedAsciiEscapeCode(location)),
                         }
                     }
                     AsciiEscape::End(quote) if end_quote == quote => {
-                        return self.report(InvalidUnicodeEscape(range));
+                        return self.report(InvalidUnicodeEscape(location));
                     }
                     AsciiEscape::CharCode(_) | AsciiEscape::End(_) | AsciiEscape::Error => {
-                        self.report(InvalidAsciiEscape(range))
+                        self.report(InvalidAsciiEscape(location))
                     }
                 };
 
@@ -637,8 +654,8 @@ impl<'source, 'messages> State<'source, 'messages> {
             }
 
             EscapeSequence::Error => {
-                let range = self.token_range(&lexer);
-                Some((lexer, self.report(UnknownEscapeSequence(range))))
+                let location = self.token_location(&lexer);
+                Some((lexer, self.report(UnknownEscapeSequence(location))))
             }
         }
     }

@@ -1,9 +1,9 @@
-use crate::lang::{Range, Ranged};
+use crate::lang::{FileId, Location, Ranged};
 use crate::lang::surface::{Term, TermData, TypeEntry, TermEntry};
 use crate::lang::surface::lexer::Token;
 use crate::reporting::LexerError;
 
-grammar<'input>;
+grammar<'input>(file_id: FileId);
 
 extern {
     type Location = usize;
@@ -120,5 +120,5 @@ Name: String = {
 
 #[inline]
 Ranged<T>: Ranged<T> = {
-    <start: @L> <data: T> <end: @R> => Ranged::new(Range::from(start..end), data),
+    <start: @L> <data: T> <end: @R> => Ranged::new(Location::file_range(file_id, start..end), data),
 };

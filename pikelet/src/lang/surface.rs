@@ -4,7 +4,7 @@
 
 use crossbeam_channel::Sender;
 
-use crate::lang::Ranged;
+use crate::lang::{FileId, Location, Ranged};
 use crate::reporting::Message;
 
 mod lexer;
@@ -77,13 +77,18 @@ pub enum TermData {
 impl<'input> Term {
     /// Parse a term from an input string.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(input: &str, messages_tx: &Sender<Message>) -> Term {
-        let tokens = lexer::tokens(input);
+    pub fn from_str(file_id: FileId, input: &str, messages_tx: &Sender<Message>) -> Term {
+        let tokens = lexer::tokens(file_id, input);
         grammar::TermParser::new()
-            .parse(tokens)
+            .parse(file_id, tokens)
             .unwrap_or_else(|error| {
-                messages_tx.send(Message::from_lalrpop(error)).unwrap();
-                Term::from(TermData::Error)
+                messages_tx
+                    .send(Message::from_lalrpop(file_id, error))
+                    .unwrap();
+                Term::new(
+                    Location::file_range(file_id, 0..input.len()),
+                    TermData::Error,
+                )
             })
     }
 }

@@ -10,11 +10,56 @@ pub mod cc;
 //       🠃
 //      ...
 
+/// File identifier
+pub type FileId = usize;
+
+/// Location metadata, for diagnostic reporting purposes.
+#[derive(Debug, Copy, Clone)]
+pub enum Location {
+    /// Generated code.
+    Generated,
+    /// Ranges in a text file.
+    FileRange(FileId, Range),
+}
+
+impl Location {
+    pub fn generated() -> Location {
+        Location::Generated
+    }
+
+    pub fn file_range(file_id: FileId, range: impl Into<Range>) -> Location {
+        Location::FileRange(file_id, range.into())
+    }
+
+    pub fn merge(self, other: Location) -> Location {
+        match (self, other) {
+            (Location::Generated, Location::Generated) => Location::Generated,
+            (Location::FileRange(file_id0, range0), Location::FileRange(file_id1, range1)) => {
+                assert_eq!(
+                    file_id0, file_id1,
+                    "tried to merge source locations with different file ids"
+                );
+                Location::FileRange(file_id0, Range::merge(range0, range1))
+            }
+            (_, _) => panic!("incompatible source ranges"),
+        }
+    }
+}
+
 /// A range of source code.
 #[derive(Debug, Copy, Clone)]
 pub struct Range {
     pub start: usize,
     pub end: usize,
+}
+
+impl Range {
+    pub fn merge(self, other: Range) -> Range {
+        Range {
+            start: std::cmp::min(self.start, other.start),
+            end: std::cmp::max(self.end, other.end),
+        }
+    }
 }
 
 impl Into<std::ops::Range<usize>> for Range {
@@ -35,21 +80,16 @@ impl From<std::ops::Range<usize>> for Range {
 /// Data that covers some range of source code.
 #[derive(Debug, Clone)]
 pub struct Ranged<Data> {
-    pub range: Range,
+    pub location: Location,
     pub data: Data,
 }
 
 impl<Data> Ranged<Data> {
-    pub fn new(range: Range, data: Data) -> Ranged<Data> {
-        Ranged { range, data }
+    pub fn new(location: Location, data: Data) -> Ranged<Data> {
+        Ranged { location, data }
     }
-}
 
-impl<Data> From<Data> for Ranged<Data> {
-    #![allow(clippy::reversed_empty_ranges)]
-    fn from(data: Data) -> Ranged<Data> {
-        // TODO: Use a better marker for data that does not originate from to a
-        // specific source location.
-        Ranged::new(Range::from(0..0), data)
+    pub fn generated(data: Data) -> Ranged<Data> {
+        Ranged::new(Location::generated(), data)
     }
 }

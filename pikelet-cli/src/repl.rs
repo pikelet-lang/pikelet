@@ -1,5 +1,5 @@
 use codespan_reporting::diagnostic::Severity;
-use codespan_reporting::files::SimpleFile;
+use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
 use pikelet::lang::{core, surface};
 use pikelet::pass::{surface_to_core, surface_to_pretty};
@@ -73,11 +73,15 @@ pub fn run(options: Options) -> anyhow::Result<()> {
 
     let globals = core::Globals::default();
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
+    let mut files = SimpleFiles::new();
     let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
 
     'repl: loop {
-        let file = match editor.readline(&options.prompt) {
-            Ok(line) => SimpleFile::new("<input>", line),
+        let (file_id, file) = match editor.readline(&options.prompt) {
+            Ok(line) => {
+                let file_id = files.add("<input>", line);
+                (file_id, files.get(file_id).unwrap())
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("Interrupted!");
                 continue 'repl;
@@ -101,7 +105,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         // :local        <name> = <term>  define a local definition in the REPL context
         // :q :quit                       quit the repl
         // :t :type      <term>           infer the type of a term
-        let surface_term = surface::Term::from_str(file.source(), &messages_tx);
+        let surface_term = surface::Term::from_str(file_id, file.source(), &messages_tx);
         let (core_term, r#type) = state.synth_type(&surface_term);
 
         let mut is_ok = true;
@@ -109,12 +113,12 @@ pub fn run(options: Options) -> anyhow::Result<()> {
             let diagnostic = message.to_diagnostic(&pretty_alloc);
             is_ok &= diagnostic.severity < Severity::Error;
 
-            codespan_reporting::term::emit(&mut writer, &reporting_config, &file, &diagnostic)?;
+            codespan_reporting::term::emit(&mut writer, &reporting_config, &files, &diagnostic)?;
             writer.flush()?;
         }
 
         if is_ok {
-            let ann_term = core::Term::from(core::TermData::Ann(
+            let ann_term = core::Term::generated(core::TermData::Ann(
                 Arc::new(state.normalize_term(&core_term)),
                 Arc::new(state.read_back_value(&r#type)),
             ));

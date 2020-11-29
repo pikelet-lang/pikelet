@@ -173,10 +173,10 @@ impl Default for Globals {
     fn default() -> Globals {
         let mut entries = BTreeMap::new();
 
-        let global = |name: &str| Arc::new(Term::from(TermData::Global(name.to_owned())));
-        let type_type = |level| Arc::new(Term::from(TermData::TypeType(UniverseLevel(level))));
+        let global = |name: &str| Arc::new(Term::generated(TermData::Global(name.to_owned())));
+        let type_type = |level| Arc::new(Term::generated(TermData::TypeType(UniverseLevel(level))));
         let function_type = |input_type, output_type| {
-            Arc::new(Term::from(TermData::FunctionType(
+            Arc::new(Term::generated(TermData::FunctionType(
                 None,
                 input_type,
                 output_type,
@@ -328,25 +328,28 @@ macro_rules! impl_has_type {
     };
 }
 
-impl_has_type!(bool, Term::from(TermData::Global("Bool".to_owned())));
-impl_has_type!(u8, Term::from(TermData::Global("U8".to_owned())));
-impl_has_type!(u16, Term::from(TermData::Global("U16".to_owned())));
-impl_has_type!(u32, Term::from(TermData::Global("U32".to_owned())));
-impl_has_type!(u64, Term::from(TermData::Global("U64".to_owned())));
-impl_has_type!(i8, Term::from(TermData::Global("S8".to_owned())));
-impl_has_type!(i16, Term::from(TermData::Global("S16".to_owned())));
-impl_has_type!(i32, Term::from(TermData::Global("S32".to_owned())));
-impl_has_type!(i64, Term::from(TermData::Global("S64".to_owned())));
-impl_has_type!(f32, Term::from(TermData::Global("F32".to_owned())));
-impl_has_type!(f64, Term::from(TermData::Global("F64".to_owned())));
-impl_has_type!(char, Term::from(TermData::Global("Char".to_owned())));
-impl_has_type!(String, Term::from(TermData::Global("String".to_owned())));
-impl_has_type!(str, Term::from(TermData::Global("String".to_owned())));
+impl_has_type!(bool, Term::generated(TermData::Global("Bool".to_owned())));
+impl_has_type!(u8, Term::generated(TermData::Global("U8".to_owned())));
+impl_has_type!(u16, Term::generated(TermData::Global("U16".to_owned())));
+impl_has_type!(u32, Term::generated(TermData::Global("U32".to_owned())));
+impl_has_type!(u64, Term::generated(TermData::Global("U64".to_owned())));
+impl_has_type!(i8, Term::generated(TermData::Global("S8".to_owned())));
+impl_has_type!(i16, Term::generated(TermData::Global("S16".to_owned())));
+impl_has_type!(i32, Term::generated(TermData::Global("S32".to_owned())));
+impl_has_type!(i64, Term::generated(TermData::Global("S64".to_owned())));
+impl_has_type!(f32, Term::generated(TermData::Global("F32".to_owned())));
+impl_has_type!(f64, Term::generated(TermData::Global("F64".to_owned())));
+impl_has_type!(char, Term::generated(TermData::Global("Char".to_owned())));
+impl_has_type!(
+    String,
+    Term::generated(TermData::Global("String".to_owned()))
+);
+impl_has_type!(str, Term::generated(TermData::Global("String".to_owned())));
 
 impl<T: HasType> HasType for Vec<T> {
     fn r#type() -> Arc<Term> {
-        Arc::new(Term::from(TermData::FunctionElim(
-            Arc::new(Term::from(TermData::Global("List".to_owned()))),
+        Arc::new(Term::generated(TermData::FunctionElim(
+            Arc::new(Term::generated(TermData::Global("List".to_owned()))),
             T::r#type(),
         )))
     }
@@ -356,10 +359,10 @@ macro_rules! impl_has_type_array {
     ($($len:expr),*) => {
         $(impl<T: HasType> HasType for [T; $len] {
             fn r#type() -> Arc<Term> {
-                Arc::new(Term::from(TermData::FunctionElim(
-                    Arc::new(Term::from(TermData::FunctionElim(
-                        Arc::new(Term::from(TermData::Global("List".to_owned()))),
-                        Arc::new(Term::from(TermData::from(Constant::U32($len as u32)))),
+                Arc::new(Term::generated(TermData::FunctionElim(
+                    Arc::new(Term::generated(TermData::FunctionElim(
+                        Arc::new(Term::generated(TermData::Global("List".to_owned()))),
+                        Arc::new(Term::generated(TermData::from(Constant::U32($len as u32)))),
                     ))),
                     T::r#type(),
                 )))
@@ -495,7 +498,7 @@ macro_rules! impl_to_term {
         impl ToTerm for $Self {
             fn to_term(&self) -> Term {
                 let $p = self;
-                Term::from($term_data)
+                Term::generated($term_data)
             }
         }
     };
@@ -525,7 +528,7 @@ impl_to_term!(str, |value| TermData::from(Constant::String(
 
 impl<T: ToTerm> ToTerm for Vec<T> {
     fn to_term(&self) -> Term {
-        Term::from(TermData::ListTerm(
+        Term::generated(TermData::ListTerm(
             self.iter()
                 .map(|entry_term| Arc::new(T::to_term(entry_term)))
                 .collect(),
@@ -537,7 +540,7 @@ macro_rules! impl_to_term_array {
     ($($len:expr),*) => {
         $(impl<T: ToTerm> ToTerm for [T; $len] {
             fn to_term(&self) -> Term {
-                Term::from(TermData::ArrayTerm(
+                Term::generated(TermData::ArrayTerm(
                     self.iter()
                         .map(|entry_term| Arc::new(T::to_term(entry_term)))
                         .collect(),

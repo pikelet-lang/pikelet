@@ -1,6 +1,7 @@
 use logos::Logos;
 use std::fmt;
 
+use crate::lang::{FileId, Location};
 use crate::reporting::LexerError;
 
 /// Tokens in the surface language.
@@ -100,13 +101,14 @@ impl<'a> fmt::Display for Token<'a> {
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
 pub fn tokens<'a>(
+    file_id: FileId,
     source: &'a str,
 ) -> impl 'a + Iterator<Item = Spanned<Token<'a>, usize, LexerError>> {
     Token::lexer(source)
         .spanned()
-        .map(|(token, range)| match token {
+        .map(move |(token, range)| match token {
             Token::Error => Err(LexerError::InvalidToken {
-                range: range.into(),
+                location: Location::file_range(file_id, range),
             }),
             token => Ok((range.start, token, range.end)),
         })
@@ -116,7 +118,7 @@ pub fn tokens<'a>(
 fn behavior_after_error() {
     let starts_with_invalid = "@.";
     // [Err(...), Some(Token::DOT)]
-    let from_lex: Vec<_> = tokens(starts_with_invalid).collect();
+    let from_lex: Vec<_> = tokens(0, starts_with_invalid).collect();
     let result: Vec<_> = from_lex.iter().map(Result::is_ok).collect();
     assert_eq!(result, vec![false, true]);
 }

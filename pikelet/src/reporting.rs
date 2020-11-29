@@ -3,7 +3,7 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pretty::DocAllocator;
 
-use crate::lang::{core, surface, Range};
+use crate::lang::{core, surface, FileId, Location};
 use crate::literal;
 
 /// Global diagnostic messages
@@ -57,37 +57,38 @@ impl From<SurfaceToCoreMessage> for Message {
 
 impl Message {
     pub fn from_lalrpop<T: std::fmt::Display>(
+        file_id: FileId,
         error: lalrpop_util::ParseError<usize, T, LexerError>,
     ) -> Message {
         use lalrpop_util::ParseError::*;
 
         match error {
             InvalidToken { location } => Message::from(LexerError::InvalidToken {
-                range: Range::from(location..location),
+                location: Location::file_range(file_id, location..location),
             }),
             UnrecognizedEOF { location, expected } => Message::from(ParseError::UnrecognizedEOF {
-                range: Range::from(location..location),
+                location: Location::file_range(file_id, location..location),
                 expected,
             }),
             UnrecognizedToken {
                 token: (start, token, end),
                 expected,
             } => Message::from(ParseError::UnrecognizedToken {
-                range: Range::from(start..end),
+                location: Location::file_range(file_id, start..end),
                 token: token.to_string(),
                 expected,
             }),
             ExtraToken {
                 token: (start, token, end),
             } => Message::from(ParseError::ExtraToken {
-                range: Range::from(start..end),
+                location: Location::file_range(file_id, start..end),
                 token: token.to_string(),
             }),
             User { error } => Message::from(error),
         }
     }
 
-    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<()>
+    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<FileId>
     where
         D: DocAllocator<'a>,
         D::Doc: Clone,
@@ -105,15 +106,15 @@ impl Message {
 /// Lexer errors
 #[derive(Debug, Clone)]
 pub enum LexerError {
-    InvalidToken { range: Range },
+    InvalidToken { location: Location },
 }
 
 impl LexerError {
-    pub fn to_diagnostic(&self) -> Diagnostic<()> {
+    pub fn to_diagnostic(&self) -> Diagnostic<FileId> {
         match self {
-            LexerError::InvalidToken { range } => Diagnostic::error()
+            LexerError::InvalidToken { location } => Diagnostic::error()
                 .with_message("invalid token")
-                .with_labels(vec![Label::primary((), *range)]),
+                .with_labels(option_to_vec(primary(location))),
         }
     }
 }
@@ -122,186 +123,178 @@ impl LexerError {
 #[derive(Clone, Debug)]
 pub enum ParseError {
     UnrecognizedEOF {
-        range: Range,
+        location: Location,
         expected: Vec<String>,
     },
     UnrecognizedToken {
-        range: Range,
+        location: Location,
         token: String,
         expected: Vec<String>,
     },
     ExtraToken {
-        range: Range,
+        location: Location,
         token: String,
     },
 }
 
 impl ParseError {
-    pub fn to_diagnostic(&self) -> Diagnostic<()> {
+    pub fn to_diagnostic(&self) -> Diagnostic<FileId> {
         match self {
-            ParseError::UnrecognizedEOF { range, expected } => Diagnostic::error()
+            ParseError::UnrecognizedEOF { location, expected } => Diagnostic::error()
                 .with_message("unexpected end of file")
-                .with_labels(vec![
-                    Label::primary((), *range).with_message("unexpected end of file")
-                ])
+                .with_labels(option_to_vec(
+                    primary(location).map(|label| label.with_message("unexpected end of file")),
+                ))
                 .with_notes(format_expected(expected).map_or(Vec::new(), |message| vec![message])),
             ParseError::UnrecognizedToken {
-                range,
+                location,
                 token,
                 expected,
             } => Diagnostic::error()
                 .with_message(format!("unexpected token {}", token))
-                .with_labels(vec![
-                    Label::primary((), *range).with_message("unexpected token")
-                ])
+                .with_labels(option_to_vec(
+                    primary(location).map(|label| label.with_message("unexpected token")),
+                ))
                 .with_notes(format_expected(expected).map_or(Vec::new(), |message| vec![message])),
-            ParseError::ExtraToken { range, token } => Diagnostic::error()
+            ParseError::ExtraToken { location, token } => Diagnostic::error()
                 .with_message(format!("extra token {}", token))
-                .with_labels(vec![Label::primary((), *range).with_message("extra token")]),
+                .with_labels(option_to_vec(
+                    primary(location).map(|label| label.with_message("extra token")),
+                )),
         }
     }
 }
 
-fn format_expected(expected: &[String]) -> Option<String> {
-    use itertools::Itertools;
-
-    expected.split_last().map(|items| match items {
-        // TODO: Improve token formatting
-        (last, []) => format!("expected {}", last),
-        (last, expected) => format!("expected {} or {}", expected.iter().format(", "), last),
-    })
-}
-
 #[derive(Clone, Debug)]
 pub enum LiteralParseMessage {
-    ExpectedRadixOrDecimalDigit(Range),
-    ExpectedStartOfNumericLiteral(Range),
-    NegativeUnsignedInteger(Range),
-    ExpectedDigit(Range, literal::Base),
-    ExpectedDigitOrSeparator(Range, literal::Base),
-    ExpectedDigitSeparatorOrExp(Range, literal::Base),
-    ExpectedDigitSeparatorFracOrExp(Range, literal::Base),
-    FloatLiteralExponentNotSupported(Range),
-    UnsupportedFloatLiteralBase(Range, literal::Base),
-    LiteralOutOfRange(Range),
-    OverlongCharLiteral(Range),
-    EmptyCharLiteral(Range),
-    OversizedUnicodeEscapeCode(Range),
-    EmptyUnicodeEscapeCode(Range),
-    OverlongUnicodeEscapeCode(Range),
-    InvalidUnicodeEscapeCode(Range),
-    InvalidUnicodeEscape(Range),
-    OversizedAsciiEscapeCode(Range),
-    InvalidAsciiEscape(Range),
-    UnknownEscapeSequence(Range),
-    InvalidToken(Range),
-    ExpectedEndOfLiteral(Range),
-    UnexpectedEndOfLiteral(Range),
+    ExpectedRadixOrDecimalDigit(Location),
+    ExpectedStartOfNumericLiteral(Location),
+    NegativeUnsignedInteger(Location),
+    ExpectedDigit(Location, literal::Base),
+    ExpectedDigitOrSeparator(Location, literal::Base),
+    ExpectedDigitSeparatorOrExp(Location, literal::Base),
+    ExpectedDigitSeparatorFracOrExp(Location, literal::Base),
+    FloatLiteralExponentNotSupported(Location),
+    UnsupportedFloatLiteralBase(Location, literal::Base),
+    LiteralOutOfRange(Location),
+    OverlongCharLiteral(Location),
+    EmptyCharLiteral(Location),
+    OversizedUnicodeEscapeCode(Location),
+    EmptyUnicodeEscapeCode(Location),
+    OverlongUnicodeEscapeCode(Location),
+    InvalidUnicodeEscapeCode(Location),
+    InvalidUnicodeEscape(Location),
+    OversizedAsciiEscapeCode(Location),
+    InvalidAsciiEscape(Location),
+    UnknownEscapeSequence(Location),
+    InvalidToken(Location),
+    ExpectedEndOfLiteral(Location),
+    UnexpectedEndOfLiteral(Location),
 }
 
 impl LiteralParseMessage {
-    pub fn to_diagnostic(&self) -> Diagnostic<()> {
+    pub fn to_diagnostic(&self) -> Diagnostic<FileId> {
         match self {
-            LiteralParseMessage::ExpectedRadixOrDecimalDigit(range) => Diagnostic::error()
+            LiteralParseMessage::ExpectedRadixOrDecimalDigit(location) => Diagnostic::error()
                 .with_message("expected a radix or decimal digit")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::ExpectedStartOfNumericLiteral(range) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::ExpectedStartOfNumericLiteral(location) => Diagnostic::error()
                 .with_message("expected the start of a numeric literal")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::NegativeUnsignedInteger(range) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::NegativeUnsignedInteger(location) => Diagnostic::error()
                 .with_message("unsigned integer literals cannot be negative")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::ExpectedDigit(range, base) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::ExpectedDigit(location, base) => Diagnostic::error()
                 .with_message(format!("expected a base {} digit", base.to_u8()))
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::ExpectedDigitOrSeparator(range, base) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::ExpectedDigitOrSeparator(location, base) => Diagnostic::error()
                 .with_message(format!(
                     "expected a base {} digit or digit separator",
                     base.to_u8(),
                 ))
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::ExpectedDigitSeparatorOrExp(range, base) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::ExpectedDigitSeparatorOrExp(location, base) => Diagnostic::error()
                 .with_message(format!(
                     "expected a base {} digit, digit separator, or exponent",
                     base.to_u8(),
                 ))
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::ExpectedDigitSeparatorFracOrExp(range, base) => {
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::ExpectedDigitSeparatorFracOrExp(location, base) => {
                 Diagnostic::error()
                     .with_message(format!(
                         "expected a base {} digit, digit separator, period, or exponent",
                         base.to_u8(),
                     ))
-                    .with_labels(vec![Label::primary((), *range)])
+                    .with_labels(option_to_vec(primary(location)))
             }
-            LiteralParseMessage::FloatLiteralExponentNotSupported(range) => Diagnostic::error()
+            LiteralParseMessage::FloatLiteralExponentNotSupported(location) => Diagnostic::error()
                 .with_message("exponents are not yet supported for float literals")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::UnsupportedFloatLiteralBase(range, base) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::UnsupportedFloatLiteralBase(location, base) => Diagnostic::error()
                 .with_message(format!(
                     "base {} float literals are not yet supported",
                     base.to_u8(),
                 ))
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec![
                     "only base 10 float literals are currently supported".to_owned()
                 ]),
-            LiteralParseMessage::LiteralOutOfRange(range) => Diagnostic::error()
+            LiteralParseMessage::LiteralOutOfRange(location) => Diagnostic::error()
                 .with_message("literal out of range")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::OverlongCharLiteral(range) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::OverlongCharLiteral(location) => Diagnostic::error()
                 .with_message("too many codepoints in character literal")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec![
                     "character literals may only contain one codepoint".to_owned()
                 ]),
-            LiteralParseMessage::EmptyCharLiteral(range) => Diagnostic::error()
+            LiteralParseMessage::EmptyCharLiteral(location) => Diagnostic::error()
                 .with_message("empty character literal")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec!["character literals must not be empty".to_owned()]),
-            LiteralParseMessage::OversizedUnicodeEscapeCode(range) => Diagnostic::error()
+            LiteralParseMessage::OversizedUnicodeEscapeCode(location) => Diagnostic::error()
                 .with_message("unicode escape code exceeds maximum allowed range")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec![format!("must be at most {:X} ", literal::MAX_UNICODE)]),
-            LiteralParseMessage::EmptyUnicodeEscapeCode(range) => Diagnostic::error()
+            LiteralParseMessage::EmptyUnicodeEscapeCode(location) => Diagnostic::error()
                 .with_message("empty unicode character code")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec!["must contain at least one hex digit".to_owned()]),
-            LiteralParseMessage::OverlongUnicodeEscapeCode(range) => Diagnostic::error()
+            LiteralParseMessage::OverlongUnicodeEscapeCode(location) => Diagnostic::error()
                 .with_message("too many digits in unicode character code")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec!["must contain at most six hex digits".to_owned()]),
-            LiteralParseMessage::InvalidUnicodeEscapeCode(range) => Diagnostic::error()
+            LiteralParseMessage::InvalidUnicodeEscapeCode(location) => Diagnostic::error()
                 .with_message("invalid unicode escape code")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec!["must contain only hex digits".to_owned()]),
-            LiteralParseMessage::InvalidUnicodeEscape(range) => Diagnostic::error()
+            LiteralParseMessage::InvalidUnicodeEscape(location) => Diagnostic::error()
                 .with_message("invalid unicode escape sequence")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec![
                     "must be followed with a braced sequence of hex digits".to_owned(),
                     "for example: `\\u{..}`".to_owned(),
                 ]),
-            LiteralParseMessage::OversizedAsciiEscapeCode(range) => Diagnostic::error()
+            LiteralParseMessage::OversizedAsciiEscapeCode(location) => Diagnostic::error()
                 .with_message("ACII escape code exceeds maximum allowed range")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec![format!("must be at most {:X} ", literal::MAX_ASCII)]),
-            LiteralParseMessage::InvalidAsciiEscape(range) => Diagnostic::error()
+            LiteralParseMessage::InvalidAsciiEscape(location) => Diagnostic::error()
                 .with_message("invalid ASCII escape")
-                .with_labels(vec![Label::primary((), *range)])
+                .with_labels(option_to_vec(primary(location)))
                 .with_notes(vec!["must contain exactly two hex digits ".to_owned()]),
-            LiteralParseMessage::UnknownEscapeSequence(range) => Diagnostic::error()
+            LiteralParseMessage::UnknownEscapeSequence(location) => Diagnostic::error()
                 .with_message("unknown escape sequence")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::InvalidToken(range) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::InvalidToken(location) => Diagnostic::error()
                 .with_message("invalid token")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::ExpectedEndOfLiteral(range) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::ExpectedEndOfLiteral(location) => Diagnostic::error()
                 .with_message("expected end of literal")
-                .with_labels(vec![Label::primary((), *range)]),
-            LiteralParseMessage::UnexpectedEndOfLiteral(range) => Diagnostic::error()
+                .with_labels(option_to_vec(primary(location))),
+            LiteralParseMessage::UnexpectedEndOfLiteral(location) => Diagnostic::error()
                 .with_message("unexpected end of literal")
-                .with_labels(vec![Label::primary((), *range)]),
+                .with_labels(option_to_vec(primary(location))),
         }
     }
 }
@@ -370,7 +363,7 @@ pub enum CoreTypingMessage {
 }
 
 impl CoreTypingMessage {
-    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<()>
+    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<FileId>
     where
         D: DocAllocator<'a>,
         D::Doc: Clone,
@@ -483,60 +476,60 @@ impl CoreTypingMessage {
 #[derive(Clone, Debug)]
 pub enum SurfaceToCoreMessage {
     MaximumUniverseLevelReached {
-        range: Range,
+        location: Location,
     },
     UnboundName {
-        range: Range,
+        location: Location,
         name: String,
     },
     InvalidRecordType {
-        duplicate_labels: Vec<(String, Range, Range)>,
+        duplicate_labels: Vec<(String, Location, Location)>,
     },
     InvalidRecordTerm {
-        range: Range,
+        location: Location,
         missing_labels: Vec<String>,
-        unexpected_labels: Vec<Range>,
+        unexpected_labels: Vec<Location>,
     },
     LabelNotFound {
-        head_range: Range,
-        label_range: Range,
+        head_location: Location,
+        label_location: Location,
         expected_label: String,
         head_type: surface::Term,
     },
     TooManyInputsInFunctionTerm {
-        unexpected_inputs: Vec<Range>,
+        unexpected_inputs: Vec<Location>,
     },
     TooManyInputsInFunctionElim {
-        head_range: Range,
+        head_location: Location,
         head_type: surface::Term,
-        unexpected_input_terms: Vec<Range>,
+        unexpected_input_terms: Vec<Location>,
     },
     NoLiteralConversion {
-        range: Range,
+        location: Location,
         expected_type: surface::Term,
     },
     MismatchedSequenceLength {
-        range: Range,
+        location: Location,
         found_len: usize,
         expected_len: surface::Term,
     },
     NoSequenceConversion {
-        range: Range,
+        location: Location,
         expected_type: surface::Term,
     },
     AmbiguousTerm {
-        range: Range,
+        location: Location,
         term: AmbiguousTerm,
     },
     MismatchedTypes {
-        range: Range,
+        location: Location,
         found_type: surface::Term,
         expected_type: ExpectedType<surface::Term>,
     },
 }
 
 impl SurfaceToCoreMessage {
-    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<()>
+    pub fn to_diagnostic<'a, D>(&'a self, pretty_alloc: &'a D) -> Diagnostic<FileId>
     where
         D: DocAllocator<'a>,
         D::Doc: Clone,
@@ -548,40 +541,39 @@ impl SurfaceToCoreMessage {
         let to_doc = |term| surface_to_pretty::from_term(pretty_alloc, term).1;
 
         match self {
-            SurfaceToCoreMessage::MaximumUniverseLevelReached { range } => Diagnostic::error()
+            SurfaceToCoreMessage::MaximumUniverseLevelReached { location } => Diagnostic::error()
                 .with_message("maximum universe level reached")
-                .with_labels(vec![
-                    Label::primary((), *range).with_message("overflowing universe level")
-                ]),
+                .with_labels(option_to_vec(
+                    primary(location).map(|label| label.with_message("overflowing universe level")),
+                )),
 
-            SurfaceToCoreMessage::UnboundName { range, name } => Diagnostic::error()
+            SurfaceToCoreMessage::UnboundName { location, name } => Diagnostic::error()
                 .with_message(format!("cannot find `{}` in this scope", name))
                 // TODO: name suggestions?
-                .with_labels(vec![
-                    Label::primary((), *range).with_message("not found in this scope")
-                ]),
+                .with_labels(option_to_vec(
+                    primary(location).map(|label| label.with_message("not found in this scope")),
+                )),
 
             SurfaceToCoreMessage::InvalidRecordType { duplicate_labels } => Diagnostic::error()
                 .with_message("invalid record type")
                 .with_labels({
                     let mut labels = Vec::with_capacity(duplicate_labels.len() * 2);
 
-                    for (label, label_range1, label_range2) in duplicate_labels {
-                        labels.push(
-                            Label::secondary((), *label_range1)
-                                .with_message(format!("first use of `{}`", label)),
-                        );
-                        labels.push(
-                            Label::primary((), *label_range2)
-                                .with_message("entry label used more than once"),
-                        );
+                    for (label_name, label_location1, label_location2) in duplicate_labels {
+                        labels.extend(secondary(label_location1).map(|label| {
+                            label.with_message(format!("first use of `{}`", label_name))
+                        }));
+                        labels
+                            .extend(primary(label_location2).map(|label| {
+                                label.with_message("entry label used more than once")
+                            }));
                     }
 
                     labels
                 }),
 
             SurfaceToCoreMessage::InvalidRecordTerm {
-                range,
+                location,
                 missing_labels,
                 unexpected_labels,
             } => Diagnostic::error()
@@ -591,29 +583,32 @@ impl SurfaceToCoreMessage {
                         unexpected_labels.len() + if missing_labels.is_empty() { 0 } else { 1 },
                     );
 
-                    for label_range in unexpected_labels {
-                        labels.push(
-                            Label::primary((), *label_range).with_message("unexpected entry label"),
+                    for label_location in unexpected_labels {
+                        labels.extend(
+                            primary(label_location)
+                                .map(|label| label.with_message("unexpected entry label")),
                         );
                     }
 
                     if !missing_labels.is_empty() {
-                        labels.push(Label::primary((), *range).with_message(format!(
+                        labels.extend(primary(location).map(|label| {
+                            label.with_message(format!(
                                 "missing the labels {} in this record term",
                                 missing_labels
                                     .iter()
                                     // TODO: reduce string allocations
                                     .map(|label| format!("`{}`", label))
                                     .format(", "),
-                            )));
+                            ))
+                        }));
                     }
 
                     labels
                 }),
 
             SurfaceToCoreMessage::LabelNotFound {
-                head_range,
-                label_range,
+                head_location,
+                label_location,
                 expected_label,
                 head_type,
             } => Diagnostic::error()
@@ -622,13 +617,18 @@ impl SurfaceToCoreMessage {
                     expected_label,
                     to_doc(&head_type).pretty(std::usize::MAX),
                 ))
-                .with_labels(vec![
-                    Label::primary((), *label_range).with_message("unknown entry label"),
-                    Label::secondary((), *head_range).with_message(format!(
-                        "the type here is `{}`",
-                        to_doc(&head_type).pretty(std::usize::MAX),
-                    )),
-                ]),
+                .with_labels(
+                    primary(label_location)
+                        .map(|label| label.with_message("unknown entry label"))
+                        .into_iter()
+                        .chain(secondary(head_location).map(|label| {
+                            label.with_message(format!(
+                                "the type here is `{}`",
+                                to_doc(&head_type).pretty(std::usize::MAX),
+                            ))
+                        }))
+                        .collect(),
+                ),
 
             SurfaceToCoreMessage::TooManyInputsInFunctionTerm { unexpected_inputs } => {
                 Diagnostic::error()
@@ -636,80 +636,92 @@ impl SurfaceToCoreMessage {
                     .with_labels(
                         unexpected_inputs
                             .iter()
-                            .map(|input_range| {
-                                Label::primary((), *input_range).with_message("unexpected input")
+                            .flat_map(|input_location| {
+                                primary(input_location)
+                                    .map(|label| label.with_message("unexpected input"))
                             })
                             .collect(),
                     )
             }
 
             SurfaceToCoreMessage::TooManyInputsInFunctionElim {
-                head_range,
+                head_location,
                 head_type,
                 unexpected_input_terms,
             } => Diagnostic::error()
                 .with_message("term was applied to too many inputs")
                 .with_labels(
-                    std::iter::once(Label::primary((), *head_range).with_message(format!(
-                        // TODO: multi-line?
-                        "expected a function, found `{}`",
-                        to_doc(&head_type).pretty(std::usize::MAX),
-                    )))
-                    .chain(unexpected_input_terms.iter().map(|input_range| {
-                        Label::primary((), *input_range).with_message("unexpected input".to_owned())
-                    }))
-                    .collect(),
+                    primary(head_location)
+                        .map(|label| {
+                            label.with_message(format!(
+                                // TODO: multi-line?
+                                "expected a function, found `{}`",
+                                to_doc(&head_type).pretty(std::usize::MAX),
+                            ))
+                        })
+                        .into_iter()
+                        .chain(unexpected_input_terms.iter().flat_map(|input_location| {
+                            primary(input_location)
+                                .map(|label| label.with_message("unexpected input".to_owned()))
+                        }))
+                        .collect(),
                 ),
 
             SurfaceToCoreMessage::NoLiteralConversion {
-                range,
+                location,
                 expected_type,
             } => Diagnostic::error()
                 .with_message("no known literal conversion")
-                .with_labels(vec![Label::primary((), *range).with_message(format!(
-                    // TODO: multi-line?
-                    "expected `{}`, found a literal",
-                    to_doc(&expected_type).pretty(std::usize::MAX),
-                ))]),
+                .with_labels(option_to_vec(primary(location).map(|label| {
+                    label.with_message(format!(
+                        // TODO: multi-line?
+                        "expected `{}`, found a literal",
+                        to_doc(&expected_type).pretty(std::usize::MAX),
+                    ))
+                }))),
 
             SurfaceToCoreMessage::MismatchedSequenceLength {
-                range,
+                location,
                 found_len,
                 expected_len,
             } => Diagnostic::error()
                 .with_message("mismatched sequence length")
-                .with_labels(vec![Label::primary((), *range).with_message(format!(
-                    // TODO: multi-line?
-                    "expected `{}` entries, found `{}` entries",
-                    to_doc(&expected_len).pretty(std::usize::MAX),
-                    found_len,
-                ))]),
+                .with_labels(option_to_vec(primary(location).map(|label| {
+                    label.with_message(format!(
+                        // TODO: multi-line?
+                        "expected `{}` entries, found `{}` entries",
+                        to_doc(&expected_len).pretty(std::usize::MAX),
+                        found_len,
+                    ))
+                }))),
 
             SurfaceToCoreMessage::NoSequenceConversion {
-                range,
+                location,
                 expected_type,
             } => Diagnostic::error()
                 .with_message("no known sequence conversion")
-                .with_labels(vec![Label::primary((), *range).with_message(format!(
-                    // TODO: multi-line?
-                    "expected `{}`, found a sequence",
-                    to_doc(&expected_type).pretty(std::usize::MAX),
-                ))]),
+                .with_labels(option_to_vec(primary(location).map(|label| {
+                    label.with_message(format!(
+                        // TODO: multi-line?
+                        "expected `{}`, found a sequence",
+                        to_doc(&expected_type).pretty(std::usize::MAX),
+                    ))
+                }))),
 
-            SurfaceToCoreMessage::AmbiguousTerm { range, term } => Diagnostic::error()
+            SurfaceToCoreMessage::AmbiguousTerm { location, term } => Diagnostic::error()
                 .with_message(format!("ambiguous {}", term.description()))
-                .with_labels(vec![
-                    Label::primary((), *range).with_message("type annotations needed")
-                ]),
+                .with_labels(option_to_vec(
+                    primary(location).map(|label| label.with_message("type annotations needed")),
+                )),
 
             SurfaceToCoreMessage::MismatchedTypes {
-                range,
+                location,
                 found_type,
                 expected_type,
             } => Diagnostic::error()
                 .with_message("mismatched types")
-                .with_labels(vec![Label::primary((), *range).with_message(
-                    match expected_type {
+                .with_labels(option_to_vec(primary(location).map(|label| {
+                    label.with_message(match expected_type {
                         ExpectedType::Universe => format!(
                             // TODO: multi-line?
                             "expected a type, found `{}`",
@@ -721,8 +733,45 @@ impl SurfaceToCoreMessage {
                             to_doc(&expected_type).pretty(std::usize::MAX),
                             to_doc(&found_type).pretty(std::usize::MAX),
                         ),
-                    },
-                )]),
+                    })
+                }))),
         }
     }
+}
+
+/// Create a new label with a style of [`LabelStyle::Primary`].
+///
+/// [`LabelStyle::Primary`]: LabelStyle::Primary
+fn primary(location: &Location) -> Option<Label<FileId>> {
+    match location {
+        Location::Generated => None,
+        Location::FileRange(file_id, range) => Some(Label::primary(*file_id, *range)),
+    }
+}
+
+/// Create a new label with a style of [`LabelStyle::Secondary`].
+///
+/// [`LabelStyle::Secondary`]: LabelStyle::Secondary
+fn secondary(location: &Location) -> Option<Label<FileId>> {
+    match location {
+        Location::Generated => None,
+        Location::FileRange(file_id, range) => Some(Label::secondary(*file_id, *range)),
+    }
+}
+
+fn option_to_vec<T>(option: Option<T>) -> Vec<T> {
+    match option {
+        None => Vec::new(),
+        Some(elem) => vec![elem],
+    }
+}
+
+fn format_expected(expected: &[String]) -> Option<String> {
+    use itertools::Itertools;
+
+    expected.split_last().map(|items| match items {
+        // TODO: Improve token formatting
+        (last, []) => format!("expected {}", last),
+        (last, expected) => format!("expected {} or {}", expected.iter().format(", "), last),
+    })
 }
