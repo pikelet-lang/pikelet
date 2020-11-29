@@ -56,7 +56,6 @@ $ pikelet repl
 > (fun A a => a : Fun (A : Type) -> A -> A) String "hello"
 "hello" : String
 ```
-[dependent-type-wikipedia]: https://en.wikipedia.org/wiki/Dependent_type
 
 ## Summary
 
