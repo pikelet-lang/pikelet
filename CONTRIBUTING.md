@@ -5,7 +5,7 @@
 Please note that this project is released with a [Code of Conduct](./CODE_OF_CONDUCT.md).
 By participating in this project you agree to abide by its terms.
 
-[code_of_conduct]: https://github.com/pikelet-lang/pikelet/blob/master/CODE_OF_CONDUCT.md
+[code_of_conduct]: https://github.com/pikelet-lang/pikelet/blob/main/CODE_OF_CONDUCT.md
 
 ## Matrix room
 
@@ -38,7 +38,7 @@ Follow these steps to contribute to the project:
 1. Within your fork, create a branch for your contribution. Use a meaningful name.
 1. Create your contribution, meeting all [contribution quality standards](#quality-standards).
 1. Ensure all the tests pass (`cargo test`).
-1. [Create a pull request][create-a-pr] against the `master` branch of the repository.
+1. [Create a pull request][create-a-pr] against the `main` branch of the repository.
 1. Once the pull request is reviewed and CI passes, it will be merged.
 
 [pikelet-repo]: https://github.com/pikelet-lang/pikelet/
