@@ -1,0 +1,13 @@
+record {
+    id-String = fun a => a,
+    const-String-S32 = fun a b => a,
+
+    id = fun A a => a,
+    const = fun A B a b => a,
+} : Record {
+    id-String : String -> String,
+    const-String-S32 : String -> S32 -> String,
+
+    id : Fun (A : Type) -> A -> A,
+    const : Fun (A : Type) (B : Type) -> A -> B -> A,
+}

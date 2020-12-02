@@ -1,0 +1,37 @@
+record {
+    b2 = 0b1001_0101,
+    b8 = 0o01234567,
+    b10 = 0123456789,
+    b16 = 0x01234_abcdef_ABCDEF,
+
+    char-tab = '\t',
+    char-carriage-return = '\r',
+    char-newline = '\n',
+    char-null = '\0',
+    char-backslash = '\\',
+    char-single-quote = '\'',
+    char-double-quote = '\"',
+    char-ascii-escape = '\x32',
+    char-unicode-escape = '\u{0001}',
+
+    string-utf8 = "Γ ⊢ e ∈ τ ... 🌱🌳🌲🌿",
+    string-escapes = "\t\r\n\0\\ \'\" \x32 \u{0001}",
+} : Record {
+    b2 : S32,
+    b8 : S32,
+    b10 : S32,
+    b16 : U64,
+
+    char-tab : Char,
+    char-carriage-return : Char,
+    char-newline : Char,
+    char-null : Char,
+    char-backslash : Char,
+    char-single-quote : Char,
+    char-double-quote : Char,
+    char-ascii-escape : Char,
+    char-unicode-escape : Char,
+
+    string-utf8 : String,
+    string-escapes : String,
+}

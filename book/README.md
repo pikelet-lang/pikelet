@@ -1,10 +1,31 @@
-# Pikelet Language Book
+# Pikelet Book
 
-To build the book, you will first need to [install mdBook via cargo][install-mdbook]:
+To build the book, you will first need to [install mdBook][install-mdbook] and [mdbook-linkcheck]:
 
 ```sh
-cargo install mdbook
+cargo install mdbook mdbook-linkcheck
 ```
+
+Note that for consistency we use specific versions of these tools on CI,
+so the one you install might be newer than the one used to build and deploy the book.
+To check the versions we currently assume, look at the [workflows directory](../.github/workflows).
+
+## Building additional JavaScript
+
+In order to highlight the Fathom code examples in the book we override mdBook's built-in [highlight.js] with our own.
+To build the highlighting code, run the following commands using [Yarn]:
+
+```sh
+yarn workspace book install
+yarn workspace book build
+```
+
+You will need to rebuild the book or restart the mdBook server for changes to take effect.
+
+[highlight.js]: https://highlightjs.org/
+[Yarn]: (https://yarnpkg.com/)
+
+## Running the mdBook server
 
 You can then serve the documentation locally by calling the [`serve` command][mdbook-serve]
 from the `book` directory:
@@ -13,25 +34,12 @@ from the `book` directory:
 mdbook serve
 ```
 
-[install-mdbook]: https://rust-lang-nursery.github.io/mdBook/cli/cli-tool.html#install-cratesio-version
-[mdbook-serve]: https://rust-lang-nursery.github.io/mdBook/cli/serve.html
-
-## Building custom syntax highlighting
-
-Highlight.js can be [hard to extend][mdbook-custom-highlighting-issue], so we've
-had to make a [custom fork][highlightjs-fork] that supports Pikelet syntax. For
-better or worse, we've included this as a submodule as a temporary solution.
-To build this, we've included a [handy script][build-highlight-js-script]:
+Alternatively it can be called from the root of the repository:
 
 ```sh
-tools/build-highlight-js
+mdbook serve book
 ```
 
-This should update/initialize the submodule, update the npm dependencies,
-and copy the minified highlighting source to the proper directory. Note that
-this is an optional step for developing locally - the CI pipeline will take care
-of building and deploying this automatically.
-
-[mdbook-custom-highlighting-issue]: https://github.com/rust-lang-nursery/mdBook/issues/657
-[highlightjs-fork]: https://github.com/pikelet-lang/highlight.js/tree/add-pikelet
-[build-highlight-js-script]: /tools/build-highlight-js
+[install-mdbook]: https://rust-lang.github.io/mdBook/cli/index.html#install-cratesio-version
+[mdbook-serve]: https://rust-lang.github.io/mdBook/cli/serve.html
+[mdbook-linkcheck]: https://github.com/Michael-F-Bryan/mdbook-linkcheck#getting-started

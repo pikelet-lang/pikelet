@@ -1,0 +1,37 @@
+[package]
+name = "pikelet-cli"
+version = "0.1.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+edition = "2018"
+publish = false
+description = "Command line interface for interacting with the Pikelet programming language"
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+readme = "README.md"
+keywords = ["pikelet", "cli"]
+categories = ["command-line-utilities"]
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "pikelet"
+path = "src/main.rs"
+
+[features]
+default = ["editor", "language-server"]
+editor = ["pikelet-editor"]
+language-server = ["pikelet-language-server"]
+
+[dependencies]
+anyhow = "1.0"
+codespan-reporting = "0.9.5"
+crossbeam-channel = "0.4"
+pikelet = { path = "../pikelet" }
+pikelet-editor = { path = "../pikelet-editor", optional = true }
+pikelet-language-server = { path = "../pikelet-language-server", optional = true }
+pretty = "0.10"
+rustyline = "6.2"
+structopt = "0.3"
+term_size = "0.3"
+xdg = "2.2"

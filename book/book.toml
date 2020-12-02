@@ -1,7 +1,8 @@
 [book]
-title = "Pikelet Language Book"
-authors = ["Brendan Zabarauskas"]
-description = "Documentation for the Pikelet Language"
+title = "Pikele Book"
+authors = ["YesLogic Pty. Ltd. <info@yeslogic.com>"]
+description = "Documentation for the Pikelet programming language"
+language = "en"
 multilingual = false
 src = "src"
 
@@ -9,4 +10,27 @@ src = "src"
 build-dir = "build"
 
 [output.html]
-mathjax-support = true
+additional-js = [
+    "dist/index.js",
+]
+
+[output.html.redirect]
+"/installation/index.html" = "./guide/installation.html"
+"/language/index.html" = "./reference.html"
+# "/language/conditionals.html" = TODO
+"/language/functions.html" = "./reference/functions.html"
+"/language/records.html" = "./reference/records.html"
+# "/language/bindings.html" = TODO
+# "/language/type-inference.html" = TODO
+"/language/universes.html" = "./reference/universes.html"
+"/appendix/index.html" = "./specification.html"
+"/appendix/design.html" = "./development/design-goals.html"
+"/appendix/theory.html" = "./specification.html"
+# "/appendix/influences.html" = TODO
+# "/appendix/references.html" = TODO
+
+# [output.linkcheck]
+# exclude = [
+#     '\./contributing\.md', # Bypass `traverse-parent-directories` for this symlink
+#     '\./code-of-conduct\.md', # Bypass `traverse-parent-directories` for this symlink
+# ]

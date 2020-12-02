@@ -1,0 +1,124 @@
+use crate::lang::{FileId, Located, Location};
+use crate::lang::surface::{Term, TermData, TypeEntry, TermEntry};
+use crate::lang::surface::lexer::Token;
+use crate::reporting::LexerError;
+
+grammar<'input>(file_id: FileId);
+
+extern {
+    type Location = usize;
+    type Error = LexerError;
+
+    enum Token<'input> {
+        "doc comment" => Token::DocComment(<&'input str>),
+        "character literal" => Token::CharLiteral(<&'input str>),
+        "string literal" => Token::StringLiteral(<&'input str>),
+        "numeric literal" => Token::NumericLiteral(<&'input  str>),
+        "name" => Token::Name(<&'input str>),
+        "shift" => Token::Shift(<&'input str>),
+
+        "as" => Token::As,
+        "fun" => Token::FunTerm,
+        "Fun" => Token::FunType,
+        "record" => Token::RecordTerm,
+        "Record" => Token::RecordType,
+
+        "->"  => Token::Arrow,
+        "=>"  => Token::DArrow,
+        ":"   => Token::Colon,
+        ","   => Token::Comma,
+        "."   => Token::Dot,
+
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
+        "[" => Token::LBrack,
+        "]" => Token::RBrack,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "=" => Token::Equal,
+    }
+}
+
+pub Term: Term = Located<TermData>;
+#[inline] ArrowTerm: Term = Located<ArrowTermData>;
+#[inline] ExprTerm: Term = Located<ExprTermData>;
+#[inline] AppTerm: Term = Located<AppTermData>;
+#[inline] AtomicTerm: Term = Located<AtomicTermData>;
+
+TermData: TermData = {
+    ExprTermData,
+    <term: ExprTerm> ":" <type_: Term> => TermData::Ann(Box::new(term), Box::new(type_)),
+};
+
+ExprTermData: TermData = {
+    ArrowTermData,
+    "fun" <input_names: Located<Name>+> "=>" <output_term: ExprTerm> => {
+        TermData::FunctionTerm(input_names, Box::new(output_term))
+    },
+};
+
+ArrowTermData: TermData = {
+    AppTermData,
+    "Fun" <input_type_groups: ("(" <Located<Name>+> ":" <ArrowTerm> ")")+>
+        "->" <output_type: ArrowTerm> =>
+    {
+        TermData::FunctionType(input_type_groups, Box::new(output_type))
+    },
+    <input_type: AppTerm> "->" <output_type: ArrowTerm> => {
+        TermData::FunctionArrowType(Box::new(input_type), Box::new(output_type))
+    },
+};
+
+AppTermData: TermData = {
+    AtomicTermData,
+    <head_term: AtomicTerm> <input_terms: AtomicTerm+> => {
+        TermData::FunctionElim(Box::new(head_term), input_terms)
+    },
+};
+
+AtomicTermData: TermData = {
+    "(" <term: TermData> ")" => term,
+    <name: Name> => TermData::Name(name),
+    <term: AtomicTerm> <shift: "shift"> => {
+        TermData::Lift(Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
+    },
+    "Record" "{" <entries: List<TypeEntry>> "}" => TermData::RecordType(entries),
+    "record" "{" <entries: List<TermEntry>> "}" => TermData::RecordTerm(entries),
+    <head_term: AtomicTerm> "." <label: Located<Name>> => TermData::RecordElim(Box::new(head_term), label),
+    "[" <entries: List<Term>> "]" => TermData::SequenceTerm(entries),
+    "character literal" => TermData::CharTerm(<>.to_owned()),
+    "string literal" => TermData::StringTerm(<>.to_owned()),
+    "numeric literal" => TermData::NumberTerm(<>.to_owned()),
+};
+
+#[inline]
+List<Entry>: Vec<Entry> = {
+    <mut entries: (<Entry> ",")*> <last: Entry?> => {
+        entries.extend(last);
+        entries
+    }
+}
+
+#[inline]
+TypeEntry: TypeEntry = {
+    // TODO: Use doc comments
+    <_docs: "doc comment"*>
+    <label: Located<Name>> <name: ("as" <Located<Name>>)?> ":" <term: Term> => (label, name, term),
+};
+
+#[inline]
+TermEntry: TermEntry = {
+    // TODO: Use doc comments
+    <_docs: "doc comment"*>
+    <label: Located<Name>> <name: ("as" <Located<Name>>)?> "=" <term: Term> => (label, name, term),
+};
+
+#[inline]
+Name: String = {
+    "name" => (<>).to_owned(),
+};
+
+#[inline]
+Located<T>: Located<T> = {
+    <start: @L> <data: T> <end: @R> => Located::new(Location::file_range(file_id, start..end), data),
+};

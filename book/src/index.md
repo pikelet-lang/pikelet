@@ -1,53 +1,65 @@
-# Pikelet 🥞
+# Pikelet!
+
+[![Actions Status][actions-badge]][actions-url]
+[![Matrix][matrix-badge]][matrix-lobby]
+[![License][license-badge]][license-url]
+[![GitHub stars][stars-badge]][github-url]
+
+[actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/ci/badge.svg
+[actions-url]: https://github.com/pikelet-lang/pikelet/actions
+[matrix-badge]: https://img.shields.io/matrix/pikelet:matrix.org?label=%23pikelet%3Amatrix.org
+[matrix-lobby]: https://app.element.io/#/room/#pikelet:matrix.org
+[license-badge]: https://img.shields.io/github/license/pikelet-lang/pikelet
+[license-url]: https://github.com/pikelet-lang/pikelet/blob/master/LICENSE
+[stars-badge]: https://img.shields.io/github/stars/pikelet-lang/pikelet?style=social
+[github-url]: https://github.com/pikelet-lang/pikelet
+
+![Pikelet Mascot][pikelet-mascot]
+
+[pikelet-mascot]: ../assets/pikelet.png
 
 Pikelet is a small [dependently typed][dependent-type-wikipedia] language. It
 doesn't do many interesting things yet, but hopefully that will change in the future!
 
-- [Source code](https://github.com/pikelet-lang/pikelet)
-- [Issues](https://github.com/pikelet-lang/pikelet/issues)
-- [Gitter Chat](https://gitter.im/pikelet-lang/Lobby)
-
 [dependent-type-wikipedia]: https://en.wikipedia.org/wiki/Dependent_type
+
+> **Note:**
+>
+> Pikelet is still a work in progress! Many features are not implemented yet!
+>
+> If you'd like to see what we hope to work on next, have a look at [the roadmap](./development/roadmap).
 
 ## A small taste
 
 Definitions:
 
 ```pikelet
-let
-    id : (a : Type) -> a -> a;
-    id a x = x;
+record {
+    id : Fun (A : Type) -> A -> A,
+    id A a = a,
 
-    const : (a b : Type) -> a -> b -> a;
-    const a b x y = x;
-in
-    record {
-        id = id;
-        const = const;
-    }
+    always : Fun (A B : Type) -> A -> B -> A,
+    always A B a b = a,
+}
 ```
 
 Interactive REPL:
 
-```pikelet-repl
-$ cargo run repl
+```text
+$ pikelet repl
     ____  _ __        __     __
    / __ \(_) /_____  / /__  / /_
   / /_/ / / //_/ _ \/ / _ \/ __/    Version 0.1.0
  / ____/ / ,< /  __/ /  __/ /_      https://github.com/pikelet-lang/pikelet
 /_/   /_/_/|_|\___/_/\___/\__/      :? for help
 
-Pikelet> (\(a : Type) (x : a) => x) String "hello"
+> (fun A a => a : Fun (A : Type) -> A -> A) String "hello"
 "hello" : String
-Pikelet> :t Type
-Type^1
-Pikelet> 1 : S16
-1 : S16
-Pikelet>
 ```
 
-## What is a Pikelet?
+## Summary
 
-A pikelet is an odd sort of small (often pre-made) pancake found in Australia
-and New Zealand. Commonly sent in school lunches spread with jam and butter.
-Handily it also has a name that includes 'pi' and 'let' as substrings! 😅
+- [Guide](./guide.md): For people new to Pikelet
+- [Reference](./reference.md): For people who need a detailed descriptions of individual language features
+- [Development](./development.md): For people wanting to contribute to the language
+- [Specification](./specification.md): For developers and researchers

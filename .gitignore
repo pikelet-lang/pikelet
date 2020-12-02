@@ -1,4 +1,7 @@
+# Rust
 /target/
 **/*.rs.bk
 Cargo.lock
-repl-history
+
+# Yarn
+/node_modules

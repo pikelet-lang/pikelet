@@ -1,0 +1,27 @@
+record {
+    window = record {
+        title = "Voyager",
+        default-size = record {
+            width = 1280.0,
+            height = 720.0,
+        },
+        fullscreen = false,
+    },
+    controls = record {
+        move-speed = 2.0,
+        look-speed = 15.0,
+    },
+} : Record {
+    window : Record {
+        title : String,
+        default-size : Record {
+            width : F32,
+            height : F32,
+        },
+        fullscreen : Bool,
+    },
+    controls : Record {
+        move-speed : F32,
+        look-speed : F32,
+    },
+}

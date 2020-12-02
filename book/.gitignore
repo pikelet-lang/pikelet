@@ -1,2 +1,9 @@
-build
-theme/highlight.js
+# mdBook
+/build
+
+# Yarn
+/node_modules
+
+# Parcel
+/.cache
+/dist

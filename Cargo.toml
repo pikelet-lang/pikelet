@@ -1,10 +1,7 @@
 [workspace]
 members = [
-    "./crates/pikelet",
-    "./crates/pikelet-concrete",
-    "./crates/pikelet-core",
-    "./crates/pikelet-driver",
-    "./crates/pikelet-language-server",
-    "./crates/pikelet-library",
-    "./crates/pikelet-repl",
+    "./pikelet",
+    "./pikelet-cli",
+    "./pikelet-editor",
+    "./pikelet-language-server",
 ]

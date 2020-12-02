@@ -1,8 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-
-main() {
-    mdbook build book
-}
-
-main

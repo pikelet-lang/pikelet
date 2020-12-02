@@ -1,0 +1,31 @@
+[package]
+name = "pikelet"
+version = "0.1.0"
+authors = ["Brendan Zabarauskas"]
+edition = "2018"
+publish = false
+description = "The Pikelet programming language"
+homepage = "https://github.com/pikelet-lang/pikelet"
+repository = "https://github.com/pikelet-lang/pikelet"
+readme = "../README.md"
+keywords = ["pikelet", "language"]
+categories = []
+license = "Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+codespan-reporting = "0.9.5"
+contracts = "0.6"
+crossbeam-channel = "0.4"
+im = "15"
+itertools = "0.9"
+lalrpop-util = "0.19"
+logos = "0.11"
+num-traits = "0.2"
+once_cell = "1.4"
+pretty = "0.10"
+regex = "1.3"
+
+[build-dependencies]
+lalrpop = "0.19"

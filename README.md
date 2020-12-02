@@ -2,14 +2,18 @@
 
 ![Pikelet Mascot][pikelet-mascot]
 
-[![Build Status][travis-badge]][travis-url]
-[![Gitter][gitter-badge]][gitter-lobby]
+[pikelet-mascot]: ./book/assets/pikelet.png
 
-[pikelet-mascot]: assets/pikelet.png
-[travis-badge]: https://travis-ci.org/pikelet-lang/pikelet.svg?branch=master
-[travis-url]: https://travis-ci.org/pikelet-lang/pikelet
-[gitter-badge]: https://badges.gitter.im/pikelet-lang/pikelet.svg
-[gitter-lobby]: https://gitter.im/pikelet-lang/Lobby
+[![Actions Status][actions-badge]][actions-url]
+[![Matrix][matrix-badge]][matrix-lobby]
+[![License][license-badge]][license-url]
+
+[actions-badge]: https://github.com/pikelet-lang/pikelet/workflows/ci/badge.svg
+[actions-url]: https://github.com/pikelet-lang/pikelet/actions
+[matrix-badge]: https://img.shields.io/matrix/pikelet:matrix.org?label=%23pikelet%3Amatrix.org
+[matrix-lobby]: https://app.element.io/#/room/#pikelet:matrix.org
+[license-badge]: https://img.shields.io/github/license/pikelet-lang/pikelet
+[license-url]: ./LICENSE
 
 Pikelet is a small, functional, dependently typed programming language.
 
@@ -24,22 +28,11 @@ other languages. At the moment however we've only implemented a type checker and
 very slow  interpreter, so don't get your hopes up too much yet! There's still a
 whole lot to do before it is even remotely useful to anyone! 😅
 
-For more information, see [The Pikelet Book][pikelet-book].
+## Roadmap
 
-[pikelet-book]: https://pikelet-lang.github.io/pikelet/
+Check out our plans in [the roadmap](./book/src/development/roadmap.md).
 
-## Contributing
+## Code of Conduct
 
-We really want to encourage new contributors to help out! Please come chat with
-us [on our Gitter channel][gitter-lobby] - if you have any questions about the
-project, or just want to say hi! We sometimes get side-tracked on technical
-discussions, but we're always more than happy to spend time explaining things.
-
-## Acknowledgments
-
-[![YesLogic Logo][yeslogic-logo]][yeslogic]
-
-This work was done in part with the generous support of [YesLogic][yeslogic].
-
-[yeslogic]: http://yeslogic.com/
-[yeslogic-logo]: assets/yeslogic-logo.png
+Please note that this project is released with a [Code of Conduct](./CODE_OF_CONDUCT.md).
+By participating in this project you agree to abide by its terms.

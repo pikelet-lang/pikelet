@@ -1,0 +1,9 @@
+-- This is a line comment
+record {
+    -- Another line comment
+    ||| This is a doc comment
+    x = Record {}
+} : Record {
+    ||| This is another doc comment
+    x : Type,
+}
