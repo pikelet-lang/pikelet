@@ -10,7 +10,7 @@
 [matrix-badge]: https://img.shields.io/matrix/pikelet:matrix.org?label=%23pikelet%3Amatrix.org
 [matrix-lobby]: https://app.element.io/#/room/#pikelet:matrix.org
 [license-badge]: https://img.shields.io/github/license/pikelet-lang/pikelet
-[license-url]: https://github.com/pikelet-lang/pikelet/blob/master/LICENSE
+[license-url]: https://github.com/pikelet-lang/pikelet/blob/main/LICENSE
 [stars-badge]: https://img.shields.io/github/stars/pikelet-lang/pikelet?style=social
 [github-url]: https://github.com/pikelet-lang/pikelet
 
