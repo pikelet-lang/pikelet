@@ -119,10 +119,10 @@ pub fn run(options: Options) -> anyhow::Result<()> {
 
         if is_ok {
             let ann_term = core::Term::generated(core::TermData::Ann(
-                Arc::new(state.normalize_term(&core_term)),
-                Arc::new(state.read_back_value(&r#type)),
+                Arc::new(state.normalize(&core_term)),
+                Arc::new(state.read_back(&r#type)),
             ));
-            let term = state.core_to_surface_term(&ann_term);
+            let term = state.core_to_surface(&ann_term);
             let doc = surface_to_pretty::from_term(&pretty_alloc, &term);
 
             println!("{}", doc.1.pretty(crate::term_width()));

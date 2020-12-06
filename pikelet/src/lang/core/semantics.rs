@@ -178,7 +178,7 @@ impl FunctionClosure {
     pub fn apply(&self, globals: &Globals, input: Arc<Value>) -> Arc<Value> {
         let mut locals = self.locals.clone();
         locals.push(input);
-        eval_term(globals, self.universe_offset, &mut locals, &self.term)
+        eval(globals, self.universe_offset, &mut locals, &self.term)
     }
 }
 
@@ -213,7 +213,7 @@ impl RecordClosure {
         let mut locals = self.locals.clone();
 
         for (label, entry_value) in self.entries.iter() {
-            let entry_value = eval_term(globals, universe_offset, &mut locals, entry_value);
+            let entry_value = eval(globals, universe_offset, &mut locals, entry_value);
             locals.push(on_entry(label, entry_value));
         }
     }
@@ -228,7 +228,7 @@ impl RecordClosure {
         let mut locals = self.locals.clone();
 
         for (label, entry_value) in self.entries.iter() {
-            let entry_value = eval_term(globals, universe_offset, &mut locals, entry_value);
+            let entry_value = eval(globals, universe_offset, &mut locals, entry_value);
             match on_entry(label, entry_value) {
                 Ok(t) => return Some(t),
                 Err(entry_value) => locals.push(entry_value),
@@ -270,7 +270,7 @@ impl LazyValue {
     }
 
     /// Lazily evaluate a term using the given universe offset and local values.
-    pub fn eval_term(
+    pub fn eval(
         universe_offset: UniverseOffset,
         locals: Locals<Arc<Value>>,
         term: Arc<Term>,
@@ -293,7 +293,7 @@ impl LazyValue {
     pub fn force(&self, globals: &Globals) -> &Arc<Value> {
         self.cell.get_or_init(|| match self.init.replace(None) {
             Some(LazyInit::EvalTerm(universe_offset, mut locals, term)) => {
-                eval_term(globals, universe_offset, &mut locals, &term)
+                eval(globals, universe_offset, &mut locals, &term)
             }
             Some(LazyInit::ApplyElim(head, Elim::Record(label))) => {
                 apply_record_elim(globals, head.force(globals).clone(), &label)
@@ -311,14 +311,14 @@ impl LazyValue {
 /// [`Term`]: crate::lang::core::Term
 /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
 #[debug_ensures(locals.size() == old(locals.size()))]
-pub fn normalize_term(
+pub fn normalize(
     globals: &Globals,
     universe_offset: UniverseOffset,
     locals: &mut Locals<Arc<Value>>,
     term: &Term,
 ) -> Term {
-    let value = eval_term(globals, universe_offset, locals, term);
-    read_back_value(globals, locals.size(), Unfold::Always, &value)
+    let value = eval(globals, universe_offset, locals, term);
+    read_back(globals, locals.size(), Unfold::Always, &value)
 }
 
 /// Evaluate a [`Term`] into a [`Value`].
@@ -326,7 +326,7 @@ pub fn normalize_term(
 /// [`Value`]: crate::lang::core::semantics::Value
 /// [`Term`]: crate::lang::core::Term
 #[debug_ensures(locals.size() == old(locals.size()))]
-pub fn eval_term(
+pub fn eval(
     globals: &Globals,
     universe_offset: UniverseOffset,
     locals: &mut Locals<Arc<Value>>,
@@ -336,7 +336,7 @@ pub fn eval_term(
         TermData::Global(name) => match globals.get(name) {
             Some((_, Some(term))) => {
                 let head = Head::Global(name.into(), universe_offset);
-                let value = LazyValue::eval_term(universe_offset, locals.clone(), term.clone());
+                let value = LazyValue::eval(universe_offset, locals.clone(), term.clone());
                 Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             }
             Some((_, None)) | None => {
@@ -358,7 +358,7 @@ pub fn eval_term(
             }
         },
 
-        TermData::Ann(term, _) => eval_term(globals, universe_offset, locals, term),
+        TermData::Ann(term, _) => eval(globals, universe_offset, locals, term),
 
         TermData::TypeType(level) => {
             let universe_level = (*level + universe_offset).unwrap(); // FIXME: Handle overflow
@@ -366,7 +366,7 @@ pub fn eval_term(
         }
         TermData::Lift(term, offset) => {
             let universe_offset = (universe_offset + *offset).unwrap(); // FIXME: Handle overflow
-            eval_term(globals, universe_offset, locals, term)
+            eval(globals, universe_offset, locals, term)
         }
 
         TermData::RecordType(type_entries) => Arc::new(Value::RecordType(RecordClosure::new(
@@ -380,14 +380,14 @@ pub fn eval_term(
             term_entries.clone(),
         ))),
         TermData::RecordElim(head, label) => {
-            let head = eval_term(globals, universe_offset, locals, head);
+            let head = eval(globals, universe_offset, locals, head);
             apply_record_elim(globals, head, label)
         }
 
         TermData::FunctionType(input_name_hint, input_type, output_type) => {
             Arc::new(Value::FunctionType(
                 input_name_hint.clone(),
-                eval_term(globals, universe_offset, locals, input_type),
+                eval(globals, universe_offset, locals, input_type),
                 FunctionClosure::new(universe_offset, locals.clone(), output_type.clone()),
             ))
         }
@@ -396,15 +396,15 @@ pub fn eval_term(
             FunctionClosure::new(universe_offset, locals.clone(), output_term.clone()),
         )),
         TermData::FunctionElim(head, input) => {
-            let head = eval_term(globals, universe_offset, locals, head);
-            let input = LazyValue::eval_term(universe_offset, locals.clone(), input.clone());
+            let head = eval(globals, universe_offset, locals, head);
+            let input = LazyValue::eval(universe_offset, locals.clone(), input.clone());
             apply_function_elim(globals, head, Arc::new(input))
         }
 
         TermData::ArrayTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
-                .map(|entry_term| eval_term(globals, universe_offset, locals, entry_term))
+                .map(|entry_term| eval(globals, universe_offset, locals, entry_term))
                 .collect();
 
             Arc::new(Value::ArrayTerm(value_entries))
@@ -412,7 +412,7 @@ pub fn eval_term(
         TermData::ListTerm(term_entries) => {
             let value_entries = term_entries
                 .iter()
-                .map(|entry_term| eval_term(globals, universe_offset, locals, entry_term))
+                .map(|entry_term| eval(globals, universe_offset, locals, entry_term))
                 .collect();
 
             Arc::new(Value::ListTerm(value_entries))
@@ -514,8 +514,8 @@ pub enum Unfold {
     Always,
 }
 
-/// Read-back a spine of eliminators into the term syntax.
-fn read_back_stuck_value(
+/// Read-back a stuck value into the term syntax.
+fn read_back_stuck(
     globals: &Globals,
     local_size: LocalSize,
     unfold: Unfold,
@@ -538,7 +538,7 @@ fn read_back_stuck_value(
 
     spine.iter().fold(head, |head, elim| match elim {
         Elim::Function(input) => {
-            let input = read_back_value(globals, local_size, unfold, input.force(globals));
+            let input = read_back(globals, local_size, unfold, input.force(globals));
             Term::generated(TermData::FunctionElim(Arc::new(head), Arc::new(input)))
         }
         Elim::Record(label) => Term::generated(TermData::RecordElim(Arc::new(head), label.clone())),
@@ -546,29 +546,21 @@ fn read_back_stuck_value(
 }
 
 /// Read-back a value into the term syntax.
-pub fn read_back_value(
-    globals: &Globals,
-    local_size: LocalSize,
-    unfold: Unfold,
-    value: &Value,
-) -> Term {
+pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value: &Value) -> Term {
     match value {
-        Value::Stuck(head, spine) => {
-            read_back_stuck_value(globals, local_size, unfold, head, spine)
-        }
+        Value::Stuck(head, spine) => read_back_stuck(globals, local_size, unfold, head, spine),
         Value::Unstuck(head, spine, value) => match unfold {
-            Unfold::Never => read_back_stuck_value(globals, local_size, unfold, head, spine),
-            Unfold::Always => read_back_value(globals, local_size, unfold, value.force(globals)),
+            Unfold::Never => read_back_stuck(globals, local_size, unfold, head, spine),
+            Unfold::Always => read_back(globals, local_size, unfold, value.force(globals)),
         },
 
         Value::TypeType(level) => Term::generated(TermData::TypeType(*level)),
 
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level(), []));
-            let input_type = Arc::new(read_back_value(globals, local_size, unfold, input_type));
+            let input_type = Arc::new(read_back(globals, local_size, unfold, input_type));
             let output_type = output_closure.apply(globals, local);
-            let output_type =
-                read_back_value(globals, local_size.increment(), unfold, &output_type);
+            let output_type = read_back(globals, local_size.increment(), unfold, &output_type);
 
             Term::generated(TermData::FunctionType(
                 input_name_hint.clone(),
@@ -579,8 +571,7 @@ pub fn read_back_value(
         Value::FunctionTerm(input_name_hint, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level(), []));
             let output_term = output_closure.apply(globals, local);
-            let output_term =
-                read_back_value(globals, local_size.increment(), unfold, &output_term);
+            let output_term = read_back(globals, local_size.increment(), unfold, &output_term);
 
             Term::generated(TermData::FunctionTerm(
                 input_name_hint.clone(),
@@ -593,7 +584,7 @@ pub fn read_back_value(
             let mut type_entries = Vec::with_capacity(closure.entries.len());
 
             closure.for_each_entry(globals, |label, entry_type| {
-                let entry_type = read_back_value(globals, local_size, unfold, &entry_type);
+                let entry_type = read_back(globals, local_size, unfold, &entry_type);
                 type_entries.push((label.to_owned(), Arc::new(entry_type)));
 
                 let local_level = local_size.next_level();
@@ -609,7 +600,7 @@ pub fn read_back_value(
             let mut term_entries = Vec::with_capacity(closure.entries.len());
 
             closure.for_each_entry(globals, |label, entry_term| {
-                let entry_term = read_back_value(globals, local_size, unfold, &entry_term);
+                let entry_term = read_back(globals, local_size, unfold, &entry_term);
                 term_entries.push((label.to_owned(), Arc::new(entry_term)));
 
                 let local_level = local_size.next_level();
@@ -624,9 +615,7 @@ pub fn read_back_value(
         Value::ArrayTerm(value_entries) => {
             let term_entries = value_entries
                 .iter()
-                .map(|value_entry| {
-                    Arc::new(read_back_value(globals, local_size, unfold, value_entry))
-                })
+                .map(|value_entry| Arc::new(read_back(globals, local_size, unfold, value_entry)))
                 .collect();
 
             Term::generated(TermData::ArrayTerm(term_entries))
@@ -634,9 +623,7 @@ pub fn read_back_value(
         Value::ListTerm(value_entries) => {
             let term_entries = value_entries
                 .iter()
-                .map(|value_entry| {
-                    Arc::new(read_back_value(globals, local_size, unfold, value_entry))
-                })
+                .map(|value_entry| Arc::new(read_back(globals, local_size, unfold, value_entry)))
                 .collect();
 
             Term::generated(TermData::ListTerm(term_entries))
@@ -649,7 +636,7 @@ pub fn read_back_value(
 }
 
 /// Check that one stuck value is equal to another stuck value.
-fn is_equal_stuck_value(
+fn is_equal_stuck(
     globals: &Globals,
     local_size: LocalSize,
     (head0, spine0): (&Head, &[Elim]),
@@ -683,10 +670,10 @@ fn is_equal_stuck_value(
 fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck(globals, local_size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the stuck values are the same!
                 return true;
             }
@@ -748,8 +735,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                     return false;
                 }
 
-                let entry_type0 = eval_term(globals, universe_offset0, &mut locals0, entry_type0);
-                let entry_type1 = eval_term(globals, universe_offset1, &mut locals1, entry_type1);
+                let entry_type0 = eval(globals, universe_offset0, &mut locals0, entry_type0);
+                let entry_type1 = eval(globals, universe_offset1, &mut locals1, entry_type1);
 
                 if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
                     return false;
@@ -781,8 +768,8 @@ fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1: &V
                     return false;
                 }
 
-                let entry_type0 = eval_term(globals, universe_offset0, &mut locals0, entry_type0);
-                let entry_type1 = eval_term(globals, universe_offset1, &mut locals1, entry_type1);
+                let entry_type0 = eval(globals, universe_offset0, &mut locals0, entry_type0);
+                let entry_type1 = eval(globals, universe_offset1, &mut locals1, entry_type1);
 
                 if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
                     return false;
@@ -843,10 +830,10 @@ pub fn is_subtype(
 
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck(globals, local_size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck_value(globals, local_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck(globals, local_size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the spines are the same!
                 return true;
             }
@@ -902,8 +889,8 @@ pub fn is_subtype(
                     return false;
                 }
 
-                let entry_type0 = eval_term(globals, universe_offset0, &mut locals0, entry_type0);
-                let entry_type1 = eval_term(globals, universe_offset1, &mut locals1, entry_type1);
+                let entry_type0 = eval(globals, universe_offset0, &mut locals0, entry_type0);
+                let entry_type1 = eval(globals, universe_offset1, &mut locals1, entry_type1);
 
                 if !is_subtype(globals, local_size, &entry_type0, &entry_type1) {
                     return false;
