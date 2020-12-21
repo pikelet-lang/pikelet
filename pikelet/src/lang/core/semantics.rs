@@ -87,8 +87,8 @@ impl Value {
     }
 
     /// Create a local variable.
-    pub fn local(level: impl Into<LocalLevel>, elims: impl Into<Vec<Elim>>) -> Value {
-        Value::Stuck(Head::Local(level.into()), elims.into())
+    pub fn local(local_level: impl Into<LocalLevel>, elims: impl Into<Vec<Elim>>) -> Value {
+        Value::Stuck(Head::Local(local_level.into()), elims.into())
     }
 
     /// Attempt to match against a stuck global.
@@ -344,16 +344,16 @@ pub fn eval(
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },
-        TermData::Local(index) => match locals.get(*index) {
+        TermData::Local(local_index) => match locals.get(*local_index) {
             Some(value) => value.clone(),
             // FIXME: Local gluing is kind of broken right now :(
             // Some(value) => {
-            //     let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
+            //     let head = Head::Local(locals.size().index_to_level(*local_index).unwrap()); // TODO: Handle overflow
             //     let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
             //     Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             // }
             None => {
-                let head = Head::Local(index.to_level(locals.size()).unwrap()); // TODO: Handle overflow
+                let head = Head::Local(locals.size().index_to_level(*local_index).unwrap()); // TODO: Handle overflow
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },
@@ -530,9 +530,9 @@ fn read_back_stuck(
                 shift => Term::generated(TermData::Lift(Arc::new(global), *shift)),
             }
         }
-        Head::Local(level) => {
-            let index = level.to_index(local_size).unwrap();
-            Term::generated(TermData::Local(index)) // TODO: Handle overflow
+        Head::Local(local_level) => {
+            let local_index = local_size.level_to_index(*local_level).unwrap();
+            Term::generated(TermData::Local(local_index)) // TODO: Handle overflow
         }
     };
 

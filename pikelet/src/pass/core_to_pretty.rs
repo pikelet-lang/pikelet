@@ -34,10 +34,10 @@ where
             .append(alloc.text("global"))
             .append(alloc.space())
             .append(alloc.text(name)),
-        TermData::Local(index) => (alloc.nil())
+        TermData::Local(local_index) => (alloc.nil())
             .append(alloc.text("local"))
             .append(alloc.space())
-            .append(alloc.as_string(index.0)),
+            .append(alloc.as_string(local_index.0)),
 
         TermData::Ann(term, r#type) => paren(
             alloc,

@@ -124,7 +124,7 @@ impl<'me> State<'me> {
                 Some(_) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
-            TermData::Local(index) => match self.local_names.get(*index) {
+            TermData::Local(local_index) => match self.local_names.get(*local_index) {
                 Some(name) => surface::TermData::Name(name.clone()),
                 None => surface::TermData::Error, // TODO: Log error?
             },

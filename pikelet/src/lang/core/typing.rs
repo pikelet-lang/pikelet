@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use crate::lang::core::semantics::{self, Elim, RecordClosure, Unfold, Value};
 use crate::lang::core::{
-    Constant, Globals, LocalLevel, Locals, Term, TermData, UniverseLevel, UniverseOffset,
+    Constant, Globals, LocalSize, Locals, Term, TermData, UniverseLevel, UniverseOffset,
 };
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
@@ -45,9 +45,9 @@ impl<'me> State<'me> {
         }
     }
 
-    /// Get the next level to be used for a local entry.
-    fn next_level(&self) -> LocalLevel {
-        self.local_definitions.size().next_level()
+    /// Get the size of the local environment.
+    fn size(&self) -> LocalSize {
+        self.local_definitions.size()
     }
 
     /// Push a local entry.
@@ -58,7 +58,7 @@ impl<'me> State<'me> {
 
     /// Push a local parameter.
     fn push_local_param(&mut self, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.next_level(), []));
+        let value = Arc::new(Value::local(self.size().next_level(), []));
         self.push_local(value.clone(), r#type);
         value
     }
@@ -266,7 +266,7 @@ impl<'me> State<'me> {
                     Arc::new(Value::Error)
                 }
             },
-            TermData::Local(index) => match self.local_declarations.get(*index) {
+            TermData::Local(local_index) => match self.local_declarations.get(*local_index) {
                 Some(r#type) => r#type.clone(),
                 None => {
                     self.report(CoreTypingMessage::UnboundLocal);
