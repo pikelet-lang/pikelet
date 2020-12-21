@@ -345,6 +345,15 @@ impl<Entry: Clone> Locals<Entry> {
     pub fn clear(&mut self) {
         self.entries.clear();
     }
+
+    /// Returns a reverse iterator over the entries in the environment and the
+    /// indices where those entries were bound.
+    pub fn iter_rev(&self) -> impl Iterator<Item = (LocalIndex, &Entry)> {
+        (self.entries.iter().rev()).scan(0, |current_index, entry| {
+            let local_index = LocalIndex(std::mem::replace(current_index, *current_index + 1));
+            Some((local_index, entry))
+        })
+    }
 }
 
 impl<Entry: Clone + fmt::Debug> fmt::Debug for Locals<Entry> {

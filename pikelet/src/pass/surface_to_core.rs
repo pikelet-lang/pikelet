@@ -23,10 +23,8 @@ pub struct State<'me> {
     globals: &'me core::Globals,
     /// The current universe offset.
     universe_offset: core::UniverseOffset,
-    /// Substitutions from the user-defined names to the level in which they were bound.
-    local_levels: Vec<(Option<String>, core::LocalLevel)>,
     /// Local type environment (used for getting the types of local variables).
-    local_declarations: core::Locals<Arc<Value>>,
+    local_declarations: core::Locals<(Option<String>, Arc<Value>)>,
     /// Local value environment (used for evaluation).
     local_definitions: core::Locals<Arc<Value>>,
     /// Distillation state (used for pretty printing).
@@ -41,7 +39,6 @@ impl<'me> State<'me> {
         State {
             globals,
             universe_offset: core::UniverseOffset(0),
-            local_levels: Vec::new(),
             local_declarations: core::Locals::new(),
             local_definitions: core::Locals::new(),
             core_to_surface: core_to_surface::State::new(globals),
@@ -56,20 +53,18 @@ impl<'me> State<'me> {
 
     /// Get a local entry.
     fn get_local(&self, name: &str) -> Option<(core::LocalIndex, &Arc<Value>)> {
-        let (_, level) = self.local_levels.iter().rev().find(|(n, _)| match n {
-            Some(n) => n == name,
-            None => false,
-        })?;
-        let index = self.size().level_to_index(*level).unwrap(); // TODO: Handle overflow
-        let r#type = self.local_declarations.get(index)?;
-        Some((index, r#type))
+        for (local_index, (decl_name, r#type)) in self.local_declarations.iter_rev() {
+            if decl_name.as_ref().map_or(false, |n| n == name) {
+                return Some((local_index, r#type));
+            }
+        }
+        None
     }
 
     /// Push a local entry.
     fn push_local(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
-        self.local_levels
-            .push((name.map(str::to_owned), self.size().next_level()));
-        self.local_declarations.push(r#type);
+        self.local_declarations
+            .push((name.map(str::to_owned), r#type));
         self.local_definitions.push(value);
         self.core_to_surface.push_name(name);
     }
@@ -83,7 +78,6 @@ impl<'me> State<'me> {
 
     /// Pop a local entry.
     fn pop_local(&mut self) {
-        self.local_levels.pop();
         self.local_declarations.pop();
         self.local_definitions.pop();
         self.core_to_surface.pop_name();
@@ -91,8 +85,6 @@ impl<'me> State<'me> {
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
-        self.local_levels
-            .truncate(self.local_levels.len().saturating_sub(count));
         self.local_declarations.pop_many(count);
         self.local_definitions.pop_many(count);
         self.core_to_surface.pop_many_names(count);
@@ -189,7 +181,6 @@ impl<'me> State<'me> {
     /// Check that a term is a type, and return the elaborated term and the
     /// universe level it inhabits.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
-    #[debug_ensures(self.local_levels.len() == old(self.local_levels.len()))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn is_type(&mut self, term: &Term) -> (core::Term, Option<core::UniverseLevel>) {
@@ -211,7 +202,6 @@ impl<'me> State<'me> {
 
     /// Check that a term is an element of a type, and return the elaborated term.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
-    #[debug_ensures(self.local_levels.len() == old(self.local_levels.len()))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
@@ -424,7 +414,6 @@ impl<'me> State<'me> {
 
     /// Synthesize the type of a surface term, and return the elaborated term.
     #[debug_ensures(self.universe_offset == old(self.universe_offset))]
-    #[debug_ensures(self.local_levels.len() == old(self.local_levels.len()))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
