@@ -49,9 +49,9 @@ impl<'me> State<'me> {
         }
     }
 
-    /// Get the next level to be used for a local entry.
-    fn next_level(&self) -> core::LocalLevel {
-        self.local_definitions.size().next_level()
+    /// Get the size of the local environment.
+    fn size(&self) -> core::LocalSize {
+        self.local_definitions.size()
     }
 
     /// Get a local entry.
@@ -60,7 +60,7 @@ impl<'me> State<'me> {
             Some(n) => n == name,
             None => false,
         })?;
-        let index = level.to_index(self.local_definitions.size()).unwrap(); // TODO: Handle overflow
+        let index = self.size().level_to_index(*level).unwrap(); // TODO: Handle overflow
         let r#type = self.local_declarations.get(index)?;
         Some((index, r#type))
     }
@@ -68,7 +68,7 @@ impl<'me> State<'me> {
     /// Push a local entry.
     fn push_local(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
         self.local_levels
-            .push((name.map(str::to_owned), self.next_level()));
+            .push((name.map(str::to_owned), self.size().next_level()));
         self.local_declarations.push(r#type);
         self.local_definitions.push(value);
         self.core_to_surface.push_name(name);
@@ -76,7 +76,7 @@ impl<'me> State<'me> {
 
     /// Push a local parameter.
     fn push_local_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.next_level(), []));
+        let value = Arc::new(Value::local(self.size().next_level(), []));
         self.push_local(name, value.clone(), r#type);
         value
     }
@@ -434,9 +434,11 @@ impl<'me> State<'me> {
 
         match &term.data {
             TermData::Name(name) => {
-                if let Some((index, r#type)) = self.get_local(name.as_ref()) {
-                    let core_term = core::Term::new(term.location, core::TermData::Local(index));
-                    return (core_term, r#type.clone());
+                if let Some((local_index, r#type)) = self.get_local(name.as_ref()) {
+                    return (
+                        core::Term::new(term.location, core::TermData::Local(local_index)),
+                        r#type.clone(),
+                    );
                 }
 
                 if let Some((r#type, _)) = self.globals.get(name.as_ref()) {
