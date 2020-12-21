@@ -107,8 +107,8 @@ impl<'me> State<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
-    pub fn eval_term(&mut self, term: &core::Term) -> Arc<Value> {
-        semantics::eval_term(
+    pub fn eval(&mut self, term: &core::Term) -> Arc<Value> {
+        semantics::eval(
             self.globals,
             self.universe_offset,
             &mut self.local_definitions,
@@ -130,8 +130,8 @@ impl<'me> State<'me> {
     ///
     /// [`core::Term`]: crate::lang::core::Term
     /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
-    pub fn normalize_term(&mut self, term: &core::Term) -> core::Term {
-        semantics::normalize_term(
+    pub fn normalize(&mut self, term: &core::Term) -> core::Term {
+        semantics::normalize(
             self.globals,
             self.universe_offset,
             &mut self.local_definitions,
@@ -147,8 +147,8 @@ impl<'me> State<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
-    pub fn read_back_value(&self, value: &Value) -> core::Term {
-        semantics::read_back_value(
+    pub fn read_back(&self, value: &Value) -> core::Term {
+        semantics::read_back(
             self.globals,
             self.local_definitions.size(),
             Unfold::Never,
@@ -169,7 +169,7 @@ impl<'me> State<'me> {
     ///
     /// [`core::Term`]: crate::lang::core::Term
     /// [`surface::Term`]: crate::lang::surface::Term
-    pub fn core_to_surface_term(&mut self, core_term: &core::Term) -> Term {
+    pub fn core_to_surface(&mut self, core_term: &core::Term) -> Term {
         self.core_to_surface.from_term(&core_term)
     }
 
@@ -181,9 +181,9 @@ impl<'me> State<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`surface::Term`]: crate::lang::surface::Term
-    pub fn read_back_to_surface_term(&mut self, value: &Value) -> Term {
-        let core_term = self.read_back_value(value);
-        self.core_to_surface_term(&core_term)
+    pub fn read_back_to_surface(&mut self, value: &Value) -> Term {
+        let core_term = self.read_back(value);
+        self.core_to_surface(&core_term)
     }
 
     /// Check that a term is a type, and return the elaborated term and the
@@ -198,7 +198,7 @@ impl<'me> State<'me> {
             Value::TypeType(level) => (core_term, Some(*level)),
             Value::Error => (core::Term::new(term.location, core::TermData::Error), None),
             found_type => {
-                let found_type = self.read_back_to_surface_term(&found_type);
+                let found_type = self.read_back_to_surface(&found_type);
                 self.report(SurfaceToCoreMessage::MismatchedTypes {
                     location: term.location,
                     found_type,
@@ -275,7 +275,7 @@ impl<'me> State<'me> {
                         Some((next_label, next_name, entry_term)) if next_label.data == label => {
                             let next_name = next_name.as_ref().unwrap_or(next_label);
                             let core_entry_term = self.check_type(entry_term, &entry_type);
-                            let core_entry_value = self.eval_term(&core_entry_term);
+                            let core_entry_value = self.eval(&core_entry_term);
 
                             self.push_local(
                                 Some(&next_name.data),
@@ -331,7 +331,7 @@ impl<'me> State<'me> {
                         }
                         Value::Error => core::Term::new(term.location, core::TermData::Error),
                         _ => {
-                            let expected_len = self.read_back_to_surface_term(&len);
+                            let expected_len = self.read_back_to_surface(&len);
                             self.report(SurfaceToCoreMessage::MismatchedSequenceLength {
                                 location: term.location,
                                 found_len: entry_terms.len(),
@@ -351,7 +351,7 @@ impl<'me> State<'me> {
                     core::Term::new(term.location, core::TermData::ListTerm(core_entry_terms))
                 }
                 Some(_) | None => {
-                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    let expected_type = self.read_back_to_surface(expected_type);
                     self.report(SurfaceToCoreMessage::NoSequenceConversion {
                         location: term.location,
                         expected_type,
@@ -374,7 +374,7 @@ impl<'me> State<'me> {
                     Some(("F32", _, [])) => self.parse_float(term.location, data, F32),
                     Some(("F64", _, [])) => self.parse_float(term.location, data, F64),
                     Some(_) | None => {
-                        let expected_type = self.read_back_to_surface_term(expected_type);
+                        let expected_type = self.read_back_to_surface(expected_type);
                         self.report(SurfaceToCoreMessage::NoLiteralConversion {
                             location: term.location,
                             expected_type,
@@ -386,7 +386,7 @@ impl<'me> State<'me> {
             (TermData::CharTerm(data), forced_type) => match forced_type.try_global() {
                 Some(("Char", _, [])) => self.parse_char(term.location, data),
                 Some(_) | None => {
-                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    let expected_type = self.read_back_to_surface(expected_type);
                     self.report(SurfaceToCoreMessage::NoLiteralConversion {
                         location: term.location,
                         expected_type,
@@ -397,7 +397,7 @@ impl<'me> State<'me> {
             (TermData::StringTerm(data), forced_type) => match forced_type.try_global() {
                 Some(("String", _, [])) => self.parse_string(term.location, data),
                 Some(_) | None => {
-                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    let expected_type = self.read_back_to_surface(expected_type);
                     self.report(SurfaceToCoreMessage::NoLiteralConversion {
                         location: term.location,
                         expected_type,
@@ -409,8 +409,8 @@ impl<'me> State<'me> {
             (_, _) => match self.synth_type(term) {
                 (term, found_type) if self.is_subtype(&found_type, expected_type) => term,
                 (_, found_type) => {
-                    let found_type = self.read_back_to_surface_term(&found_type);
-                    let expected_type = self.read_back_to_surface_term(expected_type);
+                    let found_type = self.read_back_to_surface(&found_type);
+                    let expected_type = self.read_back_to_surface(expected_type);
                     self.report(SurfaceToCoreMessage::MismatchedTypes {
                         location: term.location,
                         found_type,
@@ -448,7 +448,7 @@ impl<'me> State<'me> {
                             core::Term::generated(core::TermData::Lift(Arc::new(global), offset))
                         }
                     };
-                    return (core_term, self.eval_term(r#type));
+                    return (core_term, self.eval(r#type));
                 }
 
                 self.report(SurfaceToCoreMessage::UnboundName {
@@ -460,7 +460,7 @@ impl<'me> State<'me> {
 
             TermData::Ann(term, r#type) => {
                 let (core_type, _) = self.is_type(r#type);
-                let core_type_value = self.eval_term(&core_type);
+                let core_type_value = self.eval(&core_type);
                 let core_term = self.check_type(term, &core_type_value);
                 (
                     core::Term::new(
@@ -501,7 +501,7 @@ impl<'me> State<'me> {
                         let (core_input_type, input_level) = self.is_type(input_type);
                         max_level = update_level(max_level, input_level);
 
-                        let core_input_type_value = self.eval_term(&core_input_type);
+                        let core_input_type_value = self.eval(&core_input_type);
                         self.push_local_param(Some(&input_name.data), core_input_type_value);
                         core_inputs.push((input_name.clone(), core_input_type));
                     }
@@ -535,7 +535,7 @@ impl<'me> State<'me> {
                 let (core_input_type, input_level) = self.is_type(input_type);
                 let core_input_type_value = match input_level {
                     None => Arc::new(Value::Error),
-                    Some(_) => self.eval_term(&core_input_type),
+                    Some(_) => self.eval(&core_input_type),
                 };
 
                 self.push_local_param(None, core_input_type_value);
@@ -574,7 +574,7 @@ impl<'me> State<'me> {
                         Value::FunctionType(_, input_type, output_closure) => {
                             head_location = input.location;
                             let core_input = self.check_type(input, &input_type);
-                            let core_input_value = self.eval_term(&core_input);
+                            let core_input_value = self.eval(&core_input);
                             core_head_term = core::Term::new(
                                 Location::merge(head_location, input.location),
                                 core::TermData::FunctionElim(
@@ -586,7 +586,7 @@ impl<'me> State<'me> {
                         }
                         Value::Error => return (error_term(), Arc::new(Value::Error)),
                         _ => {
-                            let head_type = self.read_back_to_surface_term(&head_type);
+                            let head_type = self.read_back_to_surface(&head_type);
                             let unexpected_input_terms =
                                 input_terms.map(|arg| arg.location).collect();
                             self.report(SurfaceToCoreMessage::TooManyInputsInFunctionElim {
@@ -641,7 +641,7 @@ impl<'me> State<'me> {
                                 }
                             };
                             let core_type = Arc::new(core_type);
-                            let core_type_value = self.eval_term(&core_type);
+                            let core_type_value = self.eval(&core_type);
                             core_type_entries.push((label.data.clone(), core_type));
                             self.push_local_param(Some(&name.data), core_type_value);
                             entry.insert(label.location);
@@ -673,7 +673,7 @@ impl<'me> State<'me> {
 
                 match head_type.force(self.globals) {
                     Value::RecordType(closure) => {
-                        let head_value = self.eval_term(&core_head_term);
+                        let head_value = self.eval(&core_head_term);
 
                         if let Some(entry_type) =
                             self.record_elim_type(head_value, &label.data, closure)
@@ -690,7 +690,7 @@ impl<'me> State<'me> {
                     _ => {}
                 }
 
-                let head_type = self.read_back_to_surface_term(&head_type);
+                let head_type = self.read_back_to_surface(&head_type);
                 self.report(SurfaceToCoreMessage::LabelNotFound {
                     head_location: head_term.location,
                     label_location: label.location,

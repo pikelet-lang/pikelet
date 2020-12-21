@@ -84,8 +84,8 @@ impl<'me> State<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`Term`]: crate::lang::core::Term
-    pub fn eval_term(&mut self, term: &Term) -> Arc<Value> {
-        semantics::eval_term(
+    pub fn eval(&mut self, term: &Term) -> Arc<Value> {
+        semantics::eval(
             self.globals,
             self.universe_offset,
             &mut self.local_definitions,
@@ -104,8 +104,8 @@ impl<'me> State<'me> {
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
-    pub fn read_back_value(&self, value: &Value) -> Term {
-        semantics::read_back_value(
+    pub fn read_back(&self, value: &Value) -> Term {
+        semantics::read_back(
             self.globals,
             self.local_definitions.size(),
             Unfold::Never,
@@ -133,7 +133,7 @@ impl<'me> State<'me> {
             Value::Error => None,
             _ => {
                 self.report(CoreTypingMessage::MismatchedTypes {
-                    found_type: self.read_back_value(&r#type),
+                    found_type: self.read_back(&r#type),
                     expected_type: ExpectedType::Universe,
                 });
                 None
@@ -172,7 +172,7 @@ impl<'me> State<'me> {
                     match pending_term_entries.next() {
                         Some((next_label, entry_term)) if next_label == label => {
                             self.check_type(&entry_term, &entry_type);
-                            let entry_value = self.eval_term(&entry_term);
+                            let entry_value = self.eval(&entry_term);
 
                             self.push_local(entry_value.clone(), entry_type);
                             term_entry_count += 1;
@@ -210,10 +210,8 @@ impl<'me> State<'me> {
                             if *len as usize == entry_terms.len() => {}
                         _ => {
                             self.report(CoreTypingMessage::MismatchedTypes {
-                                expected_type: ExpectedType::Type(
-                                    self.read_back_value(expected_type),
-                                ),
-                                found_type: self.read_back_value(&Value::global(
+                                expected_type: ExpectedType::Type(self.read_back(expected_type)),
+                                found_type: self.read_back(&Value::global(
                                     "Array",
                                     0,
                                     [
@@ -226,7 +224,7 @@ impl<'me> State<'me> {
                     }
                 }
                 Some(_) | None => {
-                    let expected_type = self.read_back_value(expected_type);
+                    let expected_type = self.read_back(expected_type);
                     self.report(CoreTypingMessage::UnexpectedArrayTerm { expected_type })
                 }
             },
@@ -238,7 +236,7 @@ impl<'me> State<'me> {
                     }
                 }
                 Some(_) | None => {
-                    let expected_type = self.read_back_value(expected_type);
+                    let expected_type = self.read_back(expected_type);
                     self.report(CoreTypingMessage::UnexpectedListTerm { expected_type })
                 }
             },
@@ -246,8 +244,8 @@ impl<'me> State<'me> {
             (_, _) => match self.synth_type(term) {
                 found_type if self.is_subtype(&found_type, expected_type) => {}
                 found_type => self.report(CoreTypingMessage::MismatchedTypes {
-                    found_type: self.read_back_value(&found_type),
-                    expected_type: ExpectedType::Type(self.read_back_value(expected_type)),
+                    found_type: self.read_back(&found_type),
+                    expected_type: ExpectedType::Type(self.read_back(expected_type)),
                 }),
             },
         }
@@ -260,7 +258,7 @@ impl<'me> State<'me> {
     pub fn synth_type(&mut self, term: &Term) -> Arc<Value> {
         match &term.data {
             TermData::Global(name) => match self.globals.get(name) {
-                Some((r#type, _)) => self.eval_term(r#type),
+                Some((r#type, _)) => self.eval(r#type),
                 None => {
                     self.report(CoreTypingMessage::UnboundGlobal {
                         name: name.to_owned(),
@@ -278,7 +276,7 @@ impl<'me> State<'me> {
 
             TermData::Ann(term, r#type) => {
                 self.is_type(r#type);
-                let r#type = self.eval_term(r#type);
+                let r#type = self.eval(r#type);
                 self.check_type(term, &r#type);
                 r#type
             }
@@ -307,7 +305,7 @@ impl<'me> State<'me> {
                 let input_level = self.is_type(input_type);
                 let input_type = match input_level {
                     None => Arc::new(Value::Error),
-                    Some(_) => self.eval_term(input_type),
+                    Some(_) => self.eval(input_type),
                 };
 
                 self.push_local_param(input_type);
@@ -332,12 +330,12 @@ impl<'me> State<'me> {
                 match head_type.force(self.globals) {
                     Value::FunctionType(_, input_type, output_closure) => {
                         self.check_type(input_term, &input_type);
-                        let input_value = self.eval_term(input_term);
+                        let input_value = self.eval(input_term);
                         output_closure.apply(self.globals, input_value)
                     }
                     Value::Error => Arc::new(Value::Error),
                     _ => {
-                        let head_type = self.read_back_value(&head_type);
+                        let head_type = self.read_back(&head_type);
                         self.report(CoreTypingMessage::TooManyInputsInFunctionElim { head_type });
                         Arc::new(Value::Error)
                     }
@@ -376,7 +374,7 @@ impl<'me> State<'me> {
                             return Arc::new(Value::Error);
                         }
                     };
-                    let r#type = self.eval_term(r#type);
+                    let r#type = self.eval(r#type);
                     self.push_local_param(r#type);
                 }
 
@@ -393,7 +391,7 @@ impl<'me> State<'me> {
 
                 match head_type.force(self.globals) {
                     Value::RecordType(closure) => {
-                        let head_value = self.eval_term(head_term);
+                        let head_value = self.eval(head_term);
 
                         if let Some(entry_type) = self.record_elim_type(head_value, label, closure)
                         {
@@ -404,7 +402,7 @@ impl<'me> State<'me> {
                     _ => {}
                 }
 
-                let head_type = self.read_back_value(&head_type);
+                let head_type = self.read_back(&head_type);
                 self.report(CoreTypingMessage::LabelNotFound {
                     expected_label: label.clone(),
                     head_type,
