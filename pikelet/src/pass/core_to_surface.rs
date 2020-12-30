@@ -10,7 +10,7 @@
 use contracts::debug_ensures;
 use std::collections::HashMap;
 
-use crate::lang::core::{Constant, Globals, Locals, Term, TermData, UniverseLevel, UniverseOffset};
+use crate::lang::core::{Constant, Globals, Locals, Term, TermData};
 use crate::lang::surface;
 use crate::lang::Located;
 
@@ -134,21 +134,7 @@ impl<'me> State<'me> {
                 Box::new(self.from_term(r#type)),
             ),
 
-            TermData::TypeType(level) => {
-                let universe0 = match self.globals.get("Type") {
-                    Some(_) => surface::TermData::Name("Type".to_owned()),
-                    None => surface::TermData::Error, // TODO: Log error?
-                };
-                match level {
-                    UniverseLevel(0) => universe0,
-                    UniverseLevel(level) => {
-                        surface::TermData::Lift(Box::new(Located::generated(universe0)), *level)
-                    }
-                }
-            }
-            TermData::Lift(term, UniverseOffset(offset)) => {
-                surface::TermData::Lift(Box::new(self.from_term(term)), *offset)
-            }
+            TermData::TypeType => surface::TermData::Name("Type".to_owned()),
 
             TermData::FunctionType(input_name_hint, input_type, output_type) => {
                 // FIXME: properly group inputs!

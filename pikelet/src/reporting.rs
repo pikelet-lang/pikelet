@@ -327,7 +327,6 @@ pub enum ExpectedType<T> {
 /// Message produced from [lang::core::typing]
 #[derive(Clone, Debug)]
 pub enum CoreTypingMessage {
-    MaximumUniverseLevelReached,
     UnboundGlobal {
         name: String,
     },
@@ -375,9 +374,6 @@ impl CoreTypingMessage {
         let to_doc = |term| core_to_pretty::from_term(pretty_alloc, term).1;
 
         match self {
-            CoreTypingMessage::MaximumUniverseLevelReached => {
-                Diagnostic::bug().with_message("maximum universe level reached")
-            }
             CoreTypingMessage::UnboundGlobal { name } => {
                 Diagnostic::bug().with_message(format!("unbound global variable `{}`", name))
             }
@@ -475,9 +471,6 @@ impl CoreTypingMessage {
 /// Message produced from [pass::surface_to_core]
 #[derive(Clone, Debug)]
 pub enum SurfaceToCoreMessage {
-    MaximumUniverseLevelReached {
-        location: Location,
-    },
     UnboundName {
         location: Location,
         name: String,
@@ -541,12 +534,6 @@ impl SurfaceToCoreMessage {
         let to_doc = |term| surface_to_pretty::from_term(pretty_alloc, term).1;
 
         match self {
-            SurfaceToCoreMessage::MaximumUniverseLevelReached { location } => Diagnostic::error()
-                .with_message("maximum universe level reached")
-                .with_labels(option_to_vec(
-                    primary(location).map(|label| label.with_message("overflowing universe level")),
-                )),
-
             SurfaceToCoreMessage::UnboundName { location, name } => Diagnostic::error()
                 .with_message(format!("cannot find `{}` in this scope", name))
                 // TODO: name suggestions?

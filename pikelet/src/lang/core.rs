@@ -57,42 +57,6 @@ pub enum Constant {
     String(String),
 }
 
-/// Universe levels.
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub struct UniverseLevel(pub u32);
-
-impl std::ops::Add<UniverseOffset> for UniverseLevel {
-    type Output = Option<UniverseLevel>;
-
-    fn add(self, other: UniverseOffset) -> Option<UniverseLevel> {
-        u32::checked_add(self.0, other.0).map(UniverseLevel)
-    }
-}
-
-impl From<u32> for UniverseLevel {
-    fn from(level: u32) -> UniverseLevel {
-        UniverseLevel(level)
-    }
-}
-
-/// Universe level offsets.
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub struct UniverseOffset(pub u32);
-
-impl std::ops::Add<UniverseOffset> for UniverseOffset {
-    type Output = Option<UniverseOffset>;
-
-    fn add(self, other: UniverseOffset) -> Option<UniverseOffset> {
-        u32::checked_add(self.0, other.0).map(UniverseOffset)
-    }
-}
-
-impl From<u32> for UniverseOffset {
-    fn from(offset: u32) -> UniverseOffset {
-        UniverseOffset(offset)
-    }
-}
-
 pub type Term = Located<TermData>;
 
 /// Terms in the core language.
@@ -107,9 +71,7 @@ pub enum TermData {
     Ann(Arc<Term>, Arc<Term>),
 
     /// The type of types.
-    TypeType(UniverseLevel),
-    /// Lift a term by the given number of universe levels.
-    Lift(Arc<Term>, UniverseOffset),
+    TypeType,
 
     /// Function types.
     ///
@@ -175,7 +137,7 @@ impl Default for Globals {
         let mut entries = BTreeMap::new();
 
         let global = |name: &str| Arc::new(Term::generated(TermData::Global(name.to_owned())));
-        let type_type = |level| Arc::new(Term::generated(TermData::TypeType(UniverseLevel(level))));
+        let type_type = || Arc::new(Term::generated(TermData::TypeType));
         let function_type = |input_type, output_type| {
             Arc::new(Term::generated(TermData::FunctionType(
                 None,
@@ -184,7 +146,7 @@ impl Default for Globals {
             )))
         };
 
-        entries.insert("Type".to_owned(), (type_type(1), Some(type_type(0))));
+        entries.insert("Type".to_owned(), (type_type(), Some(type_type())));
         entries.insert("Bool".to_owned(), (global("Type"), None));
         entries.insert("U8".to_owned(), (global("Type"), None));
         entries.insert("U16".to_owned(), (global("Type"), None));
@@ -203,13 +165,13 @@ impl Default for Globals {
         entries.insert(
             "Array".to_owned(),
             (
-                function_type(global("U32"), function_type(type_type(0), type_type(0))),
+                function_type(global("U32"), function_type(type_type(), type_type())),
                 None,
             ),
         );
         entries.insert(
             "List".to_owned(),
-            (function_type(type_type(0), type_type(0)), None),
+            (function_type(type_type(), type_type()), None),
         );
 
         Globals::new(entries)

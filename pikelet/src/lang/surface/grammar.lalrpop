@@ -15,7 +15,6 @@ extern {
         "string literal" => Token::StringLiteral(<&'input str>),
         "numeric literal" => Token::NumericLiteral(<&'input  str>),
         "name" => Token::Name(<&'input str>),
-        "shift" => Token::Shift(<&'input str>),
 
         "as" => Token::As,
         "fun" => Token::FunTerm,
@@ -79,9 +78,6 @@ AppTermData: TermData = {
 AtomicTermData: TermData = {
     "(" <term: TermData> ")" => term,
     <name: Name> => TermData::Name(name),
-    <term: AtomicTerm> <shift: "shift"> => {
-        TermData::Lift(Box::new(term), shift[1..].parse().unwrap()) // FIXME: Overflow!
-    },
     "Record" "{" <entries: List<TypeEntry>> "}" => TermData::RecordType(entries),
     "record" "{" <entries: List<TermEntry>> "}" => TermData::RecordTerm(entries),
     <head_term: AtomicTerm> "." <label: Located<Name>> => TermData::RecordElim(Box::new(head_term), label),

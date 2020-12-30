@@ -41,11 +41,7 @@ You can read more about what we hope to achieve in [_Pondering the next version 
   - [x] Dependent record types
   - [x] Dependent function types
   - [ ] Equality (identity) types
-  - [x] Universe levels
-    - [x] Stratified
-    - [x] Cumulative
-    - [x] Lifting operator
-    - [ ] Large types (`Typeω`)
+  - [ ] Universe levels
   - [ ] Multi-stage programming
   - [ ] Quantitative type theory
 

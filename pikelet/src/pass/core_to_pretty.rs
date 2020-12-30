@@ -54,14 +54,7 @@ where
                 ),
         ),
 
-        TermData::TypeType(level) => (alloc.nil())
-            .append("Type")
-            .append("^")
-            .append(alloc.as_string(level.0)),
-        TermData::Lift(term, shift) => (alloc.nil())
-            .append(from_term_prec(alloc, term, Prec::Atomic))
-            .append("^")
-            .append(alloc.as_string(shift.0)),
+        TermData::TypeType => alloc.text("Type"),
 
         TermData::FunctionType(_, input_type, output_type) => paren(
             alloc,

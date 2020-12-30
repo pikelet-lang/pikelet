@@ -17,8 +17,6 @@ pub enum Token<'a> {
     NumericLiteral(&'a str),
     #[regex(r"[a-zA-Z][a-zA-Z0-9\-]*")]
     Name(&'a str),
-    #[regex(r"\^[0-9]+(\.[0-9]+)?")]
-    Shift(&'a str),
 
     #[token("as")]
     As,
@@ -71,7 +69,6 @@ impl<'a> fmt::Display for Token<'a> {
             Token::StringLiteral(s) => write!(f, "{}", s),
             Token::NumericLiteral(s) => write!(f, "{}", s),
             Token::Name(s) => write!(f, "{}", s),
-            Token::Shift(s) => write!(f, "{}", s),
 
             Token::As => write!(f, "as"),
             Token::FunTerm => write!(f, "fun"),

@@ -42,14 +42,13 @@ record {
         seq : Fun (A B C : Object) -> Arrow A B -> Arrow B C -> Arrow A C,
     },
 
-    -- FIXME: level shifts for record fields
-    -- category-pikelet = record {
-    --     Object = Type,
-    --     Arrow = fun A B => A -> B,
-    --     -- TODO: Use combinator definitions
-    --     id = fun A a => a,
-    --     seq = fun A B C a-b b-c a => b-c (a-b a),
-    -- },
+    category-pikelet = record {
+        Object = Type,
+        Arrow = fun A B => A -> B,
+        -- TODO: Use combinator definitions
+        id = fun A a => a,
+        seq = fun A B C a-b b-c a => b-c (a-b a),
+    },
 } : Record {
     ||| The polymorphic identity function.
     id : Fun (A : Type) -> A -> A,
@@ -126,7 +125,7 @@ record {
 
 
     ||| A carrier equipped with an associative operation
-    Semigroup : Type^1,
+    Semigroup : Type,
 
     ||| A category is a very general structure that provides a common way of
     ||| composing units of functionality
@@ -137,9 +136,8 @@ record {
     |||
     ||| - nodes in a directed graph, and the edges between those nodes.
     ||| - etc.
-    Category : Type^1,
+    Category : Type,
 
-    -- FIXME: level shifts for record fields
-    -- ||| Category of Pikelet functions and types.
-    -- category-pikelet : Category^1,
+    ||| Category of Pikelet functions and types.
+    category-pikelet : Category,
 }

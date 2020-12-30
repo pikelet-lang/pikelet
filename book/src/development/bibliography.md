@@ -45,6 +45,7 @@ Fundamenta Informaticae XXI, 2001 (Revised 2009).<br/>
 [paper](https://www.andres-loeh.de/LambdaPi/LambdaPi.pdf) -
 [abstract](https://www.andres-loeh.de/LambdaPi/)
 
+<!--
 ### Crude but Effective Stratification
 
 Conor McBride<br/>
@@ -56,6 +57,7 @@ Blog post, 2011.<br/>
 Conor McBride<br/>
 Blog post, 2015.<br/>
 [blog post](https://pigworker.wordpress.com/2015/01/09/universe-hierarchies/)
+-->
 
 ### Lecture Notes on Bidirectional Type Checking
 
@@ -63,8 +65,10 @@ Frank Pfenning<br/>
 Lecture Notes, 2004.<br/>
 [paper](https://www.cs.cmu.edu/~fp/courses/15312-f04/handouts/15-bidirectional.pdf)
 
+<!--
 ### Dependently typed lambda calculus with a lifting operator
 
 Damien Rouhling<br/>
 Internship Report, 2014.<br/>
 [paper](http://www-sop.inria.fr/members/Damien.Rouhling/data/internships/M1Report.pdf)
+-->
