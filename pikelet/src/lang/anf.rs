@@ -19,7 +19,7 @@
 //! [wjb-dissertation]: https://www.williamjbowman.com/resources/wjb-dissertation.pdf
 //! [just-a]: https://vimeo.com/387739817
 
-pub use crate::lang::core::{Constant, LocalIndex, UniverseLevel, UniverseOffset};
+pub use crate::lang::core::{Constant, LocalIndex};
 
 /// Values are terms that do not reduce.
 pub enum Value {
@@ -32,9 +32,7 @@ pub enum Value {
     Ann(Box<Value>, Box<Configuration>),
 
     /// The type of types.
-    TypeType(UniverseLevel),
-    /// Lift a value by the given number of universe levels.
-    Lift(Box<Value>, UniverseOffset),
+    TypeType,
 
     /// Function types.
     ///

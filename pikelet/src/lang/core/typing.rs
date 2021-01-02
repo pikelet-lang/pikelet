@@ -14,17 +14,13 @@ use crossbeam_channel::Sender;
 use std::sync::Arc;
 
 use crate::lang::core::semantics::{self, Elim, RecordClosure, Unfold, Value};
-use crate::lang::core::{
-    Constant, Globals, LocalSize, Locals, Term, TermData, UniverseLevel, UniverseOffset,
-};
+use crate::lang::core::{Constant, Globals, LocalSize, Locals, Term, TermData};
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
 /// The state of the type checker.
 pub struct State<'me> {
     /// Global definition environment.
     globals: &'me Globals,
-    /// The current universe offset.
-    universe_offset: UniverseOffset,
     /// Local type environment (used for getting the types of local variables).
     local_declarations: Locals<Arc<Value>>,
     /// Local value environment (used for evaluation).
@@ -38,7 +34,6 @@ impl<'me> State<'me> {
     pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> State<'me> {
         State {
             globals,
-            universe_offset: UniverseOffset(0),
             local_declarations: Locals::new(),
             local_definitions: Locals::new(),
             message_tx,
@@ -85,12 +80,7 @@ impl<'me> State<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`Term`]: crate::lang::core::Term
     pub fn eval(&mut self, term: &Term) -> Arc<Value> {
-        semantics::eval(
-            self.globals,
-            self.universe_offset,
-            &mut self.local_definitions,
-            term,
-        )
+        semantics::eval(self.globals, &mut self.local_definitions, term)
     }
 
     /// Return the type of the record elimination.
@@ -113,36 +103,34 @@ impl<'me> State<'me> {
         )
     }
 
-    /// Check that one [`Value`] is a subtype of another [`Value`].
+    /// Check that one [`Value`] is computationally equal to another [`Value`].
     ///
     /// Returns `false` if either value is not a type.
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
-    pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
-        semantics::is_subtype(self.globals, self.local_definitions.size(), value0, value1)
+    pub fn is_equal(&self, value0: &Value, value1: &Value) -> bool {
+        semantics::is_equal(self.globals, self.local_definitions.size(), value0, value1)
     }
 
-    /// Check that a term is a type and return the universe level it inhabits.
-    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
+    /// Check that a term is a type.
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
-    pub fn is_type(&mut self, term: &Term) -> Option<UniverseLevel> {
+    pub fn is_type(&mut self, term: &Term) -> bool {
         let r#type = self.synth_type(term);
         match r#type.force(self.globals) {
-            Value::TypeType(level) => Some(*level),
-            Value::Error => None,
+            Value::TypeType => true,
+            Value::Error => false,
             _ => {
                 self.report(CoreTypingMessage::MismatchedTypes {
                     found_type: self.read_back(&r#type),
                     expected_type: ExpectedType::Universe,
                 });
-                None
+                false
             }
         }
     }
 
     /// Check that a term is an element of a type.
-    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) {
@@ -199,7 +187,7 @@ impl<'me> State<'me> {
             }
 
             (TermData::ArrayTerm(entry_terms), forced_type) => match forced_type.try_global() {
-                Some(("Array", _, [Elim::Function(len), Elim::Function(entry_type)])) => {
+                Some(("Array", [Elim::Function(len), Elim::Function(entry_type)])) => {
                     let forced_entry_type = entry_type.force(self.globals);
                     for entry_term in entry_terms {
                         self.check_type(entry_term, forced_entry_type);
@@ -213,7 +201,6 @@ impl<'me> State<'me> {
                                 expected_type: ExpectedType::Type(self.read_back(expected_type)),
                                 found_type: self.read_back(&Value::global(
                                     "Array",
-                                    0,
                                     [
                                         Elim::Function(len.clone()),
                                         Elim::Function(entry_type.clone()),
@@ -229,7 +216,7 @@ impl<'me> State<'me> {
                 }
             },
             (TermData::ListTerm(entry_terms), forced_type) => match forced_type.try_global() {
-                Some(("List", _, [Elim::Function(entry_type)])) => {
+                Some(("List", [Elim::Function(entry_type)])) => {
                     let forced_entry_type = entry_type.force(self.globals);
                     for entry_term in entry_terms {
                         self.check_type(entry_term, forced_entry_type);
@@ -242,7 +229,7 @@ impl<'me> State<'me> {
             },
 
             (_, _) => match self.synth_type(term) {
-                found_type if self.is_subtype(&found_type, expected_type) => {}
+                found_type if self.is_equal(&found_type, expected_type) => {}
                 found_type => self.report(CoreTypingMessage::MismatchedTypes {
                     found_type: self.read_back(&found_type),
                     expected_type: ExpectedType::Type(self.read_back(expected_type)),
@@ -252,7 +239,6 @@ impl<'me> State<'me> {
     }
 
     /// Synthesize the type of a term.
-    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn synth_type(&mut self, term: &Term) -> Arc<Value> {
@@ -275,49 +261,29 @@ impl<'me> State<'me> {
             },
 
             TermData::Ann(term, r#type) => {
-                self.is_type(r#type);
+                if !self.is_type(r#type) {
+                    return Arc::new(Value::Error);
+                }
                 let r#type = self.eval(r#type);
                 self.check_type(term, &r#type);
                 r#type
             }
 
-            TermData::TypeType(level) => match *level + UniverseOffset(1) {
-                Some(level) => Arc::new(Value::type_type(level)),
-                None => {
-                    self.report(CoreTypingMessage::MaximumUniverseLevelReached);
-                    Arc::new(Value::Error)
-                }
-            },
-            TermData::Lift(term, offset) => match self.universe_offset + *offset {
-                Some(new_offset) => {
-                    let previous_offset = std::mem::replace(&mut self.universe_offset, new_offset);
-                    let r#type = self.synth_type(term);
-                    self.universe_offset = previous_offset;
-                    r#type
-                }
-                None => {
-                    self.report(CoreTypingMessage::MaximumUniverseLevelReached);
-                    Arc::new(Value::Error)
-                }
-            },
+            TermData::TypeType => Arc::new(Value::TypeType),
 
             TermData::FunctionType(_, input_type, output_type) => {
-                let input_level = self.is_type(input_type);
-                let input_type = match input_level {
-                    None => Arc::new(Value::Error),
-                    Some(_) => self.eval(input_type),
-                };
+                if !self.is_type(input_type) {
+                    return Arc::new(Value::Error);
+                }
+                let input_type = self.eval(input_type);
 
                 self.push_local_param(input_type);
-                let output_level = self.is_type(output_type);
-                self.pop_local();
-
-                match (input_level, output_level) {
-                    (Some(input_level), Some(output_level)) => {
-                        Arc::new(Value::TypeType(std::cmp::max(input_level, output_level)))
-                    }
-                    (_, _) => Arc::new(Value::Error),
+                if !self.is_type(output_type) {
+                    self.pop_local();
+                    return Arc::new(Value::Error);
                 }
+                self.pop_local();
+                Arc::new(Value::TypeType)
             }
             TermData::FunctionTerm(_, _) => {
                 self.report(CoreTypingMessage::AmbiguousTerm {
@@ -345,7 +311,6 @@ impl<'me> State<'me> {
             TermData::RecordTerm(term_entries) => {
                 if term_entries.is_empty() {
                     Arc::from(Value::RecordType(RecordClosure::new(
-                        self.universe_offset,
                         self.local_definitions.clone(),
                         Arc::new([]),
                     )))
@@ -359,7 +324,6 @@ impl<'me> State<'me> {
             TermData::RecordType(type_entries) => {
                 use std::collections::BTreeSet;
 
-                let mut max_level = UniverseLevel(0);
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeSet::new();
 
@@ -367,13 +331,10 @@ impl<'me> State<'me> {
                     if !seen_labels.insert(name) {
                         duplicate_labels.push(name.clone());
                     }
-                    max_level = match self.is_type(r#type) {
-                        Some(level) => std::cmp::max(max_level, level),
-                        None => {
-                            self.pop_many_locals(seen_labels.len());
-                            return Arc::new(Value::Error);
-                        }
-                    };
+                    if !self.is_type(r#type) {
+                        self.pop_many_locals(seen_labels.len());
+                        return Arc::new(Value::Error);
+                    }
                     let r#type = self.eval(r#type);
                     self.push_local_param(r#type);
                 }
@@ -384,7 +345,7 @@ impl<'me> State<'me> {
                     self.report(CoreTypingMessage::InvalidRecordType { duplicate_labels });
                 }
 
-                Arc::new(Value::TypeType(max_level))
+                Arc::new(Value::TypeType)
             }
             TermData::RecordElim(head_term, label) => {
                 let head_type = self.synth_type(head_term);
@@ -424,18 +385,18 @@ impl<'me> State<'me> {
             }
 
             TermData::Constant(constant) => Arc::new(match constant {
-                Constant::U8(_) => Value::global("U8", 0, []),
-                Constant::U16(_) => Value::global("U16", 0, []),
-                Constant::U32(_) => Value::global("U32", 0, []),
-                Constant::U64(_) => Value::global("U64", 0, []),
-                Constant::S8(_) => Value::global("S8", 0, []),
-                Constant::S16(_) => Value::global("S16", 0, []),
-                Constant::S32(_) => Value::global("S32", 0, []),
-                Constant::S64(_) => Value::global("S64", 0, []),
-                Constant::F32(_) => Value::global("F32", 0, []),
-                Constant::F64(_) => Value::global("F64", 0, []),
-                Constant::Char(_) => Value::global("Char", 0, []),
-                Constant::String(_) => Value::global("String", 0, []),
+                Constant::U8(_) => Value::global("U8", []),
+                Constant::U16(_) => Value::global("U16", []),
+                Constant::U32(_) => Value::global("U32", []),
+                Constant::U64(_) => Value::global("U64", []),
+                Constant::S8(_) => Value::global("S8", []),
+                Constant::S16(_) => Value::global("S16", []),
+                Constant::S32(_) => Value::global("S32", []),
+                Constant::S64(_) => Value::global("S64", []),
+                Constant::F32(_) => Value::global("F32", []),
+                Constant::F64(_) => Value::global("F64", []),
+                Constant::Char(_) => Value::global("Char", []),
+                Constant::String(_) => Value::global("String", []),
             }),
 
             TermData::Error => Arc::new(Value::Error),

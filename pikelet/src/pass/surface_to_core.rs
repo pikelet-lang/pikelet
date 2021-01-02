@@ -21,8 +21,6 @@ use crate::reporting::{AmbiguousTerm, ExpectedType, Message, SurfaceToCoreMessag
 pub struct State<'me> {
     /// Global definition environment.
     globals: &'me core::Globals,
-    /// The current universe offset.
-    universe_offset: core::UniverseOffset,
     /// Local type environment (used for getting the types of local variables).
     local_declarations: core::Locals<(Option<String>, Arc<Value>)>,
     /// Local value environment (used for evaluation).
@@ -38,7 +36,6 @@ impl<'me> State<'me> {
     pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> State<'me> {
         State {
             globals,
-            universe_offset: core::UniverseOffset(0),
             local_declarations: core::Locals::new(),
             local_definitions: core::Locals::new(),
             core_to_surface: core_to_surface::State::new(globals),
@@ -100,12 +97,7 @@ impl<'me> State<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
     pub fn eval(&mut self, term: &core::Term) -> Arc<Value> {
-        semantics::eval(
-            self.globals,
-            self.universe_offset,
-            &mut self.local_definitions,
-            term,
-        )
+        semantics::eval(self.globals, &mut self.local_definitions, term)
     }
 
     /// Return the type of the record elimination.
@@ -123,12 +115,7 @@ impl<'me> State<'me> {
     /// [`core::Term`]: crate::lang::core::Term
     /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
     pub fn normalize(&mut self, term: &core::Term) -> core::Term {
-        semantics::normalize(
-            self.globals,
-            self.universe_offset,
-            &mut self.local_definitions,
-            term,
-        )
+        semantics::normalize(self.globals, &mut self.local_definitions, term)
     }
 
     /// Read back a [`Value`] to a [`core::Term`] using the current
@@ -148,13 +135,13 @@ impl<'me> State<'me> {
         )
     }
 
-    /// Check that one [`Value`] is a subtype of another [`Value`].
+    /// Check that one [`Value`] is computationally equal to another [`Value`].
     ///
     /// Returns `false` if either value is not a type.
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
-    pub fn is_subtype(&self, value0: &Value, value1: &Value) -> bool {
-        semantics::is_subtype(self.globals, self.local_definitions.size(), value0, value1)
+    pub fn is_equal(&self, value0: &Value, value1: &Value) -> bool {
+        semantics::is_equal(self.globals, self.local_definitions.size(), value0, value1)
     }
 
     /// Distill a [`core::Term`] into a [`surface::Term`].
@@ -178,16 +165,14 @@ impl<'me> State<'me> {
         self.core_to_surface(&core_term)
     }
 
-    /// Check that a term is a type, and return the elaborated term and the
-    /// universe level it inhabits.
-    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
+    /// Check that a term is a type, and return the elaborated term.
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
-    pub fn is_type(&mut self, term: &Term) -> (core::Term, Option<core::UniverseLevel>) {
+    pub fn is_type(&mut self, term: &Term) -> Option<core::Term> {
         let (core_term, r#type) = self.synth_type(term);
         match r#type.force(self.globals) {
-            Value::TypeType(level) => (core_term, Some(*level)),
-            Value::Error => (core::Term::new(term.location, core::TermData::Error), None),
+            Value::TypeType => Some(core_term),
+            Value::Error => Some(core::Term::new(term.location, core::TermData::Error)),
             found_type => {
                 let found_type = self.read_back_to_surface(&found_type);
                 self.report(SurfaceToCoreMessage::MismatchedTypes {
@@ -195,13 +180,12 @@ impl<'me> State<'me> {
                     found_type,
                     expected_type: ExpectedType::Universe,
                 });
-                (core::Term::new(term.location, core::TermData::Error), None)
+                None
             }
         }
     }
 
     /// Check that a term is an element of a type, and return the elaborated term.
-    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
@@ -302,7 +286,7 @@ impl<'me> State<'me> {
             }
 
             (TermData::SequenceTerm(entry_terms), forced_type) => match forced_type.try_global() {
-                Some(("Array", _, [Elim::Function(len), Elim::Function(core_entry_type)])) => {
+                Some(("Array", [Elim::Function(len), Elim::Function(core_entry_type)])) => {
                     let core_entry_type = core_entry_type.force(self.globals);
                     let core_entry_terms = entry_terms
                         .iter()
@@ -331,7 +315,7 @@ impl<'me> State<'me> {
                         }
                     }
                 }
-                Some(("List", _, [Elim::Function(core_entry_type)])) => {
+                Some(("List", [Elim::Function(core_entry_type)])) => {
                     let core_entry_type = core_entry_type.force(self.globals);
                     let core_entry_terms = entry_terms
                         .iter()
@@ -353,16 +337,16 @@ impl<'me> State<'me> {
                 use crate::lang::core::Constant::*;
 
                 match forced_type.try_global() {
-                    Some(("U8", _, [])) => self.parse_unsigned(term.location, data, U8),
-                    Some(("U16", _, [])) => self.parse_unsigned(term.location, data, U16),
-                    Some(("U32", _, [])) => self.parse_unsigned(term.location, data, U32),
-                    Some(("U64", _, [])) => self.parse_unsigned(term.location, data, U64),
-                    Some(("S8", _, [])) => self.parse_signed(term.location, data, S8),
-                    Some(("S16", _, [])) => self.parse_signed(term.location, data, S16),
-                    Some(("S32", _, [])) => self.parse_signed(term.location, data, S32),
-                    Some(("S64", _, [])) => self.parse_signed(term.location, data, S64),
-                    Some(("F32", _, [])) => self.parse_float(term.location, data, F32),
-                    Some(("F64", _, [])) => self.parse_float(term.location, data, F64),
+                    Some(("U8", [])) => self.parse_unsigned(term.location, data, U8),
+                    Some(("U16", [])) => self.parse_unsigned(term.location, data, U16),
+                    Some(("U32", [])) => self.parse_unsigned(term.location, data, U32),
+                    Some(("U64", [])) => self.parse_unsigned(term.location, data, U64),
+                    Some(("S8", [])) => self.parse_signed(term.location, data, S8),
+                    Some(("S16", [])) => self.parse_signed(term.location, data, S16),
+                    Some(("S32", [])) => self.parse_signed(term.location, data, S32),
+                    Some(("S64", [])) => self.parse_signed(term.location, data, S64),
+                    Some(("F32", [])) => self.parse_float(term.location, data, F32),
+                    Some(("F64", [])) => self.parse_float(term.location, data, F64),
                     Some(_) | None => {
                         let expected_type = self.read_back_to_surface(expected_type);
                         self.report(SurfaceToCoreMessage::NoLiteralConversion {
@@ -374,7 +358,7 @@ impl<'me> State<'me> {
                 }
             }
             (TermData::CharTerm(data), forced_type) => match forced_type.try_global() {
-                Some(("Char", _, [])) => self.parse_char(term.location, data),
+                Some(("Char", [])) => self.parse_char(term.location, data),
                 Some(_) | None => {
                     let expected_type = self.read_back_to_surface(expected_type);
                     self.report(SurfaceToCoreMessage::NoLiteralConversion {
@@ -385,7 +369,7 @@ impl<'me> State<'me> {
                 }
             },
             (TermData::StringTerm(data), forced_type) => match forced_type.try_global() {
-                Some(("String", _, [])) => self.parse_string(term.location, data),
+                Some(("String", [])) => self.parse_string(term.location, data),
                 Some(_) | None => {
                     let expected_type = self.read_back_to_surface(expected_type);
                     self.report(SurfaceToCoreMessage::NoLiteralConversion {
@@ -397,7 +381,7 @@ impl<'me> State<'me> {
             },
 
             (_, _) => match self.synth_type(term) {
-                (term, found_type) if self.is_subtype(&found_type, expected_type) => term,
+                (term, found_type) if self.is_equal(&found_type, expected_type) => term,
                 (_, found_type) => {
                     let found_type = self.read_back_to_surface(&found_type);
                     let expected_type = self.read_back_to_surface(expected_type);
@@ -413,7 +397,6 @@ impl<'me> State<'me> {
     }
 
     /// Synthesize the type of a surface term, and return the elaborated term.
-    #[debug_ensures(self.universe_offset == old(self.universe_offset))]
     #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
@@ -432,13 +415,7 @@ impl<'me> State<'me> {
 
                 if let Some((r#type, _)) = self.globals.get(name.as_ref()) {
                     let name = name.clone();
-                    let global = core::Term::new(term.location, core::TermData::Global(name));
-                    let core_term = match self.universe_offset {
-                        core::UniverseOffset(0) => global,
-                        offset => {
-                            core::Term::generated(core::TermData::Lift(Arc::new(global), offset))
-                        }
-                    };
+                    let core_term = core::Term::new(term.location, core::TermData::Global(name));
                     return (core_term, self.eval(r#type));
                 }
 
@@ -450,7 +427,10 @@ impl<'me> State<'me> {
             }
 
             TermData::Ann(term, r#type) => {
-                let (core_type, _) = self.is_type(r#type);
+                let core_type = match self.is_type(r#type) {
+                    Some(core_type) => core_type,
+                    None => return (error_term(), Arc::new(Value::Error)),
+                };
                 let core_type_value = self.eval(&core_type);
                 let core_term = self.check_type(term, &core_type_value);
                 (
@@ -462,35 +442,18 @@ impl<'me> State<'me> {
                 )
             }
 
-            TermData::Lift(inner_term, offset) => {
-                match self.universe_offset + core::UniverseOffset(*offset) {
-                    Some(new_offset) => {
-                        let old_offset = std::mem::replace(&mut self.universe_offset, new_offset);
-                        let (core_term, r#type) = self.synth_type(inner_term);
-                        self.universe_offset = old_offset;
-                        (core_term, r#type)
-                    }
-                    None => {
-                        self.report(SurfaceToCoreMessage::MaximumUniverseLevelReached {
-                            location: term.location,
-                        });
-                        (error_term(), Arc::new(Value::Error))
-                    }
-                }
-            }
-
             TermData::FunctionType(input_type_groups, output_type) => {
-                let mut max_level = Some(core::UniverseLevel(0));
-                let update_level = |max_level, next_level| match (max_level, next_level) {
-                    (Some(max_level), Some(pl)) => Some(std::cmp::max(max_level, pl)),
-                    (None, _) | (_, None) => None,
-                };
                 let mut core_inputs = Vec::new();
 
                 for (input_names, input_type) in input_type_groups {
                     for input_name in input_names {
-                        let (core_input_type, input_level) = self.is_type(input_type);
-                        max_level = update_level(max_level, input_level);
+                        let core_input_type = match self.is_type(input_type) {
+                            Some(core_input_type) => core_input_type,
+                            None => {
+                                self.pop_many_locals(core_inputs.len());
+                                return (error_term(), Arc::new(Value::Error));
+                            }
+                        };
 
                         let core_input_type_value = self.eval(&core_input_type);
                         self.push_local_param(Some(&input_name.data), core_input_type_value);
@@ -498,55 +461,57 @@ impl<'me> State<'me> {
                     }
                 }
 
-                let (core_output_type, output_level) = self.is_type(output_type);
-                max_level = update_level(max_level, output_level);
-
+                let core_output_type = match self.is_type(output_type) {
+                    Some(core_output_type) => core_output_type,
+                    None => {
+                        self.pop_many_locals(core_inputs.len());
+                        return (error_term(), Arc::new(Value::Error));
+                    }
+                };
                 self.pop_many_locals(core_inputs.len());
 
-                match max_level {
-                    None => (error_term(), Arc::new(Value::Error)),
-                    Some(max_level) => {
-                        let mut core_type = core_output_type;
-                        for (input_name, input_type) in core_inputs.into_iter().rev() {
-                            core_type = core::Term::new(
-                                Location::merge(input_name.location, output_type.location),
-                                core::TermData::FunctionType(
-                                    Some(input_name.data),
-                                    Arc::new(input_type),
-                                    Arc::new(core_type),
-                                ),
-                            );
-                        }
-
-                        (core_type, Arc::new(Value::TypeType(max_level)))
-                    }
+                let mut core_type = core_output_type;
+                for (input_name, input_type) in core_inputs.into_iter().rev() {
+                    core_type = core::Term::new(
+                        Location::merge(input_name.location, output_type.location),
+                        core::TermData::FunctionType(
+                            Some(input_name.data),
+                            Arc::new(input_type),
+                            Arc::new(core_type),
+                        ),
+                    );
                 }
+
+                (core_type, Arc::new(Value::TypeType))
             }
             TermData::FunctionArrowType(input_type, output_type) => {
-                let (core_input_type, input_level) = self.is_type(input_type);
-                let core_input_type_value = match input_level {
-                    None => Arc::new(Value::Error),
-                    Some(_) => self.eval(&core_input_type),
+                let core_input_type = match self.is_type(input_type) {
+                    Some(core_input_type) => core_input_type,
+                    None => return (error_term(), Arc::new(Value::Error)),
                 };
+                let core_input_type_value = self.eval(&core_input_type);
 
                 self.push_local_param(None, core_input_type_value);
-                let (core_output_type, output_level) = self.is_type(output_type);
+                let core_output_type = match self.is_type(output_type) {
+                    Some(core_output_type) => core_output_type,
+                    None => {
+                        self.pop_local();
+                        return (error_term(), Arc::new(Value::Error));
+                    }
+                };
                 self.pop_local();
 
-                match (input_level, output_level) {
-                    (Some(input_level), Some(output_level)) => (
-                        core::Term::new(
-                            term.location,
-                            core::TermData::FunctionType(
-                                None,
-                                Arc::new(core_input_type),
-                                Arc::new(core_output_type),
-                            ),
+                (
+                    core::Term::new(
+                        term.location,
+                        core::TermData::FunctionType(
+                            None,
+                            Arc::new(core_input_type),
+                            Arc::new(core_output_type),
                         ),
-                        Arc::new(Value::TypeType(std::cmp::max(input_level, output_level))),
                     ),
-                    (_, _) => (error_term(), Arc::new(Value::Error)),
-                }
+                    Arc::new(Value::TypeType),
+                )
             }
             TermData::FunctionTerm(_, _) => {
                 self.report(SurfaceToCoreMessage::AmbiguousTerm {
@@ -598,7 +563,6 @@ impl<'me> State<'me> {
                     (
                         core::Term::new(term.location, core::TermData::RecordTerm(Arc::new([]))),
                         Arc::from(Value::RecordType(RecordClosure::new(
-                            self.universe_offset,
                             self.local_definitions.clone(),
                             Arc::new([]),
                         ))),
@@ -614,7 +578,6 @@ impl<'me> State<'me> {
             TermData::RecordType(type_entries) => {
                 use std::collections::btree_map::Entry;
 
-                let mut max_level = core::UniverseLevel(0);
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeMap::new();
                 let mut core_type_entries = Vec::new();
@@ -623,9 +586,8 @@ impl<'me> State<'me> {
                     let name = name.as_ref().unwrap_or(label);
                     match seen_labels.entry(label.data.as_str()) {
                         Entry::Vacant(entry) => {
-                            let (core_type, level) = self.is_type(entry_type);
-                            max_level = match level {
-                                Some(level) => std::cmp::max(max_level, level),
+                            let core_type = match self.is_type(entry_type) {
+                                Some(core_type) => core_type,
                                 None => {
                                     self.pop_many_locals(seen_labels.len());
                                     return (error_term(), Arc::new(Value::Error));
@@ -656,7 +618,7 @@ impl<'me> State<'me> {
                         term.location,
                         core::TermData::RecordType(core_type_entries.into()),
                     ),
-                    Arc::new(Value::TypeType(max_level)),
+                    Arc::new(Value::TypeType),
                 )
             }
             TermData::RecordElim(head_term, label) => {
@@ -708,11 +670,11 @@ impl<'me> State<'me> {
             }
             TermData::CharTerm(data) => (
                 self.parse_char(term.location, data),
-                Arc::new(Value::global("Char", 0, [])),
+                Arc::new(Value::global("Char", [])),
             ),
             TermData::StringTerm(data) => (
                 self.parse_string(term.location, data),
-                Arc::new(Value::global("String", 0, [])),
+                Arc::new(Value::global("String", [])),
             ),
 
             TermData::Error => (error_term(), Arc::new(Value::Error)),

@@ -47,11 +47,6 @@ where
                 ),
         ),
 
-        TermData::Lift(term, shift) => (alloc.nil())
-            .append(from_term_prec(alloc, term, Prec::Atomic))
-            .append("^")
-            .append(shift.to_string()),
-
         TermData::FunctionType(input_type_groups, output_type) => paren(
             alloc,
             prec > Prec::Arrow,

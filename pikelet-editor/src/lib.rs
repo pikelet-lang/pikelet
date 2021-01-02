@@ -89,7 +89,7 @@ impl Sandbox for State {
 }
 
 fn view_term<M: 'static>(term: &pikelet::lang::core::Term) -> Element<M> {
-    use pikelet::lang::core::{Constant, TermData, UniverseLevel, UniverseOffset};
+    use pikelet::lang::core::{Constant, TermData};
 
     match &term.data {
         TermData::Global(name) => Text::new(name).into(),
@@ -101,13 +101,7 @@ fn view_term<M: 'static>(term: &pikelet::lang::core::Term) -> Element<M> {
             .push(view_term(r#type))
             .into(),
 
-        TermData::TypeType(UniverseLevel(level)) => Row::new()
-            .push(Text::new(format!("Univ^{}", level))) // TODO: superscript?
-            .into(),
-        TermData::Lift(term, UniverseOffset(offset)) => Row::new()
-            .push(view_term(term))
-            .push(Text::new(format!("^{}", offset)))
-            .into(),
+        TermData::TypeType => Row::new().push(Text::new("Type")).into(),
 
         TermData::FunctionType(_, _, _) => Text::new("todo").into(),
         TermData::FunctionTerm(_, _) => Text::new("todo").into(),

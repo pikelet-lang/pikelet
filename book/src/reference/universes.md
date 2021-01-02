@@ -1,5 +1,29 @@
 # Universes
 
+The type of types is `Type`. For example:
+
+```pikelet
+Bool : Type
+S32 : Type
+Array : U32 -> Type Type
+```
+
+The type of `Type` is `Type`:
+
+```pikelet
+Type : Type
+```
+
+Note that for [subtle reasons][type-in-type-liamoc] this is [_inconsistent_][consistency-wikipedia],
+as seen in [Girard's Paradox][girards-paradox-wikipedia].
+This means that we might allow for paradoxical cycles in types.
+In the future we might add a hierarchy of universes to address this problem.
+
+[consistency-wikipedia]: https://en.wikipedia.org/wiki/Consistency
+[type-in-type-liamoc]: http://liamoc.net/posts/2015-09-10-girards-paradox/index.html
+[girards-paradox-wikipedia]: https://en.wikipedia.org/wiki/System_U#Girard's_paradox
+
+<!--
 Having first class types naturally poses the question: what is the type of `Type`?
 
 ```pikelet
@@ -74,3 +98,4 @@ Type^3 : Type^1    -- error!
 > **Note:**
 >
 > This section is a work in progress.
+-->

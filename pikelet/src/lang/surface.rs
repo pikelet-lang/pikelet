@@ -32,9 +32,6 @@ pub enum TermData {
     /// Annotated terms.
     Ann(Box<Term>, Box<Term>),
 
-    /// Lift a term by the given number of universe levels.
-    Lift(Box<Term>, u32),
-
     /// Function types.
     ///
     /// Also known as: pi type, dependent product type.
