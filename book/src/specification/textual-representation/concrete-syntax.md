@@ -25,7 +25,6 @@ app-term ::=
 atomic-term ::=
     | "(" term ")"
     | name
-    | atomic-term "^" number-literal
     | "Record" "{" (type-entry ",")* type-entry? "}"
     | "record" "{" (term-entry ",")* term-entry? "}"
     | atomic-term "." name
