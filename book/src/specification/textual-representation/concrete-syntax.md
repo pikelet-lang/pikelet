@@ -29,7 +29,7 @@ atomic-term ::=
     | "record" "{" (term-entry ",")* term-entry? "}"
     | atomic-term "." name
     | "[" (term ",")* term? "]"
-    | number-literal
+    | numeric-literal
     | character-literal
     | string-literal
 ```
