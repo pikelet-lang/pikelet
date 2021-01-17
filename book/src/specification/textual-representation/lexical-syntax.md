@@ -1,8 +1,6 @@
 # Lexical Syntax
 
-The _lexical structure_ of the Pikelet programming langues is a description of what constitutes a valid sequence of tokens in the programming language.
-
-## Characters
+## Input format
 
 The textual surface language assigns meaning to a source string,
 which consists of a sequence of _Unicode scalar values_ (as defined in Section 3.4 of [the Unicode Standard](www.unicode.org/versions/latest/)),
@@ -32,7 +30,7 @@ line-separator        ::= "\u{2028}"
 paragraph-separator   ::= "\u{2029}"
 ```
 
-## Whitespace and comments
+## Whitespace
 
 ```text
 line-break ::=
@@ -41,18 +39,8 @@ line-break ::=
     | carriage-return line-feed
     | "\0"
 
-comment-text ::=
-    | (~(line-feed | carriage-return) unicode-scalar-value)*
-
-comment ::=
-    | "--" comment-text line-break
-
-doc-comment ::=
-    | "|||" comment-text line-break
-
 white-space ::=
     | horizontal-tab
-    | comment
     | vertical-tab
     | form-feed
     | line-break
@@ -63,7 +51,16 @@ white-space ::=
     | paragraph-separator
 ```
 
-## Keywords and names
+## Comments
+
+```text
+comment-data  ::= unicode-scalar-value - (line-feed | carriage-return)
+
+comment       ::= "--" comment-data* line-break
+doc-comment   ::= "|||" comment-data* line-break
+```
+
+## Keywords
 
 ```text
 keyword ::=
@@ -72,12 +69,16 @@ keyword ::=
     | "Fun"
     | "Record"
     | "record"
+```
 
-name-or-keyword ::=
-    | ("a" ... "z" | "A" ... "Z") ("a" ... "z" | "A" ... "Z" | "0" ... "9" | "-")*
+## Names
+
+```text
+name-start    ::= "a" ... "z" | "A" ... "Z"
+name-continue ::= "a" ... "z" | "A" ... "Z" | "0" ... "9" | "-"
 
 name ::=
-    | ~keyword name-or-keyword
+    | (name-start name-continue*) - keyword
 ```
 
 ### Punctuation
@@ -104,29 +105,44 @@ punctuation ::=
     | symbol
 ```
 
-### Literals
+### Numeric Literals
 
 ```text
-number-literal ::=
-    | ("+" | "-")? ("0" ... "9") ("a" ... "z" | "A" ... "Z" | "0" ... "9" | ".")*
+sign            ::= "+" | "-"
+digit-start     ::= "0" ... "9"
+digit-continue  ::= "a" ... "z" | "A" ... "Z" | "0" ... "9" | "."
 
-character-literal ::=
-    | "\"" ("\"" | ~"\"" unicode-scalar-value)* "\""
+numeric-literal ::=
+    | sign? digit-start digit-continue*
+```
 
-string-literal ::=
-    | "'" ("'" | ~"'" unicode-scalar-value)* "'"
+### Quoted Literals
+
+```text
+quoted-data(quote-end) ::=
+    | unicode-scalar-value - (quote-end | "\\")
+    | "\\" unicode-scalar-value
+
+character-literal ::= "\'" quoted-data("\'")* "\'"
+string-literal    ::= "\"" quoted-data("\"")* "\""
 ```
 
 ### Tokens
 
 ```text
-token ::=
+ignored :=
     | white-space
+    | comment
+
+token ::=
     | doc-comment
     | keyword
     | name
     | punctuation
-    | number-literal
+    | numeric-literal
     | character-literal
     | string-literal
+
+tokens :=
+    | (token | ignored)*
 ```
