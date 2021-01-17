@@ -97,10 +97,10 @@ impl<'a> fmt::Display for Token<'a> {
 
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
-pub fn tokens<'a>(
+pub fn tokens(
     file_id: FileId,
-    source: &'a str,
-) -> impl 'a + Iterator<Item = Spanned<Token<'a>, usize, LexerError>> {
+    source: &str,
+) -> impl Iterator<Item = Spanned<Token<'_>, usize, LexerError>> {
     Token::lexer(source)
         .spanned()
         .map(move |(token, range)| match token {
