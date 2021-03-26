@@ -62,18 +62,18 @@ impl Range {
     }
 }
 
-impl Into<std::ops::Range<usize>> for Range {
-    fn into(self) -> std::ops::Range<usize> {
-        self.start..self.end
-    }
-}
-
 impl From<std::ops::Range<usize>> for Range {
     fn from(src: std::ops::Range<usize>) -> Range {
         Range {
             start: src.start,
             end: src.end,
         }
+    }
+}
+
+impl From<Range> for std::ops::Range<usize> {
+    fn from(src: Range) -> std::ops::Range<usize> {
+        src.start..src.end
     }
 }
 
