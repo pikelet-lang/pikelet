@@ -45,26 +45,17 @@ impl<T: HasType> HasType for Vec<T> {
     }
 }
 
-macro_rules! impl_has_type_array {
-    ($($len:expr),*) => {
-        $(impl<T: HasType> HasType for [T; $len] {
-            fn r#type() -> Arc<Term> {
-                Arc::new(Term::generated(TermData::FunctionElim(
-                    Arc::new(Term::generated(TermData::FunctionElim(
-                        Arc::new(Term::generated(TermData::Global("List".to_owned()))),
-                        Arc::new(Term::generated(TermData::from(Constant::U32($len as u32)))),
-                    ))),
-                    T::r#type(),
-                )))
-            }
-        })*
-    };
+impl<T: HasType, const LEN: usize /* TODO: u32 */> HasType for [T; LEN] {
+    fn r#type() -> Arc<Term> {
+        Arc::new(Term::generated(TermData::FunctionElim(
+            Arc::new(Term::generated(TermData::FunctionElim(
+                Arc::new(Term::generated(TermData::Global("List".to_owned()))),
+                Arc::new(Term::generated(TermData::from(Constant::U32(LEN as u32)))), // FIXME: this could overflow!
+            ))),
+            T::r#type(),
+        )))
+    }
 }
-
-impl_has_type_array!(
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30, 31, 32
-);
 
 /// Attempt to deserialize something from a `Term`.
 ///
@@ -128,48 +119,38 @@ impl<T: TryFromTerm> TryFromTerm for Vec<T> {
     }
 }
 
-macro_rules! impl_try_from_term_array {
-    ($($len:expr),*) => {
-        $(impl<T: TryFromTerm + Sized> TryFromTerm for [T; $len] {
-            type Error = ();
+impl<T: TryFromTerm + Sized, const LEN: usize> TryFromTerm for [T; LEN] {
+    type Error = ();
 
-            fn try_from_term(term: &Term) -> Result<[T; $len], ()> {
-                match &term.data {
-                    TermData::ArrayTerm(entry_terms) if entry_terms.len() == $len => {
-                        use std::mem::MaybeUninit;
+    fn try_from_term(term: &Term) -> Result<[T; LEN], ()> {
+        match &term.data {
+            TermData::ArrayTerm(entry_terms) if entry_terms.len() == LEN => {
+                use std::mem::MaybeUninit;
 
-                        let mut entries: [MaybeUninit::<T>; $len] = unsafe {
-                            MaybeUninit::uninit().assume_init()
-                        };
-                        for (i, entry_term) in entry_terms.iter().enumerate() {
-                            entries[i] = MaybeUninit::new(T::try_from_term(entry_term).map_err(|_| ())?);
-                        }
-
-                        // NOTE: We'd prefer to do the following:
-                        //
-                        // ```
-                        // Ok(unsafe { std::mem::transmute::<_, [T; $len]>(entries) })
-                        // ```
-                        //
-                        // Sadly we run into the following issue: https://github.com/rust-lang/rust/issues/61956
-                        // For this reason we need to do the following (hideous) workaround:
-
-                        let ptr = &mut entries as *mut _ as *mut [T; $len];
-                        let result = unsafe { ptr.read() };
-                        core::mem::forget(entries);
-                        Ok(result)
-                    },
-                    _ => Err(()),
+                let mut entries: [MaybeUninit<T>; LEN] =
+                    unsafe { MaybeUninit::uninit().assume_init() };
+                for (i, entry_term) in entry_terms.iter().enumerate() {
+                    entries[i] = MaybeUninit::new(T::try_from_term(entry_term).map_err(|_| ())?);
                 }
-            }
-        })*
-    };
-}
 
-impl_try_from_term_array!(
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30, 31, 32
-);
+                // NOTE: We'd prefer to do the following:
+                //
+                // ```
+                // Ok(unsafe { std::mem::transmute::<_, [T; LEN]>(entries) })
+                // ```
+                //
+                // Sadly we run into the following issue: https://github.com/rust-lang/rust/issues/61956
+                // For this reason we need to do the following (hideous) workaround:
+
+                let ptr = &mut entries as *mut _ as *mut [T; LEN];
+                let result = unsafe { ptr.read() };
+                core::mem::forget(entries);
+                Ok(result)
+            }
+            _ => Err(()),
+        }
+    }
+}
 
 /// Serialize something to a `Term`.
 ///
@@ -219,28 +200,15 @@ impl_to_term!(str, |value| TermData::from(Constant::String(
 impl<T: ToTerm> ToTerm for Vec<T> {
     fn to_term(&self) -> Term {
         Term::generated(TermData::ListTerm(
-            self.iter()
-                .map(|entry_term| Arc::new(T::to_term(entry_term)))
-                .collect(),
+            self.iter().map(T::to_term).map(Arc::new).collect(),
         ))
     }
 }
 
-macro_rules! impl_to_term_array {
-    ($($len:expr),*) => {
-        $(impl<T: ToTerm> ToTerm for [T; $len] {
-            fn to_term(&self) -> Term {
-                Term::generated(TermData::ArrayTerm(
-                    self.iter()
-                        .map(|entry_term| Arc::new(T::to_term(entry_term)))
-                        .collect(),
-                ))
-            }
-        })*
-    };
+impl<T: ToTerm, const LEN: usize> ToTerm for [T; LEN] {
+    fn to_term(&self) -> Term {
+        Term::generated(TermData::ArrayTerm(
+            self.iter().map(T::to_term).map(Arc::new).collect(),
+        ))
+    }
 }
-
-impl_to_term_array!(
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30, 31, 32
-);
