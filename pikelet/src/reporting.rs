@@ -66,7 +66,7 @@ impl Message {
             InvalidToken { location } => Message::from(LexerError::InvalidToken {
                 location: Location::file_range(file_id, location..location),
             }),
-            UnrecognizedEOF { location, expected } => Message::from(ParseError::UnrecognizedEOF {
+            UnrecognizedEOF { location, expected } => Message::from(ParseError::UnrecognizedEof {
                 location: Location::file_range(file_id, location..location),
                 expected,
             }),
@@ -122,7 +122,7 @@ impl LexerError {
 /// Parse errors
 #[derive(Clone, Debug)]
 pub enum ParseError {
-    UnrecognizedEOF {
+    UnrecognizedEof {
         location: Location,
         expected: Vec<String>,
     },
@@ -140,7 +140,7 @@ pub enum ParseError {
 impl ParseError {
     pub fn to_diagnostic(&self) -> Diagnostic<FileId> {
         match self {
-            ParseError::UnrecognizedEOF { location, expected } => Diagnostic::error()
+            ParseError::UnrecognizedEof { location, expected } => Diagnostic::error()
                 .with_message("unexpected end of file")
                 .with_labels(option_to_vec(
                     primary(location).map(|label| label.with_message("unexpected end of file")),
