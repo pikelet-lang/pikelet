@@ -8,7 +8,7 @@
 //! [`pass::surface_to_core`]: crate::pass::surface_to_core
 
 use contracts::debug_ensures;
-use std::collections::HashMap;
+use fxhash::FxHashMap;
 
 use crate::lang::core::{Constant, Globals, Locals, Term, TermData};
 use crate::lang::surface;
@@ -17,7 +17,7 @@ use crate::lang::Located;
 /// Distillation state.
 pub struct State<'me> {
     globals: &'me Globals,
-    usages: HashMap<String, Usage>,
+    usages: FxHashMap<String, Usage>,
     local_names: Locals<String>,
 }
 

@@ -3,7 +3,7 @@
 //! This is not intended to be used directly by users of the programming
 //! language.
 
-use std::collections::BTreeMap;
+use fxhash::FxHashMap;
 use std::fmt;
 use std::sync::Arc;
 
@@ -115,11 +115,11 @@ impl From<Constant> for TermData {
 
 /// An environment of global definitions.
 pub struct Globals {
-    entries: BTreeMap<String, (Arc<Term>, Option<Arc<Term>>)>,
+    entries: FxHashMap<String, (Arc<Term>, Option<Arc<Term>>)>,
 }
 
 impl Globals {
-    pub fn new(entries: BTreeMap<String, (Arc<Term>, Option<Arc<Term>>)>) -> Globals {
+    pub fn new(entries: FxHashMap<String, (Arc<Term>, Option<Arc<Term>>)>) -> Globals {
         Globals { entries }
     }
 
@@ -134,7 +134,7 @@ impl Globals {
 
 impl Default for Globals {
     fn default() -> Globals {
-        let mut entries = BTreeMap::new();
+        let mut entries = FxHashMap::default();
 
         let global = |name: &str| Arc::new(Term::generated(TermData::Global(name.to_owned())));
         let type_type = || Arc::new(Term::generated(TermData::TypeType));
