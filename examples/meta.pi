@@ -1,0 +1,41 @@
+record {
+    Constant =
+        Fun (Constant : Type)
+            (constant : Record {
+                u8 : U8 -> Constant,
+                u16 : U16 -> Constant,
+                u32 : U32 -> Constant,
+                u64 : U64 -> Constant,
+                s8 : S8 -> Constant,
+                s16 : S16 -> Constant,
+                s32 : S32 -> Constant,
+                s64 : S64 -> Constant,
+                f32 : F32 -> Constant,
+                f64 : F64 -> Constant,
+                char : Char -> Constant,
+                string : String -> Constant,
+            })
+            -> Constant,
+
+    Term =
+        Fun (Term : Type)
+            (term : Record {
+                global : String -> Term,
+                local : U32 -> Term,
+                ann : Term -> Term -> Term,
+                type-type : Term,
+                function-type : Term -> Term -> Term,
+                function-term : Term -> Term,
+                function-elim : Term -> Term -> Term,
+                record-type : List (Record { label : String, type : Term }) -> Term,
+                record-term : List (Record { label : String, term : Term }) -> Term,
+                record-elim : Term -> Term,
+                list-term : List Term -> Term,
+                array-term : List Term -> Term,
+                constant : Constant -> Term,
+            })
+            -> Term,
+} : Record {
+    Constant : Type,
+    Term : Type,
+}

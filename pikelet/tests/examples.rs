@@ -92,6 +92,7 @@ example_test!(comments, "comments");
 example_test!(functions, "functions");
 example_test!(hello_world, "hello-world");
 example_test!(literals, "literals");
+example_test!(meta, "meta");
 example_test!(prelude, "prelude");
 example_test!(record_mesh, "record-mesh");
 example_test!(record_term_deps, "record-term-deps");
