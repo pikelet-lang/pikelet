@@ -257,10 +257,10 @@ impl LazyValue {
         self.cell.get_or_init(|| match self.init.replace(None) {
             Some(LazyInit::EvalTerm(mut locals, term)) => eval(globals, &mut locals, &term),
             Some(LazyInit::ApplyElim(head, Elim::Record(label))) => {
-                apply_record_elim(globals, head.force(globals).clone(), &label)
+                record_elim(globals, head.force(globals).clone(), &label)
             }
             Some(LazyInit::ApplyElim(head, Elim::Function(input))) => {
-                apply_function_elim(globals, head.force(globals).clone(), input)
+                function_elim(globals, head.force(globals).clone(), input)
             }
             None => panic!("Lazy instance has previously been poisoned"),
         })
@@ -323,7 +323,7 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
         ))),
         TermData::RecordElim(head, label) => {
             let head = eval(globals, locals, head);
-            apply_record_elim(globals, head, label)
+            record_elim(globals, head, label)
         }
 
         TermData::FunctionType(input_name_hint, input_type, output_type) => {
@@ -340,7 +340,7 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
         TermData::FunctionElim(head, input) => {
             let head = eval(globals, locals, head);
             let input = LazyValue::eval(locals.clone(), input.clone());
-            apply_function_elim(globals, head, Arc::new(input))
+            function_elim(globals, head, Arc::new(input))
         }
 
         TermData::ArrayTerm(term_entries) => {
@@ -377,13 +377,13 @@ pub fn record_elim_type(
         if entry_label == label {
             Ok(entry_type)
         } else {
-            Err(apply_record_elim(globals, head_value.clone(), label))
+            Err(record_elim(globals, head_value.clone(), label))
         }
     })
 }
 
 /// Apply a record term elimination.
-fn apply_record_elim(globals: &Globals, mut head_value: Arc<Value>, label: &str) -> Arc<Value> {
+fn record_elim(globals: &Globals, mut head_value: Arc<Value>, label: &str) -> Arc<Value> {
     match Arc::make_mut(&mut head_value) {
         Value::Stuck(_, spine) => {
             spine.push(Elim::Record(label.to_owned()));
@@ -413,7 +413,7 @@ fn apply_record_elim(globals: &Globals, mut head_value: Arc<Value>, label: &str)
 }
 
 /// Apply a function term elimination.
-fn apply_function_elim(
+fn function_elim(
     globals: &Globals,
     mut head_value: Arc<Value>,
     input: Arc<LazyValue>,
@@ -494,13 +494,13 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
 
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level(), []));
-            let input_type = Arc::new(read_back(globals, local_size, unfold, input_type));
+            let input_type = read_back(globals, local_size, unfold, input_type);
             let output_type = output_closure.apply(globals, local);
             let output_type = read_back(globals, local_size.increment(), unfold, &output_type);
 
             Term::generated(TermData::FunctionType(
                 input_name_hint.clone(),
-                input_type,
+                Arc::new(input_type),
                 Arc::new(output_type),
             ))
         }

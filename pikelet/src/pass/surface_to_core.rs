@@ -333,30 +333,26 @@ impl<'me> State<'me> {
                     core::Term::new(term.location, core::TermData::Error)
                 }
             },
-            (TermData::NumberTerm(data), forced_type) => {
-                use crate::lang::core::Constant::*;
-
-                match forced_type.try_global() {
-                    Some(("U8", [])) => self.parse_unsigned(term.location, data, U8),
-                    Some(("U16", [])) => self.parse_unsigned(term.location, data, U16),
-                    Some(("U32", [])) => self.parse_unsigned(term.location, data, U32),
-                    Some(("U64", [])) => self.parse_unsigned(term.location, data, U64),
-                    Some(("S8", [])) => self.parse_signed(term.location, data, S8),
-                    Some(("S16", [])) => self.parse_signed(term.location, data, S16),
-                    Some(("S32", [])) => self.parse_signed(term.location, data, S32),
-                    Some(("S64", [])) => self.parse_signed(term.location, data, S64),
-                    Some(("F32", [])) => self.parse_float(term.location, data, F32),
-                    Some(("F64", [])) => self.parse_float(term.location, data, F64),
-                    Some(_) | None => {
-                        let expected_type = self.read_back_to_surface(expected_type);
-                        self.report(SurfaceToCoreMessage::NoLiteralConversion {
-                            location: term.location,
-                            expected_type,
-                        });
-                        core::Term::new(term.location, core::TermData::Error)
-                    }
+            (TermData::NumberTerm(data), forced_type) => match forced_type.try_global() {
+                Some(("U8", [])) => self.parse_unsigned(term.location, data, core::Constant::U8),
+                Some(("U16", [])) => self.parse_unsigned(term.location, data, core::Constant::U16),
+                Some(("U32", [])) => self.parse_unsigned(term.location, data, core::Constant::U32),
+                Some(("U64", [])) => self.parse_unsigned(term.location, data, core::Constant::U64),
+                Some(("S8", [])) => self.parse_signed(term.location, data, core::Constant::S8),
+                Some(("S16", [])) => self.parse_signed(term.location, data, core::Constant::S16),
+                Some(("S32", [])) => self.parse_signed(term.location, data, core::Constant::S32),
+                Some(("S64", [])) => self.parse_signed(term.location, data, core::Constant::S64),
+                Some(("F32", [])) => self.parse_float(term.location, data, core::Constant::F32),
+                Some(("F64", [])) => self.parse_float(term.location, data, core::Constant::F64),
+                Some(_) | None => {
+                    let expected_type = self.read_back_to_surface(expected_type);
+                    self.report(SurfaceToCoreMessage::NoLiteralConversion {
+                        location: term.location,
+                        expected_type,
+                    });
+                    core::Term::new(term.location, core::TermData::Error)
                 }
-            }
+            },
             (TermData::CharTerm(data), forced_type) => match forced_type.try_global() {
                 Some(("Char", [])) => self.parse_char(term.location, data),
                 Some(_) | None => {
@@ -492,26 +488,23 @@ impl<'me> State<'me> {
                 let core_input_type_value = self.eval(&core_input_type);
 
                 self.push_local_param(None, core_input_type_value);
-                let core_output_type = match self.is_type(output_type) {
-                    Some(core_output_type) => core_output_type,
-                    None => {
-                        self.pop_local();
-                        return (error_term(), Arc::new(Value::Error));
-                    }
+                let (core_term, r#type) = match self.is_type(output_type) {
+                    Some(core_output_type) => (
+                        core::Term::new(
+                            term.location,
+                            core::TermData::FunctionType(
+                                None,
+                                Arc::new(core_input_type),
+                                Arc::new(core_output_type),
+                            ),
+                        ),
+                        Arc::new(Value::TypeType),
+                    ),
+                    None => (error_term(), Arc::new(Value::Error)),
                 };
                 self.pop_local();
 
-                (
-                    core::Term::new(
-                        term.location,
-                        core::TermData::FunctionType(
-                            None,
-                            Arc::new(core_input_type),
-                            Arc::new(core_output_type),
-                        ),
-                    ),
-                    Arc::new(Value::TypeType),
-                )
+                (core_term, r#type)
             }
             TermData::FunctionTerm(_, _) => {
                 self.report(SurfaceToCoreMessage::AmbiguousTerm {
@@ -558,22 +551,19 @@ impl<'me> State<'me> {
                 (core_head_term, head_type)
             }
 
-            TermData::RecordTerm(term_entries) => {
-                if term_entries.is_empty() {
-                    (
-                        core::Term::new(term.location, core::TermData::RecordTerm(Arc::new([]))),
-                        Arc::from(Value::RecordType(RecordClosure::new(
-                            self.local_definitions.clone(),
-                            Arc::new([]),
-                        ))),
-                    )
-                } else {
-                    self.report(SurfaceToCoreMessage::AmbiguousTerm {
-                        location: term.location,
-                        term: AmbiguousTerm::RecordTerm,
-                    });
-                    (error_term(), Arc::new(Value::Error))
-                }
+            TermData::RecordTerm(term_entries) if term_entries.is_empty() => (
+                core::Term::new(term.location, core::TermData::RecordTerm(Arc::new([]))),
+                Arc::from(Value::RecordType(RecordClosure::new(
+                    self.local_definitions.clone(),
+                    Arc::new([]),
+                ))),
+            ),
+            TermData::RecordTerm(_) => {
+                self.report(SurfaceToCoreMessage::AmbiguousTerm {
+                    location: term.location,
+                    term: AmbiguousTerm::RecordTerm,
+                });
+                (error_term(), Arc::new(Value::Error))
             }
             TermData::RecordType(type_entries) => {
                 use std::collections::btree_map::Entry;
@@ -583,22 +573,22 @@ impl<'me> State<'me> {
                 let mut core_type_entries = Vec::new();
 
                 for (label, name, entry_type) in type_entries {
-                    let name = name.as_ref().unwrap_or(label);
                     match seen_labels.entry(label.data.as_str()) {
-                        Entry::Vacant(entry) => {
-                            let core_type = match self.is_type(entry_type) {
-                                Some(core_type) => core_type,
-                                None => {
-                                    self.pop_many_locals(seen_labels.len());
-                                    return (error_term(), Arc::new(Value::Error));
-                                }
-                            };
-                            let core_type = Arc::new(core_type);
-                            let core_type_value = self.eval(&core_type);
-                            core_type_entries.push((label.data.clone(), core_type));
-                            self.push_local_param(Some(&name.data), core_type_value);
-                            entry.insert(label.location);
-                        }
+                        Entry::Vacant(entry) => match self.is_type(entry_type) {
+                            Some(core_type) => {
+                                let param_name = name.as_ref().unwrap_or(label);
+                                let core_type = Arc::new(core_type);
+                                let core_type_value = self.eval(&core_type);
+
+                                core_type_entries.push((label.data.clone(), core_type));
+                                self.push_local_param(Some(&param_name.data), core_type_value);
+                                entry.insert(label.location);
+                            }
+                            None => {
+                                self.pop_many_locals(seen_labels.len());
+                                return (error_term(), Arc::new(Value::Error));
+                            }
+                        },
                         Entry::Occupied(entry) => {
                             let seen_range = *entry.get();
                             let current_range = label.location;

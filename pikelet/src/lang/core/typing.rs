@@ -308,18 +308,17 @@ impl<'me> State<'me> {
                 }
             }
 
-            TermData::RecordTerm(term_entries) => {
-                if term_entries.is_empty() {
-                    Arc::from(Value::RecordType(RecordClosure::new(
-                        self.local_definitions.clone(),
-                        Arc::new([]),
-                    )))
-                } else {
-                    self.report(CoreTypingMessage::AmbiguousTerm {
-                        term: AmbiguousTerm::RecordTerm,
-                    });
-                    Arc::new(Value::Error)
-                }
+            TermData::RecordTerm(term_entries) if term_entries.is_empty() => {
+                Arc::from(Value::RecordType(RecordClosure::new(
+                    self.local_definitions.clone(),
+                    Arc::new([]),
+                )))
+            }
+            TermData::RecordTerm(_) => {
+                self.report(CoreTypingMessage::AmbiguousTerm {
+                    term: AmbiguousTerm::RecordTerm,
+                });
+                Arc::new(Value::Error)
             }
             TermData::RecordType(type_entries) => {
                 use std::collections::BTreeSet;
@@ -384,20 +383,18 @@ impl<'me> State<'me> {
                 Arc::new(Value::Error)
             }
 
-            TermData::Constant(constant) => Arc::new(match constant {
-                Constant::U8(_) => Value::global("U8", []),
-                Constant::U16(_) => Value::global("U16", []),
-                Constant::U32(_) => Value::global("U32", []),
-                Constant::U64(_) => Value::global("U64", []),
-                Constant::S8(_) => Value::global("S8", []),
-                Constant::S16(_) => Value::global("S16", []),
-                Constant::S32(_) => Value::global("S32", []),
-                Constant::S64(_) => Value::global("S64", []),
-                Constant::F32(_) => Value::global("F32", []),
-                Constant::F64(_) => Value::global("F64", []),
-                Constant::Char(_) => Value::global("Char", []),
-                Constant::String(_) => Value::global("String", []),
-            }),
+            TermData::Constant(Constant::U8(_)) => Arc::new(Value::global("U8", [])),
+            TermData::Constant(Constant::U16(_)) => Arc::new(Value::global("U16", [])),
+            TermData::Constant(Constant::U32(_)) => Arc::new(Value::global("U32", [])),
+            TermData::Constant(Constant::U64(_)) => Arc::new(Value::global("U64", [])),
+            TermData::Constant(Constant::S8(_)) => Arc::new(Value::global("S8", [])),
+            TermData::Constant(Constant::S16(_)) => Arc::new(Value::global("S16", [])),
+            TermData::Constant(Constant::S32(_)) => Arc::new(Value::global("S32", [])),
+            TermData::Constant(Constant::S64(_)) => Arc::new(Value::global("S64", [])),
+            TermData::Constant(Constant::F32(_)) => Arc::new(Value::global("F32", [])),
+            TermData::Constant(Constant::F64(_)) => Arc::new(Value::global("F64", [])),
+            TermData::Constant(Constant::Char(_)) => Arc::new(Value::global("Char", [])),
+            TermData::Constant(Constant::String(_)) => Arc::new(Value::global("String", [])),
 
             TermData::Error => Arc::new(Value::Error),
         }
