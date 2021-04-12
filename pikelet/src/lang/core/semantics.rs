@@ -350,23 +350,31 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
 /// Return the type of the record elimination.
 pub fn record_elim_type(
     globals: &Globals,
-    head_value: Arc<Value>,
+    locals: &mut Locals<Arc<Value>>,
+    head_term: &Term,
+    head_type: &Arc<Value>,
     label: &str,
-    labels: &[String],
-    closure: &RecordClosure,
 ) -> Option<Arc<Value>> {
-    let mut labels = labels.iter();
-    let mut locals = closure.locals.clone();
+    match head_type.force(globals) {
+        Value::RecordType(labels, closure) => {
+            let head_value = eval(globals, locals, head_term);
 
-    for entry_type in closure.entries.iter() {
-        let entry_type = eval(globals, &mut locals, entry_type);
-        match labels.next() {
-            Some(next_label) if next_label == label => return Some(entry_type),
-            Some(_) | None => locals.push(record_elim(globals, head_value.clone(), label)),
+            let mut labels = labels.iter();
+            let mut locals = closure.locals.clone();
+
+            for entry_type in closure.entries.iter() {
+                let entry_type = eval(globals, &mut locals, entry_type);
+                match labels.next() {
+                    Some(next_label) if next_label == label => return Some(entry_type),
+                    Some(_) | None => locals.push(record_elim(globals, head_value.clone(), label)),
+                }
+            }
+
+            None
         }
+        Value::Error => Some(Arc::new(Value::Error)),
+        _ => None,
     }
-
-    None
 }
 
 /// Apply a record term elimination.

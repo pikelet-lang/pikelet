@@ -102,13 +102,18 @@ impl<'me> State<'me> {
 
     /// Return the type of the record elimination.
     pub fn record_elim_type(
-        &self,
-        head_value: Arc<Value>,
+        &mut self,
+        head_term: &core::Term,
+        head_type: &Arc<Value>,
         label: &str,
-        labels: &[String],
-        closure: &RecordClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(self.globals, head_value, label, labels, closure)
+        semantics::record_elim_type(
+            self.globals,
+            &mut self.local_definitions,
+            head_term,
+            head_type,
+            label,
+        )
     }
 
     /// Fully normalize a [`core::Term`] using [normalization by evaluation].
@@ -625,33 +630,27 @@ impl<'me> State<'me> {
             TermData::RecordElim(head_term, label) => {
                 let (core_head_term, head_type) = self.synth_type(head_term);
 
-                match head_type.force(self.globals) {
-                    Value::RecordType(labels, closure) => {
-                        let head_value = self.eval(&core_head_term);
-
-                        if let Some(entry_type) =
-                            self.record_elim_type(head_value, &label.data, labels, closure)
-                        {
-                            let core_head_term = Arc::new(core_head_term);
-                            let core_term = core::Term::new(
-                                term.location,
-                                core::TermData::RecordElim(core_head_term, label.data.clone()),
-                            );
-                            return (core_term, entry_type);
+                match self.record_elim_type(&core_head_term, &head_type, &label.data) {
+                    Some(entry_type) => match entry_type.as_ref() {
+                        Value::Error => (error_term(), entry_type),
+                        _ => {
+                            let head_term = Arc::new(core_head_term);
+                            let label = label.data.clone();
+                            let term_data = core::TermData::RecordElim(head_term, label);
+                            (core::Term::new(term.location, term_data), entry_type)
                         }
+                    },
+                    None => {
+                        let head_type = self.read_back_to_surface(&head_type);
+                        self.report(SurfaceToCoreMessage::LabelNotFound {
+                            head_location: head_term.location,
+                            label_location: label.location,
+                            expected_label: label.data.clone(),
+                            head_type,
+                        });
+                        (error_term(), Arc::new(Value::Error))
                     }
-                    Value::Error => return (error_term(), Arc::new(Value::Error)),
-                    _ => {}
                 }
-
-                let head_type = self.read_back_to_surface(&head_type);
-                self.report(SurfaceToCoreMessage::LabelNotFound {
-                    head_location: head_term.location,
-                    label_location: label.location,
-                    expected_label: label.data.clone(),
-                    head_type,
-                });
-                (error_term(), Arc::new(Value::Error))
             }
 
             TermData::SequenceTerm(_) => {

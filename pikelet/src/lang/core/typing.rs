@@ -13,7 +13,7 @@ use contracts::debug_ensures;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 
-use crate::lang::core::semantics::{self, Elim, RecordClosure, Unfold, Value};
+use crate::lang::core::semantics::{self, Elim, Unfold, Value};
 use crate::lang::core::{Constant, Globals, LocalSize, Locals, Term, TermData};
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
@@ -85,13 +85,18 @@ impl<'me> State<'me> {
 
     /// Return the type of the record elimination.
     pub fn record_elim_type(
-        &self,
-        head_value: Arc<Value>,
+        &mut self,
+        head_term: &Term,
+        head_type: &Arc<Value>,
         label: &str,
-        labels: &[String],
-        closure: &RecordClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(self.globals, head_value, label, labels, closure)
+        semantics::record_elim_type(
+            self.globals,
+            &mut self.local_definitions,
+            head_term,
+            head_type,
+            label,
+        )
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
@@ -357,26 +362,17 @@ impl<'me> State<'me> {
             TermData::RecordElim(head_term, label) => {
                 let head_type = self.synth_type(head_term);
 
-                match head_type.force(self.globals) {
-                    Value::RecordType(labels, closure) => {
-                        let head_value = self.eval(head_term);
-
-                        if let Some(entry_type) =
-                            self.record_elim_type(head_value, label, labels, closure)
-                        {
-                            return entry_type;
-                        }
+                match self.record_elim_type(&head_term, &head_type, label) {
+                    Some(entry_type) => entry_type,
+                    None => {
+                        let head_type = self.read_back(&head_type);
+                        self.report(CoreTypingMessage::LabelNotFound {
+                            expected_label: label.clone(),
+                            head_type,
+                        });
+                        Arc::new(Value::Error)
                     }
-                    Value::Error => return Arc::new(Value::Error),
-                    _ => {}
                 }
-
-                let head_type = self.read_back(&head_type);
-                self.report(CoreTypingMessage::LabelNotFound {
-                    expected_label: label.clone(),
-                    head_type,
-                });
-                Arc::new(Value::Error)
             }
 
             TermData::ArrayTerm(_) => {
