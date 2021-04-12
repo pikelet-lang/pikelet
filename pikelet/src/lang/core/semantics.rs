@@ -53,9 +53,9 @@ pub enum Value {
     FunctionTerm(String, FunctionClosure),
 
     /// Record types.
-    RecordType(RecordClosure),
+    RecordType(Arc<[String]>, RecordClosure),
     /// Record terms.
-    RecordTerm(RecordClosure),
+    RecordTerm(Arc<[String]>, RecordClosure),
 
     /// Array terms.
     ArrayTerm(Vec<Arc<Value>>),
@@ -140,7 +140,7 @@ pub enum Elim {
     Record(String),
 }
 
-/// Function closure, capturing the current universe offset and the current locals in scope.
+/// Function closure, capturing the current locals in scope.
 #[derive(Clone, Debug)]
 pub struct FunctionClosure {
     locals: Locals<Arc<Value>>,
@@ -160,49 +160,30 @@ impl FunctionClosure {
     }
 }
 
-/// Record closure, capturing the current universe offset and the current locals in scope.
+/// Record closure, capturing the current locals in scope.
 #[derive(Clone, Debug)]
 pub struct RecordClosure {
     locals: Locals<Arc<Value>>,
-    entries: Arc<[(String, Arc<Term>)]>,
+    entries: Arc<[Arc<Term>]>,
 }
 
 impl RecordClosure {
-    pub fn new(locals: Locals<Arc<Value>>, entries: Arc<[(String, Arc<Term>)]>) -> RecordClosure {
+    pub fn new(locals: Locals<Arc<Value>>, entries: Arc<[Arc<Term>]>) -> RecordClosure {
         RecordClosure { locals, entries }
     }
 
     /// Apply a callback to each of the entries in the record closure.
-    pub fn for_each_entry<'closure>(
-        &'closure self,
+    pub fn for_each_entry(
+        &self,
         globals: &Globals,
-        mut on_entry: impl FnMut(&'closure str, Arc<Value>) -> Arc<Value>,
+        mut on_entry: impl FnMut(Arc<Value>) -> Arc<Value>,
     ) {
         let mut locals = self.locals.clone();
 
-        for (label, entry_value) in self.entries.iter() {
-            let entry_value = eval(globals, &mut locals, entry_value);
-            locals.push(on_entry(label, entry_value));
+        for entry_term in self.entries.iter() {
+            let entry_value = eval(globals, &mut locals, entry_term);
+            locals.push(on_entry(entry_value));
         }
-    }
-
-    /// Find an entry in the record closure.
-    pub fn find_entry<'closure, T>(
-        &'closure self,
-        globals: &Globals,
-        mut on_entry: impl FnMut(&'closure str, Arc<Value>) -> Result<T, Arc<Value>>,
-    ) -> Option<T> {
-        let mut locals = self.locals.clone();
-
-        for (label, entry_value) in self.entries.iter() {
-            let entry_value = eval(globals, &mut locals, entry_value);
-            match on_entry(label, entry_value) {
-                Ok(t) => return Some(t),
-                Err(entry_value) => locals.push(entry_value),
-            }
-        }
-
-        None
     }
 }
 
@@ -313,14 +294,14 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
 
         TermData::TypeType => Arc::new(Value::TypeType),
 
-        TermData::RecordType(type_entries) => Arc::new(Value::RecordType(RecordClosure::new(
-            locals.clone(),
-            type_entries.clone(),
-        ))),
-        TermData::RecordTerm(term_entries) => Arc::new(Value::RecordTerm(RecordClosure::new(
-            locals.clone(),
-            term_entries.clone(),
-        ))),
+        TermData::RecordType(labels, types) => Arc::new(Value::RecordType(
+            labels.clone(),
+            RecordClosure::new(locals.clone(), types.clone()),
+        )),
+        TermData::RecordTerm(labels, terms) => Arc::new(Value::RecordTerm(
+            labels.clone(),
+            RecordClosure::new(locals.clone(), terms.clone()),
+        )),
         TermData::RecordElim(head, label) => {
             let head = eval(globals, locals, head);
             record_elim(globals, head, label)
@@ -371,15 +352,21 @@ pub fn record_elim_type(
     globals: &Globals,
     head_value: Arc<Value>,
     label: &str,
+    labels: &[String],
     closure: &RecordClosure,
 ) -> Option<Arc<Value>> {
-    closure.find_entry(globals, |entry_label, entry_type| {
-        if entry_label == label {
-            Ok(entry_type)
-        } else {
-            Err(record_elim(globals, head_value.clone(), label))
+    let mut labels = labels.iter();
+    let mut locals = closure.locals.clone();
+
+    for entry_type in closure.entries.iter() {
+        let entry_type = eval(globals, &mut locals, entry_type);
+        match labels.next() {
+            Some(next_label) if next_label == label => return Some(entry_type),
+            Some(_) | None => locals.push(record_elim(globals, head_value.clone(), label)),
         }
-    })
+    }
+
+    None
 }
 
 /// Apply a record term elimination.
@@ -398,15 +385,20 @@ fn record_elim(globals: &Globals, mut head_value: Arc<Value>, label: &str) -> Ar
             head_value
         }
 
-        Value::RecordTerm(closure) => closure
-            .find_entry(globals, |entry_label, entry_value| {
-                if entry_label == label {
-                    Ok(entry_value)
-                } else {
-                    Err(entry_value)
+        Value::RecordTerm(labels, closure) => {
+            let mut labels = labels.iter();
+            let mut locals = closure.locals.clone();
+
+            for entry_value in closure.entries.iter() {
+                let entry_value = eval(globals, &mut locals, entry_value);
+                match labels.next() {
+                    Some(next_label) if next_label == label => return entry_value,
+                    Some(_) | None => locals.push(entry_value),
                 }
-            })
-            .unwrap_or_else(|| Arc::new(Value::Error)),
+            }
+
+            Arc::new(Value::Error)
+        }
 
         _ => Arc::new(Value::Error),
     }
@@ -515,13 +507,13 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
             ))
         }
 
-        Value::RecordType(closure) => {
+        Value::RecordType(labels, closure) => {
             let mut local_size = local_size;
-            let mut type_entries = Vec::with_capacity(closure.entries.len());
+            let mut types = Vec::with_capacity(closure.entries.len());
 
-            closure.for_each_entry(globals, |label, entry_type| {
+            closure.for_each_entry(globals, |entry_type| {
                 let entry_type = read_back(globals, local_size, unfold, &entry_type);
-                type_entries.push((label.to_owned(), Arc::new(entry_type)));
+                types.push(Arc::new(entry_type));
 
                 let local_level = local_size.next_level();
                 local_size = local_size.increment();
@@ -529,15 +521,15 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
                 Arc::new(Value::local(local_level, []))
             });
 
-            Term::generated(TermData::RecordType(type_entries.into()))
+            Term::generated(TermData::RecordType(labels.clone(), types.into()))
         }
-        Value::RecordTerm(closure) => {
+        Value::RecordTerm(labels, closure) => {
             let mut local_size = local_size;
-            let mut term_entries = Vec::with_capacity(closure.entries.len());
+            let mut terms = Vec::with_capacity(closure.entries.len());
 
-            closure.for_each_entry(globals, |label, entry_term| {
+            closure.for_each_entry(globals, |entry_term| {
                 let entry_term = read_back(globals, local_size, unfold, &entry_term);
-                term_entries.push((label.to_owned(), Arc::new(entry_term)));
+                terms.push(Arc::new(entry_term));
 
                 let local_level = local_size.next_level();
                 local_size = local_size.increment();
@@ -545,7 +537,7 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
                 Arc::new(Value::local(local_level, []))
             });
 
-            Term::generated(TermData::RecordTerm(term_entries.into()))
+            Term::generated(TermData::RecordTerm(labels.clone(), terms.into()))
         }
 
         Value::ArrayTerm(value_entries) => {
@@ -600,6 +592,50 @@ fn is_equal_stuck(
     true
 }
 
+/// Check that one function closure is equal to another function closure.
+fn is_equal_function_closure(
+    globals: &Globals,
+    local_size: LocalSize,
+    closure0: &FunctionClosure,
+    closure1: &FunctionClosure,
+) -> bool {
+    let local = Arc::new(Value::local(local_size.next_level(), []));
+    let term0 = closure0.apply(globals, local.clone());
+    let term1 = closure1.apply(globals, local);
+    is_equal(globals, local_size.increment(), &term0, &term1)
+}
+
+/// Check that one record closure is equal to another record closure.
+fn is_equal_record_closure(
+    globals: &Globals,
+    mut local_size: LocalSize,
+    closure0: &RecordClosure,
+    closure1: &RecordClosure,
+) -> bool {
+    if closure0.entries.len() != closure1.entries.len() {
+        return false;
+    }
+
+    let mut locals0 = closure0.locals.clone();
+    let mut locals1 = closure1.locals.clone();
+
+    for (entry0, entry1) in Iterator::zip(closure0.entries.iter(), closure1.entries.iter()) {
+        let entry0 = eval(globals, &mut locals0, entry0);
+        let entry1 = eval(globals, &mut locals1, entry1);
+
+        if !is_equal(globals, local_size, &entry0, &entry1) {
+            return false;
+        }
+
+        let local = Arc::new(Value::local(local_size.next_level(), []));
+        locals0.push(local.clone());
+        locals1.push(local);
+        local_size = local_size.increment();
+    }
+
+    true
+}
+
 /// Check that one value is [computationally equal] to another value.
 ///
 /// [computationally equal]: https://ncatlab.org/nlab/show/equality#computational_equality
@@ -631,89 +667,16 @@ pub fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1
             Value::FunctionType(_, input_type0, output_closure0),
             Value::FunctionType(_, input_type1, output_closure1),
         ) => {
-            if !is_equal(globals, local_size, input_type1, input_type0) {
-                return false;
-            }
-
-            let local = Arc::new(Value::local(local_size.next_level(), []));
-            is_equal(
-                globals,
-                local_size.increment(),
-                &output_closure0.apply(globals, local.clone()),
-                &output_closure1.apply(globals, local),
-            )
+            is_equal(globals, local_size, input_type1, input_type0)
+                && is_equal_function_closure(globals, local_size, output_closure0, output_closure1)
         }
         (Value::FunctionTerm(_, output_closure0), Value::FunctionTerm(_, output_closure1)) => {
-            let local = Arc::new(Value::local(local_size.next_level(), []));
-            is_equal(
-                globals,
-                local_size.increment(),
-                &output_closure0.apply(globals, local.clone()),
-                &output_closure1.apply(globals, local),
-            )
+            is_equal_function_closure(globals, local_size, output_closure0, output_closure1)
         }
 
-        (Value::RecordType(closure0), Value::RecordType(closure1)) => {
-            if closure0.entries.len() != closure1.entries.len() {
-                return false;
-            }
-
-            let mut local_size = local_size;
-            let mut locals0 = closure0.locals.clone();
-            let mut locals1 = closure1.locals.clone();
-
-            for ((label0, entry_type0), (label1, entry_type1)) in
-                Iterator::zip(closure0.entries.iter(), closure1.entries.iter())
-            {
-                if label0 != label1 {
-                    return false;
-                }
-
-                let entry_type0 = eval(globals, &mut locals0, entry_type0);
-                let entry_type1 = eval(globals, &mut locals1, entry_type1);
-
-                if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
-                    return false;
-                }
-
-                let local_level = local_size.next_level();
-                locals0.push(Arc::new(Value::local(local_level, [])));
-                locals1.push(Arc::new(Value::local(local_level, [])));
-                local_size = local_size.increment();
-            }
-
-            true
-        }
-        (Value::RecordTerm(closure0), Value::RecordTerm(closure1)) => {
-            if closure0.entries.len() != closure1.entries.len() {
-                return false;
-            }
-
-            let mut local_size = local_size;
-            let mut locals0 = closure0.locals.clone();
-            let mut locals1 = closure1.locals.clone();
-
-            for ((label0, entry_type0), (label1, entry_type1)) in
-                Iterator::zip(closure0.entries.iter(), closure1.entries.iter())
-            {
-                if label0 != label1 {
-                    return false;
-                }
-
-                let entry_type0 = eval(globals, &mut locals0, entry_type0);
-                let entry_type1 = eval(globals, &mut locals1, entry_type1);
-
-                if !is_equal(globals, local_size, &entry_type0, &entry_type1) {
-                    return false;
-                }
-
-                let local_level = local_size.next_level();
-                locals0.push(Arc::new(Value::local(local_level, [])));
-                locals1.push(Arc::new(Value::local(local_level, [])));
-                local_size = local_size.increment();
-            }
-
-            true
+        (Value::RecordType(labels0, closure0), Value::RecordType(labels1, closure1))
+        | (Value::RecordTerm(labels0, closure0), Value::RecordTerm(labels1, closure1)) => {
+            labels0 == labels1 && is_equal_record_closure(globals, local_size, closure0, closure1)
         }
 
         (Value::ArrayTerm(value_entries0), Value::ArrayTerm(value_entries1))
@@ -731,7 +694,7 @@ pub fn is_equal(globals: &Globals, local_size: LocalSize, value0: &Value, value1
 
         (Value::Constant(constant0), Value::Constant(constant1)) => constant0 == constant1,
 
-        // Errors are always treated as subtypes, regardless of what they are compared with.
+        // Errors are always treated as equal, regardless of what they are compared with.
         (Value::Error, _) | (_, Value::Error) => true,
         // Anything else is not equal!
         (_, _) => false,

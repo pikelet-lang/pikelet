@@ -87,10 +87,11 @@ impl<'me> State<'me> {
     pub fn record_elim_type(
         &self,
         head_value: Arc<Value>,
-        name: &str,
+        label: &str,
+        labels: &[String],
         closure: &RecordClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(self.globals, head_value, name, closure)
+        semantics::record_elim_type(self.globals, head_value, label, labels, closure)
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
@@ -150,33 +151,41 @@ impl<'me> State<'me> {
                 self.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
             }
 
-            (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
-                let mut pending_term_entries = term_entries.iter();
+            (TermData::RecordTerm(term_labels, terms), Value::RecordType(type_labels, closure)) => {
+                if term_labels.len() != terms.len() {
+                    self.report(CoreTypingMessage::InvalidRecordTermLabelCount);
+                    return;
+                }
+
+                let mut pending_type_labels = type_labels.iter();
+                let mut pending_entries = Iterator::zip(term_labels.iter(), terms.iter());
+                let mut entry_count = 0;
+
                 let mut missing_labels = Vec::new();
                 let mut unexpected_labels = Vec::new();
-                let mut term_entry_count = 0;
 
-                closure.for_each_entry(self.globals, |label, entry_type| loop {
-                    match pending_term_entries.next() {
-                        Some((next_label, entry_term)) if next_label == label => {
-                            self.check_type(&entry_term, &entry_type);
-                            let entry_value = self.eval(&entry_term);
+                closure.for_each_entry(self.globals, |r#type| {
+                    if let Some(label) = pending_type_labels.next() {
+                        while let Some((next_label, term)) = pending_entries.next() {
+                            if next_label == label {
+                                self.check_type(&term, &r#type);
+                                let value = self.eval(&term);
 
-                            self.push_local(entry_value.clone(), entry_type);
-                            term_entry_count += 1;
+                                self.push_local(value.clone(), r#type);
+                                entry_count += 1;
 
-                            break entry_value;
+                                return value;
+                            } else {
+                                unexpected_labels.push(next_label.to_owned())
+                            }
                         }
-                        Some((next_label, _)) => unexpected_labels.push(next_label.to_owned()),
-                        None => {
-                            missing_labels.push(label.to_owned());
-                            break Arc::new(Value::Error);
-                        }
+                        missing_labels.push(label.to_owned());
                     }
+                    Arc::new(Value::Error)
                 });
 
-                self.pop_many_locals(term_entry_count);
-                unexpected_labels.extend(pending_term_entries.map(|(label, _)| label.clone()));
+                self.pop_many_locals(entry_count);
+                unexpected_labels.extend(pending_entries.map(|(label, _)| label.clone()));
 
                 if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
                     self.report(CoreTypingMessage::InvalidRecordTerm {
@@ -308,25 +317,24 @@ impl<'me> State<'me> {
                 }
             }
 
-            TermData::RecordTerm(term_entries) if term_entries.is_empty() => {
-                Arc::from(Value::RecordType(RecordClosure::new(
-                    self.local_definitions.clone(),
-                    Arc::new([]),
-                )))
-            }
-            TermData::RecordTerm(_) => {
+            TermData::RecordTerm(_, _) => {
                 self.report(CoreTypingMessage::AmbiguousTerm {
                     term: AmbiguousTerm::RecordTerm,
                 });
                 Arc::new(Value::Error)
             }
-            TermData::RecordType(type_entries) => {
+            TermData::RecordType(labels, types) => {
                 use std::collections::BTreeSet;
+
+                if labels.len() != types.len() {
+                    self.report(CoreTypingMessage::InvalidRecordTypeLabelCount);
+                    return Arc::new(Value::Error);
+                }
 
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeSet::new();
 
-                for (name, r#type) in type_entries.iter() {
+                for (name, r#type) in Iterator::zip(labels.iter(), types.iter()) {
                     if !seen_labels.insert(name) {
                         duplicate_labels.push(name.clone());
                     }
@@ -350,10 +358,11 @@ impl<'me> State<'me> {
                 let head_type = self.synth_type(head_term);
 
                 match head_type.force(self.globals) {
-                    Value::RecordType(closure) => {
+                    Value::RecordType(labels, closure) => {
                         let head_value = self.eval(head_term);
 
-                        if let Some(entry_type) = self.record_elim_type(head_value, label, closure)
+                        if let Some(entry_type) =
+                            self.record_elim_type(head_value, label, labels, closure)
                         {
                             return entry_type;
                         }

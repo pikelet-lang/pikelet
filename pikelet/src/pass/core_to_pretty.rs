@@ -2,6 +2,7 @@
 //!
 //! [core language]: crate::lang::core
 
+use itertools::Itertools;
 use pretty::{DocAllocator, DocBuilder};
 
 use crate::lang::core::{Constant, Term, TermData};
@@ -90,51 +91,65 @@ where
             ),
         ),
 
-        TermData::RecordType(type_entries) => (alloc.nil())
+        TermData::RecordType(labels, types) => (alloc.nil())
             .append("Record")
             .append(alloc.space())
             .append("{")
             .group()
-            .append(alloc.concat(type_entries.iter().map(|(label, r#type)| {
-                (alloc.nil())
-                    .append(alloc.hardline())
-                    .append(alloc.text(label))
-                    .append(alloc.space())
-                    .append(":")
-                    .group()
-                    .append(
-                        (alloc.space())
-                            .append(from_term_prec(alloc, r#type, Prec::Term))
-                            .append(",")
+            .append(
+                alloc.concat(
+                    Itertools::zip_longest(labels.iter(), types.iter()).map(|entry| {
+                        let label = match entry.as_ref().left() {
+                            None => alloc.text("!"),
+                            Some(label) => alloc.text(*label),
+                        };
+                        let r#type = match entry.as_ref().right() {
+                            None => alloc.text("!"),
+                            Some(r#type) => from_term_prec(alloc, r#type, Prec::Term),
+                        };
+
+                        (alloc.nil())
+                            .append(alloc.hardline())
+                            .append(label)
+                            .append(alloc.space())
+                            .append(":")
                             .group()
-                            .nest(4),
-                    )
-                    .nest(4)
-                    .group()
-            })))
+                            .append((alloc.space()).append(r#type).append(",").group().nest(4))
+                            .nest(4)
+                            .group()
+                    }),
+                ),
+            )
             .append("}"),
-        TermData::RecordTerm(term_entries) => (alloc.nil())
+        TermData::RecordTerm(labels, terms) => (alloc.nil())
             .append("record")
             .append(alloc.space())
             .append("{")
             .group()
-            .append(alloc.concat(term_entries.iter().map(|(label, term)| {
-                (alloc.nil())
-                    .append(alloc.hardline())
-                    .append(alloc.text(label))
-                    .append(alloc.space())
-                    .append("=")
-                    .group()
-                    .append(
-                        (alloc.space())
-                            .append(from_term_prec(alloc, term, Prec::Term))
-                            .append(",")
+            .append(
+                alloc.concat(
+                    Itertools::zip_longest(labels.iter(), terms.iter()).map(|entry| {
+                        let label = match entry.as_ref().left() {
+                            None => alloc.text("!"),
+                            Some(label) => alloc.text(*label),
+                        };
+                        let term = match entry.as_ref().right() {
+                            None => alloc.text("!"),
+                            Some(term) => from_term_prec(alloc, term, Prec::Term),
+                        };
+
+                        (alloc.nil())
+                            .append(alloc.hardline())
+                            .append(label)
+                            .append(alloc.space())
+                            .append("=")
                             .group()
-                            .nest(4),
-                    )
-                    .nest(4)
-                    .group()
-            })))
+                            .append((alloc.space()).append(term).append(",").group().nest(4))
+                            .nest(4)
+                            .group()
+                    }),
+                ),
+            )
             .append("}"),
         TermData::RecordElim(head_term, label) => (alloc.nil())
             .append(from_term_prec(alloc, head_term, Prec::Atomic))

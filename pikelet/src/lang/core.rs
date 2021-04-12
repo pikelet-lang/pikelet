@@ -87,9 +87,9 @@ pub enum TermData {
     FunctionElim(Arc<Term>, Arc<Term>),
 
     /// Record types.
-    RecordType(Arc<[(String, Arc<Term>)]>),
+    RecordType(Arc<[String]>, Arc<[Arc<Term>]>),
     /// Record terms.
-    RecordTerm(Arc<[(String, Arc<Term>)]>),
+    RecordTerm(Arc<[String]>, Arc<[Arc<Term>]>),
     /// Record eliminations.
     ///
     /// Also known as: record projection, field lookup.

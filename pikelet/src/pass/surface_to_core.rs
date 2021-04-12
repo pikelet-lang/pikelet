@@ -105,9 +105,10 @@ impl<'me> State<'me> {
         &self,
         head_value: Arc<Value>,
         label: &str,
+        labels: &[String],
         closure: &RecordClosure,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(self.globals, head_value, label, closure)
+        semantics::record_elim_type(self.globals, head_value, label, labels, closure)
     }
 
     /// Fully normalize a [`core::Term`] using [normalization by evaluation].
@@ -237,39 +238,37 @@ impl<'me> State<'me> {
                 })
             }
 
-            (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
-                let mut pending_term_entries = term_entries.iter();
+            (TermData::RecordTerm(term_entries), Value::RecordType(type_labels, closure)) => {
+                let mut pending_entries = term_entries.iter();
+                let mut pending_type_labels = type_labels.iter();
+                let mut core_terms = Vec::with_capacity(pending_entries.len());
+
                 let mut missing_labels = Vec::new();
                 let mut unexpected_labels = Vec::new();
 
-                let mut core_term_entries = Vec::with_capacity(term_entries.len());
+                closure.for_each_entry(self.globals, |r#type| {
+                    if let Some(label) = pending_type_labels.next() {
+                        while let Some((next_label, name, term)) = pending_entries.next() {
+                            if next_label.data == *label {
+                                let name = name.as_ref().unwrap_or(next_label);
+                                let core_term = self.check_type(term, &r#type);
+                                let core_value = self.eval(&core_term);
 
-                closure.for_each_entry(self.globals, |label, entry_type| loop {
-                    match pending_term_entries.next() {
-                        Some((next_label, next_name, entry_term)) if next_label.data == label => {
-                            let next_name = next_name.as_ref().unwrap_or(next_label);
-                            let core_entry_term = self.check_type(entry_term, &entry_type);
-                            let core_entry_value = self.eval(&core_entry_term);
+                                self.push_local(Some(&name.data), core_value.clone(), r#type);
+                                core_terms.push(Arc::new(core_term));
 
-                            self.push_local(
-                                Some(&next_name.data),
-                                core_entry_value.clone(),
-                                entry_type,
-                            );
-                            core_term_entries.push((label.to_owned(), Arc::new(core_entry_term)));
-
-                            return core_entry_value;
+                                return core_value;
+                            } else {
+                                unexpected_labels.push(next_label.location)
+                            }
                         }
-                        Some((next_label, _, _)) => unexpected_labels.push(next_label.location),
-                        None => {
-                            missing_labels.push(label.to_owned());
-                            return Arc::new(Value::Error);
-                        }
+                        missing_labels.push(label.to_owned());
                     }
+                    Arc::new(Value::Error)
                 });
 
-                self.pop_many_locals(core_term_entries.len());
-                unexpected_labels.extend(pending_term_entries.map(|(label, _, _)| label.location));
+                self.pop_many_locals(core_terms.len());
+                unexpected_labels.extend(pending_entries.map(|(label, _, _)| label.location));
 
                 if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
                     self.report(SurfaceToCoreMessage::InvalidRecordTerm {
@@ -281,7 +280,7 @@ impl<'me> State<'me> {
 
                 core::Term::new(
                     term.location,
-                    core::TermData::RecordTerm(core_term_entries.into()),
+                    core::TermData::RecordTerm(type_labels.clone(), core_terms.into()),
                 )
             }
 
@@ -551,13 +550,23 @@ impl<'me> State<'me> {
                 (core_head_term, head_type)
             }
 
-            TermData::RecordTerm(term_entries) if term_entries.is_empty() => (
-                core::Term::new(term.location, core::TermData::RecordTerm(Arc::new([]))),
-                Arc::from(Value::RecordType(RecordClosure::new(
-                    self.local_definitions.clone(),
-                    Arc::new([]),
-                ))),
-            ),
+            TermData::RecordTerm(term_entries) if term_entries.is_empty() => {
+                let labels = Arc::new([]);
+                let entries = Arc::new([]);
+
+                let record_term_data = core::TermData::RecordTerm(labels.clone(), entries.clone());
+                let record_type_data = core::TermData::RecordType(labels.clone(), entries.clone());
+                let term_data = core::TermData::Ann(
+                    Arc::new(core::Term::new(term.location, record_term_data)),
+                    Arc::new(core::Term::new(term.location, record_type_data)),
+                );
+                let closure = RecordClosure::new(core::Locals::new(), entries);
+
+                (
+                    core::Term::new(term.location, term_data),
+                    Arc::from(Value::RecordType(labels, closure)),
+                )
+            }
             TermData::RecordTerm(_) => {
                 self.report(SurfaceToCoreMessage::AmbiguousTerm {
                     location: term.location,
@@ -570,7 +579,8 @@ impl<'me> State<'me> {
 
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeMap::new();
-                let mut core_type_entries = Vec::new();
+                let mut labels = Vec::with_capacity(type_entries.len());
+                let mut core_types = Vec::with_capacity(type_entries.len());
 
                 for (label, name, entry_type) in type_entries {
                     match seen_labels.entry(label.data.as_str()) {
@@ -580,7 +590,8 @@ impl<'me> State<'me> {
                                 let core_type = Arc::new(core_type);
                                 let core_type_value = self.eval(&core_type);
 
-                                core_type_entries.push((label.data.clone(), core_type));
+                                labels.push(label.data.clone());
+                                core_types.push(core_type);
                                 self.push_local_param(Some(&param_name.data), core_type_value);
                                 entry.insert(label.location);
                             }
@@ -606,7 +617,7 @@ impl<'me> State<'me> {
                 (
                     core::Term::new(
                         term.location,
-                        core::TermData::RecordType(core_type_entries.into()),
+                        core::TermData::RecordType(labels.into(), core_types.into()),
                     ),
                     Arc::new(Value::TypeType),
                 )
@@ -615,11 +626,11 @@ impl<'me> State<'me> {
                 let (core_head_term, head_type) = self.synth_type(head_term);
 
                 match head_type.force(self.globals) {
-                    Value::RecordType(closure) => {
+                    Value::RecordType(labels, closure) => {
                         let head_value = self.eval(&core_head_term);
 
                         if let Some(entry_type) =
-                            self.record_elim_type(head_value, &label.data, closure)
+                            self.record_elim_type(head_value, &label.data, labels, closure)
                         {
                             let core_head_term = Arc::new(core_head_term);
                             let core_term = core::Term::new(
