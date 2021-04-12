@@ -338,6 +338,8 @@ pub enum CoreTypingMessage {
         missing_labels: Vec<String>,
         unexpected_labels: Vec<String>,
     },
+    InvalidRecordTypeLabelCount,
+    InvalidRecordTermLabelCount,
     LabelNotFound {
         expected_label: String,
         head_type: core::Term,
@@ -415,6 +417,16 @@ impl CoreTypingMessage {
 
                     notes
                 }),
+            CoreTypingMessage::InvalidRecordTypeLabelCount => Diagnostic::bug()
+                .with_message("invalid record type")
+                .with_notes(vec![
+                    "number of record labels does not match the number of types".to_owned(),
+                ]),
+            CoreTypingMessage::InvalidRecordTermLabelCount => Diagnostic::bug()
+                .with_message("invalid record term")
+                .with_notes(vec![
+                    "number of record labels does not match the number of terms".to_owned(),
+                ]),
             CoreTypingMessage::LabelNotFound {
                 expected_label,
                 head_type,

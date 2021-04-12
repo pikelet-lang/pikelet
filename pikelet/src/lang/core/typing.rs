@@ -13,7 +13,7 @@ use contracts::debug_ensures;
 use crossbeam_channel::Sender;
 use std::sync::Arc;
 
-use crate::lang::core::semantics::{self, Elim, RecordClosure, Unfold, Value};
+use crate::lang::core::semantics::{self, Elim, Unfold, Value};
 use crate::lang::core::{Constant, Globals, LocalSize, Locals, Term, TermData};
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
@@ -85,12 +85,18 @@ impl<'me> State<'me> {
 
     /// Return the type of the record elimination.
     pub fn record_elim_type(
-        &self,
-        head_value: Arc<Value>,
-        name: &str,
-        closure: &RecordClosure,
+        &mut self,
+        head_term: &Term,
+        head_type: &Arc<Value>,
+        label: &str,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(self.globals, head_value, name, closure)
+        semantics::record_elim_type(
+            self.globals,
+            &mut self.local_definitions,
+            head_term,
+            head_type,
+            label,
+        )
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
@@ -150,33 +156,41 @@ impl<'me> State<'me> {
                 self.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
             }
 
-            (TermData::RecordTerm(term_entries), Value::RecordType(closure)) => {
-                let mut pending_term_entries = term_entries.iter();
+            (TermData::RecordTerm(term_labels, terms), Value::RecordType(type_labels, closure)) => {
+                if term_labels.len() != terms.len() {
+                    self.report(CoreTypingMessage::InvalidRecordTermLabelCount);
+                    return;
+                }
+
+                let mut pending_type_labels = type_labels.iter();
+                let mut pending_entries = Iterator::zip(term_labels.iter(), terms.iter());
+                let mut entry_count = 0;
+
                 let mut missing_labels = Vec::new();
                 let mut unexpected_labels = Vec::new();
-                let mut term_entry_count = 0;
 
-                closure.for_each_entry(self.globals, |label, entry_type| loop {
-                    match pending_term_entries.next() {
-                        Some((next_label, entry_term)) if next_label == label => {
-                            self.check_type(&entry_term, &entry_type);
-                            let entry_value = self.eval(&entry_term);
+                closure.for_each_entry(self.globals, |r#type| {
+                    if let Some(label) = pending_type_labels.next() {
+                        while let Some((next_label, term)) = pending_entries.next() {
+                            if next_label == label {
+                                self.check_type(&term, &r#type);
+                                let value = self.eval(&term);
 
-                            self.push_local(entry_value.clone(), entry_type);
-                            term_entry_count += 1;
+                                self.push_local(value.clone(), r#type);
+                                entry_count += 1;
 
-                            break entry_value;
+                                return value;
+                            } else {
+                                unexpected_labels.push(next_label.to_owned())
+                            }
                         }
-                        Some((next_label, _)) => unexpected_labels.push(next_label.to_owned()),
-                        None => {
-                            missing_labels.push(label.to_owned());
-                            break Arc::new(Value::Error);
-                        }
+                        missing_labels.push(label.to_owned());
                     }
+                    Arc::new(Value::Error)
                 });
 
-                self.pop_many_locals(term_entry_count);
-                unexpected_labels.extend(pending_term_entries.map(|(label, _)| label.clone()));
+                self.pop_many_locals(entry_count);
+                unexpected_labels.extend(pending_entries.map(|(label, _)| label.clone()));
 
                 if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
                     self.report(CoreTypingMessage::InvalidRecordTerm {
@@ -308,26 +322,24 @@ impl<'me> State<'me> {
                 }
             }
 
-            TermData::RecordTerm(term_entries) => {
-                if term_entries.is_empty() {
-                    Arc::from(Value::RecordType(RecordClosure::new(
-                        self.local_definitions.clone(),
-                        Arc::new([]),
-                    )))
-                } else {
-                    self.report(CoreTypingMessage::AmbiguousTerm {
-                        term: AmbiguousTerm::RecordTerm,
-                    });
-                    Arc::new(Value::Error)
-                }
+            TermData::RecordTerm(_, _) => {
+                self.report(CoreTypingMessage::AmbiguousTerm {
+                    term: AmbiguousTerm::RecordTerm,
+                });
+                Arc::new(Value::Error)
             }
-            TermData::RecordType(type_entries) => {
+            TermData::RecordType(labels, types) => {
                 use std::collections::BTreeSet;
+
+                if labels.len() != types.len() {
+                    self.report(CoreTypingMessage::InvalidRecordTypeLabelCount);
+                    return Arc::new(Value::Error);
+                }
 
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeSet::new();
 
-                for (name, r#type) in type_entries.iter() {
+                for (name, r#type) in Iterator::zip(labels.iter(), types.iter()) {
                     if !seen_labels.insert(name) {
                         duplicate_labels.push(name.clone());
                     }
@@ -350,25 +362,17 @@ impl<'me> State<'me> {
             TermData::RecordElim(head_term, label) => {
                 let head_type = self.synth_type(head_term);
 
-                match head_type.force(self.globals) {
-                    Value::RecordType(closure) => {
-                        let head_value = self.eval(head_term);
-
-                        if let Some(entry_type) = self.record_elim_type(head_value, label, closure)
-                        {
-                            return entry_type;
-                        }
+                match self.record_elim_type(&head_term, &head_type, label) {
+                    Some(entry_type) => entry_type,
+                    None => {
+                        let head_type = self.read_back(&head_type);
+                        self.report(CoreTypingMessage::LabelNotFound {
+                            expected_label: label.clone(),
+                            head_type,
+                        });
+                        Arc::new(Value::Error)
                     }
-                    Value::Error => return Arc::new(Value::Error),
-                    _ => {}
                 }
-
-                let head_type = self.read_back(&head_type);
-                self.report(CoreTypingMessage::LabelNotFound {
-                    expected_label: label.clone(),
-                    head_type,
-                });
-                Arc::new(Value::Error)
             }
 
             TermData::ArrayTerm(_) => {
@@ -384,20 +388,18 @@ impl<'me> State<'me> {
                 Arc::new(Value::Error)
             }
 
-            TermData::Constant(constant) => Arc::new(match constant {
-                Constant::U8(_) => Value::global("U8", []),
-                Constant::U16(_) => Value::global("U16", []),
-                Constant::U32(_) => Value::global("U32", []),
-                Constant::U64(_) => Value::global("U64", []),
-                Constant::S8(_) => Value::global("S8", []),
-                Constant::S16(_) => Value::global("S16", []),
-                Constant::S32(_) => Value::global("S32", []),
-                Constant::S64(_) => Value::global("S64", []),
-                Constant::F32(_) => Value::global("F32", []),
-                Constant::F64(_) => Value::global("F64", []),
-                Constant::Char(_) => Value::global("Char", []),
-                Constant::String(_) => Value::global("String", []),
-            }),
+            TermData::Constant(Constant::U8(_)) => Arc::new(Value::global("U8", [])),
+            TermData::Constant(Constant::U16(_)) => Arc::new(Value::global("U16", [])),
+            TermData::Constant(Constant::U32(_)) => Arc::new(Value::global("U32", [])),
+            TermData::Constant(Constant::U64(_)) => Arc::new(Value::global("U64", [])),
+            TermData::Constant(Constant::S8(_)) => Arc::new(Value::global("S8", [])),
+            TermData::Constant(Constant::S16(_)) => Arc::new(Value::global("S16", [])),
+            TermData::Constant(Constant::S32(_)) => Arc::new(Value::global("S32", [])),
+            TermData::Constant(Constant::S64(_)) => Arc::new(Value::global("S64", [])),
+            TermData::Constant(Constant::F32(_)) => Arc::new(Value::global("F32", [])),
+            TermData::Constant(Constant::F64(_)) => Arc::new(Value::global("F64", [])),
+            TermData::Constant(Constant::Char(_)) => Arc::new(Value::global("Char", [])),
+            TermData::Constant(Constant::String(_)) => Arc::new(Value::global("String", [])),
 
             TermData::Error => Arc::new(Value::Error),
         }
