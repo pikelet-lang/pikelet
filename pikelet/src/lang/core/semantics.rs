@@ -350,26 +350,40 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
 /// Return the type of the record elimination.
 pub fn record_elim_type(
     globals: &Globals,
-    locals: &mut Locals<Arc<Value>>,
+    term_locals: &mut Locals<Arc<Value>>,
     head_term: &Term,
     head_type: &Arc<Value>,
     label: &str,
 ) -> Option<Arc<Value>> {
     match head_type.force(globals) {
         Value::RecordType(labels, closure) => {
-            let head_value = eval(globals, locals, head_term);
+            // Evaluate the head of the record elimination now that we know we
+            // are dealing with a dependent record type.
+            let head_value = eval(globals, term_locals, head_term);
+            // Type locals, which will be used to substitute the values
+            // associated with earlier entries into subsequent entry types.
+            let mut type_locals = closure.locals.clone();
 
-            let mut labels = labels.iter();
-            let mut locals = closure.locals.clone();
-
-            for entry_type in closure.entries.iter() {
-                let entry_type = eval(globals, &mut locals, entry_type);
-                match labels.next() {
-                    Some(next_label) if next_label == label => return Some(entry_type),
-                    Some(_) | None => locals.push(record_elim(globals, head_value.clone(), label)),
+            // Iterate over the entry labels their and associated types.
+            for (entry_label, entry_type) in Iterator::zip(labels.iter(), closure.entries.iter()) {
+                if entry_label == label {
+                    // We've reached the entry associated with the requested
+                    // `label`, so evaluate the entry type using the current
+                    // `type_locals` and return it.
+                    let entry_type = eval(globals, &mut type_locals, entry_type);
+                    return Some(entry_type);
+                } else {
+                    // We have not yet reached the entry associated with the
+                    // requested `label`, so lookup the value associated with
+                    // the `entry_label` in the `head_value` and store it in
+                    // the `type_locals`, ready for substitution later on.
+                    let entry_value = record_elim(globals, head_value.clone(), entry_label);
+                    type_locals.push(entry_value);
                 }
             }
 
+            // No entry corresponding to the request `label` was found in the
+            // `head_value`.
             None
         }
         Value::Error => Some(Arc::new(Value::Error)),

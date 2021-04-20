@@ -1,4 +1,4 @@
-record {
+(record {
     A = U32,
     B = A,
     a = 23,
@@ -8,4 +8,4 @@ record {
     B : Type,
     a : A,
     b : B,
-}
+}).b : U32
