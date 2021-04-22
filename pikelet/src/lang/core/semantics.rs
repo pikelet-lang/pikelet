@@ -274,12 +274,12 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
             Some(value) => value.clone(),
             // FIXME: Local gluing is kind of broken right now :(
             // Some(value) => {
-            //     let head = Head::Local(locals.size().index_to_level(*local_index).unwrap()); // TODO: Handle overflow
-            //     let value = LazyValue::new(value.clone()); // FIXME: Apply universe_offset?
+            //     let head = Head::Local(locals.index_to_level(*local_index).unwrap()); // TODO: Handle overflow
+            //     let value = LazyValue::new(value.clone());
             //     Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             // }
             None => {
-                let head = Head::Local(locals.size().index_to_level(*local_index).unwrap()); // TODO: Handle overflow
+                let head = Head::Local(locals.index_to_level(*local_index).unwrap()); // TODO: Handle overflow
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },

@@ -197,7 +197,13 @@ impl Default for Globals {
 /// [local environment]: `Locals`
 /// [de-bruijn-index]: https://en.wikipedia.org/wiki/De_Bruijn_index
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct LocalIndex(pub u32);
+pub struct LocalIndex(u32);
+
+impl LocalIndex {
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
+    }
+}
 
 /// A de Bruijn level in the [local environment].
 ///
@@ -220,13 +226,26 @@ pub struct LocalIndex(pub u32);
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LocalLevel(u32);
 
-/// The size, or 'binding depth', of the [local environment].
+impl LocalLevel {
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// The number of entries in a [local environment].
 ///
 /// This is used for [index-to-level] and [level-to-index] conversions.
+///
+/// Rather than using the actual environment in [read-back] and [conversion
+/// checking], it is more efficient to simply increment this count. This could
+/// be thought of as an 'erased environment' where the only thing we care about
+/// is how many entries are contained within it.
 ///
 /// [local environment]: `Locals`
 /// [index-to-level]: `LocalSize::index_to_level`
 /// [level-to-index]: `LocalSize::level_to_index`
+/// [readback]: `semantics::read_back`
+/// [conversion checking]: `semantics::is_equal`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LocalSize(u32);
 
@@ -276,20 +295,26 @@ impl<Entry: Clone> Locals<Entry> {
 
     /// Get the size of the environment.
     pub fn size(&self) -> LocalSize {
-        LocalSize(self.entries.len() as u32) // FIXME: Check for overflow?
+        LocalSize(self.entries.len() as u32)
+    }
+
+    /// Convert a local index to a local level in the current environment.
+    ///
+    /// `None` is returned if the local environment is not large enough to
+    /// contain the local variable.
+    pub fn index_to_level(&self, local_index: LocalIndex) -> Option<LocalLevel> {
+        self.size().index_to_level(local_index)
     }
 
     /// Lookup an entry in the environment.
     pub fn get(&self, local_index: LocalIndex) -> Option<&Entry> {
-        let entry_index = (self.entries.len())
-            .checked_sub(local_index.0 as usize)?
-            .checked_sub(1)?;
-        self.entries.get(entry_index)
+        let local_level = self.index_to_level(local_index)?;
+        self.entries.get(local_level.0 as usize)
     }
 
     /// Push an entry onto the environment.
     pub fn push(&mut self, entry: Entry) {
-        self.entries.push_back(entry);
+        self.entries.push_back(entry); // FIXME: Check for `u32` overflow?
     }
 
     /// Pop an entry off the environment.
@@ -299,8 +324,8 @@ impl<Entry: Clone> Locals<Entry> {
 
     /// Pop a number of entries off the environment.
     pub fn pop_many(&mut self, count: usize) {
-        self.entries
-            .truncate(self.entries.len().saturating_sub(count));
+        let len = self.entries.len().saturating_sub(count);
+        self.entries.truncate(len);
     }
 
     /// Clear the entries from the environment.
