@@ -161,43 +161,31 @@ impl<'me> Context<'me> {
                     self.report(CoreTypingMessage::InvalidRecordTermLabelCount);
                     return;
                 }
+                if term_labels != type_labels {
+                    self.report(CoreTypingMessage::UnexpectedRecordTermLabels {
+                        found_labels: term_labels.clone(),
+                        expected_labels: type_labels.clone(),
+                    });
+                    return;
+                }
 
-                let mut pending_type_labels = type_labels.iter();
-                let mut pending_entries = Iterator::zip(term_labels.iter(), terms.iter());
+                let mut pending_terms = terms.iter();
                 let mut entry_count = 0;
 
-                let mut missing_labels = Vec::new();
-                let mut unexpected_labels = Vec::new();
+                closure.for_each_entry(self.globals, |r#type| match pending_terms.next() {
+                    Some(term) => {
+                        self.check_type(&term, &r#type);
+                        let value = self.eval(&term);
 
-                closure.for_each_entry(self.globals, |r#type| {
-                    if let Some(label) = pending_type_labels.next() {
-                        while let Some((next_label, term)) = pending_entries.next() {
-                            if next_label == label {
-                                self.check_type(&term, &r#type);
-                                let value = self.eval(&term);
+                        self.push_local(value.clone(), r#type);
+                        entry_count += 1;
 
-                                self.push_local(value.clone(), r#type);
-                                entry_count += 1;
-
-                                return value;
-                            } else {
-                                unexpected_labels.push(next_label.to_owned())
-                            }
-                        }
-                        missing_labels.push(label.to_owned());
+                        value
                     }
-                    Arc::new(Value::Error)
+                    None => Arc::new(Value::Error),
                 });
 
                 self.pop_many_locals(entry_count);
-                unexpected_labels.extend(pending_entries.map(|(label, _)| label.clone()));
-
-                if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
-                    self.report(CoreTypingMessage::InvalidRecordTerm {
-                        missing_labels,
-                        unexpected_labels,
-                    });
-                }
             }
 
             (TermData::ArrayTerm(entry_terms), forced_type) => match forced_type.try_global() {

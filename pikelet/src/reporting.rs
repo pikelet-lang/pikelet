@@ -2,6 +2,7 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pretty::DocAllocator;
+use std::sync::Arc;
 
 use crate::lang::{core, surface, FileId, Location};
 use crate::literal;
@@ -334,9 +335,9 @@ pub enum CoreTypingMessage {
     InvalidRecordType {
         duplicate_labels: Vec<String>,
     },
-    InvalidRecordTerm {
-        missing_labels: Vec<String>,
-        unexpected_labels: Vec<String>,
+    UnexpectedRecordTermLabels {
+        found_labels: Arc<[String]>,
+        expected_labels: Arc<[String]>,
     },
     InvalidRecordTypeLabelCount,
     InvalidRecordTermLabelCount,
@@ -390,33 +391,27 @@ impl CoreTypingMessage {
                         .map(|name| format!("label `{}` was used more than once", name))
                         .collect(),
                 ),
-            CoreTypingMessage::InvalidRecordTerm {
-                missing_labels,
-                unexpected_labels,
+            CoreTypingMessage::UnexpectedRecordTermLabels {
+                expected_labels,
+                found_labels,
             } => Diagnostic::bug()
-                .with_message("invalid record term")
-                .with_notes({
-                    let mut notes = Vec::with_capacity(
-                        unexpected_labels.len() + if missing_labels.is_empty() { 0 } else { 1 },
-                    );
-
-                    for label in unexpected_labels {
-                        notes.push(format!("unexpected label `{}`", label));
-                    }
-
-                    if !missing_labels.is_empty() {
-                        notes.push(format!(
-                            "missing the labels {} in this record term",
-                            missing_labels
-                                .iter()
-                                // TODO: reduce string allocations
-                                .map(|label| format!("`{}`", label))
-                                .format(", "),
-                        ));
-                    }
-
-                    notes
-                }),
+                .with_message("unexpected record term labels")
+                .with_notes(vec![
+                    format!(
+                        "expected labels: {}",
+                        expected_labels
+                            .iter()
+                            .map(|label| format!("`{}`", label))
+                            .format(", "),
+                    ),
+                    format!(
+                        "expected labels: {}",
+                        found_labels
+                            .iter()
+                            .map(|label| format!("`{}`", label))
+                            .format(", "),
+                    ),
+                ]),
             CoreTypingMessage::InvalidRecordTypeLabelCount => Diagnostic::bug()
                 .with_message("invalid record type")
                 .with_notes(vec![
