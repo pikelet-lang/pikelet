@@ -14,8 +14,8 @@ use crate::lang::core::{Constant, Globals, Locals, Term, TermData};
 use crate::lang::surface;
 use crate::lang::Located;
 
-/// Distillation state.
-pub struct State<'me> {
+/// Distillation context.
+pub struct Context<'me> {
     globals: &'me Globals,
     usages: FxHashMap<String, Usage>,
     local_names: Locals<String>,
@@ -37,15 +37,15 @@ impl Usage {
 
 const DEFAULT_NAME: &str = "t";
 
-impl<'me> State<'me> {
+impl<'me> Context<'me> {
     /// Construct a new distillation state.
-    pub fn new(globals: &'me Globals) -> State<'me> {
+    pub fn new(globals: &'me Globals) -> Context<'me> {
         let usages = globals
             .entries()
             .map(|(name, _)| (name.to_owned(), Usage::new()))
             .collect();
 
-        State {
+        Context {
             globals,
             usages,
             local_names: Locals::new(),
@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn push_default_name() {
         let globals = Globals::default();
-        let mut state = State::new(&globals);
+        let mut state = Context::new(&globals);
 
         assert_eq!(state.push_name(None), "t");
         assert_eq!(state.push_name(Some("t")), "t-1");
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn push_and_pop_default_name() {
         let globals = Globals::default();
-        let mut state = State::new(&globals);
+        let mut state = Context::new(&globals);
 
         assert_eq!(state.push_name(None), "t");
         state.pop_name();
@@ -293,7 +293,7 @@ mod tests {
     #[test]
     fn push_name() {
         let globals = Globals::default();
-        let mut state = State::new(&globals);
+        let mut state = Context::new(&globals);
 
         assert_eq!(state.push_name(Some("test")), "test");
         assert_eq!(state.push_name(Some("test")), "test-1");
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn push_and_pop_name() {
         let globals = Globals::default();
-        let mut state = State::new(&globals);
+        let mut state = Context::new(&globals);
 
         assert_eq!(state.push_name(Some("test")), "test");
         state.pop_name();
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn push_fresh_name() {
         let globals = Globals::default();
-        let mut state = State::new(&globals);
+        let mut state = Context::new(&globals);
 
         assert_eq!(state.push_name(Some("test")), "test");
         assert_eq!(state.push_name(Some("test")), "test-1");
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn push_global_name() {
         let globals = Globals::default();
-        let mut state = State::new(&globals);
+        let mut state = Context::new(&globals);
 
         assert_eq!(state.push_name(Some("Type")), "Type-1");
         assert_eq!(state.push_name(Some("Type")), "Type-2");

@@ -74,7 +74,7 @@ pub fn run(options: Options) -> anyhow::Result<()> {
     let globals = core::Globals::default();
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
     let mut files = SimpleFiles::new();
-    let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
+    let mut state = surface_to_core::Context::new(&globals, messages_tx.clone());
 
     'repl: loop {
         let (file_id, file) = match editor.readline(&options.prompt) {

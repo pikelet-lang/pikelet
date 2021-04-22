@@ -17,8 +17,8 @@ use crate::literal;
 use crate::pass::core_to_surface;
 use crate::reporting::{AmbiguousTerm, ExpectedType, Message, SurfaceToCoreMessage};
 
-/// The state of the elaborator.
-pub struct State<'me> {
+/// Elaboration context.
+pub struct Context<'me> {
     /// Global definition environment.
     globals: &'me core::Globals,
     /// Local type environment (used for getting the types of local variables).
@@ -26,19 +26,19 @@ pub struct State<'me> {
     /// Local value environment (used for evaluation).
     local_definitions: core::Locals<Arc<Value>>,
     /// Distillation state (used for pretty printing).
-    core_to_surface: core_to_surface::State<'me>,
+    core_to_surface: core_to_surface::Context<'me>,
     /// The diagnostic messages accumulated during elaboration.
     message_tx: Sender<Message>,
 }
 
-impl<'me> State<'me> {
+impl<'me> Context<'me> {
     /// Construct a new elaborator state.
-    pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> State<'me> {
-        State {
+    pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> Context<'me> {
+        Context {
             globals,
             local_declarations: core::Locals::new(),
             local_definitions: core::Locals::new(),
-            core_to_surface: core_to_surface::State::new(globals),
+            core_to_surface: core_to_surface::Context::new(globals),
             message_tx,
         }
     }

@@ -31,7 +31,7 @@ fn run_test(path: &str, source: &str) -> anyhow::Result<()> {
         writeln!(writer)?;
     }
 
-    let mut state = surface_to_core::State::new(&globals, messages_tx.clone());
+    let mut state = surface_to_core::Context::new(&globals, messages_tx.clone());
     let (core_term, r#type) = state.synth_type(&surface_term);
     if !messages_rx.is_empty() {
         is_failed = true;
@@ -44,7 +44,7 @@ fn run_test(path: &str, source: &str) -> anyhow::Result<()> {
         writeln!(writer)?;
     }
 
-    let mut state = core::typing::State::new(&globals, messages_tx.clone());
+    let mut state = core::typing::Context::new(&globals, messages_tx.clone());
 
     state.synth_type(&core_term);
     if !messages_rx.is_empty() {

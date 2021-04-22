@@ -17,8 +17,8 @@ use crate::lang::core::semantics::{self, Elim, Unfold, Value};
 use crate::lang::core::{Constant, Globals, LocalSize, Locals, Term, TermData};
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
-/// The state of the type checker.
-pub struct State<'me> {
+/// Type checking context.
+pub struct Context<'me> {
     /// Global definition environment.
     globals: &'me Globals,
     /// Local type environment (used for getting the types of local variables).
@@ -29,10 +29,10 @@ pub struct State<'me> {
     message_tx: Sender<Message>,
 }
 
-impl<'me> State<'me> {
+impl<'me> Context<'me> {
     /// Construct a new type checker state.
-    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> State<'me> {
-        State {
+    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> Context<'me> {
+        Context {
             globals,
             local_declarations: Locals::new(),
             local_definitions: Locals::new(),
