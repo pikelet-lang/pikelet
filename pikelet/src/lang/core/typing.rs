@@ -224,10 +224,9 @@ impl<'me> State<'me> {
                         }
                     }
                 }
-                Some(_) | None => {
-                    let expected_type = self.read_back(expected_type);
-                    self.report(CoreTypingMessage::UnexpectedArrayTerm { expected_type })
-                }
+                Some(_) | None => self.report(CoreTypingMessage::UnexpectedArrayTerm {
+                    expected_type: self.read_back(expected_type),
+                }),
             },
             (TermData::ListTerm(entry_terms), forced_type) => match forced_type.try_global() {
                 Some(("List", [Elim::Function(entry_type)])) => {
@@ -236,10 +235,9 @@ impl<'me> State<'me> {
                         self.check_type(entry_term, forced_entry_type);
                     }
                 }
-                Some(_) | None => {
-                    let expected_type = self.read_back(expected_type);
-                    self.report(CoreTypingMessage::UnexpectedListTerm { expected_type })
-                }
+                Some(_) | None => self.report(CoreTypingMessage::UnexpectedListTerm {
+                    expected_type: self.read_back(expected_type),
+                }),
             },
 
             (_, _) => match self.synth_type(term) {
@@ -315,8 +313,9 @@ impl<'me> State<'me> {
                     }
                     Value::Error => Arc::new(Value::Error),
                     _ => {
-                        let head_type = self.read_back(&head_type);
-                        self.report(CoreTypingMessage::TooManyInputsInFunctionElim { head_type });
+                        self.report(CoreTypingMessage::TooManyInputsInFunctionElim {
+                            head_type: self.read_back(&head_type),
+                        });
                         Arc::new(Value::Error)
                     }
                 }
@@ -365,10 +364,9 @@ impl<'me> State<'me> {
                 match self.record_elim_type(&head_term, &head_type, label) {
                     Some(entry_type) => entry_type,
                     None => {
-                        let head_type = self.read_back(&head_type);
                         self.report(CoreTypingMessage::LabelNotFound {
                             expected_label: label.clone(),
-                            head_type,
+                            head_type: self.read_back(&head_type),
                         });
                         Arc::new(Value::Error)
                     }
