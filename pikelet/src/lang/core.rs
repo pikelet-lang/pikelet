@@ -200,9 +200,15 @@ impl Default for Globals {
 pub struct LocalIndex(u32);
 
 impl LocalIndex {
+    /// Convert the local index to a `usize`.
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
+}
+
+/// An infinite iterator of local indices.
+pub fn local_indices() -> impl Iterator<Item = LocalIndex> {
+    (0..).map(LocalIndex)
 }
 
 /// A de Bruijn level in the [local environment].
@@ -227,6 +233,7 @@ impl LocalIndex {
 pub struct LocalLevel(u32);
 
 impl LocalLevel {
+    /// Convert the local level to a `usize`.
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
@@ -250,7 +257,13 @@ impl LocalLevel {
 pub struct LocalSize(u32);
 
 impl LocalSize {
-    pub fn increment(self) -> LocalSize {
+    /// Convert the local size to a `usize`.
+    pub fn to_usize(self) -> usize {
+        self.0 as usize
+    }
+
+    /// Get the next size in the environment.
+    pub fn next_size(self) -> LocalSize {
         LocalSize(self.0 + 1)
     }
 
@@ -278,7 +291,10 @@ impl LocalSize {
     }
 }
 
-/// A local environment.
+/// A local environment, backed by a persistent vector.
+///
+/// Prefer mutating this in place, but if necessary this can be cloned in order
+/// to maintain a degree of sharing between copies.
 #[derive(Clone)]
 pub struct Locals<Entry> {
     /// The local entries that are currently defined in the environment.
@@ -322,24 +338,14 @@ impl<Entry: Clone> Locals<Entry> {
         self.entries.pop_back()
     }
 
-    /// Pop a number of entries off the environment.
-    pub fn pop_many(&mut self, count: usize) {
-        let len = self.entries.len().saturating_sub(count);
+    /// Truncate the environment to a given length.
+    pub fn truncate(&mut self, len: usize) {
         self.entries.truncate(len);
     }
 
     /// Clear the entries from the environment.
     pub fn clear(&mut self) {
         self.entries.clear();
-    }
-
-    /// Returns a reverse iterator over the entries in the environment and the
-    /// indices where those entries were bound.
-    pub fn iter_rev(&self) -> impl Iterator<Item = (LocalIndex, &Entry)> {
-        (self.entries.iter().rev()).scan(0, |current_index, entry| {
-            let local_index = LocalIndex(std::mem::replace(current_index, *current_index + 1));
-            Some((local_index, entry))
-        })
     }
 }
 

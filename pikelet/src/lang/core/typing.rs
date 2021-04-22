@@ -14,7 +14,7 @@ use crossbeam_channel::Sender;
 use std::sync::Arc;
 
 use crate::lang::core::semantics::{self, Elim, Unfold, Value};
-use crate::lang::core::{Constant, Globals, LocalSize, Locals, Term, TermData};
+use crate::lang::core::{Constant, Globals, LocalIndex, LocalSize, Locals, Term, TermData};
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
 /// Type checking context.
@@ -22,7 +22,7 @@ pub struct Context<'me> {
     /// Global definition environment.
     globals: &'me Globals,
     /// Local type environment (used for getting the types of local variables).
-    local_declarations: Locals<Arc<Value>>,
+    local_declarations: Vec<Arc<Value>>,
     /// Local value environment (used for evaluation).
     local_definitions: Locals<Arc<Value>>,
     /// The diagnostic messages accumulated during type checking.
@@ -34,7 +34,7 @@ impl<'me> Context<'me> {
     pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> Context<'me> {
         Context {
             globals,
-            local_declarations: Locals::new(),
+            local_declarations: Vec::new(),
             local_definitions: Locals::new(),
             message_tx,
         }
@@ -43,6 +43,12 @@ impl<'me> Context<'me> {
     /// Get the size of the local environment.
     fn size(&self) -> LocalSize {
         self.local_definitions.size()
+    }
+
+    /// Get a local entry.
+    fn get_local(&self, local_index: LocalIndex) -> Option<&Arc<Value>> {
+        let local_level = self.size().index_to_level(local_index)?;
+        self.local_declarations.get(local_level.to_usize())
     }
 
     /// Push a local entry.
@@ -66,8 +72,9 @@ impl<'me> Context<'me> {
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
-        self.local_declarations.pop_many(count);
-        self.local_definitions.pop_many(count);
+        let len = self.size().to_usize().saturating_sub(count);
+        self.local_declarations.truncate(len);
+        self.local_definitions.truncate(len);
     }
 
     /// Report a diagnostic message.
@@ -101,12 +108,7 @@ impl<'me> Context<'me> {
 
     /// Read back a value into a normal form using the current state of the elaborator.
     pub fn read_back(&self, value: &Value) -> Term {
-        semantics::read_back(
-            self.globals,
-            self.local_definitions.size(),
-            Unfold::Never,
-            value,
-        )
+        semantics::read_back(self.globals, self.size(), Unfold::Never, value)
     }
 
     /// Check that one [`Value`] is computationally equal to another [`Value`].
@@ -115,11 +117,11 @@ impl<'me> Context<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_equal(&self, value0: &Value, value1: &Value) -> bool {
-        semantics::is_equal(self.globals, self.local_definitions.size(), value0, value1)
+        semantics::is_equal(self.globals, self.size(), value0, value1)
     }
 
     /// Check that a term is a type.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn is_type(&mut self, term: &Term) -> bool {
         let r#type = self.synth_type(term);
@@ -137,7 +139,7 @@ impl<'me> Context<'me> {
     }
 
     /// Check that a term is an element of a type.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) {
         match (&term.data, expected_type.force(self.globals)) {
@@ -239,7 +241,7 @@ impl<'me> Context<'me> {
     }
 
     /// Synthesize the type of a term.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn synth_type(&mut self, term: &Term) -> Arc<Value> {
         match &term.data {
@@ -252,7 +254,7 @@ impl<'me> Context<'me> {
                     Arc::new(Value::Error)
                 }
             },
-            TermData::Local(local_index) => match self.local_declarations.get(*local_index) {
+            TermData::Local(local_index) => match self.get_local(*local_index) {
                 Some(r#type) => r#type.clone(),
                 None => {
                     self.report(CoreTypingMessage::UnboundLocal);

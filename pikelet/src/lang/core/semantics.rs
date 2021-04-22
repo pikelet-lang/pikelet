@@ -504,7 +504,7 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
             let local = Arc::new(Value::local(local_size.next_level(), []));
             let input_type = read_back(globals, local_size, unfold, input_type);
             let output_type = output_closure.apply(globals, local);
-            let output_type = read_back(globals, local_size.increment(), unfold, &output_type);
+            let output_type = read_back(globals, local_size.next_size(), unfold, &output_type);
 
             Term::generated(TermData::FunctionType(
                 input_name_hint.clone(),
@@ -515,7 +515,7 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
         Value::FunctionTerm(input_name_hint, output_closure) => {
             let local = Arc::new(Value::local(local_size.next_level(), []));
             let output_term = output_closure.apply(globals, local);
-            let output_term = read_back(globals, local_size.increment(), unfold, &output_term);
+            let output_term = read_back(globals, local_size.next_size(), unfold, &output_term);
 
             Term::generated(TermData::FunctionTerm(
                 input_name_hint.clone(),
@@ -532,7 +532,7 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
                 types.push(Arc::new(entry_type));
 
                 let local_level = local_size.next_level();
-                local_size = local_size.increment();
+                local_size = local_size.next_size();
 
                 Arc::new(Value::local(local_level, []))
             });
@@ -548,7 +548,7 @@ pub fn read_back(globals: &Globals, local_size: LocalSize, unfold: Unfold, value
                 terms.push(Arc::new(entry_term));
 
                 let local_level = local_size.next_level();
-                local_size = local_size.increment();
+                local_size = local_size.next_size();
 
                 Arc::new(Value::local(local_level, []))
             });
@@ -618,7 +618,7 @@ fn is_equal_function_closure(
     let local = Arc::new(Value::local(local_size.next_level(), []));
     let term0 = closure0.apply(globals, local.clone());
     let term1 = closure1.apply(globals, local);
-    is_equal(globals, local_size.increment(), &term0, &term1)
+    is_equal(globals, local_size.next_size(), &term0, &term1)
 }
 
 /// Check that one record closure is equal to another record closure.
@@ -646,7 +646,7 @@ fn is_equal_record_closure(
         let local = Arc::new(Value::local(local_size.next_level(), []));
         locals0.push(local.clone());
         locals1.push(local);
-        local_size = local_size.increment();
+        local_size = local_size.next_size();
     }
 
     true

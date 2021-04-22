@@ -10,7 +10,7 @@
 use contracts::debug_ensures;
 use fxhash::FxHashMap;
 
-use crate::lang::core::{Constant, Globals, Locals, Term, TermData};
+use crate::lang::core::{Constant, Globals, Term, TermData};
 use crate::lang::surface;
 use crate::lang::Located;
 
@@ -18,7 +18,7 @@ use crate::lang::Located;
 pub struct Context<'me> {
     globals: &'me Globals,
     usages: FxHashMap<String, Usage>,
-    local_names: Locals<String>,
+    local_names: Vec<String>,
 }
 
 struct Usage {
@@ -48,7 +48,7 @@ impl<'me> Context<'me> {
         Context {
             globals,
             usages,
-            local_names: Locals::new(),
+            local_names: Vec::new(),
         }
     }
 
@@ -117,14 +117,14 @@ impl<'me> Context<'me> {
     ///
     /// [`core::Term`]: crate::lang::core::Term
     /// [`surface::Term`]: crate::lang::surface::Term
-    #[debug_ensures(self.local_names.size() == old(self.local_names.size()))]
+    #[debug_ensures(self.local_names.len() == old(self.local_names.len()))]
     pub fn from_term(&mut self, term: &Term) -> surface::Term {
         let term_data = match &term.data {
             TermData::Global(name) => match self.globals.get(name) {
                 Some(_) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
-            TermData::Local(local_index) => match self.local_names.get(*local_index) {
+            TermData::Local(local_index) => match self.local_names.get(local_index.to_usize()) {
                 Some(name) => surface::TermData::Name(name.clone()),
                 None => surface::TermData::Error, // TODO: Log error?
             },

@@ -22,7 +22,7 @@ pub struct Context<'me> {
     /// Global definition environment.
     globals: &'me core::Globals,
     /// Local type environment (used for getting the types of local variables).
-    local_declarations: core::Locals<(Option<String>, Arc<Value>)>,
+    local_declarations: Vec<(Option<String>, Arc<Value>)>,
     /// Local value environment (used for evaluation).
     local_definitions: core::Locals<Arc<Value>>,
     /// Distillation state (used for pretty printing).
@@ -36,7 +36,7 @@ impl<'me> Context<'me> {
     pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> Context<'me> {
         Context {
             globals,
-            local_declarations: core::Locals::new(),
+            local_declarations: Vec::new(),
             local_definitions: core::Locals::new(),
             core_to_surface: core_to_surface::Context::new(globals),
             message_tx,
@@ -50,12 +50,12 @@ impl<'me> Context<'me> {
 
     /// Get a local entry.
     fn get_local(&self, name: &str) -> Option<(core::LocalIndex, &Arc<Value>)> {
-        for (local_index, (decl_name, r#type)) in self.local_declarations.iter_rev() {
-            if decl_name.as_ref().map_or(false, |n| n == name) {
-                return Some((local_index, r#type));
-            }
-        }
-        None
+        Iterator::zip(core::local_indices(), self.local_declarations.iter().rev()).find_map(
+            |(index, (decl_name, r#type))| match decl_name {
+                Some(decl_name) if decl_name == name => Some((index, r#type)),
+                Some(_) | None => None,
+            },
+        )
     }
 
     /// Push a local entry.
@@ -82,8 +82,9 @@ impl<'me> Context<'me> {
 
     /// Pop the given number of local entries.
     fn pop_many_locals(&mut self, count: usize) {
-        self.local_declarations.pop_many(count);
-        self.local_definitions.pop_many(count);
+        let len = self.size().to_usize().saturating_sub(count);
+        self.local_declarations.truncate(len);
+        self.local_definitions.truncate(len);
         self.core_to_surface.pop_many_names(count);
     }
 
@@ -133,12 +134,7 @@ impl<'me> Context<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
     pub fn read_back(&self, value: &Value) -> core::Term {
-        semantics::read_back(
-            self.globals,
-            self.local_definitions.size(),
-            Unfold::Never,
-            value,
-        )
+        semantics::read_back(self.globals, self.size(), Unfold::Never, value)
     }
 
     /// Check that one [`Value`] is computationally equal to another [`Value`].
@@ -147,7 +143,7 @@ impl<'me> Context<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_equal(&self, value0: &Value, value1: &Value) -> bool {
-        semantics::is_equal(self.globals, self.local_definitions.size(), value0, value1)
+        semantics::is_equal(self.globals, self.size(), value0, value1)
     }
 
     /// Distill a [`core::Term`] into a [`surface::Term`].
@@ -171,7 +167,7 @@ impl<'me> Context<'me> {
     }
 
     /// Check that a term is a type, and return the elaborated term.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn is_type(&mut self, term: &Term) -> Option<core::Term> {
         let (core_term, r#type) = self.synth_type(term);
@@ -191,7 +187,7 @@ impl<'me> Context<'me> {
     }
 
     /// Check that a term is an element of a type, and return the elaborated term.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
         match (&term.data, expected_type.force(self.globals)) {
@@ -396,7 +392,7 @@ impl<'me> Context<'me> {
     }
 
     /// Synthesize the type of a surface term, and return the elaborated term.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
+    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
     #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
         use std::collections::BTreeMap;
@@ -406,16 +402,13 @@ impl<'me> Context<'me> {
         match &term.data {
             TermData::Name(name) => {
                 if let Some((local_index, r#type)) = self.get_local(name.as_ref()) {
-                    return (
-                        core::Term::new(term.location, core::TermData::Local(local_index)),
-                        r#type.clone(),
-                    );
+                    let term_data = core::TermData::Local(local_index);
+                    return (core::Term::new(term.location, term_data), r#type.clone());
                 }
 
                 if let Some((r#type, _)) = self.globals.get(name.as_ref()) {
-                    let name = name.clone();
-                    let core_term = core::Term::new(term.location, core::TermData::Global(name));
-                    return (core_term, self.eval(r#type));
+                    let term_data = core::TermData::Global(name.clone());
+                    return (core::Term::new(term.location, term_data), self.eval(r#type));
                 }
 
                 self.report(SurfaceToCoreMessage::UnboundName {
