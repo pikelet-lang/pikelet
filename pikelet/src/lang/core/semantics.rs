@@ -100,12 +100,6 @@ impl Value {
     }
 }
 
-impl From<Constant> for Value {
-    fn from(constant: Constant) -> Value {
-        Value::Constant(constant)
-    }
-}
-
 /// The head of a [stuck value][Value::Stuck].
 ///
 /// This cannot currently be reduced in the current scope due to its definition
@@ -341,7 +335,7 @@ pub fn eval(globals: &Globals, locals: &mut Locals<Arc<Value>>, term: &Term) -> 
             Arc::new(Value::ListTerm(value_entries))
         }
 
-        TermData::Constant(constant) => Arc::new(Value::from(constant.clone())),
+        TermData::Constant(constant) => Arc::new(Value::Constant(constant.clone())),
 
         TermData::Error => Arc::new(Value::Error),
     }
