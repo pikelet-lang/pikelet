@@ -4,4 +4,5 @@ members = [
     "./pikelet-cli",
     "./pikelet-editor",
     "./pikelet-language-server",
+    "./pikelet-test",
 ]

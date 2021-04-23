@@ -1,12 +1,13 @@
 //! Integration tests against the language samples directory.
 
-use codespan_reporting::files::SimpleFiles;
-use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
-use pikelet::lang::{core, surface};
-use pikelet::pass::surface_to_core;
-use std::io::Write;
+#[cfg(test)]
+fn run_test(path: &str, source: &str) -> anyhow::Result<()> {
+    use codespan_reporting::files::SimpleFiles;
+    use codespan_reporting::term::termcolor::{BufferedStandardStream, ColorChoice};
+    use pikelet::lang::{core, surface};
+    use pikelet::pass::surface_to_core;
+    use std::io::Write;
 
-fn run_test(path: &str, source: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut is_failed = false;
 
     let mut writer = BufferedStandardStream::stdout(ColorChoice::Always);
@@ -70,31 +71,36 @@ fn run_test(path: &str, source: &str) -> Result<(), Box<dyn std::error::Error>> 
     }
 
     if is_failed {
-        Err("failed sample".into())
-    } else {
-        Ok(())
+        anyhow::bail!("failed sample");
     }
+
+    Ok(())
 }
 
-macro_rules! example_test {
+macro_rules! test {
     ($test_name:ident, $path:literal) => {
         #[test]
-        fn $test_name() -> Result<(), Box<dyn std::error::Error>> {
-            run_test(
-                concat!("examples/", $path, ".pi"),
-                include_str!(concat!("../../examples/", $path, ".pi")),
+        fn $test_name() -> anyhow::Result<()> {
+            crate::run_test(
+                concat!($path, ".pi"),
+                include_str!(concat!("../../", $path, ".pi")),
             )
         }
     };
 }
 
-example_test!(comments, "comments");
-example_test!(functions, "functions");
-example_test!(hello_world, "hello-world");
-example_test!(literals, "literals");
-example_test!(meta, "meta");
-example_test!(prelude, "prelude");
-example_test!(record_mesh, "record-mesh");
-example_test!(record_term_deps, "record-term-deps");
-example_test!(record_type_deps, "record-type-deps");
-example_test!(window_settings, "window-settings");
+mod examples {
+    test!(hello_world, "examples/hello-world");
+    test!(meta, "examples/meta");
+    test!(prelude, "examples/prelude");
+    test!(record_mesh, "examples/record-mesh");
+    test!(window_settings, "examples/window-settings");
+}
+
+mod tests {
+    test!(comments, "tests/comments");
+    test!(functions, "tests/functions");
+    test!(literals, "tests/literals");
+    test!(record_term_deps, "tests/record-term-deps");
+    test!(record_type_deps, "tests/record-type-deps");
+}
