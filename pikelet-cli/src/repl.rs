@@ -101,8 +101,8 @@ pub fn run(options: Options) -> anyhow::Result<()> {
         // <term>                         normalize a term in the context
         // :? :h :help                    display this help text
         // :core         <term>           print the core representation of a term
-        // :local        <name> : <term>  define a local assumption in the REPL context
-        // :local        <name> = <term>  define a local definition in the REPL context
+        // :define       <name> : <term>  add a declaration in the REPL context
+        // :define       <name> = <term>  add a definition in the REPL context
         // :q :quit                       quit the repl
         // :t :type      <term>           infer the type of a term
         let surface_term = surface::Term::from_str(file_id, file.source(), &messages_tx);

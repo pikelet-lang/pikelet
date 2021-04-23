@@ -19,14 +19,14 @@
 //! [wjb-dissertation]: https://www.williamjbowman.com/resources/wjb-dissertation.pdf
 //! [just-a]: https://vimeo.com/387739817
 
-pub use crate::lang::core::{Constant, LocalIndex};
+pub use crate::lang::core::{Constant, VarIndex};
 
 /// Values are terms that do not reduce.
 pub enum Value {
     /// Global variables.
     Global(String),
-    /// Local variables.
-    Local(LocalIndex),
+    /// Variables.
+    Var(VarIndex),
 
     /// Annotated values
     Ann(Box<Value>, Box<Configuration>),

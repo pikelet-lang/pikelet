@@ -65,7 +65,7 @@ pub enum TermData {
     /// Global variables.
     Global(String),
     /// Local variables.
-    Local(LocalIndex),
+    Var(VarIndex),
 
     /// Annotated terms
     Ann(Arc<Term>, Arc<Term>),
@@ -178,7 +178,7 @@ impl Default for Globals {
     }
 }
 
-/// A [de Bruijn index][de-bruijn-index] in the [local environment].
+/// A [de Bruijn index][de-bruijn-index] in the current [environment].
 ///
 /// De Bruijn indices describe an occurrence of a variable in terms of the
 /// number of binders between the occurrence and its associated binder.
@@ -194,24 +194,24 @@ impl Default for Globals {
 /// list of name substitutions. For example we want `λx. x` to be the same as
 /// `λy. y`. With de Bruijn indices these would both be described as `λ 0`.
 ///
-/// [local environment]: `Locals`
+/// [environment]: `Env`
 /// [de-bruijn-index]: https://en.wikipedia.org/wiki/De_Bruijn_index
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct LocalIndex(u32);
+pub struct VarIndex(u32);
 
-impl LocalIndex {
-    /// Convert the local index to a `usize`.
+impl VarIndex {
+    /// Convert the variable index to a `usize`.
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
 }
 
-/// An infinite iterator of local indices.
-pub fn local_indices() -> impl Iterator<Item = LocalIndex> {
-    (0..).map(LocalIndex)
+/// An infinite iterator of variable indices.
+pub fn var_indices() -> impl Iterator<Item = VarIndex> {
+    (0..).map(VarIndex)
 }
 
-/// A de Bruijn level in the [local environment].
+/// A de Bruijn level in the current [environment].
 ///
 /// This describes an occurrence of a variable by counting the binders inwards
 /// from the top of the term until the occurrence is reached. For example:
@@ -227,19 +227,19 @@ pub fn local_indices() -> impl Iterator<Item = LocalIndex> {
 /// semantics. More information can be found in Soham Chowdhury's blog post,
 /// “[Real-world type theory I: untyped normalisation by evaluation for λ-calculus][untyped-nbe-for-lc]”.
 ///
-/// [local environment]: `Locals`
+/// [environment]: `Env`
 /// [untyped-nbe-for-lc]: https://colimit.net/posts/normalisation-by-evaluation/
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct LocalLevel(u32);
+pub struct VarLevel(u32);
 
-impl LocalLevel {
-    /// Convert the local level to a `usize`.
+impl VarLevel {
+    /// Convert the variable level to a `usize`.
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
 }
 
-/// The number of entries in a [local environment].
+/// The number of entries in a [environment].
 ///
 /// This is used for [index-to-level] and [level-to-index] conversions.
 ///
@@ -248,84 +248,84 @@ impl LocalLevel {
 /// be thought of as an 'erased environment' where the only thing we care about
 /// is how many entries are contained within it.
 ///
-/// [local environment]: `Locals`
+/// [environment]: `Env`
 /// [index-to-level]: `LocalSize::index_to_level`
 /// [level-to-index]: `LocalSize::level_to_index`
 /// [readback]: `semantics::read_back`
 /// [conversion checking]: `semantics::is_equal`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct LocalSize(u32);
+pub struct EnvSize(u32);
 
-impl LocalSize {
-    /// Convert the local size to a `usize`.
+impl EnvSize {
+    /// Convert the  size to a `usize`.
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
 
     /// Get the next size in the environment.
-    pub fn next_size(self) -> LocalSize {
-        LocalSize(self.0 + 1)
+    pub fn next_size(self) -> EnvSize {
+        EnvSize(self.0 + 1)
     }
 
     /// Return the level of the next variable to be added to the environment.
-    pub fn next_level(self) -> LocalLevel {
-        LocalLevel(self.0)
+    pub fn next_level(self) -> VarLevel {
+        VarLevel(self.0)
     }
 
-    /// Convert a local index to a local level in the current environment.
+    /// Convert a variable index to a variable level in the current environment.
     ///
-    /// `None` is returned if the local environment is not large enough to
-    /// contain the local variable.
-    pub fn index_to_level(self, local_index: LocalIndex) -> Option<LocalLevel> {
-        let local_level = self.0.checked_sub(local_index.0)?.checked_sub(1)?;
-        Some(LocalLevel(local_level))
+    /// `None` is returned if the environment is not large enough to
+    /// contain the  variable.
+    pub fn index_to_level(self, var_index: VarIndex) -> Option<VarLevel> {
+        let var_level = self.0.checked_sub(var_index.0)?.checked_sub(1)?;
+        Some(VarLevel(var_level))
     }
 
-    /// Convert a local level to a local index in the current environment.
+    /// Convert a variable level to a variable index in the current environment.
     ///
-    /// `None` is returned if the local environment is not large enough to
-    /// contain the local variable.
-    pub fn level_to_index(self, local_level: LocalLevel) -> Option<LocalIndex> {
-        let local_index = self.0.checked_sub(local_level.0)?.checked_sub(1)?;
-        Some(LocalIndex(local_index))
+    /// `None` is returned if the environment is not large enough to
+    /// contain the  variable.
+    pub fn level_to_index(self, var_level: VarLevel) -> Option<VarIndex> {
+        let var_index = self.0.checked_sub(var_level.0)?.checked_sub(1)?;
+        Some(VarIndex(var_index))
     }
 }
 
-/// A local environment, backed by a persistent vector.
+/// An environment, backed by a persistent vector.
 ///
 /// Prefer mutating this in place, but if necessary this can be cloned in order
 /// to maintain a degree of sharing between copies.
 #[derive(Clone)]
-pub struct Locals<Entry> {
-    /// The local entries that are currently defined in the environment.
+pub struct Env<Entry> {
+    /// The entries that are currently defined in the environment.
     entries: im::Vector<Entry>,
 }
 
-impl<Entry: Clone> Locals<Entry> {
-    /// Create a new local environment.
-    pub fn new() -> Locals<Entry> {
-        Locals {
+impl<Entry: Clone> Env<Entry> {
+    /// Create a new environment.
+    pub fn new() -> Env<Entry> {
+        Env {
             entries: im::Vector::new(),
         }
     }
 
     /// Get the size of the environment.
-    pub fn size(&self) -> LocalSize {
-        LocalSize(self.entries.len() as u32)
+    pub fn size(&self) -> EnvSize {
+        EnvSize(self.entries.len() as u32)
     }
 
-    /// Convert a local index to a local level in the current environment.
+    /// Convert a variable index to a variable level in the current environment.
     ///
-    /// `None` is returned if the local environment is not large enough to
-    /// contain the local variable.
-    pub fn index_to_level(&self, local_index: LocalIndex) -> Option<LocalLevel> {
-        self.size().index_to_level(local_index)
+    /// `None` is returned if the environment is not large enough to
+    /// contain the  variable.
+    pub fn index_to_level(&self, var_index: VarIndex) -> Option<VarLevel> {
+        self.size().index_to_level(var_index)
     }
 
     /// Lookup an entry in the environment.
-    pub fn get(&self, local_index: LocalIndex) -> Option<&Entry> {
-        let local_level = self.index_to_level(local_index)?;
-        self.entries.get(local_level.0 as usize)
+    pub fn get(&self, var_index: VarIndex) -> Option<&Entry> {
+        let var_level = self.index_to_level(var_index)?;
+        self.entries.get(var_level.0 as usize)
     }
 
     /// Push an entry onto the environment.
@@ -349,7 +349,7 @@ impl<Entry: Clone> Locals<Entry> {
     }
 }
 
-impl<Entry: Clone + fmt::Debug> fmt::Debug for Locals<Entry> {
+impl<Entry: Clone + fmt::Debug> fmt::Debug for Env<Entry> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Locals")
             .field("entries", &self.entries)

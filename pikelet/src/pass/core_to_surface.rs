@@ -18,7 +18,7 @@ use crate::lang::Located;
 pub struct Context<'me> {
     globals: &'me Globals,
     usages: FxHashMap<String, Usage>,
-    local_names: Vec<String>,
+    var_names: Vec<String>,
 }
 
 struct Usage {
@@ -48,7 +48,7 @@ impl<'me> Context<'me> {
         Context {
             globals,
             usages,
-            local_names: Vec::new(),
+            var_names: Vec::new(),
         }
     }
 
@@ -84,12 +84,12 @@ impl<'me> Context<'me> {
         };
         // TODO: Reduce cloning of names
         self.usages.insert(fresh_name.clone(), usage);
-        self.local_names.push(fresh_name.clone());
+        self.var_names.push(fresh_name.clone());
         fresh_name
     }
 
     pub fn pop_name(&mut self) {
-        if let Some(mut name) = self.local_names.pop() {
+        if let Some(mut name) = self.var_names.pop() {
             while let Some(base_name) = self.remove_usage(name) {
                 name = base_name;
             }
@@ -109,7 +109,7 @@ impl<'me> Context<'me> {
         }
     }
 
-    pub fn pop_many_names(&mut self, count: usize) {
+    pub fn pop_names(&mut self, count: usize) {
         (0..count).for_each(|_| self.pop_name());
     }
 
@@ -117,14 +117,14 @@ impl<'me> Context<'me> {
     ///
     /// [`core::Term`]: crate::lang::core::Term
     /// [`surface::Term`]: crate::lang::surface::Term
-    #[debug_ensures(self.local_names.len() == old(self.local_names.len()))]
+    #[debug_ensures(self.var_names.len() == old(self.var_names.len()))]
     pub fn from_term(&mut self, term: &Term) -> surface::Term {
         let term_data = match &term.data {
             TermData::Global(name) => match self.globals.get(name) {
                 Some(_) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
-            TermData::Local(local_index) => match self.local_names.get(local_index.to_usize()) {
+            TermData::Var(var_index) => match self.var_names.get(var_index.to_usize()) {
                 Some(name) => surface::TermData::Name(name.clone()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
@@ -143,7 +143,7 @@ impl<'me> Context<'me> {
                 let input_type_groups =
                     vec![(vec![Located::generated(fresh_input_name)], input_type)];
                 let output_type = self.from_term(output_type);
-                self.pop_many_names(input_type_groups.iter().map(|(ns, _)| ns.len()).sum());
+                self.pop_names(input_type_groups.iter().map(|(ns, _)| ns.len()).sum());
 
                 surface::TermData::FunctionType(input_type_groups, Box::new(output_type))
             }
@@ -162,7 +162,7 @@ impl<'me> Context<'me> {
                 }
 
                 let output_term = self.from_term(current_output_term);
-                self.pop_many_names(input_names.len());
+                self.pop_names(input_names.len());
 
                 surface::TermData::FunctionTerm(input_names, Box::new(output_term))
             }
@@ -195,7 +195,7 @@ impl<'me> Context<'me> {
                         }
                     })
                     .collect::<Vec<_>>();
-                self.pop_many_names(type_entries.len());
+                self.pop_names(type_entries.len());
 
                 surface::TermData::RecordType(type_entries)
             }
@@ -214,7 +214,7 @@ impl<'me> Context<'me> {
                         }
                     })
                     .collect::<Vec<_>>();
-                self.pop_many_names(term_entries.len());
+                self.pop_names(term_entries.len());
 
                 surface::TermData::RecordTerm(term_entries)
             }

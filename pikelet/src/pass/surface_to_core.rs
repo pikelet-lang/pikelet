@@ -21,11 +21,11 @@ use crate::reporting::{AmbiguousTerm, ExpectedType, Message, SurfaceToCoreMessag
 pub struct Context<'me> {
     /// Global definition environment.
     globals: &'me core::Globals,
-    /// Local type environment (used for getting the types of local variables).
-    local_declarations: Vec<(Option<String>, Arc<Value>)>,
-    /// Local value environment (used for evaluation).
-    local_definitions: core::Locals<Arc<Value>>,
-    /// Distillation state (used for pretty printing).
+    /// Type environment (used for getting the types of variables).
+    types: Vec<(Option<String>, Arc<Value>)>,
+    /// Value environment (used for evaluation).
+    values: core::Env<Arc<Value>>,
+    /// Distillation context (used for pretty printing).
     core_to_surface: core_to_surface::Context<'me>,
     /// The diagnostic messages accumulated during elaboration.
     message_tx: Sender<Message>,
@@ -36,56 +36,55 @@ impl<'me> Context<'me> {
     pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> Context<'me> {
         Context {
             globals,
-            local_declarations: Vec::new(),
-            local_definitions: core::Locals::new(),
+            types: Vec::new(),
+            values: core::Env::new(),
             core_to_surface: core_to_surface::Context::new(globals),
             message_tx,
         }
     }
 
-    /// Get the size of the local environment.
-    fn size(&self) -> core::LocalSize {
-        self.local_definitions.size()
+    /// Get the number of values in the context.
+    fn size(&self) -> core::EnvSize {
+        self.values.size()
     }
 
-    /// Get a local entry.
-    fn get_local(&self, name: &str) -> Option<(core::LocalIndex, &Arc<Value>)> {
-        Iterator::zip(core::local_indices(), self.local_declarations.iter().rev()).find_map(
+    /// Get the type of a variable and its index at the current binding depth.
+    fn get_type(&self, name: &str) -> Option<(&Arc<Value>, core::VarIndex)> {
+        Iterator::zip(core::var_indices(), self.types.iter().rev()).find_map(
             |(index, (decl_name, r#type))| match decl_name {
-                Some(decl_name) if decl_name == name => Some((index, r#type)),
+                Some(decl_name) if decl_name == name => Some((r#type, index)),
                 Some(_) | None => None,
             },
         )
     }
 
-    /// Push a local entry.
-    fn push_local(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
-        self.local_declarations
-            .push((name.map(str::to_owned), r#type));
-        self.local_definitions.push(value);
+    /// Push a new value onto the context, along its type annotation.
+    fn push_value(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
+        self.types.push((name.map(str::to_owned), r#type));
+        self.values.push(value);
         self.core_to_surface.push_name(name);
     }
 
-    /// Push a local parameter.
-    fn push_local_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.size().next_level(), []));
-        self.push_local(name, value.clone(), r#type);
+    /// Push a parameter onto the context.
+    fn push_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
+        let value = Arc::new(Value::var(self.size().next_level(), []));
+        self.push_value(name, value.clone(), r#type);
         value
     }
 
-    /// Pop a local entry.
-    fn pop_local(&mut self) {
-        self.local_declarations.pop();
-        self.local_definitions.pop();
+    /// Pop a variable off the context.
+    fn pop_value(&mut self) {
+        self.types.pop();
+        self.values.pop();
         self.core_to_surface.pop_name();
     }
 
-    /// Pop the given number of local entries.
-    fn pop_many_locals(&mut self, count: usize) {
+    /// Pop the given number of variables off the context.
+    fn pop_values(&mut self, count: usize) {
         let len = self.size().to_usize().saturating_sub(count);
-        self.local_declarations.truncate(len);
-        self.local_definitions.truncate(len);
-        self.core_to_surface.pop_many_names(count);
+        self.types.truncate(len);
+        self.values.truncate(len);
+        self.core_to_surface.pop_names(count);
     }
 
     /// Report a diagnostic message.
@@ -98,7 +97,7 @@ impl<'me> Context<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`core::Term`]: crate::lang::core::Term
     pub fn eval(&mut self, term: &core::Term) -> Arc<Value> {
-        semantics::eval(self.globals, &mut self.local_definitions, term)
+        semantics::eval(self.globals, &mut self.values, term)
     }
 
     /// Return the type of the record elimination.
@@ -108,13 +107,7 @@ impl<'me> Context<'me> {
         head_type: &Arc<Value>,
         label: &str,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(
-            self.globals,
-            &mut self.local_definitions,
-            head_term,
-            head_type,
-            label,
-        )
+        semantics::record_elim_type(self.globals, &mut self.values, head_term, head_type, label)
     }
 
     /// Fully normalize a [`core::Term`] using [normalization by evaluation].
@@ -122,7 +115,7 @@ impl<'me> Context<'me> {
     /// [`core::Term`]: crate::lang::core::Term
     /// [normalization by evaluation]: https://en.wikipedia.org/wiki/Normalisation_by_evaluation
     pub fn normalize(&mut self, term: &core::Term) -> core::Term {
-        semantics::normalize(self.globals, &mut self.local_definitions, term)
+        semantics::normalize(self.globals, &mut self.values, term)
     }
 
     /// Read back a [`Value`] to a [`core::Term`] using the current
@@ -167,8 +160,8 @@ impl<'me> Context<'me> {
     }
 
     /// Check that a term is a type, and return the elaborated term.
-    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
-    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
+    #[debug_ensures(self.types.len() == old(self.types.len()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn is_type(&mut self, term: &Term) -> Option<core::Term> {
         let (core_term, r#type) = self.synth_type(term);
         match r#type.force(self.globals) {
@@ -187,8 +180,8 @@ impl<'me> Context<'me> {
     }
 
     /// Check that a term is an element of a type, and return the elaborated term.
-    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
-    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
+    #[debug_ensures(self.types.len() == old(self.types.len()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) -> core::Term {
         match (&term.data, expected_type.force(self.globals)) {
             (_, Value::Error) => core::Term::new(term.location, core::TermData::Error),
@@ -202,12 +195,12 @@ impl<'me> Context<'me> {
                     match expected_type.force(self.globals) {
                         Value::FunctionType(_, input_type, output_closure) => {
                             let input_value =
-                                self.push_local_param(Some(&input_name.data), input_type.clone());
+                                self.push_param(Some(&input_name.data), input_type.clone());
                             seen_input_count += 1;
                             expected_type = output_closure.apply(self.globals, input_value);
                         }
                         Value::Error => {
-                            self.pop_many_locals(seen_input_count);
+                            self.pop_values(seen_input_count);
                             return core::Term::new(term.location, core::TermData::Error);
                         }
                         _ => {
@@ -219,14 +212,14 @@ impl<'me> Context<'me> {
                                     .collect(),
                             });
                             self.check_type(output_term, &expected_type);
-                            self.pop_many_locals(seen_input_count);
+                            self.pop_values(seen_input_count);
                             return core::Term::new(term.location, core::TermData::Error);
                         }
                     }
                 }
 
                 let core_output_term = self.check_type(output_term, &expected_type);
-                self.pop_many_locals(seen_input_count);
+                self.pop_values(seen_input_count);
                 (input_names.iter().rev()).fold(core_output_term, |core_output_term, input_name| {
                     core::Term::new(
                         Location::merge(input_name.location, core_output_term.location),
@@ -254,7 +247,7 @@ impl<'me> Context<'me> {
                                 let core_term = self.check_type(term, &r#type);
                                 let core_value = self.eval(&core_term);
 
-                                self.push_local(Some(&name.data), core_value.clone(), r#type);
+                                self.push_value(Some(&name.data), core_value.clone(), r#type);
                                 core_terms.push(Arc::new(core_term));
 
                                 return core_value;
@@ -267,7 +260,7 @@ impl<'me> Context<'me> {
                     Arc::new(Value::Error)
                 });
 
-                self.pop_many_locals(core_terms.len());
+                self.pop_values(core_terms.len());
                 unexpected_labels.extend(pending_entries.map(|(label, _, _)| label.location));
 
                 if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
@@ -392,8 +385,8 @@ impl<'me> Context<'me> {
     }
 
     /// Synthesize the type of a surface term, and return the elaborated term.
-    #[debug_ensures(self.local_declarations.len() == old(self.local_declarations.len()))]
-    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
+    #[debug_ensures(self.types.len() == old(self.types.len()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> (core::Term, Arc<Value>) {
         use std::collections::BTreeMap;
 
@@ -401,8 +394,8 @@ impl<'me> Context<'me> {
 
         match &term.data {
             TermData::Name(name) => {
-                if let Some((local_index, r#type)) = self.get_local(name.as_ref()) {
-                    let term_data = core::TermData::Local(local_index);
+                if let Some((r#type, var_index)) = self.get_type(name.as_ref()) {
+                    let term_data = core::TermData::Var(var_index);
                     return (core::Term::new(term.location, term_data), r#type.clone());
                 }
 
@@ -442,13 +435,13 @@ impl<'me> Context<'me> {
                         let core_input_type = match self.is_type(input_type) {
                             Some(core_input_type) => core_input_type,
                             None => {
-                                self.pop_many_locals(core_inputs.len());
+                                self.pop_values(core_inputs.len());
                                 return (error_term(), Arc::new(Value::Error));
                             }
                         };
 
                         let core_input_type_value = self.eval(&core_input_type);
-                        self.push_local_param(Some(&input_name.data), core_input_type_value);
+                        self.push_param(Some(&input_name.data), core_input_type_value);
                         core_inputs.push((input_name.clone(), core_input_type));
                     }
                 }
@@ -456,11 +449,11 @@ impl<'me> Context<'me> {
                 let core_output_type = match self.is_type(output_type) {
                     Some(core_output_type) => core_output_type,
                     None => {
-                        self.pop_many_locals(core_inputs.len());
+                        self.pop_values(core_inputs.len());
                         return (error_term(), Arc::new(Value::Error));
                     }
                 };
-                self.pop_many_locals(core_inputs.len());
+                self.pop_values(core_inputs.len());
 
                 let mut core_type = core_output_type;
                 for (input_name, input_type) in core_inputs.into_iter().rev() {
@@ -483,7 +476,7 @@ impl<'me> Context<'me> {
                 };
                 let core_input_type_value = self.eval(&core_input_type);
 
-                self.push_local_param(None, core_input_type_value);
+                self.push_param(None, core_input_type_value);
                 let (core_term, r#type) = match self.is_type(output_type) {
                     Some(core_output_type) => (
                         core::Term::new(
@@ -498,7 +491,7 @@ impl<'me> Context<'me> {
                     ),
                     None => (error_term(), Arc::new(Value::Error)),
                 };
-                self.pop_local();
+                self.pop_value();
 
                 (core_term, r#type)
             }
@@ -557,7 +550,7 @@ impl<'me> Context<'me> {
                     Arc::new(core::Term::new(term.location, record_term_data)),
                     Arc::new(core::Term::new(term.location, record_type_data)),
                 );
-                let closure = RecordClosure::new(core::Locals::new(), entries);
+                let closure = RecordClosure::new(core::Env::new(), entries);
 
                 (
                     core::Term::new(term.location, term_data),
@@ -589,11 +582,11 @@ impl<'me> Context<'me> {
 
                                 labels.push(label.data.clone());
                                 core_types.push(core_type);
-                                self.push_local_param(Some(&param_name.data), core_type_value);
+                                self.push_param(Some(&param_name.data), core_type_value);
                                 entry.insert(label.location);
                             }
                             None => {
-                                self.pop_many_locals(seen_labels.len());
+                                self.pop_values(seen_labels.len());
                                 return (error_term(), Arc::new(Value::Error));
                             }
                         },
@@ -610,7 +603,7 @@ impl<'me> Context<'me> {
                     self.report(SurfaceToCoreMessage::InvalidRecordType { duplicate_labels });
                 }
 
-                self.pop_many_locals(seen_labels.len());
+                self.pop_values(seen_labels.len());
                 (
                     core::Term::new(
                         term.location,

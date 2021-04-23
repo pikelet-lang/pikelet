@@ -331,7 +331,7 @@ pub enum CoreTypingMessage {
     UnboundGlobal {
         name: String,
     },
-    UnboundLocal,
+    UnboundVar,
     InvalidRecordType {
         duplicate_labels: Vec<String>,
     },
@@ -380,9 +380,7 @@ impl CoreTypingMessage {
             CoreTypingMessage::UnboundGlobal { name } => {
                 Diagnostic::bug().with_message(format!("unbound global variable `{}`", name))
             }
-            CoreTypingMessage::UnboundLocal => {
-                Diagnostic::bug().with_message("unbound local variable")
-            }
+            CoreTypingMessage::UnboundVar => Diagnostic::bug().with_message("unbound variable"),
             CoreTypingMessage::InvalidRecordType { duplicate_labels } => Diagnostic::bug()
                 .with_message("invalid record type")
                 .with_notes(
