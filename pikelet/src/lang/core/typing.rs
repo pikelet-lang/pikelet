@@ -46,9 +46,9 @@ impl<'globals> Context<'globals> {
     }
 
     /// Get the type of a variable.
-    fn get_type(&self, var_index: VarIndex) -> Option<&Arc<Value>> {
-        let var_level = self.size().index_to_level(var_index)?;
-        self.types.get(var_level.to_usize())
+    fn get_type(&self, index: VarIndex) -> Option<&Arc<Value>> {
+        let level = self.size().index_to_level(index)?;
+        self.types.get(level.to_usize())
     }
 
     /// Push a new definition onto the context, along its type annotation.
@@ -244,7 +244,7 @@ impl<'globals> Context<'globals> {
                     Arc::new(Value::Error)
                 }
             },
-            TermData::Var(var_index) => match self.get_type(*var_index) {
+            TermData::Var(index) => match self.get_type(*index) {
                 Some(r#type) => r#type.clone(),
                 None => {
                     self.report(CoreTypingMessage::UnboundVar);

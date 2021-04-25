@@ -393,8 +393,8 @@ impl<'globals> Context<'globals> {
 
         match &term.data {
             TermData::Name(name) => {
-                if let Some((r#type, var_index)) = self.get_type(name.as_ref()) {
-                    let term_data = core::TermData::Var(var_index);
+                if let Some((r#type, index)) = self.get_type(name.as_ref()) {
+                    let term_data = core::TermData::Var(index);
                     return (core::Term::new(term.location, term_data), r#type.clone());
                 }
 

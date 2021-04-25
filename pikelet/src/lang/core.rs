@@ -276,18 +276,16 @@ impl EnvSize {
     ///
     /// `None` is returned if the environment is not large enough to
     /// contain the  variable.
-    pub fn index_to_level(self, var_index: VarIndex) -> Option<VarLevel> {
-        let var_level = self.0.checked_sub(var_index.0)?.checked_sub(1)?;
-        Some(VarLevel(var_level))
+    pub fn index_to_level(self, index: VarIndex) -> Option<VarLevel> {
+        Some(VarLevel(self.0.checked_sub(index.0)?.checked_sub(1)?))
     }
 
     /// Convert a variable level to a variable index in the current environment.
     ///
     /// `None` is returned if the environment is not large enough to
     /// contain the  variable.
-    pub fn level_to_index(self, var_level: VarLevel) -> Option<VarIndex> {
-        let var_index = self.0.checked_sub(var_level.0)?.checked_sub(1)?;
-        Some(VarIndex(var_index))
+    pub fn level_to_index(self, level: VarLevel) -> Option<VarIndex> {
+        Some(VarIndex(self.0.checked_sub(level.0)?.checked_sub(1)?))
     }
 }
 
@@ -318,14 +316,14 @@ impl<Entry: Clone> Env<Entry> {
     ///
     /// `None` is returned if the environment is not large enough to
     /// contain the  variable.
-    pub fn index_to_level(&self, var_index: VarIndex) -> Option<VarLevel> {
-        self.size().index_to_level(var_index)
+    pub fn index_to_level(&self, index: VarIndex) -> Option<VarLevel> {
+        self.size().index_to_level(index)
     }
 
     /// Lookup an entry in the environment.
-    pub fn get(&self, var_index: VarIndex) -> Option<&Entry> {
-        let var_level = self.index_to_level(var_index)?;
-        self.entries.get(var_level.0 as usize)
+    pub fn get(&self, index: VarIndex) -> Option<&Entry> {
+        let level = self.index_to_level(index)?;
+        self.entries.get(level.0 as usize)
     }
 
     /// Push an entry onto the environment.

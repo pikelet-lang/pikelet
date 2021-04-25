@@ -131,7 +131,7 @@ impl<'globals> Context<'globals> {
                 Some(_) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
-            TermData::Var(var_index) => match self.var_names.get(var_index.to_usize()) {
+            TermData::Var(index) => match self.var_names.get(index.to_usize()) {
                 Some(name) => surface::TermData::Name(name.clone()),
                 None => surface::TermData::Error, // TODO: Log error?
             },

@@ -76,8 +76,8 @@ impl Value {
     }
 
     /// Create a variable.
-    pub fn var(var_level: impl Into<VarLevel>, elims: impl Into<Vec<Elim>>) -> Value {
-        Value::Stuck(Head::Var(var_level.into()), elims.into())
+    pub fn var(level: VarLevel, elims: impl Into<Vec<Elim>>) -> Value {
+        Value::Stuck(Head::Var(level), elims.into())
     }
 
     /// Attempt to match against a stuck global.
@@ -268,16 +268,16 @@ pub fn eval(globals: &Globals, values: &mut Env<Arc<Value>>, term: &Term) -> Arc
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },
-        TermData::Var(var_index) => match values.get(*var_index) {
+        TermData::Var(index) => match values.get(*index) {
             Some(value) => value.clone(),
             // FIXME: Local gluing is kind of broken right now :(
             // Some(value) => {
-            //     let head = Head::Local(values.index_to_level(*var_index).unwrap()); // TODO: Handle overflow
+            //     let head = Head::Local(values.index_to_level(*index).unwrap()); // TODO: Handle overflow
             //     let value = LazyValue::new(value.clone());
             //     Arc::new(Value::Unstuck(head, Vec::new(), Arc::new(value)))
             // }
             None => {
-                let head = Head::Var(values.index_to_level(*var_index).unwrap()); // TODO: Handle overflow
+                let head = Head::Var(values.index_to_level(*index).unwrap()); // TODO: Handle overflow
                 Arc::new(Value::Stuck(head, Vec::new()))
             }
         },
@@ -465,22 +465,22 @@ pub enum Unfold {
 /// Read-back a stuck value into the term syntax.
 fn read_back_stuck(
     globals: &Globals,
-    env_size: EnvSize,
+    size: EnvSize,
     unfold: Unfold,
     head: &Head,
     spine: &[Elim],
 ) -> Term {
     let head = match head {
         Head::Global(name) => Term::generated(TermData::Global(name.clone())),
-        Head::Var(var_level) => {
-            let var_index = env_size.level_to_index(*var_level).unwrap();
-            Term::generated(TermData::Var(var_index)) // TODO: Handle overflow
+        Head::Var(level) => {
+            let index = size.level_to_index(*level).unwrap();
+            Term::generated(TermData::Var(index)) // TODO: Handle overflow
         }
     };
 
     spine.iter().fold(head, |head, elim| match elim {
         Elim::Function(input) => {
-            let input = read_back(globals, env_size, unfold, input.force(globals));
+            let input = read_back(globals, size, unfold, input.force(globals));
             Term::generated(TermData::FunctionElim(Arc::new(head), Arc::new(input)))
         }
         Elim::Record(label) => Term::generated(TermData::RecordElim(Arc::new(head), label.clone())),
@@ -488,21 +488,21 @@ fn read_back_stuck(
 }
 
 /// Read-back a value into the term syntax.
-pub fn read_back(globals: &Globals, env_size: EnvSize, unfold: Unfold, value: &Value) -> Term {
+pub fn read_back(globals: &Globals, size: EnvSize, unfold: Unfold, value: &Value) -> Term {
     match value {
-        Value::Stuck(head, spine) => read_back_stuck(globals, env_size, unfold, head, spine),
+        Value::Stuck(head, spine) => read_back_stuck(globals, size, unfold, head, spine),
         Value::Unstuck(head, spine, value) => match unfold {
-            Unfold::Never => read_back_stuck(globals, env_size, unfold, head, spine),
-            Unfold::Always => read_back(globals, env_size, unfold, value.force(globals)),
+            Unfold::Never => read_back_stuck(globals, size, unfold, head, spine),
+            Unfold::Always => read_back(globals, size, unfold, value.force(globals)),
         },
 
         Value::TypeType => Term::generated(TermData::TypeType),
 
         Value::FunctionType(input_name_hint, input_type, output_closure) => {
-            let var = Arc::new(Value::var(env_size.next_level(), []));
-            let input_type = read_back(globals, env_size, unfold, input_type);
+            let var = Arc::new(Value::var(size.next_level(), []));
+            let input_type = read_back(globals, size, unfold, input_type);
             let output_type = output_closure.apply(globals, var);
-            let output_type = read_back(globals, env_size.next_size(), unfold, &output_type);
+            let output_type = read_back(globals, size.next_size(), unfold, &output_type);
 
             Term::generated(TermData::FunctionType(
                 input_name_hint.clone(),
@@ -511,9 +511,9 @@ pub fn read_back(globals: &Globals, env_size: EnvSize, unfold: Unfold, value: &V
             ))
         }
         Value::FunctionTerm(input_name_hint, output_closure) => {
-            let var = Arc::new(Value::var(env_size.next_level(), []));
+            let var = Arc::new(Value::var(size.next_level(), []));
             let output_term = output_closure.apply(globals, var);
-            let output_term = read_back(globals, env_size.next_size(), unfold, &output_term);
+            let output_term = read_back(globals, size.next_size(), unfold, &output_term);
 
             Term::generated(TermData::FunctionTerm(
                 input_name_hint.clone(),
@@ -522,33 +522,33 @@ pub fn read_back(globals: &Globals, env_size: EnvSize, unfold: Unfold, value: &V
         }
 
         Value::RecordType(labels, closure) => {
-            let mut env_size = env_size;
+            let mut size = size;
             let mut types = Vec::with_capacity(closure.entries.len());
 
             closure.for_each_entry(globals, |entry_type| {
-                let entry_type = read_back(globals, env_size, unfold, &entry_type);
+                let entry_type = read_back(globals, size, unfold, &entry_type);
                 types.push(Arc::new(entry_type));
 
-                let var_level = env_size.next_level();
-                env_size = env_size.next_size();
+                let level = size.next_level();
+                size = size.next_size();
 
-                Arc::new(Value::var(var_level, []))
+                Arc::new(Value::var(level, []))
             });
 
             Term::generated(TermData::RecordType(labels.clone(), types.into()))
         }
         Value::RecordTerm(labels, closure) => {
-            let mut env_size = env_size;
+            let mut size = size;
             let mut terms = Vec::with_capacity(closure.entries.len());
 
             closure.for_each_entry(globals, |entry_term| {
-                let entry_term = read_back(globals, env_size, unfold, &entry_term);
+                let entry_term = read_back(globals, size, unfold, &entry_term);
                 terms.push(Arc::new(entry_term));
 
-                let var_level = env_size.next_level();
-                env_size = env_size.next_size();
+                let level = size.next_level();
+                size = size.next_size();
 
-                Arc::new(Value::var(var_level, []))
+                Arc::new(Value::var(level, []))
             });
 
             Term::generated(TermData::RecordTerm(labels.clone(), terms.into()))
@@ -557,7 +557,7 @@ pub fn read_back(globals: &Globals, env_size: EnvSize, unfold: Unfold, value: &V
         Value::ArrayTerm(value_entries) => {
             let term_entries = value_entries
                 .iter()
-                .map(|value_entry| Arc::new(read_back(globals, env_size, unfold, value_entry)))
+                .map(|value_entry| Arc::new(read_back(globals, size, unfold, value_entry)))
                 .collect();
 
             Term::generated(TermData::ArrayTerm(term_entries))
@@ -565,7 +565,7 @@ pub fn read_back(globals: &Globals, env_size: EnvSize, unfold: Unfold, value: &V
         Value::ListTerm(value_entries) => {
             let term_entries = value_entries
                 .iter()
-                .map(|value_entry| Arc::new(read_back(globals, env_size, unfold, value_entry)))
+                .map(|value_entry| Arc::new(read_back(globals, size, unfold, value_entry)))
                 .collect();
 
             Term::generated(TermData::ListTerm(term_entries))
@@ -580,7 +580,7 @@ pub fn read_back(globals: &Globals, env_size: EnvSize, unfold: Unfold, value: &V
 /// Check that one stuck value is equal to another stuck value.
 fn is_equal_stuck(
     globals: &Globals,
-    env_size: EnvSize,
+    size: EnvSize,
     (head0, spine0): (&Head, &[Elim]),
     (head1, spine1): (&Head, &[Elim]),
 ) -> bool {
@@ -594,7 +594,7 @@ fn is_equal_stuck(
                 let input0 = input0.force(globals);
                 let input1 = input1.force(globals);
 
-                if !is_equal(globals, env_size, input0, input1) {
+                if !is_equal(globals, size, input0, input1) {
                     return false;
                 }
             }
@@ -609,20 +609,20 @@ fn is_equal_stuck(
 /// Check that one function closure is equal to another function closure.
 fn is_equal_function_closure(
     globals: &Globals,
-    env_size: EnvSize,
+    size: EnvSize,
     closure0: &FunctionClosure,
     closure1: &FunctionClosure,
 ) -> bool {
-    let var = Arc::new(Value::var(env_size.next_level(), []));
+    let var = Arc::new(Value::var(size.next_level(), []));
     let term0 = closure0.apply(globals, var.clone());
     let term1 = closure1.apply(globals, var);
-    is_equal(globals, env_size.next_size(), &term0, &term1)
+    is_equal(globals, size.next_size(), &term0, &term1)
 }
 
 /// Check that one record closure is equal to another record closure.
 fn is_equal_record_closure(
     globals: &Globals,
-    mut env_size: EnvSize,
+    mut size: EnvSize,
     closure0: &RecordClosure,
     closure1: &RecordClosure,
 ) -> bool {
@@ -637,14 +637,14 @@ fn is_equal_record_closure(
         let entry0 = eval(globals, &mut values0, entry0);
         let entry1 = eval(globals, &mut values1, entry1);
 
-        if !is_equal(globals, env_size, &entry0, &entry1) {
+        if !is_equal(globals, size, &entry0, &entry1) {
             return false;
         }
 
-        let var = Arc::new(Value::var(env_size.next_level(), []));
+        let var = Arc::new(Value::var(size.next_level(), []));
         values0.push(var.clone());
         values1.push(var);
-        env_size = env_size.next_size();
+        size = size.next_size();
     }
 
     true
@@ -653,26 +653,26 @@ fn is_equal_record_closure(
 /// Check that one value is [computationally equal] to another value.
 ///
 /// [computationally equal]: https://ncatlab.org/nlab/show/equality#computational_equality
-pub fn is_equal(globals: &Globals, env_size: EnvSize, value0: &Value, value1: &Value) -> bool {
+pub fn is_equal(globals: &Globals, size: EnvSize, value0: &Value, value1: &Value) -> bool {
     match (value0, value1) {
         (Value::Stuck(head0, spine0), Value::Stuck(head1, spine1)) => {
-            is_equal_stuck(globals, env_size, (head0, spine0), (head1, spine1))
+            is_equal_stuck(globals, size, (head0, spine0), (head1, spine1))
         }
         (Value::Unstuck(head0, spine0, value0), Value::Unstuck(head1, spine1, value1)) => {
-            if is_equal_stuck(globals, env_size, (head0, spine0), (head1, spine1)) {
+            if is_equal_stuck(globals, size, (head0, spine0), (head1, spine1)) {
                 // No need to force computation if the stuck values are the same!
                 return true;
             }
 
             let value0 = value0.force(globals);
             let value1 = value1.force(globals);
-            is_equal(globals, env_size, value0, value1)
+            is_equal(globals, size, value0, value1)
         }
         (Value::Unstuck(_, _, value0), value1) => {
-            is_equal(globals, env_size, value0.force(globals), value1)
+            is_equal(globals, size, value0.force(globals), value1)
         }
         (value0, Value::Unstuck(_, _, value1)) => {
-            is_equal(globals, env_size, value0, value1.force(globals))
+            is_equal(globals, size, value0, value1.force(globals))
         }
 
         (Value::TypeType, Value::TypeType) => true,
@@ -681,16 +681,16 @@ pub fn is_equal(globals: &Globals, env_size: EnvSize, value0: &Value, value1: &V
             Value::FunctionType(_, input_type0, output_closure0),
             Value::FunctionType(_, input_type1, output_closure1),
         ) => {
-            is_equal(globals, env_size, input_type1, input_type0)
-                && is_equal_function_closure(globals, env_size, output_closure0, output_closure1)
+            is_equal(globals, size, input_type1, input_type0)
+                && is_equal_function_closure(globals, size, output_closure0, output_closure1)
         }
         (Value::FunctionTerm(_, output_closure0), Value::FunctionTerm(_, output_closure1)) => {
-            is_equal_function_closure(globals, env_size, output_closure0, output_closure1)
+            is_equal_function_closure(globals, size, output_closure0, output_closure1)
         }
 
         (Value::RecordType(labels0, closure0), Value::RecordType(labels1, closure1))
         | (Value::RecordTerm(labels0, closure0), Value::RecordTerm(labels1, closure1)) => {
-            labels0 == labels1 && is_equal_record_closure(globals, env_size, closure0, closure1)
+            labels0 == labels1 && is_equal_record_closure(globals, size, closure0, closure1)
         }
 
         (Value::ArrayTerm(value_entries0), Value::ArrayTerm(value_entries1))
@@ -700,9 +700,7 @@ pub fn is_equal(globals: &Globals, env_size: EnvSize, value0: &Value, value1: &V
             }
 
             Iterator::zip(value_entries0.iter(), value_entries1.iter()).all(
-                |(value_entry0, value_entry1)| {
-                    is_equal(globals, env_size, value_entry0, value_entry1)
-                },
+                |(value_entry0, value_entry1)| is_equal(globals, size, value_entry0, value_entry1),
             )
         }
 
