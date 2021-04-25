@@ -231,12 +231,10 @@ impl LazyValue {
     pub fn force(&self, globals: &Globals) -> &Arc<Value> {
         self.cell.get_or_init(|| match self.init.replace(None) {
             Some(LazyInit::EvalTerm(mut values, term)) => eval(globals, &mut values, &term),
-            Some(LazyInit::ApplyElim(head, Elim::Record(label))) => {
-                record_elim(globals, head.force(globals).clone(), &label)
-            }
-            Some(LazyInit::ApplyElim(head, Elim::Function(input))) => {
-                function_elim(globals, head.force(globals).clone(), input)
-            }
+            Some(LazyInit::ApplyElim(head, elim)) => match elim {
+                Elim::Record(label) => record_elim(globals, head.force(globals).clone(), &label),
+                Elim::Function(input) => function_elim(globals, head.force(globals).clone(), input),
+            },
             None => panic!("Lazy instance has previously been poisoned"),
         })
     }
