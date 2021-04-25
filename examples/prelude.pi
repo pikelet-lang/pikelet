@@ -45,9 +45,8 @@ record {
     category-pikelet = record {
         Object = Type,
         Arrow = fun A B => A -> B,
-        -- TODO: Use combinator definitions
-        id = fun A a => a,
-        seq = fun A B C a-b b-c a => b-c (a-b a),
+        id = id,
+        seq = compose,
     },
 } : Record {
     ||| The polymorphic identity function.
