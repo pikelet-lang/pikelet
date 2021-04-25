@@ -48,6 +48,13 @@ record {
         id = id,
         seq = compose,
     },
+
+    category-opposite = fun c => record {
+        Object = c.Object,
+        Arrow = fun A B => c.Arrow B A,
+        id = c.id,
+        seq = fun A B C a-b b-c => c.seq C B A b-c a-b,
+    },
 } : Record {
     ||| The polymorphic identity function.
     id : Fun (A : Type) -> A -> A,
@@ -139,4 +146,7 @@ record {
 
     ||| Category of Pikelet functions and types.
     category-pikelet : Category,
+
+    ||| Opposite categories.
+    category-opposite : Category -> Category,
 }
