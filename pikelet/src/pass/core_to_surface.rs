@@ -15,8 +15,8 @@ use crate::lang::surface;
 use crate::lang::Located;
 
 /// Distillation context.
-pub struct Context<'me> {
-    globals: &'me Globals,
+pub struct Context<'globals> {
+    globals: &'globals Globals,
     usages: FxHashMap<String, Usage>,
     var_names: Vec<String>,
 }
@@ -37,9 +37,9 @@ impl Usage {
 
 const DEFAULT_NAME: &str = "t";
 
-impl<'me> Context<'me> {
+impl<'globals> Context<'globals> {
     /// Construct a new distillation state.
-    pub fn new(globals: &'me Globals) -> Context<'me> {
+    pub fn new(globals: &'globals Globals) -> Context<'globals> {
         let usages = globals
             .entries()
             .map(|(name, _)| (name.to_owned(), Usage::new()))

@@ -18,9 +18,9 @@ use crate::lang::core::{Constant, Env, EnvSize, Globals, Term, TermData, VarInde
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
 /// Type checking context.
-pub struct Context<'me> {
+pub struct Context<'globals> {
     /// Global definition environment.
-    globals: &'me Globals,
+    globals: &'globals Globals,
     /// Type environment (used for getting the types of variables).
     types: Vec<Arc<Value>>,
     /// Value environment (used for evaluation).
@@ -29,9 +29,9 @@ pub struct Context<'me> {
     message_tx: Sender<Message>,
 }
 
-impl<'me> Context<'me> {
+impl<'globals> Context<'globals> {
     /// Construct a new type checker state.
-    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> Context<'me> {
+    pub fn new(globals: &'globals Globals, message_tx: Sender<Message>) -> Context<'globals> {
         Context {
             globals,
             types: Vec::new(),

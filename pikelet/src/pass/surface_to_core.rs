@@ -18,22 +18,22 @@ use crate::pass::core_to_surface;
 use crate::reporting::{AmbiguousTerm, ExpectedType, Message, SurfaceToCoreMessage};
 
 /// Elaboration context.
-pub struct Context<'me> {
+pub struct Context<'globals> {
     /// Global definition environment.
-    globals: &'me core::Globals,
+    globals: &'globals core::Globals,
     /// Type environment (used for getting the types of variables).
     types: Vec<(Option<String>, Arc<Value>)>,
     /// Value environment (used for evaluation).
     values: core::Env<Arc<Value>>,
     /// Distillation context (used for pretty printing).
-    core_to_surface: core_to_surface::Context<'me>,
+    core_to_surface: core_to_surface::Context<'globals>,
     /// The diagnostic messages accumulated during elaboration.
     message_tx: Sender<Message>,
 }
 
-impl<'me> Context<'me> {
+impl<'globals> Context<'globals> {
     /// Construct a new elaborator state.
-    pub fn new(globals: &'me core::Globals, message_tx: Sender<Message>) -> Context<'me> {
+    pub fn new(globals: &'globals core::Globals, message_tx: Sender<Message>) -> Context<'globals> {
         Context {
             globals,
             types: Vec::new(),
