@@ -14,60 +14,66 @@ use crossbeam_channel::Sender;
 use std::sync::Arc;
 
 use crate::lang::core::semantics::{self, Elim, Unfold, Value};
-use crate::lang::core::{Constant, Globals, LocalSize, Locals, Term, TermData};
+use crate::lang::core::{Constant, Env, EnvSize, Globals, Term, TermData, VarIndex};
 use crate::reporting::{AmbiguousTerm, CoreTypingMessage, ExpectedType, Message};
 
-/// The state of the type checker.
-pub struct State<'me> {
+/// Type checking context.
+pub struct Context<'globals> {
     /// Global definition environment.
-    globals: &'me Globals,
-    /// Local type environment (used for getting the types of local variables).
-    local_declarations: Locals<Arc<Value>>,
-    /// Local value environment (used for evaluation).
-    local_definitions: Locals<Arc<Value>>,
+    globals: &'globals Globals,
+    /// Type environment (used for getting the types of variables).
+    types: Vec<Arc<Value>>,
+    /// Value environment (used for evaluation).
+    values: Env<Arc<Value>>,
     /// The diagnostic messages accumulated during type checking.
     message_tx: Sender<Message>,
 }
 
-impl<'me> State<'me> {
+impl<'globals> Context<'globals> {
     /// Construct a new type checker state.
-    pub fn new(globals: &'me Globals, message_tx: Sender<Message>) -> State<'me> {
-        State {
+    pub fn new(globals: &'globals Globals, message_tx: Sender<Message>) -> Context<'globals> {
+        Context {
             globals,
-            local_declarations: Locals::new(),
-            local_definitions: Locals::new(),
+            types: Vec::new(),
+            values: Env::new(),
             message_tx,
         }
     }
 
-    /// Get the size of the local environment.
-    fn size(&self) -> LocalSize {
-        self.local_definitions.size()
+    /// Get the number of values in the context.
+    fn size(&self) -> EnvSize {
+        self.values.size()
     }
 
-    /// Push a local entry.
-    fn push_local(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
-        self.local_declarations.push(r#type);
-        self.local_definitions.push(value);
+    /// Get the type of a variable.
+    fn get_type(&self, index: VarIndex) -> Option<&Arc<Value>> {
+        let level = self.size().index_to_level(index)?;
+        self.types.get(level.to_usize())
     }
 
-    /// Push a local parameter.
-    fn push_local_param(&mut self, r#type: Arc<Value>) -> Arc<Value> {
-        let value = Arc::new(Value::local(self.size().next_level(), []));
-        self.push_local(value.clone(), r#type);
+    /// Push a new definition onto the context, along its type annotation.
+    fn push_definition(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
+        self.types.push(r#type);
+        self.values.push(value);
+    }
+
+    /// Push a variable onto the context.
+    fn push_variable(&mut self, r#type: Arc<Value>) -> Arc<Value> {
+        let value = Arc::new(Value::var(self.size().next_level(), []));
+        self.push_definition(value.clone(), r#type);
         value
     }
 
-    /// Pop a local entry.
-    fn pop_local(&mut self) {
-        self.local_declarations.pop();
-        self.local_definitions.pop();
+    /// Pop a scope off the context.
+    fn pop_scope(&mut self) {
+        self.types.pop();
+        self.values.pop();
     }
 
-    /// Pop the given number of local entries.
-    fn pop_many_locals(&mut self, count: usize) {
-        self.local_declarations.pop_many(count);
-        self.local_definitions.pop_many(count);
+    /// Truncate the scopes in the context to the given size.
+    fn truncate_scopes(&mut self, env_size: EnvSize) {
+        self.types.truncate(env_size.to_usize());
+        self.values.truncate(env_size);
     }
 
     /// Report a diagnostic message.
@@ -80,7 +86,7 @@ impl<'me> State<'me> {
     /// [`Value`]: crate::lang::core::semantics::Value
     /// [`Term`]: crate::lang::core::Term
     pub fn eval(&mut self, term: &Term) -> Arc<Value> {
-        semantics::eval(self.globals, &mut self.local_definitions, term)
+        semantics::eval(self.globals, &mut self.values, term)
     }
 
     /// Return the type of the record elimination.
@@ -90,23 +96,12 @@ impl<'me> State<'me> {
         head_type: &Arc<Value>,
         label: &str,
     ) -> Option<Arc<Value>> {
-        semantics::record_elim_type(
-            self.globals,
-            &mut self.local_definitions,
-            head_term,
-            head_type,
-            label,
-        )
+        semantics::record_elim_type(self.globals, &mut self.values, head_term, head_type, label)
     }
 
     /// Read back a value into a normal form using the current state of the elaborator.
     pub fn read_back(&self, value: &Value) -> Term {
-        semantics::read_back(
-            self.globals,
-            self.local_definitions.size(),
-            Unfold::Never,
-            value,
-        )
+        semantics::read_back(self.globals, self.size(), Unfold::Never, value)
     }
 
     /// Check that one [`Value`] is computationally equal to another [`Value`].
@@ -115,12 +110,12 @@ impl<'me> State<'me> {
     ///
     /// [`Value`]: crate::lang::core::semantics::Value
     pub fn is_equal(&self, value0: &Value, value1: &Value) -> bool {
-        semantics::is_equal(self.globals, self.local_definitions.size(), value0, value1)
+        semantics::is_equal(self.globals, self.size(), value0, value1)
     }
 
     /// Check that a term is a type.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
-    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
+    #[debug_ensures(self.types.len() == old(self.types.len()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn is_type(&mut self, term: &Term) -> bool {
         let r#type = self.synth_type(term);
         match r#type.force(self.globals) {
@@ -137,8 +132,8 @@ impl<'me> State<'me> {
     }
 
     /// Check that a term is an element of a type.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
-    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
+    #[debug_ensures(self.types.len() == old(self.types.len()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn check_type(&mut self, term: &Term, expected_type: &Arc<Value>) {
         match (&term.data, expected_type.force(self.globals)) {
             (_, Value::Error) => {}
@@ -147,10 +142,10 @@ impl<'me> State<'me> {
                 TermData::FunctionTerm(_, output_term),
                 Value::FunctionType(_, input_type, output_closure),
             ) => {
-                let input_term = self.push_local_param(input_type.clone());
+                let input_term = self.push_variable(input_type.clone());
                 let output_type = output_closure.apply(self.globals, input_term);
                 self.check_type(output_term, &output_type);
-                self.pop_local();
+                self.pop_scope();
             }
             (TermData::FunctionTerm(_, _), _) => {
                 self.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
@@ -161,43 +156,28 @@ impl<'me> State<'me> {
                     self.report(CoreTypingMessage::InvalidRecordTermLabelCount);
                     return;
                 }
+                if term_labels != type_labels {
+                    self.report(CoreTypingMessage::UnexpectedRecordTermLabels {
+                        found_labels: term_labels.clone(),
+                        expected_labels: type_labels.clone(),
+                    });
+                    return;
+                }
 
-                let mut pending_type_labels = type_labels.iter();
-                let mut pending_entries = Iterator::zip(term_labels.iter(), terms.iter());
-                let mut entry_count = 0;
+                let initial_size = self.size();
+                let mut pending_terms = terms.iter();
 
-                let mut missing_labels = Vec::new();
-                let mut unexpected_labels = Vec::new();
-
-                closure.for_each_entry(self.globals, |r#type| {
-                    if let Some(label) = pending_type_labels.next() {
-                        while let Some((next_label, term)) = pending_entries.next() {
-                            if next_label == label {
-                                self.check_type(&term, &r#type);
-                                let value = self.eval(&term);
-
-                                self.push_local(value.clone(), r#type);
-                                entry_count += 1;
-
-                                return value;
-                            } else {
-                                unexpected_labels.push(next_label.to_owned())
-                            }
-                        }
-                        missing_labels.push(label.to_owned());
+                closure.for_each_entry(self.globals, |r#type| match pending_terms.next() {
+                    Some(term) => {
+                        self.check_type(&term, &r#type);
+                        let value = self.eval(&term);
+                        self.push_definition(value.clone(), r#type);
+                        value
                     }
-                    Arc::new(Value::Error)
+                    None => Arc::new(Value::Error),
                 });
 
-                self.pop_many_locals(entry_count);
-                unexpected_labels.extend(pending_entries.map(|(label, _)| label.clone()));
-
-                if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
-                    self.report(CoreTypingMessage::InvalidRecordTerm {
-                        missing_labels,
-                        unexpected_labels,
-                    });
-                }
+                self.truncate_scopes(initial_size);
             }
 
             (TermData::ArrayTerm(entry_terms), forced_type) => match forced_type.try_global() {
@@ -224,10 +204,9 @@ impl<'me> State<'me> {
                         }
                     }
                 }
-                Some(_) | None => {
-                    let expected_type = self.read_back(expected_type);
-                    self.report(CoreTypingMessage::UnexpectedArrayTerm { expected_type })
-                }
+                Some(_) | None => self.report(CoreTypingMessage::UnexpectedArrayTerm {
+                    expected_type: self.read_back(expected_type),
+                }),
             },
             (TermData::ListTerm(entry_terms), forced_type) => match forced_type.try_global() {
                 Some(("List", [Elim::Function(entry_type)])) => {
@@ -236,10 +215,9 @@ impl<'me> State<'me> {
                         self.check_type(entry_term, forced_entry_type);
                     }
                 }
-                Some(_) | None => {
-                    let expected_type = self.read_back(expected_type);
-                    self.report(CoreTypingMessage::UnexpectedListTerm { expected_type })
-                }
+                Some(_) | None => self.report(CoreTypingMessage::UnexpectedListTerm {
+                    expected_type: self.read_back(expected_type),
+                }),
             },
 
             (_, _) => match self.synth_type(term) {
@@ -253,8 +231,8 @@ impl<'me> State<'me> {
     }
 
     /// Synthesize the type of a term.
-    #[debug_ensures(self.local_declarations.size() == old(self.local_declarations.size()))]
-    #[debug_ensures(self.local_definitions.size() == old(self.local_definitions.size()))]
+    #[debug_ensures(self.types.len() == old(self.types.len()))]
+    #[debug_ensures(self.values.size() == old(self.values.size()))]
     pub fn synth_type(&mut self, term: &Term) -> Arc<Value> {
         match &term.data {
             TermData::Global(name) => match self.globals.get(name) {
@@ -266,10 +244,10 @@ impl<'me> State<'me> {
                     Arc::new(Value::Error)
                 }
             },
-            TermData::Local(local_index) => match self.local_declarations.get(*local_index) {
+            TermData::Var(index) => match self.get_type(*index) {
                 Some(r#type) => r#type.clone(),
                 None => {
-                    self.report(CoreTypingMessage::UnboundLocal);
+                    self.report(CoreTypingMessage::UnboundVar);
                     Arc::new(Value::Error)
                 }
             },
@@ -291,12 +269,12 @@ impl<'me> State<'me> {
                 }
                 let input_type = self.eval(input_type);
 
-                self.push_local_param(input_type);
+                self.push_variable(input_type);
                 if !self.is_type(output_type) {
-                    self.pop_local();
+                    self.pop_scope();
                     return Arc::new(Value::Error);
                 }
-                self.pop_local();
+                self.pop_scope();
                 Arc::new(Value::TypeType)
             }
             TermData::FunctionTerm(_, _) => {
@@ -315,8 +293,9 @@ impl<'me> State<'me> {
                     }
                     Value::Error => Arc::new(Value::Error),
                     _ => {
-                        let head_type = self.read_back(&head_type);
-                        self.report(CoreTypingMessage::TooManyInputsInFunctionElim { head_type });
+                        self.report(CoreTypingMessage::TooManyInputsInFunctionElim {
+                            head_type: self.read_back(&head_type),
+                        });
                         Arc::new(Value::Error)
                     }
                 }
@@ -336,6 +315,7 @@ impl<'me> State<'me> {
                     return Arc::new(Value::Error);
                 }
 
+                let initial_size = self.size();
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeSet::new();
 
@@ -344,14 +324,14 @@ impl<'me> State<'me> {
                         duplicate_labels.push(name.clone());
                     }
                     if !self.is_type(r#type) {
-                        self.pop_many_locals(seen_labels.len());
+                        self.truncate_scopes(initial_size);
                         return Arc::new(Value::Error);
                     }
                     let r#type = self.eval(r#type);
-                    self.push_local_param(r#type);
+                    self.push_variable(r#type);
                 }
 
-                self.pop_many_locals(seen_labels.len());
+                self.truncate_scopes(initial_size);
 
                 if !duplicate_labels.is_empty() {
                     self.report(CoreTypingMessage::InvalidRecordType { duplicate_labels });
@@ -365,10 +345,9 @@ impl<'me> State<'me> {
                 match self.record_elim_type(&head_term, &head_type, label) {
                     Some(entry_type) => entry_type,
                     None => {
-                        let head_type = self.read_back(&head_type);
                         self.report(CoreTypingMessage::LabelNotFound {
                             expected_label: label.clone(),
-                            head_type,
+                            head_type: self.read_back(&head_type),
                         });
                         Arc::new(Value::Error)
                     }

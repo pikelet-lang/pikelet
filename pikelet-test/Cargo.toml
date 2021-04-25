@@ -1,0 +1,17 @@
+[package]
+name = "pikelet-test"
+version = "0.1.0"
+authors = ["Brendan Zabarauskas <bjzaba@yahoo.com.au>"]
+edition = "2018"
+publish = false
+description = "Integration tests for the Pikelet programming language"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+codespan-reporting = "0.11"
+crossbeam-channel = "0.5"
+pikelet = { path = "../pikelet" }
+pikelet-cli = { path = "../pikelet-cli" }
+pretty = "0.10"

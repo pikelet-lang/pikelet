@@ -25,9 +25,9 @@ pub fn run(options: Options) -> anyhow::Result<()> {
     let globals = core::Globals::default();
     let (messages_tx, messages_rx) = crossbeam_channel::unbounded();
     let mut files = SimpleFiles::new();
-    let mut surface_to_core = surface_to_core::State::new(&globals, messages_tx.clone());
+    let mut surface_to_core = surface_to_core::Context::new(&globals, messages_tx.clone());
     let mut core_typing = match options.validate_core {
-        true => Some(core::typing::State::new(&globals, messages_tx.clone())),
+        true => Some(core::typing::Context::new(&globals, messages_tx.clone())),
         false => None,
     };
 
