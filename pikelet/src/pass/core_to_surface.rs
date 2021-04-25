@@ -10,7 +10,7 @@
 use contracts::debug_ensures;
 use fxhash::FxHashMap;
 
-use crate::lang::core::{Constant, Globals, Term, TermData};
+use crate::lang::core::{Constant, EnvSize, Globals, Term, TermData};
 use crate::lang::surface;
 use crate::lang::Located;
 
@@ -52,9 +52,12 @@ impl<'me> Context<'me> {
         }
     }
 
-    // TODO: Find optimal names by using free variables
-    // TODO: Reduce string allocations
-    pub fn push_name(&mut self, name_hint: Option<&str>) -> String {
+    // FIXME: This is incredibly horrific and I do not like it!
+    //
+    // We could investigate finding more optimal optimal names by using free
+    // variables, or look into [scope sets](https://typesanitizer.com/blog/scope-sets-as-pinata.html)
+    // for a more principled approach to scape names.
+    pub fn push_scope(&mut self, name_hint: Option<&str>) -> String {
         let base_name = name_hint.unwrap_or(DEFAULT_NAME);
         let (fresh_name, base_name) = match self.usages.get_mut(base_name) {
             // The name has not been used yet
@@ -88,12 +91,20 @@ impl<'me> Context<'me> {
         fresh_name
     }
 
-    pub fn pop_name(&mut self) {
+    pub fn pop_scope(&mut self) {
         if let Some(mut name) = self.var_names.pop() {
             while let Some(base_name) = self.remove_usage(name) {
                 name = base_name;
             }
         }
+    }
+
+    pub fn pop_scopes(&mut self, count: usize) {
+        (0..count).for_each(|_| self.pop_scope());
+    }
+
+    pub fn truncate_scopes(&mut self, count: EnvSize) {
+        (count.to_usize()..self.var_names.len()).for_each(|_| self.pop_scope());
     }
 
     fn remove_usage(&mut self, name: String) -> Option<String> {
@@ -107,10 +118,6 @@ impl<'me> Context<'me> {
             }
             Entry::Vacant(_) => None,
         }
-    }
-
-    pub fn pop_names(&mut self, count: usize) {
-        (0..count).for_each(|_| self.pop_name());
     }
 
     /// Distill a [`core::Term`] into a [`surface::Term`].
@@ -139,30 +146,31 @@ impl<'me> Context<'me> {
             TermData::FunctionType(input_name_hint, input_type, output_type) => {
                 // FIXME: properly group inputs!
                 let input_type = self.from_term(input_type);
-                let fresh_input_name = self.push_name(input_name_hint.as_ref().map(String::as_str));
+                let fresh_input_name =
+                    self.push_scope(input_name_hint.as_ref().map(String::as_str));
                 let input_type_groups =
                     vec![(vec![Located::generated(fresh_input_name)], input_type)];
                 let output_type = self.from_term(output_type);
-                self.pop_names(input_type_groups.iter().map(|(ns, _)| ns.len()).sum());
+                self.pop_scopes(input_type_groups.iter().map(|(ns, _)| ns.len()).sum());
 
                 surface::TermData::FunctionType(input_type_groups, Box::new(output_type))
             }
             TermData::FunctionTerm(input_name_hint, output_term) => {
                 let mut current_output_term = output_term;
 
-                let fresh_input_name = self.push_name(Some(input_name_hint));
+                let fresh_input_name = self.push_scope(Some(input_name_hint));
                 let mut input_names = vec![Located::generated(fresh_input_name)];
 
                 while let TermData::FunctionTerm(input_name_hint, output_term) =
                     &current_output_term.data
                 {
-                    let fresh_input_name = self.push_name(Some(input_name_hint));
+                    let fresh_input_name = self.push_scope(Some(input_name_hint));
                     input_names.push(Located::generated(fresh_input_name));
                     current_output_term = output_term;
                 }
 
                 let output_term = self.from_term(current_output_term);
-                self.pop_names(input_names.len());
+                self.pop_scopes(input_names.len());
 
                 surface::TermData::FunctionTerm(input_names, Box::new(output_term))
             }
@@ -185,7 +193,7 @@ impl<'me> Context<'me> {
                     .map(|(label, entry_type)| {
                         let entry_type = self.from_term(entry_type);
                         let label = label.clone();
-                        match self.push_name(Some(&label)) {
+                        match self.push_scope(Some(&label)) {
                             name if name == label => (Located::generated(label), None, entry_type),
                             name => (
                                 Located::generated(label),
@@ -195,7 +203,7 @@ impl<'me> Context<'me> {
                         }
                     })
                     .collect::<Vec<_>>();
-                self.pop_names(type_entries.len());
+                self.pop_scopes(type_entries.len());
 
                 surface::TermData::RecordType(type_entries)
             }
@@ -204,7 +212,7 @@ impl<'me> Context<'me> {
                     .map(|(label, entry_type)| {
                         let entry_type = self.from_term(entry_type);
                         let label = label.clone();
-                        match self.push_name(Some(&label)) {
+                        match self.push_scope(Some(&label)) {
                             name if name == label => (Located::generated(label), None, entry_type),
                             name => (
                                 Located::generated(label),
@@ -214,7 +222,7 @@ impl<'me> Context<'me> {
                         }
                     })
                     .collect::<Vec<_>>();
-                self.pop_names(term_entries.len());
+                self.pop_scopes(term_entries.len());
 
                 surface::TermData::RecordTerm(term_entries)
             }
@@ -263,9 +271,9 @@ mod tests {
         let globals = Globals::default();
         let mut state = Context::new(&globals);
 
-        assert_eq!(state.push_name(None), "t");
-        assert_eq!(state.push_name(Some("t")), "t-1");
-        assert_eq!(state.push_name(None), "t-2");
+        assert_eq!(state.push_scope(None), "t");
+        assert_eq!(state.push_scope(Some("t")), "t-1");
+        assert_eq!(state.push_scope(None), "t-2");
     }
 
     #[test]
@@ -273,53 +281,53 @@ mod tests {
         let globals = Globals::default();
         let mut state = Context::new(&globals);
 
-        assert_eq!(state.push_name(None), "t");
-        state.pop_name();
-        assert_eq!(state.push_name(None), "t");
-        assert_eq!(state.push_name(None), "t-1");
-        state.pop_name();
-        state.pop_name();
-        assert_eq!(state.push_name(None), "t");
-        assert_eq!(state.push_name(None), "t-1");
-        assert_eq!(state.push_name(None), "t-2");
-        state.pop_name();
-        state.pop_name();
-        state.pop_name();
-        assert_eq!(state.push_name(None), "t");
-        assert_eq!(state.push_name(None), "t-1");
-        assert_eq!(state.push_name(None), "t-2");
+        assert_eq!(state.push_scope(None), "t");
+        state.pop_scope();
+        assert_eq!(state.push_scope(None), "t");
+        assert_eq!(state.push_scope(None), "t-1");
+        state.pop_scope();
+        state.pop_scope();
+        assert_eq!(state.push_scope(None), "t");
+        assert_eq!(state.push_scope(None), "t-1");
+        assert_eq!(state.push_scope(None), "t-2");
+        state.pop_scope();
+        state.pop_scope();
+        state.pop_scope();
+        assert_eq!(state.push_scope(None), "t");
+        assert_eq!(state.push_scope(None), "t-1");
+        assert_eq!(state.push_scope(None), "t-2");
     }
 
     #[test]
-    fn push_name() {
+    fn push_scope() {
         let globals = Globals::default();
         let mut state = Context::new(&globals);
 
-        assert_eq!(state.push_name(Some("test")), "test");
-        assert_eq!(state.push_name(Some("test")), "test-1");
-        assert_eq!(state.push_name(Some("test")), "test-2");
+        assert_eq!(state.push_scope(Some("test")), "test");
+        assert_eq!(state.push_scope(Some("test")), "test-1");
+        assert_eq!(state.push_scope(Some("test")), "test-2");
     }
 
     #[test]
-    fn push_and_pop_name() {
+    fn push_and_pop_scope() {
         let globals = Globals::default();
         let mut state = Context::new(&globals);
 
-        assert_eq!(state.push_name(Some("test")), "test");
-        state.pop_name();
-        assert_eq!(state.push_name(Some("test")), "test");
-        assert_eq!(state.push_name(Some("test")), "test-1");
-        state.pop_name();
-        state.pop_name();
-        assert_eq!(state.push_name(Some("test")), "test");
-        assert_eq!(state.push_name(Some("test")), "test-1");
-        assert_eq!(state.push_name(Some("test")), "test-2");
-        state.pop_name();
-        state.pop_name();
-        state.pop_name();
-        assert_eq!(state.push_name(Some("test")), "test");
-        assert_eq!(state.push_name(Some("test")), "test-1");
-        assert_eq!(state.push_name(Some("test")), "test-2");
+        assert_eq!(state.push_scope(Some("test")), "test");
+        state.pop_scope();
+        assert_eq!(state.push_scope(Some("test")), "test");
+        assert_eq!(state.push_scope(Some("test")), "test-1");
+        state.pop_scope();
+        state.pop_scope();
+        assert_eq!(state.push_scope(Some("test")), "test");
+        assert_eq!(state.push_scope(Some("test")), "test-1");
+        assert_eq!(state.push_scope(Some("test")), "test-2");
+        state.pop_scope();
+        state.pop_scope();
+        state.pop_scope();
+        assert_eq!(state.push_scope(Some("test")), "test");
+        assert_eq!(state.push_scope(Some("test")), "test-1");
+        assert_eq!(state.push_scope(Some("test")), "test-2");
     }
 
     #[test]
@@ -327,11 +335,11 @@ mod tests {
         let globals = Globals::default();
         let mut state = Context::new(&globals);
 
-        assert_eq!(state.push_name(Some("test")), "test");
-        assert_eq!(state.push_name(Some("test")), "test-1");
-        assert_eq!(state.push_name(Some("test-1")), "test-1-1");
-        assert_eq!(state.push_name(Some("test-1")), "test-1-2");
-        assert_eq!(state.push_name(Some("test-1-2")), "test-1-2-1");
+        assert_eq!(state.push_scope(Some("test")), "test");
+        assert_eq!(state.push_scope(Some("test")), "test-1");
+        assert_eq!(state.push_scope(Some("test-1")), "test-1-1");
+        assert_eq!(state.push_scope(Some("test-1")), "test-1-2");
+        assert_eq!(state.push_scope(Some("test-1-2")), "test-1-2-1");
     }
 
     #[test]
@@ -339,7 +347,7 @@ mod tests {
         let globals = Globals::default();
         let mut state = Context::new(&globals);
 
-        assert_eq!(state.push_name(Some("Type")), "Type-1");
-        assert_eq!(state.push_name(Some("Type")), "Type-2");
+        assert_eq!(state.push_scope(Some("Type")), "Type-1");
+        assert_eq!(state.push_scope(Some("Type")), "Type-2");
     }
 }

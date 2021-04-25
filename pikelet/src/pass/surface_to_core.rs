@@ -58,33 +58,32 @@ impl<'me> Context<'me> {
         )
     }
 
-    /// Push a new value onto the context, along its type annotation.
-    fn push_value(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
+    /// Push a new definition onto the context, along its type annotation.
+    fn push_definition(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
         self.types.push((name.map(str::to_owned), r#type));
         self.values.push(value);
-        self.core_to_surface.push_name(name);
+        self.core_to_surface.push_scope(name);
     }
 
     /// Push a parameter onto the context.
-    fn push_param(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
+    fn push_variable(&mut self, name: Option<&str>, r#type: Arc<Value>) -> Arc<Value> {
         let value = Arc::new(Value::var(self.size().next_level(), []));
-        self.push_value(name, value.clone(), r#type);
+        self.push_definition(name, value.clone(), r#type);
         value
     }
 
-    /// Pop a variable off the context.
-    fn pop_value(&mut self) {
+    /// Pop a scope off the context.
+    fn pop_scope(&mut self) {
         self.types.pop();
         self.values.pop();
-        self.core_to_surface.pop_name();
+        self.core_to_surface.pop_scope();
     }
 
-    /// Truncate the values in the context to the given size.
-    fn truncate_values(&mut self, env_size: core::EnvSize) {
+    /// Truncate the scopes in the context to the given size.
+    fn truncate_scopes(&mut self, env_size: core::EnvSize) {
         self.types.truncate(env_size.to_usize());
         self.values.truncate(env_size);
-        self.core_to_surface
-            .pop_names(self.size().to_usize().saturating_sub(env_size.to_usize()));
+        self.core_to_surface.truncate_scopes(env_size);
     }
 
     /// Report a diagnostic message.
@@ -195,11 +194,11 @@ impl<'me> Context<'me> {
                     match expected_type.force(self.globals) {
                         Value::FunctionType(_, input_type, output_closure) => {
                             let input_value =
-                                self.push_param(Some(&input_name.data), input_type.clone());
+                                self.push_variable(Some(&input_name.data), input_type.clone());
                             expected_type = output_closure.apply(self.globals, input_value);
                         }
                         Value::Error => {
-                            self.truncate_values(initial_size);
+                            self.truncate_scopes(initial_size);
                             return core::Term::new(term.location, core::TermData::Error);
                         }
                         _ => {
@@ -211,14 +210,14 @@ impl<'me> Context<'me> {
                                     .collect(),
                             });
                             self.check_type(output_term, &expected_type);
-                            self.truncate_values(initial_size);
+                            self.truncate_scopes(initial_size);
                             return core::Term::new(term.location, core::TermData::Error);
                         }
                     }
                 }
 
                 let core_output_term = self.check_type(output_term, &expected_type);
-                self.truncate_values(initial_size);
+                self.truncate_scopes(initial_size);
                 (input_names.iter().rev()).fold(core_output_term, |core_output_term, input_name| {
                     core::Term::new(
                         Location::merge(input_name.location, core_output_term.location),
@@ -247,7 +246,7 @@ impl<'me> Context<'me> {
                                 let core_term = self.check_type(term, &r#type);
                                 let core_value = self.eval(&core_term);
 
-                                self.push_value(Some(&name.data), core_value.clone(), r#type);
+                                self.push_definition(Some(&name.data), core_value.clone(), r#type);
                                 core_terms.push(Arc::new(core_term));
 
                                 return core_value;
@@ -260,7 +259,7 @@ impl<'me> Context<'me> {
                     Arc::new(Value::Error)
                 });
 
-                self.truncate_values(initial_size);
+                self.truncate_scopes(initial_size);
                 unexpected_labels.extend(pending_entries.map(|(label, _, _)| label.location));
 
                 if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
@@ -436,13 +435,13 @@ impl<'me> Context<'me> {
                         let core_input_type = match self.is_type(input_type) {
                             Some(core_input_type) => core_input_type,
                             None => {
-                                self.truncate_values(initial_size);
+                                self.truncate_scopes(initial_size);
                                 return (error_term(), Arc::new(Value::Error));
                             }
                         };
 
                         let core_input_type_value = self.eval(&core_input_type);
-                        self.push_param(Some(&input_name.data), core_input_type_value);
+                        self.push_variable(Some(&input_name.data), core_input_type_value);
                         core_inputs.push((input_name.clone(), core_input_type));
                     }
                 }
@@ -450,11 +449,11 @@ impl<'me> Context<'me> {
                 let core_output_type = match self.is_type(output_type) {
                     Some(core_output_type) => core_output_type,
                     None => {
-                        self.truncate_values(initial_size);
+                        self.truncate_scopes(initial_size);
                         return (error_term(), Arc::new(Value::Error));
                     }
                 };
-                self.truncate_values(initial_size);
+                self.truncate_scopes(initial_size);
 
                 let mut core_type = core_output_type;
                 for (input_name, input_type) in core_inputs.into_iter().rev() {
@@ -477,7 +476,7 @@ impl<'me> Context<'me> {
                 };
                 let core_input_type_value = self.eval(&core_input_type);
 
-                self.push_param(None, core_input_type_value);
+                self.push_variable(None, core_input_type_value);
                 let (core_term, r#type) = match self.is_type(output_type) {
                     Some(core_output_type) => (
                         core::Term::new(
@@ -492,7 +491,7 @@ impl<'me> Context<'me> {
                     ),
                     None => (error_term(), Arc::new(Value::Error)),
                 };
-                self.pop_value();
+                self.pop_scope();
 
                 (core_term, r#type)
             }
@@ -584,11 +583,11 @@ impl<'me> Context<'me> {
 
                                 labels.push(label.data.clone());
                                 core_types.push(core_type);
-                                self.push_param(Some(&param_name.data), core_type_value);
+                                self.push_variable(Some(&param_name.data), core_type_value);
                                 entry.insert(label.location);
                             }
                             None => {
-                                self.truncate_values(initial_size);
+                                self.truncate_scopes(initial_size);
                                 return (error_term(), Arc::new(Value::Error));
                             }
                         },
@@ -605,7 +604,7 @@ impl<'me> Context<'me> {
                     self.report(SurfaceToCoreMessage::InvalidRecordType { duplicate_labels });
                 }
 
-                self.truncate_values(initial_size);
+                self.truncate_scopes(initial_size);
                 (
                     core::Term::new(
                         term.location,

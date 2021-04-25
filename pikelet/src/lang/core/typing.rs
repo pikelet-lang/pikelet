@@ -51,27 +51,27 @@ impl<'me> Context<'me> {
         self.types.get(var_level.to_usize())
     }
 
-    /// Push a new value onto the context, along its type annotation.
-    fn push_value(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
+    /// Push a new definition onto the context, along its type annotation.
+    fn push_definition(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
         self.types.push(r#type);
         self.values.push(value);
     }
 
-    /// Push a parameter onto the context.
-    fn push_param(&mut self, r#type: Arc<Value>) -> Arc<Value> {
+    /// Push a variable onto the context.
+    fn push_variable(&mut self, r#type: Arc<Value>) -> Arc<Value> {
         let value = Arc::new(Value::var(self.size().next_level(), []));
-        self.push_value(value.clone(), r#type);
+        self.push_definition(value.clone(), r#type);
         value
     }
 
-    /// Pop a value off the context.
-    fn pop_value(&mut self) {
+    /// Pop a scope off the context.
+    fn pop_scope(&mut self) {
         self.types.pop();
         self.values.pop();
     }
 
-    /// Truncate the values in the context to the given size.
-    fn truncate_values(&mut self, env_size: EnvSize) {
+    /// Truncate the scopes in the context to the given size.
+    fn truncate_scopes(&mut self, env_size: EnvSize) {
         self.types.truncate(env_size.to_usize());
         self.values.truncate(env_size);
     }
@@ -142,10 +142,10 @@ impl<'me> Context<'me> {
                 TermData::FunctionTerm(_, output_term),
                 Value::FunctionType(_, input_type, output_closure),
             ) => {
-                let input_term = self.push_param(input_type.clone());
+                let input_term = self.push_variable(input_type.clone());
                 let output_type = output_closure.apply(self.globals, input_term);
                 self.check_type(output_term, &output_type);
-                self.pop_value();
+                self.pop_scope();
             }
             (TermData::FunctionTerm(_, _), _) => {
                 self.report(CoreTypingMessage::TooManyInputsInFunctionTerm);
@@ -171,13 +171,13 @@ impl<'me> Context<'me> {
                     Some(term) => {
                         self.check_type(&term, &r#type);
                         let value = self.eval(&term);
-                        self.push_value(value.clone(), r#type);
+                        self.push_definition(value.clone(), r#type);
                         value
                     }
                     None => Arc::new(Value::Error),
                 });
 
-                self.truncate_values(initial_size);
+                self.truncate_scopes(initial_size);
             }
 
             (TermData::ArrayTerm(entry_terms), forced_type) => match forced_type.try_global() {
@@ -269,12 +269,12 @@ impl<'me> Context<'me> {
                 }
                 let input_type = self.eval(input_type);
 
-                self.push_param(input_type);
+                self.push_variable(input_type);
                 if !self.is_type(output_type) {
-                    self.pop_value();
+                    self.pop_scope();
                     return Arc::new(Value::Error);
                 }
-                self.pop_value();
+                self.pop_scope();
                 Arc::new(Value::TypeType)
             }
             TermData::FunctionTerm(_, _) => {
@@ -324,14 +324,14 @@ impl<'me> Context<'me> {
                         duplicate_labels.push(name.clone());
                     }
                     if !self.is_type(r#type) {
-                        self.truncate_values(initial_size);
+                        self.truncate_scopes(initial_size);
                         return Arc::new(Value::Error);
                     }
                     let r#type = self.eval(r#type);
-                    self.push_param(r#type);
+                    self.push_variable(r#type);
                 }
 
-                self.truncate_values(initial_size);
+                self.truncate_scopes(initial_size);
 
                 if !duplicate_labels.is_empty() {
                     self.report(CoreTypingMessage::InvalidRecordType { duplicate_labels });
