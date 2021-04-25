@@ -338,9 +338,9 @@ impl<Entry: Clone> Env<Entry> {
         self.entries.pop_back()
     }
 
-    /// Truncate the environment to a given length.
-    pub fn truncate(&mut self, len: usize) {
-        self.entries.truncate(len);
+    /// Truncate the environment to the given environment size.
+    pub fn truncate(&mut self, env_size: EnvSize) {
+        self.entries.truncate(env_size.to_usize());
     }
 
     /// Clear the entries from the environment.

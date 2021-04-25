@@ -79,12 +79,12 @@ impl<'me> Context<'me> {
         self.core_to_surface.pop_name();
     }
 
-    /// Pop the given number of variables off the context.
-    fn pop_values(&mut self, count: usize) {
-        let len = self.size().to_usize().saturating_sub(count);
-        self.types.truncate(len);
-        self.values.truncate(len);
-        self.core_to_surface.pop_names(count);
+    /// Truncate the values in the context to the given size.
+    fn truncate_values(&mut self, env_size: core::EnvSize) {
+        self.types.truncate(env_size.to_usize());
+        self.values.truncate(env_size);
+        self.core_to_surface
+            .pop_names(self.size().to_usize().saturating_sub(env_size.to_usize()));
     }
 
     /// Report a diagnostic message.
@@ -187,7 +187,7 @@ impl<'me> Context<'me> {
             (_, Value::Error) => core::Term::new(term.location, core::TermData::Error),
 
             (TermData::FunctionTerm(input_names, output_term), _) => {
-                let mut seen_input_count = 0;
+                let initial_size = self.size();
                 let mut expected_type = expected_type.clone();
                 let mut pending_input_names = input_names.iter();
 
@@ -196,11 +196,10 @@ impl<'me> Context<'me> {
                         Value::FunctionType(_, input_type, output_closure) => {
                             let input_value =
                                 self.push_param(Some(&input_name.data), input_type.clone());
-                            seen_input_count += 1;
                             expected_type = output_closure.apply(self.globals, input_value);
                         }
                         Value::Error => {
-                            self.pop_values(seen_input_count);
+                            self.truncate_values(initial_size);
                             return core::Term::new(term.location, core::TermData::Error);
                         }
                         _ => {
@@ -212,14 +211,14 @@ impl<'me> Context<'me> {
                                     .collect(),
                             });
                             self.check_type(output_term, &expected_type);
-                            self.pop_values(seen_input_count);
+                            self.truncate_values(initial_size);
                             return core::Term::new(term.location, core::TermData::Error);
                         }
                     }
                 }
 
                 let core_output_term = self.check_type(output_term, &expected_type);
-                self.pop_values(seen_input_count);
+                self.truncate_values(initial_size);
                 (input_names.iter().rev()).fold(core_output_term, |core_output_term, input_name| {
                     core::Term::new(
                         Location::merge(input_name.location, core_output_term.location),
@@ -232,6 +231,7 @@ impl<'me> Context<'me> {
             }
 
             (TermData::RecordTerm(term_entries), Value::RecordType(type_labels, closure)) => {
+                let initial_size = self.size();
                 let mut pending_entries = term_entries.iter();
                 let mut pending_type_labels = type_labels.iter();
                 let mut core_terms = Vec::with_capacity(pending_entries.len());
@@ -260,7 +260,7 @@ impl<'me> Context<'me> {
                     Arc::new(Value::Error)
                 });
 
-                self.pop_values(core_terms.len());
+                self.truncate_values(initial_size);
                 unexpected_labels.extend(pending_entries.map(|(label, _, _)| label.location));
 
                 if !missing_labels.is_empty() || !unexpected_labels.is_empty() {
@@ -428,6 +428,7 @@ impl<'me> Context<'me> {
             }
 
             TermData::FunctionType(input_type_groups, output_type) => {
+                let initial_size = self.size();
                 let mut core_inputs = Vec::new();
 
                 for (input_names, input_type) in input_type_groups {
@@ -435,7 +436,7 @@ impl<'me> Context<'me> {
                         let core_input_type = match self.is_type(input_type) {
                             Some(core_input_type) => core_input_type,
                             None => {
-                                self.pop_values(core_inputs.len());
+                                self.truncate_values(initial_size);
                                 return (error_term(), Arc::new(Value::Error));
                             }
                         };
@@ -449,11 +450,11 @@ impl<'me> Context<'me> {
                 let core_output_type = match self.is_type(output_type) {
                     Some(core_output_type) => core_output_type,
                     None => {
-                        self.pop_values(core_inputs.len());
+                        self.truncate_values(initial_size);
                         return (error_term(), Arc::new(Value::Error));
                     }
                 };
-                self.pop_values(core_inputs.len());
+                self.truncate_values(initial_size);
 
                 let mut core_type = core_output_type;
                 for (input_name, input_type) in core_inputs.into_iter().rev() {
@@ -567,6 +568,7 @@ impl<'me> Context<'me> {
             TermData::RecordType(type_entries) => {
                 use std::collections::btree_map::Entry;
 
+                let initial_size = self.size();
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeMap::new();
                 let mut labels = Vec::with_capacity(type_entries.len());
@@ -586,7 +588,7 @@ impl<'me> Context<'me> {
                                 entry.insert(label.location);
                             }
                             None => {
-                                self.pop_values(seen_labels.len());
+                                self.truncate_values(initial_size);
                                 return (error_term(), Arc::new(Value::Error));
                             }
                         },
@@ -603,7 +605,7 @@ impl<'me> Context<'me> {
                     self.report(SurfaceToCoreMessage::InvalidRecordType { duplicate_labels });
                 }
 
-                self.pop_values(seen_labels.len());
+                self.truncate_values(initial_size);
                 (
                     core::Term::new(
                         term.location,

@@ -70,11 +70,10 @@ impl<'me> Context<'me> {
         self.values.pop();
     }
 
-    /// Pop the given number of variables off the context.
-    fn pop_values(&mut self, count: usize) {
-        let len = self.size().to_usize().saturating_sub(count);
-        self.types.truncate(len);
-        self.values.truncate(len);
+    /// Truncate the values in the context to the given size.
+    fn truncate_values(&mut self, env_size: EnvSize) {
+        self.types.truncate(env_size.to_usize());
+        self.values.truncate(env_size);
     }
 
     /// Report a diagnostic message.
@@ -165,23 +164,20 @@ impl<'me> Context<'me> {
                     return;
                 }
 
+                let initial_size = self.size();
                 let mut pending_terms = terms.iter();
-                let mut entry_count = 0;
 
                 closure.for_each_entry(self.globals, |r#type| match pending_terms.next() {
                     Some(term) => {
                         self.check_type(&term, &r#type);
                         let value = self.eval(&term);
-
                         self.push_value(value.clone(), r#type);
-                        entry_count += 1;
-
                         value
                     }
                     None => Arc::new(Value::Error),
                 });
 
-                self.pop_values(entry_count);
+                self.truncate_values(initial_size);
             }
 
             (TermData::ArrayTerm(entry_terms), forced_type) => match forced_type.try_global() {
@@ -319,6 +315,7 @@ impl<'me> Context<'me> {
                     return Arc::new(Value::Error);
                 }
 
+                let initial_size = self.size();
                 let mut duplicate_labels = Vec::new();
                 let mut seen_labels = BTreeSet::new();
 
@@ -327,14 +324,14 @@ impl<'me> Context<'me> {
                         duplicate_labels.push(name.clone());
                     }
                     if !self.is_type(r#type) {
-                        self.pop_values(seen_labels.len());
+                        self.truncate_values(initial_size);
                         return Arc::new(Value::Error);
                     }
                     let r#type = self.eval(r#type);
                     self.push_param(r#type);
                 }
 
-                self.pop_values(seen_labels.len());
+                self.truncate_values(initial_size);
 
                 if !duplicate_labels.is_empty() {
                     self.report(CoreTypingMessage::InvalidRecordType { duplicate_labels });
