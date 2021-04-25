@@ -10,7 +10,7 @@
 use contracts::debug_ensures;
 use fxhash::FxHashMap;
 
-use crate::lang::core::{Constant, EnvSize, Globals, Term, TermData};
+use crate::lang::core::{Constant, EnvSize, Globals, Term, TermData, VarIndex};
 use crate::lang::surface;
 use crate::lang::Located;
 
@@ -18,7 +18,7 @@ use crate::lang::Located;
 pub struct Context<'globals> {
     globals: &'globals Globals,
     usages: FxHashMap<String, Usage>,
-    var_names: Vec<String>,
+    names: Vec<String>,
 }
 
 struct Usage {
@@ -48,15 +48,24 @@ impl<'globals> Context<'globals> {
         Context {
             globals,
             usages,
-            var_names: Vec::new(),
+            names: Vec::new(),
         }
+    }
+
+    fn index_to_level(&self, index: VarIndex) -> usize {
+        let index = index.to_usize();
+        self.names.len().saturating_sub(index).saturating_sub(1)
+    }
+
+    fn get_name(&self, index: VarIndex) -> Option<&str> {
+        Some(self.names.get(self.index_to_level(index))?.as_str())
     }
 
     // FIXME: This is incredibly horrific and I do not like it!
     //
     // We could investigate finding more optimal optimal names by using free
     // variables, or look into [scope sets](https://typesanitizer.com/blog/scope-sets-as-pinata.html)
-    // for a more principled approach to scape names.
+    // for a more principled approach to scope names.
     pub fn push_scope(&mut self, name_hint: Option<&str>) -> String {
         let base_name = name_hint.unwrap_or(DEFAULT_NAME);
         let (fresh_name, base_name) = match self.usages.get_mut(base_name) {
@@ -87,12 +96,12 @@ impl<'globals> Context<'globals> {
         };
         // TODO: Reduce cloning of names
         self.usages.insert(fresh_name.clone(), usage);
-        self.var_names.push(fresh_name.clone());
+        self.names.push(fresh_name.clone());
         fresh_name
     }
 
     pub fn pop_scope(&mut self) {
-        if let Some(mut name) = self.var_names.pop() {
+        if let Some(mut name) = self.names.pop() {
             while let Some(base_name) = self.remove_usage(name) {
                 name = base_name;
             }
@@ -104,7 +113,7 @@ impl<'globals> Context<'globals> {
     }
 
     pub fn truncate_scopes(&mut self, count: EnvSize) {
-        (count.to_usize()..self.var_names.len()).for_each(|_| self.pop_scope());
+        (count.to_usize()..self.names.len()).for_each(|_| self.pop_scope());
     }
 
     fn remove_usage(&mut self, name: String) -> Option<String> {
@@ -124,15 +133,15 @@ impl<'globals> Context<'globals> {
     ///
     /// [`core::Term`]: crate::lang::core::Term
     /// [`surface::Term`]: crate::lang::surface::Term
-    #[debug_ensures(self.var_names.len() == old(self.var_names.len()))]
+    #[debug_ensures(self.names.len() == old(self.names.len()))]
     pub fn from_term(&mut self, term: &Term) -> surface::Term {
         let term_data = match &term.data {
             TermData::Global(name) => match self.globals.get(name) {
                 Some(_) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
-            TermData::Var(index) => match self.var_names.get(index.to_usize()) {
-                Some(name) => surface::TermData::Name(name.clone()),
+            TermData::Var(index) => match self.get_name(*index) {
+                Some(name) => surface::TermData::Name(name.to_owned()),
                 None => surface::TermData::Error, // TODO: Log error?
             },
 
