@@ -51,7 +51,7 @@ impl<'globals> Context<'globals> {
         self.types.get(level.to_usize())
     }
 
-    /// Push a new definition onto the context, along its type annotation.
+    /// Push a new definition onto the context, along with its type annotation.
     fn push_definition(&mut self, value: Arc<Value>, r#type: Arc<Value>) {
         self.types.push(r#type);
         self.values.push(value);

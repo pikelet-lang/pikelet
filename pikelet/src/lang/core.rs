@@ -249,8 +249,8 @@ impl VarLevel {
 /// is how many entries are contained within it.
 ///
 /// [environment]: `Env`
-/// [index-to-level]: `LocalSize::index_to_level`
-/// [level-to-index]: `LocalSize::level_to_index`
+/// [index-to-level]: `EnvSize::index_to_level`
+/// [level-to-index]: `EnvSize::level_to_index`
 /// [readback]: `semantics::read_back`
 /// [conversion checking]: `semantics::is_equal`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -275,7 +275,7 @@ impl EnvSize {
     /// Convert a variable index to a variable level in the current environment.
     ///
     /// `None` is returned if the environment is not large enough to
-    /// contain the  variable.
+    /// contain the variable.
     pub fn index_to_level(self, index: VarIndex) -> Option<VarLevel> {
         Some(VarLevel(self.0.checked_sub(index.0)?.checked_sub(1)?))
     }
@@ -283,7 +283,7 @@ impl EnvSize {
     /// Convert a variable level to a variable index in the current environment.
     ///
     /// `None` is returned if the environment is not large enough to
-    /// contain the  variable.
+    /// contain the variable.
     pub fn level_to_index(self, level: VarLevel) -> Option<VarIndex> {
         Some(VarIndex(self.0.checked_sub(level.0)?.checked_sub(1)?))
     }

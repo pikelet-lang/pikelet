@@ -58,7 +58,7 @@ impl<'globals> Context<'globals> {
         )
     }
 
-    /// Push a new definition onto the context, along its type annotation.
+    /// Push a new definition onto the context, along with its type annotation.
     fn push_definition(&mut self, name: Option<&str>, value: Arc<Value>, r#type: Arc<Value>) {
         self.types.push((name.map(str::to_owned), r#type));
         self.values.push(value);
