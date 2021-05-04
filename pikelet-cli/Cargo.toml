@@ -18,6 +18,10 @@ license = "Apache-2.0"
 name = "pikelet"
 path = "src/main.rs"
 
+[[test]]
+name = "source_tests"
+harness = false
+
 [features]
 default = ["editor", "language-server"]
 editor = ["pikelet-editor"]
@@ -35,3 +39,7 @@ rustyline = "8.0"
 structopt = "0.3"
 term_size = "0.3"
 xdg = "2.2"
+
+[dev-dependencies]
+libtest-mimic = "0.3.0"
+pikelet-test = { path = "../pikelet-test" }
