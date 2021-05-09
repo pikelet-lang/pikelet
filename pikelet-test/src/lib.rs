@@ -1,5 +1,6 @@
 use libtest_mimic::{Outcome, Test};
 use std::fmt::Write;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use walkdir::WalkDir;
@@ -40,6 +41,11 @@ pub fn run_test(
 }
 
 fn run_test_impl(pikelet_exe: &str, test: &Test<TestData>) -> Outcome {
+    let input_source = fs::read_to_string(&test.data.input_file).unwrap();
+    if input_source.starts_with("--! IGNORE") {
+        return Outcome::Ignored;
+    }
+
     let output = Command::new(pikelet_exe)
         .arg("check")
         .arg("--validate-core")
