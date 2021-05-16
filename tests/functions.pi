@@ -1,3 +1,5 @@
+--! check.enable = true
+
 record {
     id-String = fun a => a,
     const-String-S32 = fun a b => a,

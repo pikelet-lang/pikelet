@@ -1,4 +1,5 @@
 use libtest_mimic::{Outcome, Test};
+use serde::Deserialize;
 use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,18 +19,31 @@ fn is_pikelet_path(path: &Path) -> bool {
     matches!(path.extension(), Some(ext) if ext == "pi")
 }
 
-pub struct TestData {
-    pub input_file: PathBuf,
-}
-
-/// Extract a new test from the given file path
-pub fn extract_test(path: PathBuf) -> Option<Test<TestData>> {
+/// Extract a new simple test from the given file path
+pub fn extract_simple_test(path: PathBuf) -> Option<Test<TestData>> {
     is_pikelet_path(&path).then(|| Test {
         name: path.display().to_string(),
         kind: String::new(),
         is_ignored: false,
         is_bench: false,
-        data: TestData { input_file: path },
+        data: TestData {
+            input_file: path,
+            parse_config: false,
+        },
+    })
+}
+
+/// Extract a new test configured with TOML-formatted comments from the given file path
+pub fn extract_config_test(path: PathBuf) -> Option<Test<TestData>> {
+    is_pikelet_path(&path).then(|| Test {
+        name: path.display().to_string(),
+        kind: String::new(),
+        is_ignored: false,
+        is_bench: false,
+        data: TestData {
+            input_file: path,
+            parse_config: true,
+        },
     })
 }
 
@@ -41,62 +55,138 @@ pub fn run_test(
 }
 
 fn run_test_impl(pikelet_exe: &str, test: &Test<TestData>) -> Outcome {
-    let input_source = fs::read_to_string(&test.data.input_file).unwrap();
-    if input_source.starts_with("--! IGNORE") {
+    let mut failures = Vec::new();
+
+    let config = if test.data.parse_config {
+        use itertools::Itertools;
+
+        const CONFIG_COMMENT_START: &str = "--!";
+
+        let input_source = fs::read_to_string(&test.data.input_file).unwrap();
+        let config_source = input_source
+            .lines()
+            .filter_map(|line| line.split(CONFIG_COMMENT_START).nth(1))
+            .join("\n");
+
+        match toml::from_str(&config_source) {
+            Ok(config) => config,
+            Err(error) => {
+                failures.push(Failure {
+                    name: "config parse error".to_owned(),
+                    details: error.to_string(),
+                });
+
+                return failures_to_outcome(&failures);
+            }
+        }
+    } else {
+        Config {
+            ignore: false,
+            check: CheckConfig {
+                enable: true,
+                validate_core: true,
+            },
+        }
+    };
+
+    if config.ignore || (!config.check.enable/* && ... */) {
         return Outcome::Ignored;
     }
 
-    let output = Command::new(pikelet_exe)
-        .arg("check")
-        .arg("--validate-core")
-        .arg(&test.data.input_file)
-        .output();
+    if config.check.enable {
+        let output = Command::new(pikelet_exe)
+            .arg("check")
+            .arg("--validate-core")
+            .arg(&test.data.input_file)
+            .output();
 
-    let mut failures = Vec::new();
-
-    match output {
-        Ok(output) => {
-            if !output.status.success() {
-                failures.push(Failure {
-                    name: "exit status".to_owned(),
-                    details: output.status.to_string(),
-                });
+        match output {
+            Ok(output) => {
+                if !output.status.success() {
+                    failures.push(Failure {
+                        name: "exit status".to_owned(),
+                        details: output.status.to_string(),
+                    });
+                }
+                if !output.stdout.is_empty() {
+                    failures.push(Failure {
+                        name: "stdout".to_owned(),
+                        details: String::from_utf8_lossy(&output.stdout).into(),
+                    });
+                }
+                if !output.stderr.is_empty() {
+                    failures.push(Failure {
+                        name: "stderr".to_owned(),
+                        details: String::from_utf8_lossy(&output.stderr).into(),
+                    });
+                }
             }
-            if !output.stdout.is_empty() {
-                failures.push(Failure {
-                    name: "stdout".to_owned(),
-                    details: String::from_utf8_lossy(&output.stdout).into(),
-                });
-            }
-            if !output.stderr.is_empty() {
-                failures.push(Failure {
-                    name: "stderr".to_owned(),
-                    details: String::from_utf8_lossy(&output.stderr).into(),
-                });
-            }
+            Err(error) => failures.push(Failure {
+                name: "command error".to_owned(),
+                details: error.to_string(),
+            }),
         }
-        Err(error) => failures.push(Failure {
-            name: "command error".to_owned(),
-            details: error.to_string(),
-        }),
     }
 
+    failures_to_outcome(&failures)
+}
+
+pub struct TestData {
+    input_file: PathBuf,
+    parse_config: bool,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
+struct Config {
+    #[serde(default = "false_value")]
+    ignore: bool,
+    #[serde(default)]
+    check: CheckConfig,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "kebab-case")]
+struct CheckConfig {
+    #[serde(default = "false_value")]
+    enable: bool,
+    #[serde(default = "true_value")]
+    validate_core: bool,
+}
+
+impl Default for CheckConfig {
+    fn default() -> Self {
+        CheckConfig {
+            enable: false,
+            validate_core: true,
+        }
+    }
+}
+
+fn false_value() -> bool {
+    false
+}
+
+fn true_value() -> bool {
+    false
+}
+
+struct Failure {
+    name: String,
+    details: String,
+}
+
+fn failures_to_outcome(failures: &[Failure]) -> Outcome {
     if failures.is_empty() {
         Outcome::Passed
     } else {
         let mut buffer = String::new();
 
         writeln!(buffer).unwrap();
-        writeln!(
-            buffer,
-            "    {program} check --validate-core {input_file}",
-            program = pikelet_exe,
-            input_file = test.data.input_file.display(),
-        )
-        .unwrap();
-        writeln!(buffer).unwrap();
         writeln!(buffer, "    failures:").unwrap();
-        for failure in &failures {
+        for failure in failures {
             writeln!(buffer).unwrap();
             writeln!(buffer, "    ---- {} ----", failure.name).unwrap();
             for line in failure.details.lines() {
@@ -106,15 +196,10 @@ fn run_test_impl(pikelet_exe: &str, test: &Test<TestData>) -> Outcome {
         writeln!(buffer).unwrap();
         writeln!(buffer).unwrap();
         writeln!(buffer, "    failures:").unwrap();
-        for failure in &failures {
+        for failure in failures {
             writeln!(buffer, "        {}", failure.name).unwrap();
         }
 
         Outcome::Failed { msg: Some(buffer) }
     }
-}
-
-struct Failure {
-    name: String,
-    details: String,
 }
