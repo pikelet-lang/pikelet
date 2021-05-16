@@ -1,3 +1,5 @@
+--! check.enable = true
+
 -- This is a line comment
 record {
     -- Another line comment

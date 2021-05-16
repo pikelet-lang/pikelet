@@ -1,3 +1,5 @@
+--! check.enable = true
+
 record {
     b2 = 0b1001_0101,
     b8 = 0o01234567,

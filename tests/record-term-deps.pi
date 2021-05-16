@@ -1,3 +1,5 @@
+--! check.enable = true
+
 (record {
     A = U32,
     B = A,
